@@ -115,18 +115,18 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
-    "express": "^4.18.2",
+    "express": "^4.22.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.1.0",
     "mammoth": "^1.11.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.1.1",
     "ocrad.js": "^0.0.1",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.5.207"
   },
   "devDependencies": {
-    "electron": "^34.5.8",
-    "electron-builder": "^25.1.8",
+    "electron": "^39.8.5",
+    "electron-builder": "^26.15.0",
     "nodemon": "^3.1.0"
   },
   "engines": {
