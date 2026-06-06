@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Analyse Croisée Dynamique — SPAD Analyzer{% endblock %}
+{% block page_title %}Analyse Croisée Dynamique{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
+    <i class="bi bi-grid-3x3-gap-fill fs-3"></i>
+    <div>
+      <strong>Tableau croisé dynamique</strong> — façon Excel.
+      Glissez plusieurs variables en <em>Lignes</em>, <em>Colonnes</em>, choisissez une <em>Valeur</em>
+      et l'<em>Agrégation</em> (somme, moyenne, comptage…). Ajoutez des filtres au besoin.
+    </div>
+  </div>
+
+  <form method="POST" id="pivotForm">
+    <div class="row g-3">
+
+      <!-- ═══════════ Pivot fields ═══════════ -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel-fill me-2 text-primary"></i>Champs du pivot</h6>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-play-fill me-1"></i>Calculer
+            </button>
+          </div>
+          <div class="card-body">
+
+            <!-- Filters -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-funnel me-1"></i>Filtres
+              </label>
+              <div class="border rounded p-2" style="max-height:160px;overflow-y:auto;background:#fafbfc">
+                {% for v, opts in filter_options.items() %}
+                <details class="mb-1">
+                  <summary class="small fw-semibold" style="cursor:pointer">
+                    {{ v }}
+                    {% if filters.get(v) %}<span class="badge bg-primary ms-1">{{ filters[v]|length }}</span>{% endif %}
+                  </summary>
+                  <div class="ps-3 pt-2" style="max-height:140px;overflow-y:auto">
+                    {% for opt in opts %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox"
+                             name="filter_{{ v }}" value="{{ opt }}"
+                             id="f_{{ loop.index0 }}_{{ v|replace('/', '_')|replace(' ', '_') }}"
+                             {% if filters.get(v) and opt in filters[v] %}checked{% endif %}>
+                      <label class="form-check-label small"
+                             for="f_{{ loop.index0 }}_{{ v|replace('/', '_')|replace(' ', '_') }}">
+                        {{ opt }}
+                      </label>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </details>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Rows -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-arrows-vertical me-1"></i>Lignes (≥ 1)
+              </label>
+              <select name="rows" class="form-select form-select-sm" multiple size="6" required>
+                {% for v in cat_vars %}
+                <option value="{{ v }}" {% if v in rows %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">Ctrl/Cmd-clic pour choisir plusieurs niveaux.</small>
+            </div>
+
+            <!-- Cols -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-arrows me-1"></i>Colonnes (optionnel)
+              </label>
+              <select name="cols" class="form-select form-select-sm" multiple size="6">
+                {% for v in cat_vars %}
+                <option value="{{ v }}" {% if v in cols %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Value -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-123 me-1"></i>Valeur
+              </label>
+              <select name="value_var" class="form-select form-select-sm" id="valueVarSel">
+                <option value="">— Comptage des observations —</option>
+                {% for v in num_vars %}
+                <option value="{{ v }}" {% if v == value_var %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Aggregation -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-calculator me-1"></i>Agrégation
+              </label>
+              <select name="agg" class="form-select form-select-sm" id="aggSel">
+                <option value="count"   {% if agg=='count' %}selected{% endif %}>Nombre</option>
+                <option value="sum"     {% if agg=='sum' %}selected{% endif %}>Somme</option>
+                <option value="mean"    {% if agg=='mean' %}selected{% endif %}>Moyenne</option>
+                <option value="median"  {% if agg=='median' %}selected{% endif %}>Médiane</option>
+                <option value="min"     {% if agg=='min' %}selected{% endif %}>Minimum</option>
+                <option value="max"     {% if agg=='max' %}selected{% endif %}>Maximum</option>
+                <option value="std"     {% if agg=='std' %}selected{% endif %}>Écart-type</option>
+                <option value="nunique" {% if agg=='nunique' %}selected{% endif %}>Modalités uniques</option>
+              </select>
+            </div>
+
+            <!-- Pct -->
+            <div class="mb-2">
+              <label class="form-label small fw-semibold text-uppercase text-muted">
+                <i class="bi bi-percent me-1"></i>Pourcentages
+              </label>
+              <select name="pct_type" class="form-select form-select-sm">
+                <option value="none"  {% if pct_type=='none' %}selected{% endif %}>Aucun</option>
+                <option value="row"   {% if pct_type=='row' %}selected{% endif %}>% lignes</option>
+                <option value="col"   {% if pct_type=='col' %}selected{% endif %}>% colonnes</option>
+                <option value="total" {% if pct_type=='total' %}selected{% endif %}>% total</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-3">
+              <i class="bi bi-play-fill me-1"></i>Calculer le pivot
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ Results ═══════════ -->
+      <div class="col-lg-8">
+        {% if not result %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-grid-3x3-gap display-3 mb-3 d-block opacity-25"></i>
+          <h5>Construisez votre tableau croisé dynamique</h5>
+          <p class="small">Choisissez au moins une variable en <strong>Ligne</strong>, puis cliquez sur <strong>Calculer</strong>.</p>
+        </div>
+        {% else %}
+
+        <!-- Stats banner -->
+        {% if result.chi2 is not none %}
+        <div class="alert border-0 mb-3 py-3"
+             style="background:linear-gradient(135deg,#1a3c5e 0%,#1a6fa8 100%);color:white;border-radius:12px">
+          <div class="row text-center g-3">
+            <div class="col-6 col-md-3">
+              <div class="fw-bold fs-5">{{ result.chi2 }}</div>
+              <div class="small opacity-75">χ² de Pearson</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="fw-bold fs-5">{{ result.p_val }}</div>
+              <div class="small opacity-75">p-value (ddl={{ result.dof }})</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="fw-bold fs-5">{{ result.cramers_v }}</div>
+              <div class="small opacity-75">V de Cramér</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="fw-bold fs-5">{{ result.n }}</div>
+              <div class="small opacity-75">Observations</div>
+            </div>
+          </div>
+          <hr class="my-2 opacity-25">
+          <p class="mb-0 small text-center">
+            Liaison <strong>{{ result.assoc_label }}</strong> —
+            Association <strong>{{ result.sig_label }}</strong>
+          </p>
+        </div>
+        {% else %}
+        <div class="alert alert-info py-2 small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Agrégation : <strong>{{ result.agg_label }}</strong>
+          {% if result.value_var %} sur <strong>{{ result.value_var }}</strong>{% endif %}
+          · {{ result.n }} observation(s)
+        </div>
+        {% endif %}
+
+        <!-- Pivot table -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white border-bottom py-3">
+            <ul class="nav nav-tabs card-header-tabs" id="ctTabs">
+              <li class="nav-item">
+                <button class="nav-link active small" type="button" data-bs-toggle="tab" data-bs-target="#tab-piv">
+                  <i class="bi bi-table me-1"></i>{{ result.agg_label }}
+                </button>
+              </li>
+              {% if result.pct_html %}
+              <li class="nav-item">
+                <button class="nav-link small" type="button" data-bs-toggle="tab" data-bs-target="#tab-pct">
+                  <i class="bi bi-percent me-1"></i>{{ result.pct_label }}
+                </button>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+          <div class="card-body tab-content p-3">
+            <div class="tab-pane fade show active" id="tab-piv">
+              <div class="table-responsive">{{ result.pivot_html | safe }}</div>
+            </div>
+            {% if result.pct_html %}
+            <div class="tab-pane fade" id="tab-pct">
+              <div class="table-responsive">{{ result.pct_html | safe }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Charts -->
+        {% if result.chart_heat or result.chart_bar %}
+        <div class="row g-3">
+          {% if result.chart_heat %}
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body">
+                <div id="chart-heat" class="plotly-chart"></div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% if result.chart_bar %}
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body">
+                <div id="chart-bar" class="plotly-chart"></div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% with section='crosstabs',
+                var=(result.rows | join('|')) ~ '||' ~ (result.cols | join('|')),
+                auto=result.auto_comment,
+                user=result.user_comment %}
+          {% include "_comment_block.html" %}
+        {% endwith %}
+
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Désactive « Valeur » et bascule sur « count » quand l'agrégation est « count »
+(function() {
+  const aggSel = document.getElementById('aggSel');
+  const valSel = document.getElementById('valueVarSel');
+  function sync() {
+    if (!aggSel || !valSel) return;
+    if (aggSel.value === 'count' || aggSel.value === 'nunique') {
+      // count: valeur ignorée — ok
+    } else if (!valSel.value) {
+      // bascule auto sur count si pas de valeur
+      aggSel.value = 'count';
+    }
+  }
+  if (aggSel && valSel) {
+    aggSel.addEventListener('change', () => {
+      if (['sum','mean','median','min','max','std'].includes(aggSel.value) && !valSel.value) {
+        // visuel : signaler à l'utilisateur de choisir une variable numérique
+        valSel.style.borderColor = '#dc3545';
+        setTimeout(()=> valSel.style.borderColor = '', 1500);
+      }
+    });
+    valSel.addEventListener('change', sync);
+  }
+})();
+</script>
+{% if result and (result.chart_heat or result.chart_bar) %}
+<script>
+const cfg = { responsive: true, displaylogo: false };
+(function(){
+  {% if result.chart_heat %}
+  var h = {{ result.chart_heat | safe }};
+  Plotly.newPlot('chart-heat', h.data, h.layout, cfg);
+  {% endif %}
+  {% if result.chart_bar %}
+  var b = {{ result.chart_bar | safe }};
+  Plotly.newPlot('chart-bar', b.data, b.layout, cfg);
+  {% endif %}
+})();
+</script>
+{% endif %}
+{% endblock %}

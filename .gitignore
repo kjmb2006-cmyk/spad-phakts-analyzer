@@ -1,0 +1,49 @@
+# ── Dépendances ─────────────────────────────────────────────────────────
+node_modules/
+analyzer/venv/
+
+# ── Secrets ─────────────────────────────────────────────────────────────
+.env
+*.local
+.env.local
+
+# ── Python embarqué (téléchargé / installé par le workflow CI) ─────────
+python-embed/
+python-embed-win/
+python-embed-mac/
+python-embed-linux/
+
+# ── Build artifacts ─────────────────────────────────────────────────────
+dist-electron/
+dist-electron.bak.*
+SPAD PHAKTS Analyzer.app/
+SPAD PHAKTS Analyzer.app.bak.*
+*.dmg
+*.exe
+*.AppImage
+*.blockmap
+
+# ── Cache & temp ────────────────────────────────────────────────────────
+.cache/
+*.log
+*.pyc
+__pycache__/
+**/__pycache__/
+
+# ── OS ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Données utilisateur (uploads + reports générés) ────────────────────
+uploads/
+analyzer/static/uploads/
+analyzer/static/reports/
+analyzer/data/learned.json
+data/learned.json

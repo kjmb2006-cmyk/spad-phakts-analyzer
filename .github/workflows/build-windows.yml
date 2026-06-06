@@ -1,0 +1,108 @@
+name: Build Windows
+
+# Déclencheurs :
+#   - Manuel via l'onglet Actions de GitHub
+#   - À chaque push sur main qui touche le code source
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'public/**'
+      - 'analyzer/**'
+      - 'electron-main.js'
+      - 'preload.js'
+      - 'package.json'
+      - '.github/workflows/build-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Construire l'installeur Windows (.exe)
+    runs-on: windows-latest
+
+    steps:
+      # ─── 1. Récupérer le code ────────────────────────────────────────────
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      # ─── 2. Node.js ──────────────────────────────────────────────────────
+      - name: Installer Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ─── 3. Préparer le Python embarqué Windows ──────────────────────────
+      # Distribution embeddable officielle de python.org, multiplateforme,
+      # MIT-compatible. ~11 MB compressé, ~30 MB une fois étendu.
+      - name: Préparer python-embed-win
+        shell: pwsh
+        run: |
+          $PYTHON_VERSION = "3.11.9"
+          $PY_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+          Write-Host "Téléchargement Python $PYTHON_VERSION embed..."
+          Invoke-WebRequest -Uri $PY_URL -OutFile python-embed.zip
+          Expand-Archive python-embed.zip -DestinationPath python-embed-win
+          Remove-Item python-embed.zip
+
+          # Activer import site (commenté par défaut dans python311._pth) pour
+          # que les packages installés via pip soient trouvés.
+          $pth = Get-ChildItem python-embed-win\python*._pth | Select-Object -First 1
+          (Get-Content $pth.FullName) -replace '#import site','import site' | Set-Content $pth.FullName
+
+          # Installer pip
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile python-embed-win\get-pip.py
+          .\python-embed-win\python.exe python-embed-win\get-pip.py --no-warn-script-location
+
+          # Installer les dépendances Python (sans la version Mac kaleido qui peut diverger)
+          .\python-embed-win\python.exe -m pip install --no-warn-script-location -r analyzer\requirements.txt
+
+          Write-Host "Python embarqué prêt :"
+          .\python-embed-win\python.exe --version
+          .\python-embed-win\python.exe -m pip list
+
+      # ─── 4. Renommer le dossier mac pour ne pas le copier ────────────────
+      - name: Préparer python-embed-mac placeholder
+        shell: pwsh
+        run: |
+          if (Test-Path python-embed) {
+            Move-Item python-embed python-embed-mac
+          } elseif (-not (Test-Path python-embed-mac)) {
+            # Pas de Python Mac sur runner Windows — crée un dossier vide pour
+            # que la résolution ${platform} de electron-builder ne plante pas.
+            New-Item -ItemType Directory -Path python-embed-mac
+          }
+
+      # ─── 5. Installer les dépendances Node ────────────────────────────────
+      - name: Installer les dépendances Node
+        run: npm ci
+
+      # ─── 6. Construire l'installeur ──────────────────────────────────────
+      - name: Construire l'installeur Windows
+        env:
+          # Évite le re-fetch des artefacts Electron à chaque build
+          ELECTRON_CACHE: ${{ github.workspace }}\.cache\electron
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
+        run: npm run dist:win
+
+      # ─── 7. Lister les artefacts produits ────────────────────────────────
+      - name: Lister les artefacts
+        shell: pwsh
+        run: |
+          Write-Host "Contenu de dist-electron :"
+          Get-ChildItem dist-electron -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+
+      # ─── 8. Téléverser l'installeur en artefact ──────────────────────────
+      - name: Téléverser l'installeur (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPAD-PHAKTS-Analyzer-Windows-Setup
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.blockmap
+          if-no-files-found: error
+          retention-days: 30

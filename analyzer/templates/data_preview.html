@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Aperçu des données — SPAD Analyzer{% endblock %}
+{% block page_title %}Aperçu des données{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  {% if session.get('kobo_token') %}
+  <!-- ── Bannière KoboToolbox ── -->
+  <div class="d-flex align-items-center gap-3 p-3 mb-4"
+       style="background:linear-gradient(135deg,#EAF5F1,#F0FBF7);border:1.5px solid #17A589;border-radius:12px">
+    <div style="width:38px;height:38px;background:#17A589;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🔗</div>
+    <div class="flex-grow-1">
+      <div style="font-weight:700;font-size:.88rem;color:#1A5276">
+        Source : KoboToolbox
+        <span style="font-weight:400;color:#555;font-size:.8rem;margin-left:6px">— {{ session.get('kobo_asset_name','') }}</span>
+      </div>
+      <div style="font-size:.75rem;color:#85929E">
+        {{ session.get('kobo_username','') }} &nbsp;·&nbsp; {{ session.get('kobo_instance','') | replace('https://','') }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0">
+      <a href="{{ url_for('kobo_refresh') }}"
+         class="btn btn-sm"
+         style="background:#17A589;color:#fff;border-radius:8px;font-weight:600;font-size:.8rem">
+        <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir
+      </a>
+      <a href="{{ url_for('kobo_assets') }}"
+         class="btn btn-sm"
+         style="background:#1A5276;color:#fff;border-radius:8px;font-weight:600;font-size:.8rem">
+        <i class="bi bi-collection-fill me-1"></i>Changer de formulaire
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    {% set cards = [
+      ('bi-people-fill',          'bg-primary-subtle',   'text-primary',   shape[0],              'Ménages'),
+      ('bi-list-columns-reverse', 'bg-success-subtle',   'text-success',   shape[1],              'Variables'),
+      ('bi-tag-fill',             'bg-warning-subtle',   'text-warning',   meta.n_categorielle,   'Catégorielles'),
+      ('bi-check2-square',        'bg-secondary-subtle', 'text-secondary', meta.n_binaire,        'Binaires 0/1'),
+      ('bi-exclamation-triangle-fill','bg-danger-subtle','text-danger',    meta.missing_pct|string + '%', 'Manquantes'),
+    ] %}
+    {% if meta.has_child_sheet %}
+    <div class="col-6 col-sm-4 col-md-2">
+      <div class="stat-card-v">
+        <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-person-fill"></i></div>
+        <div class="stat-value-v">{{ meta.n_child }}</div>
+        <div class="stat-label-v">Enfants 0–23 mois</div>
+      </div>
+    </div>
+    {% endif %}
+    {% for icon, bg, color, val, label in cards %}
+    <div class="col-6 col-sm-4 col-md-2">
+      <div class="stat-card-v">
+        <div class="stat-icon-v {{ bg }} {{ color }}"><i class="bi {{ icon }}"></i></div>
+        <div class="stat-value-v">{{ val }}</div>
+        <div class="stat-label-v">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Binary groups detected -->
+  {% if bin_groups %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-check2-square me-2 text-primary"></i>
+        Questions à choix multiples détectées ({{ bin_groups|length }} groupes)
+      </h6>
+      <span class="badge bg-primary ms-2">KoBoToolbox</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>#</th><th>Question</th><th>Nombre de modalités</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            {% for g in bin_groups %}
+            <tr>
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td style="font-size:.82rem">{{ g.parent }}</td>
+              <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ g.vars|length }} modalités</span></td>
+              <td>
+                <a href="{{ url_for('descriptive') }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:.75rem">
+                  <i class="bi bi-bar-chart me-1"></i>Analyser
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Variable types (questionnaire reconstruit) -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center py-3 gap-2 flex-wrap">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-list-check me-2 text-primary"></i>Questionnaire des variables détectées
+      </h6>
+      <span class="text-muted small">{{ shape[1] }} questions · cliquez sur un libellé pour le modifier</span>
+      <a href="{{ url_for('export_var_types_xlsx') }}"
+         class="btn btn-sm btn-outline-success ms-auto"
+         title="Télécharger le questionnaire complet au format XLSX (libellés, modalités, statistiques)">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Télécharger questionnaire XLSX
+      </a>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive" style="max-height:520px;overflow-y:auto">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th style="width:36px">#</th>
+              <th style="width:18%">Variable (code)</th>
+              <th style="width:22%">Question / Libellé</th>
+              <th style="width:13%">Type</th>
+              <th style="width:25%">Modalités attendues</th>
+              <th class="text-end" style="width:7%">Obs.</th>
+              <th class="text-end" style="width:6%">Manq.</th>
+              <th class="text-end" style="width:6%">% manq.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in var_table %}
+            <tr>
+              <td class="text-muted small">{{ r.idx }}</td>
+              <td class="fw-medium" style="font-size:.74rem;font-family:monospace;word-break:break-all">{{ r.variable }}</td>
+              <td style="font-size:.82rem">
+                <span class="var-label-edit"
+                      contenteditable="true" spellcheck="false"
+                      data-variable="{{ r.variable }}"
+                      data-auto="{{ r.libelle_auto }}"
+                      title="Cliquez pour modifier — Entrée pour valider"
+                      style="display:inline-block;min-width:60%;padding:2px 6px;border-radius:4px;cursor:text">{{ r.libelle }}</span>
+                {% if r.is_custom %}
+                <i class="bi bi-pencil-fill text-success ms-1" style="font-size:.65rem" title="Libellé personnalisé"></i>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.type == 'categorielle' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                  <i class="bi bi-tag me-1"></i>Catégorielle
+                </span>
+                {% elif r.type == 'continue' %}
+                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                  <i class="bi bi-123 me-1"></i>Continue
+                </span>
+                {% elif r.type == 'binaire' %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">
+                  <i class="bi bi-toggle-on me-1"></i>Binaire
+                </span>
+                {% elif r.type == 'date' %}
+                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                  <i class="bi bi-calendar me-1"></i>Date
+                </span>
+                {% else %}
+                <span class="badge bg-light text-muted border">Texte libre</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.74rem;color:#566573;line-height:1.4">
+                {{ r.modalites | truncate(180) if r.modalites else '—' }}
+              </td>
+              <td class="text-end small">{{ r.n_obs }}</td>
+              <td class="text-end small">{{ r.n_manq }}</td>
+              <td class="text-end small">
+                {% if r.pct_manq >= 50 %}
+                  <span class="text-danger fw-semibold">{{ r.pct_manq }}%</span>
+                {% elif r.pct_manq >= 20 %}
+                  <span class="text-warning">{{ r.pct_manq }}%</span>
+                {% else %}
+                  <span class="text-muted">{{ r.pct_manq }}%</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    // Persistance live des libellés modifiés (envoi à /api/var-label)
+    const url = '{{ url_for("save_var_label") }}';
+    let timers = new WeakMap();
+    function persist(el) {
+      const variable = el.dataset.variable;
+      const label = el.textContent.trim();
+      fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({variable, label}),
+      })
+      .then(r => {
+        el.style.background = r.ok ? '#D5F5E3' : '#FADBD8';
+        setTimeout(() => { el.style.background = ''; }, 1000);
+      })
+      .catch(() => { el.style.background = '#FADBD8';
+                      setTimeout(() => { el.style.background = ''; }, 1000); });
+    }
+    document.querySelectorAll('.var-label-edit').forEach(el => {
+      el.addEventListener('focus', () => { el.style.background = '#FEF9E7'; });
+      el.addEventListener('blur', () => {
+        el.style.background = '';
+        persist(el);
+      });
+      el.addEventListener('input', () => {
+        if (timers.has(el)) clearTimeout(timers.get(el));
+        timers.set(el, setTimeout(() => persist(el), 700));
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+        if (e.key === 'Escape') { el.textContent = el.dataset.auto; el.blur(); }
+      });
+    });
+  })();
+  </script>
+
+  <!-- Main sheet preview -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-table me-2 text-primary"></i>
+        Aperçu — {{ meta.get('sheet_name', 'Feuille principale') }}
+      </h6>
+      <span class="badge bg-secondary ms-2">{{ shape[0] }} lignes</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">{{ preview | safe }}</div>
+    </div>
+  </div>
+
+  <!-- Child sheet preview -->
+  {% if child_preview %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-person-fill me-2 text-info"></i>
+        Aperçu — {{ meta.get('child_sheet_name', 'Groupe enfant') }}
+        <span class="badge bg-info-subtle text-info border border-info-subtle ms-2">Tableau répété</span>
+      </h6>
+      <span class="badge bg-secondary ms-2">{{ child_meta.n }} enfants · {{ child_meta.cols }} variables</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">{{ child_preview | safe }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

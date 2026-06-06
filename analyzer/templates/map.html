@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Carte géographique — SPAD Analyzer{% endblock %}
+{% block page_title %}Carte géographique{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  {% if not geo_pairs %}
+  <div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-geo-alt-fill fs-5"></i>
+    <div>Aucune colonne de coordonnées GPS détectée dans les données. Vérifiez que vos données contiennent des colonnes <strong>latitude</strong> et <strong>longitude</strong>.</div>
+  </div>
+  {% else %}
+
+  <div class="row g-3">
+
+    <!-- ── Panneau de contrôle ──────────────────────────────────────────────── -->
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-sliders me-2 text-primary"></i>Paramètres de la carte
+          </h6>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+
+            {% if geo_pairs | length > 1 %}
+            <div class="mb-3">
+              <label class="form-label fw-medium small">Paire GPS</label>
+              <select name="pair_idx" class="form-select form-select-sm">
+                {% for p in geo_pairs %}
+                <option value="{{ loop.index0 }}"
+                  {% if result and result.get('pair_idx', default_pair_idx) == loop.index0 %}selected
+                  {% elif not result and loop.index0 == default_pair_idx %}selected{% endif %}>
+                  {{ p.name or p.lat }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="pair_idx" value="0">
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label fw-medium small">Variable de couleur</label>
+              <select name="color_col" class="form-select form-select-sm">
+                <option value="">— Aucune (points uniformes) —</option>
+                {% for v in cat_vars %}
+                <option value="{{ v }}"
+                  {% if result and result.get('color_col') == v %}selected{% endif %}>
+                  {{ v }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Colorie les points selon une variable catégorielle.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-medium small">Info-bulle — colonnes affichées</label>
+              <input type="text" name="hover_cols" class="form-control form-control-sm"
+                     placeholder="col1, col2, col3"
+                     value="{{ result.get('hover_cols_str', '') if result else default_hover_cols | join(', ') }}">
+              <div class="form-text">
+                Détectées automatiquement :
+                {% for c in default_hover_cols %}
+                <span class="badge bg-light text-dark border">{{ c }}</span>
+                {% else %}
+                <em>aucune</em>
+                {% endfor %}
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-geo-alt-fill me-1"></i>Actualiser la carte
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {% if result and result.get('stats') %}
+      <!-- Statistiques géographiques -->
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-pin-map-fill me-2 text-success"></i>Statistiques
+          </h6>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm table-hover mb-0">
+            <tbody>
+              {% for k, v in result.stats.items() %}
+              <tr>
+                <td class="text-muted small ps-3">{{ k }}</td>
+                <td class="fw-medium small text-end pe-3">{{ v }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if result and result.get('color_chart') %}
+      <!-- Distribution de la variable colorée -->
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-bar-chart-fill me-2 text-info"></i>Répartition
+          </h6>
+        </div>
+        <div class="card-body p-2">
+          <div id="chart-color-dist" style="min-height:200px;"></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Cartes ────────────────────────────────────────────────────────────── -->
+    <div class="col-lg-9">
+      {% if result and result.get('error') %}
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ result.error }}
+      </div>
+      {% elif result %}
+
+      <!-- KPIs -->
+      <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+          <div class="stat-card-v">
+            <div class="stat-icon-v bg-primary-subtle text-primary"><i class="bi bi-geo-fill"></i></div>
+            <div class="stat-value-v">{{ result.n_points }}</div>
+            <div class="stat-label-v">Points GPS</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card-v">
+            <div class="stat-icon-v bg-success-subtle text-success"><i class="bi bi-compass-fill"></i></div>
+            <div class="stat-value-v">{{ result.center_lat }}</div>
+            <div class="stat-label-v">Lat. centrale</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card-v">
+            <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-compass"></i></div>
+            <div class="stat-value-v">{{ result.center_lon }}</div>
+            <div class="stat-label-v">Lon. centrale</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card-v">
+            <div class="stat-icon-v bg-warning-subtle text-warning"><i class="bi bi-layers-fill"></i></div>
+            <div class="stat-value-v">{{ geo_pairs | length }}</div>
+            <div class="stat-label-v">Paires GPS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs Carte / Densité -->
+      <ul class="nav nav-tabs mb-0" id="mapTabs">
+        <li class="nav-item">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-points">
+            <i class="bi bi-geo-alt-fill me-1"></i>Points
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-density">
+            <i class="bi bi-fire me-1"></i>Densité (heatmap)
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-points">
+          <div class="card border-0 shadow-sm border-top-0" style="border-top-left-radius:0;border-top-right-radius:0;">
+            <div class="card-body p-0">
+              <div id="chart-map" style="min-height:520px;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="tab-density">
+          <div class="card border-0 shadow-sm border-top-0" style="border-top-left-radius:0;border-top-right-radius:0;">
+            <div class="card-body p-0">
+              <div id="chart-density" style="min-height:520px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- Pas encore de résultat -->
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5">
+          <div class="rounded-circle bg-primary-subtle d-flex align-items-center justify-content-center mb-3"
+               style="width:72px;height:72px;">
+            <i class="bi bi-map-fill fs-2 text-primary"></i>
+          </div>
+          <h5 class="fw-semibold mb-2">Carte géographique</h5>
+          <p class="text-muted mb-3" style="max-width:380px;">
+            {% if geo_pairs %}
+            {{ geo_pairs | length }} paire(s) GPS détectée(s). Cliquez sur
+            <strong>Générer la carte</strong> pour visualiser les points.
+            {% endif %}
+          </p>
+          <form method="POST" class="d-inline">
+            <input type="hidden" name="pair_idx" value="0">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-geo-alt-fill me-1"></i>Générer la carte
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if result and not result.get('error') %}
+<script>
+const cfg = { responsive: true, displaylogo: false };
+
+(function(){
+  var f = {{ result.chart_map | safe }};
+  Plotly.newPlot('chart-map', f.data, f.layout, cfg);
+})();
+
+(function(){
+  var f = {{ result.chart_density | safe }};
+  Plotly.newPlot('chart-density', f.data, f.layout, cfg);
+})();
+
+{% if result.color_chart %}
+(function(){
+  var f = {{ result.color_chart | safe }};
+  Plotly.newPlot('chart-color-dist', f.data, f.layout, cfg);
+})();
+{% endif %}
+
+// Re-render map when switching to density tab (Plotly needs resize)
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(btn) {
+  btn.addEventListener('shown.bs.tab', function() {
+    var target = btn.getAttribute('data-bs-target');
+    if (target === '#tab-density') Plotly.relayout('chart-density', {autosize: true});
+    if (target === '#tab-points')  Plotly.relayout('chart-map', {autosize: true});
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

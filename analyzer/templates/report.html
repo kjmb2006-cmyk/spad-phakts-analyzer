@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Rapport PDF/Word — SPAD Analyzer{% endblock %}
+{% block page_title %}Rapport PDF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h5 class="mb-0 fw-semibold">
+            <i class="bi bi-file-earmark-fill me-2 text-primary"></i>Générer un rapport
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST">
+
+            <!-- Titre / Auteur -->
+            <div class="section-label mb-2">Informations du rapport</div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold">Titre du rapport</label>
+                <input type="text" name="report_title" class="form-control"
+                       value="Rapport — Raisons de non-vaccination" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Auteur</label>
+                <input type="text" name="report_author" class="form-control" value="Analyste">
+              </div>
+            </div>
+
+            <!-- Format du rapport -->
+            <div class="section-label mb-2">Format du rapport</div>
+            <div class="row g-3 mb-4">
+              <div class="col-12">
+                <div class="d-flex gap-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="report_format" value="pdf" id="format_pdf" checked>
+                    <label class="form-check-label fw-semibold" for="format_pdf">
+                      <i class="bi bi-file-earmark-pdf-fill me-2 text-danger"></i>PDF
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="report_format" value="word" id="format_word">
+                    <label class="form-check-label fw-semibold" for="format_word">
+                      <i class="bi bi-file-earmark-word-fill me-2 text-primary"></i>Word (.docx)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sections à inclure -->
+            <div class="section-label mb-3">Sections à inclure</div>
+            <div class="row g-3 mb-4">
+              {% for val, label, icon, desc in [
+                ('binaire',     'Questions à choix multiples', 'bi-check2-square',
+                 'Raisons de refus, effets secondaires, etc.'),
+                ('descriptive', 'Statistiques descriptives',   'bi-clipboard-data-fill',
+                 'Tris à plat, fréquences, moyennes'),
+                ('crosstabs',   'Tableaux croisés',            'bi-grid-3x3-gap-fill',
+                 'χ², V de Cramér, profils lignes/colonnes'),
+                ('raw',         'Analyse brute',              'bi-bar-chart-fill',
+                 'Qualité, profil, continues, catégorielles, binaires, manquantes, corrélations, vue d\'ensemble'),
+                ('multi_survey', 'Multi-enquête',              'bi-collection-fill',
+                 'Comparaisons sauvegardées dans le panier (DPF / PHAKTS)'),
+              ] %}
+              <div class="col-md-4">
+                <label class="analysis-check-card">
+                  <input type="checkbox" name="analyses" value="{{ val }}" checked>
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi {{ icon }} fs-5 text-primary mt-1"></i>
+                    <div>
+                      <div class="fw-semibold small">{{ label }}</div>
+                      <div class="text-muted" style="font-size:.75rem">{{ desc }}</div>
+                    </div>
+                    {% if val == 'raw' %}
+                    <div class="ms-2 mt-1">
+                      <i class="bi bi-info-circle-fill text-secondary" 
+                         role="button" data-bs-toggle="tooltip" data-bs-placement="top"
+                         title="Analyse complète (qualité, anomalies, distributions). Augmente le temps et la taille du rapport."></i>
+                    </div>
+                    <div class="ms-2 mt-1 d-none d-md-inline">
+                      <small class="text-muted">(peut augmenter temps/taille)</small>
+                    </div>
+                    {% endif %}
+                  </div>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="row g-4 mb-4">
+
+              <!-- Questions choix multiples -->
+              {% if bin_groups %}
+              <div class="col-md-6">
+                <div class="section-label mb-2">
+                  <i class="bi bi-check2-square me-1"></i>Questions à choix multiples
+                </div>
+                <div class="var-checklist">
+                  <label class="d-flex align-items-center gap-2 mb-1 small">
+                    <input type="checkbox" onchange="toggleAll('bin_grp_cb', this.checked)">
+                    <em>Tout sélectionner</em>
+                  </label>
+                  <hr class="my-1">
+                  {% for g in bin_groups %}
+                  <div class="form-check">
+                    <input class="form-check-input bin_grp_cb" type="checkbox"
+                           name="bin_groups" value="{{ g.parent }}"
+                           id="bg{{ loop.index }}"
+                           {% if g.parent in (default_bin or []) %}checked{% endif %}>
+                    <label class="form-check-label small" for="bg{{ loop.index }}"
+                           title="{{ g.parent }}">
+                      {{ g.parent | truncate(42) }}
+                      <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">
+                        {{ g.vars|length }}
+                      </span>
+                    </label>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Variables catégorielles -->
+              {% if cat_vars %}
+              <div class="col-md-{% if bin_groups %}6{% else %}6{% endif %}">
+                <div class="section-label mb-2">
+                  <i class="bi bi-tag me-1"></i>Variables catégorielles
+                </div>
+                <div class="var-checklist">
+                  <label class="d-flex align-items-center gap-2 mb-1 small">
+                    <input type="checkbox" onchange="toggleAll('cat_cb', this.checked)">
+                    <em>Tout sélectionner</em>
+                  </label>
+                  <hr class="my-1">
+                  {% for v in cat_vars %}
+                  <div class="form-check">
+                    <input class="form-check-input cat_cb" type="checkbox"
+                           name="cat_vars" value="{{ v }}" id="cv{{ loop.index }}"
+                           {% if v in (default_cat or []) %}checked{% endif %}>
+                    <label class="form-check-label small" for="cv{{ loop.index }}"
+                           title="{{ v }}">{{ v | truncate(42) }}</label>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Variables continues -->
+              {% if num_vars %}
+              <div class="col-md-6">
+                <div class="section-label mb-2">
+                  <i class="bi bi-123 me-1"></i>Variables continues
+                </div>
+                <div class="var-checklist">
+                  <label class="d-flex align-items-center gap-2 mb-1 small">
+                    <input type="checkbox" onchange="toggleAll('num_cb', this.checked)">
+                    <em>Tout sélectionner</em>
+                  </label>
+                  <hr class="my-1">
+                  {% for v in num_vars %}
+                  <div class="form-check">
+                    <input class="form-check-input num_cb" type="checkbox"
+                           name="num_vars" value="{{ v }}" id="nv{{ loop.index }}"
+                           {% if v in (default_num or []) %}checked{% endif %}>
+                    <label class="form-check-label small" for="nv{{ loop.index }}"
+                           title="{{ v }}">{{ v | truncate(42) }}</label>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+            </div>
+
+            <!-- Tableau croisé : variables à utiliser dans le rapport -->
+            {% if cat_vars and cat_vars|length >= 2 %}
+            <div class="card border-0 bg-light mb-4 p-3">
+              <div class="section-label mb-2">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Tableau croisé du rapport
+                <small class="text-muted ms-2">(les variables retenues dans l'onglet « Tableaux croisés ») </small>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small mb-1">Ligne</label>
+                  <select name="crosstabs_row" class="form-select form-select-sm">
+                    {% for v in cat_vars %}
+                    <option value="{{ v }}" {% if default_ct_row == v %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small mb-1">Colonne</label>
+                  <select name="crosstabs_col" class="form-select form-select-sm">
+                    {% for v in cat_vars %}
+                    <option value="{{ v }}" {% if (default_ct_col == v) or (not default_ct_col and loop.index == 2) %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Résumé dataset -->
+            <div class="card bg-light border-0 mb-4 p-3">
+              <div class="row text-center g-2">
+                <div class="col-3">
+                  <div class="fw-bold text-primary">{{ meta.n_obs }}</div>
+                  <div class="small text-muted">Ménages</div>
+                </div>
+                <div class="col-3">
+                  <div class="fw-bold text-primary">{{ meta.n_vars }}</div>
+                  <div class="small text-muted">Variables</div>
+                </div>
+                <div class="col-3">
+                  <div class="fw-bold text-primary">{{ meta.n_categorielle }}</div>
+                  <div class="small text-muted">Catégorielles</div>
+                </div>
+                <div class="col-3">
+                  <div class="fw-bold text-primary">{{ meta.n_binaire }}</div>
+                  <div class="small text-muted">Binaires</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="pdfStatusMsg" class="mt-3"></div>
+
+            <div id="rawWarning" class="alert alert-info d-none small mt-2" role="alert">
+              <strong>Info :</strong> L'inclusion de l'Analyse brute peut augmenter le temps
+              et la taille du rapport (images et diagnostics). Décochez si vous souhaitez un rapport plus léger.
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="genBtn">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="genSpinner"></span>
+              <i class="bi bi-file-earmark-pdf-fill me-2 text-danger" id="genIcon"></i>
+              <span id="genLabel">Générer et télécharger le PDF</span>
+            </button>
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(cls, checked) {
+  document.querySelectorAll('.' + cls).forEach(el => el.checked = checked);
+}
+
+function updateFormat() {
+  const format = document.querySelector('input[name="report_format"]:checked').value;
+  const btn = document.getElementById('genBtn');
+  const icon = document.getElementById('genIcon');
+  const label = document.getElementById('genLabel');
+
+  if (format === 'pdf') {
+    btn.className = 'btn btn-danger btn-lg w-100';
+    icon.className = 'bi bi-file-earmark-pdf-fill me-2 text-danger';
+    label.textContent = 'Générer et télécharger le PDF';
+  } else {
+    btn.className = 'btn btn-primary btn-lg w-100';
+    icon.className = 'bi bi-file-earmark-word-fill me-2 text-primary';
+    label.textContent = 'Générer et télécharger le Word';
+  }
+}
+
+var statusMsg = document.getElementById('pdfStatusMsg');
+
+function showStatus(html) { statusMsg.innerHTML = html; }
+function clearStatus() { statusMsg.innerHTML = ''; }
+
+function resetBtn() {
+  document.getElementById('genSpinner').classList.add('d-none');
+  document.getElementById('genIcon').classList.remove('d-none');
+  document.getElementById('genBtn').disabled = false;
+  const format = document.querySelector('input[name="report_format"]:checked').value;
+  document.getElementById('genLabel').textContent = format === 'pdf' ? 'Générer et télécharger le PDF' : 'Générer et télécharger le Word';
+}
+
+// Add event listeners for format change
+document.querySelectorAll('input[name="report_format"]').forEach(radio => {
+  radio.addEventListener('change', updateFormat);
+});
+
+document.querySelector('form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  document.getElementById('genSpinner').classList.remove('d-none');
+  document.getElementById('genIcon').classList.add('d-none');
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('genLabel').textContent = 'Génération en cours…';
+  showStatus('<div style="padding:.75rem 1rem;border-radius:.375rem;background:#cff4fc;border:1px solid #b6effb;display:flex;align-items:center;gap:.5rem;margin-top:.75rem">'
+    + '<div class="spinner-border spinner-border-sm text-info"></div>'
+    + '<div><strong>Génération en cours…</strong> Le PDF sera téléchargé automatiquement dans votre dossier <strong>Téléchargements</strong>.</div></div>');
+
+  var formData = new FormData(this);
+
+  fetch(window.location.href, {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin'
+  })
+  .then(function(response) {
+    if (!response.ok) throw new Error('Erreur serveur ' + response.status);
+    var cd = response.headers.get('Content-Disposition') || '';
+    var m  = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    var filename = m ? m[1].replace(/['"]/g, '') : 'rapport.pdf';
+    return response.blob().then(function(blob) {
+      var url = window.URL.createObjectURL(blob);
+      var a   = document.createElement('a');
+      a.style.display = 'none';
+      a.href     = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 3000);
+    });
+  })
+  .then(function() {
+    showStatus('<div style="padding:.75rem 1rem;border-radius:.375rem;background:#d1e7dd;border:1px solid #badbcc;display:flex;align-items:center;gap:.5rem;margin-top:.75rem">'
+      + '<i class="bi bi-check-circle-fill fs-5 text-success"></i>'
+      + '<div><strong>PDF téléchargé !</strong> Vérifiez votre dossier <strong>Téléchargements</strong>.</div></div>');
+    resetBtn();
+  })
+  .catch(function(err) {
+    clearStatus();
+    resetBtn();
+    alert('Erreur lors de la génération : ' + err.message);
+  });
+});
+
+// Toggle raw analysis warning when checkbox changes
+document.addEventListener('DOMContentLoaded', function () {
+  var rawCheckbox = document.querySelector('input[name="analyses"][value="raw"]');
+  var rawWarning = document.getElementById('rawWarning');
+  function updateRawWarning() {
+    if (!rawCheckbox || !rawWarning) return;
+    if (rawCheckbox.checked) {
+      rawWarning.classList.remove('d-none');
+    } else {
+      rawWarning.classList.add('d-none');
+    }
+  }
+  if (rawCheckbox) rawCheckbox.addEventListener('change', updateRawWarning);
+  updateRawWarning();
+});
+</script>
+{% endblock %}

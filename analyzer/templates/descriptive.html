@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% block title %}Statistiques descriptives — SPAD Analyzer{% endblock %}
+{% block page_title %}Statistiques descriptives{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row g-4">
+
+    <!-- ══ Panneau de sélection ══════════════════════════════════════════════ -->
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm sticky-top" style="top:80px">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-sliders me-2 text-primary"></i>Sélection des variables
+          </h6>
+        </div>
+        <div class="card-body p-3" style="max-height:calc(100vh - 200px);overflow-y:auto">
+          <form method="POST" id="analysisForm">
+
+            {% if bin_groups %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="section-label text-primary fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
+                  <i class="bi bi-check2-square me-1"></i>Choix multiples
+                </span>
+                <span class="d-flex gap-1">
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('bin_groups',true)">Tout</button>
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('bin_groups',false)">Aucun</button>
+                </span>
+              </div>
+              <div class="var-checklist">
+                {% for g in bin_groups %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="bin_groups"
+                         value="{{ g.parent }}" id="bg_{{ loop.index }}"
+                         {% if g.parent in selected_bin_groups %}checked{% endif %}>
+                  <label class="form-check-label small" for="bg_{{ loop.index }}" title="{{ g.parent }}">
+                    {{ g.parent | truncate(42) }}
+                    <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.65rem">{{ g.vars|length }}</span>
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+            {% if cat_vars %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="section-label text-warning-emphasis fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
+                  <i class="bi bi-tag me-1"></i>Catégorielles
+                </span>
+                <span class="d-flex gap-1">
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('cat_vars',true)">Tout</button>
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('cat_vars',false)">Aucun</button>
+                </span>
+              </div>
+              <div class="var-checklist">
+                {% for v in cat_vars %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="cat_vars"
+                         value="{{ v }}" id="cat_{{ loop.index }}"
+                         {% if v in selected_cat %}checked{% endif %}>
+                  <label class="form-check-label small" for="cat_{{ loop.index }}" title="{{ v }}">{{ v | truncate(40) }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+            {% if num_vars %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="section-label text-info-emphasis fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
+                  <i class="bi bi-123 me-1"></i>Continues
+                </span>
+                <span class="d-flex gap-1">
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('num_vars',true)">Tout</button>
+                  <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('num_vars',false)">Aucun</button>
+                </span>
+              </div>
+              <div class="var-checklist">
+                {% for v in num_vars %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="num_vars"
+                         value="{{ v }}" id="num_{{ loop.index }}"
+                         {% if v in selected_num %}checked{% endif %}>
+                  <label class="form-check-label small" for="num_{{ loop.index }}" title="{{ v }}">{{ v | truncate(40) }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary w-100 mt-1 fw-semibold">
+              <i class="bi bi-play-fill me-1"></i>Analyser
+              {% set tot = selected_cat|length + selected_num|length + selected_bin_groups|length %}
+              {% if tot > 0 %}<span class="badge bg-white text-primary ms-1">{{ tot }}</span>{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Zone de résultats ═════════════════════════════════════════════════ -->
+    <div class="col-lg-9">
+
+      {% if not results_cat and not results_num and not results_bin %}
+      <!-- État vide -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-clipboard-data display-3 mb-3 d-block opacity-25"></i>
+          <h5 class="fw-semibold mb-2">Aucune analyse sélectionnée</h5>
+          <p class="small mb-0" style="max-width:420px;margin:auto">
+            Cochez les variables souhaitées dans le panneau de gauche et cliquez sur
+            <strong>Analyser</strong>. Chaque variable produira un tableau de fréquences,
+            des indicateurs statistiques et des graphiques interactifs.
+          </p>
+        </div>
+      </div>
+
+      {% else %}
+
+      <!-- Bandeau récapitulatif -->
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        {% if results_bin %}
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-2 px-3" style="font-size:.82rem">
+          <i class="bi bi-check2-square me-1"></i>{{ results_bin|length }} choix multiple{% if results_bin|length>1 %}s{% endif %}
+        </span>
+        {% endif %}
+        {% if results_cat %}
+        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-2 px-3" style="font-size:.82rem">
+          <i class="bi bi-tag me-1"></i>{{ results_cat|length }} catégorielle{% if results_cat|length>1 %}s{% endif %}
+        </span>
+        {% endif %}
+        {% if results_num %}
+        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle py-2 px-3" style="font-size:.82rem">
+          <i class="bi bi-123 me-1"></i>{{ results_num|length }} continue{% if results_num|length>1 %}s{% endif %}
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- ══ CHOIX MULTIPLES ════════════════════════════════════════════════ -->
+      {% for r in results_bin %}
+      {% set bi = loop.index %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header border-bottom py-3"
+             style="background:linear-gradient(135deg,#e8f0fe 0%,#f8f9ff 100%)">
+          <div class="d-flex align-items-center flex-wrap gap-2">
+            <span class="badge bg-primary text-white">
+              <i class="bi bi-check2-square me-1"></i>Choix multiples
+            </span>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.parent }}</h6>
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="badge bg-white text-dark border">N = {{ r.n_total }}</span>
+              <span class="badge bg-white text-dark border">{{ r.n_vars }} modalités</span>
+              <span class="badge bg-warning-subtle text-warning-emphasis border">
+                Top : {{ r.top_modal }} ({{ r.top_pct }}%)
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Mini KPIs -->
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold fs-5 text-primary">{{ r.n_vars }}</div>
+                <div class="text-muted" style="font-size:.72rem">Modalités</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold fs-5 text-success">{{ r.top_pct }}%</div>
+                <div class="text-muted" style="font-size:.72rem">Taux max</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold fs-5 text-info">{{ r.avg_pct }}%</div>
+                <div class="text-muted" style="font-size:.72rem">Taux moyen</div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <p class="small fw-semibold text-uppercase text-muted mb-2">
+                <i class="bi bi-table me-1"></i>Tableau — avec IC à 95%
+              </p>
+              <div class="table-responsive">{{ r.table_html | safe }}</div>
+            </div>
+            <div class="col-md-7">
+              <div id="chart-bin-{{ bi }}" style="min-height:320px"></div>
+            </div>
+          </div>
+          {% with section='descriptive_bin', var=r.parent, auto=r.auto_comment, user=r.user_comment %}
+            {% include "_comment_block.html" %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- ══ CATÉGORIELLES ═════════════════════════════════════════════════ -->
+      {% for r in results_cat %}
+      {% set ci = loop.index %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header border-bottom py-3"
+             style="background:linear-gradient(135deg,#fff8e8 0%,#fffdf8 100%)">
+          <div class="d-flex align-items-center flex-wrap gap-2">
+            <span class="badge bg-warning text-dark">
+              <i class="bi bi-tag me-1"></i>Catégorielle
+            </span>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.variable }}</h6>
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="badge bg-white text-dark border">N valides = {{ r.n_valid }}</span>
+              <span class="badge bg-white text-dark border">{{ r.n_cats }} modalités</span>
+              {% if r.missing > 0 %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                <i class="bi bi-exclamation-triangle me-1"></i>{{ r.missing_pct }}% manq.
+              </span>
+              {% endif %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                Mode : {{ r.mode_val }} ({{ r.mode_pct }}%)
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Mini KPIs -->
+          <div class="row g-2 mb-3">
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold text-warning-emphasis">{{ r.n_valid }}</div>
+                <div class="text-muted" style="font-size:.7rem">Observations</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold text-warning-emphasis">{{ r.n_cats }}</div>
+                <div class="text-muted" style="font-size:.7rem">Modalités</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center {% if r.missing > 0 %}bg-danger-subtle{% else %}bg-success-subtle{% endif %}">
+                <div class="fw-bold {% if r.missing > 0 %}text-danger{% else %}text-success{% endif %}">
+                  {{ r.missing_pct }}%
+                </div>
+                <div class="text-muted" style="font-size:.7rem">Manquants</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa"
+                   title="Indice de Herfindahl — proche de 1 = très concentré, proche de 1/k = uniforme">
+                <div class="fw-bold text-warning-emphasis">{{ r.hhi }}</div>
+                <div class="text-muted" style="font-size:.7rem">IHH ⓘ</div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <p class="small fw-semibold text-uppercase text-muted mb-2">
+                <i class="bi bi-table me-1"></i>Tableau — avec IC à 95% Wilson
+              </p>
+              <div class="table-responsive">{{ r.table_html | safe }}</div>
+            </div>
+            <div class="col-md-7">
+              <ul class="nav nav-tabs nav-tabs-sm mb-2" id="tabsCat{{ ci }}">
+                <li class="nav-item">
+                  <button class="nav-link active small py-1 px-3" data-bs-toggle="tab"
+                          data-bs-target="#catBar{{ ci }}" data-chart="chart-bar-{{ ci }}">
+                    <i class="bi bi-bar-chart me-1"></i>Barres + cumulé
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link small py-1 px-3" data-bs-toggle="tab"
+                          data-bs-target="#catPie{{ ci }}" data-chart="chart-pie-{{ ci }}">
+                    <i class="bi bi-pie-chart me-1"></i>Donut
+                  </button>
+                </li>
+              </ul>
+              <div class="tab-content">
+                <div class="tab-pane fade show active" id="catBar{{ ci }}">
+                  <div id="chart-bar-{{ ci }}" style="min-height:320px"></div>
+                </div>
+                <div class="tab-pane fade" id="catPie{{ ci }}">
+                  <div id="chart-pie-{{ ci }}" style="min-height:320px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% with section='descriptive_cat', var=r.variable, auto=r.auto_comment, user=r.user_comment %}
+            {% include "_comment_block.html" %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- ══ CONTINUES ════════════════════════════════════════════════════ -->
+      {% for r in results_num %}
+      {% set ni = loop.index %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header border-bottom py-3"
+             style="background:linear-gradient(135deg,#e8f4fd 0%,#f8fcff 100%)">
+          <div class="d-flex align-items-center flex-wrap gap-2">
+            <span class="badge bg-info text-white">
+              <i class="bi bi-123 me-1"></i>Continue
+            </span>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.variable }}</h6>
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="badge bg-white text-dark border">N = {{ r.n_valid }}</span>
+              {% if r.n_missing > 0 %}
+              <span class="badge bg-danger-subtle text-danger border">{{ r.missing_pct }}% manq.</span>
+              {% endif %}
+              {% if r.n_outliers > 0 %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border">
+                <i class="bi bi-exclamation-triangle me-1"></i>{{ r.n_outliers }} aberrante{% if r.n_outliers > 1 %}s{% endif %}
+              </span>
+              {% endif %}
+              {% if r.is_normal is not none %}
+                {% if r.is_normal %}
+                <span class="badge bg-success-subtle text-success border" title="{{ r.normality_test }} p={{ r.normality_p }}">
+                  <i class="bi bi-check-circle me-1"></i>Normale (p={{ r.normality_p }})
+                </span>
+                {% else %}
+                <span class="badge bg-orange-subtle text-dark border" title="{{ r.normality_test }} p={{ r.normality_p }}"
+                      style="background:#fff3cd">
+                  <i class="bi bi-x-circle me-1"></i>Non normale (p={{ r.normality_p }})
+                </span>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Mini KPIs -->
+          <div class="row g-2 mb-3">
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold text-info-emphasis">{{ r.mean }}</div>
+                <div class="text-muted" style="font-size:.7rem">Moyenne</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold text-info-emphasis">{{ r.median }}</div>
+                <div class="text-muted" style="font-size:.7rem">Médiane</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center" style="background:#f8f9fa">
+                <div class="fw-bold text-info-emphasis">{{ r.std }}</div>
+                <div class="text-muted" style="font-size:.7rem">Écart-type</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="rounded-3 p-2 text-center {% if r.cv and r.cv > 30 %}bg-warning-subtle{% else %}bg-success-subtle{% endif %}"
+                   title="CV > 30% = forte dispersion">
+                <div class="fw-bold {% if r.cv and r.cv > 30 %}text-warning-emphasis{% else %}text-success{% endif %}">
+                  {% if r.cv %}{{ r.cv }}%{% else %}—{% endif %}
+                </div>
+                <div class="text-muted" style="font-size:.7rem">CV ⓘ</div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <p class="small fw-semibold text-uppercase text-muted mb-2">
+                <i class="bi bi-table me-1"></i>Statistiques descriptives
+              </p>
+              <div class="table-responsive">{{ r.table_html | safe }}</div>
+            </div>
+            <div class="col-md-8">
+              <ul class="nav nav-tabs nav-tabs-sm mb-2" id="tabsNum{{ ni }}">
+                <li class="nav-item">
+                  <button class="nav-link active small py-1 px-3" data-bs-toggle="tab"
+                          data-bs-target="#numHist{{ ni }}" data-chart="chart-hist-{{ ni }}">
+                    <i class="bi bi-bar-chart-line me-1"></i>Histogramme + KDE
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link small py-1 px-3" data-bs-toggle="tab"
+                          data-bs-target="#numVio{{ ni }}" data-chart="chart-box-{{ ni }}">
+                    <i class="bi bi-distribute-vertical me-1"></i>Violin + Boxplot
+                  </button>
+                </li>
+              </ul>
+              <div class="tab-content">
+                <div class="tab-pane fade show active" id="numHist{{ ni }}">
+                  <div id="chart-hist-{{ ni }}" style="min-height:360px"></div>
+                </div>
+                <div class="tab-pane fade" id="numVio{{ ni }}">
+                  <div id="chart-box-{{ ni }}" style="min-height:360px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% with section='descriptive_num', var=r.variable, auto=r.auto_comment, user=r.user_comment %}
+            {% include "_comment_block.html" %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cfg = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['sendDataToCloud'] };
+
+{% for r in results_bin %}
+(function(){
+  var f = {{ r.chart | safe }};
+  Plotly.newPlot('chart-bin-{{ loop.index }}', f.data, f.layout, cfg);
+})();
+{% endfor %}
+
+{% for r in results_cat %}
+{% set ci = loop.index %}
+(function(){
+  var bar = {{ r.chart_bar | safe }};
+  Plotly.newPlot('chart-bar-{{ ci }}', bar.data, bar.layout, cfg);
+  var pie = {{ r.chart_pie | safe }};
+  Plotly.newPlot('chart-pie-{{ ci }}', pie.data, pie.layout, cfg);
+})();
+{% endfor %}
+
+{% for r in results_num %}
+{% set ni = loop.index %}
+(function(){
+  var hist = {{ r.chart_hist | safe }};
+  Plotly.newPlot('chart-hist-{{ ni }}', hist.data, hist.layout, cfg);
+  var vio = {{ r.chart_box | safe }};
+  Plotly.newPlot('chart-box-{{ ni }}', vio.data, vio.layout, cfg);
+})();
+{% endfor %}
+
+// Resize Plotly dans les onglets cachés au moment où ils deviennent visibles
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(btn) {
+  btn.addEventListener('shown.bs.tab', function() {
+    var id = btn.getAttribute('data-chart');
+    if (id) { var el = document.getElementById(id); if (el) Plotly.relayout(id, {autosize:true}); }
+  });
+});
+
+// Tout sélectionner / désélectionner
+function toggleAll(name, check) {
+  document.querySelectorAll('input[name="' + name + '"]').forEach(function(cb) { cb.checked = check; });
+}
+</script>
+{% endblock %}

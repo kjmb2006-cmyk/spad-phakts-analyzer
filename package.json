@@ -1,0 +1,137 @@
+{
+  "name": "spad-phakts-analyzer",
+  "version": "1.0.0",
+  "description": "SPAD PHAKTS Analyzer — Codification de santé publique, générateur XLSForm et analyse statistique",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "node api/server.js",
+    "dev": "nodemon api/server.js",
+    "electron": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "org.who.spad-phakts-analyzer",
+    "productName": "SPAD PHAKTS Analyzer",
+    "copyright": "Copyright © 2026 Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO)",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron-main.js",
+      "preload.js",
+      "api/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      },
+      {
+        "from": "analyzer",
+        "to": "analyzer",
+        "filter": [
+          "**/*",
+          "!venv/**",
+          "!__pycache__/**",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!.DS_Store",
+          "!*.bat",
+          "!*.ps1",
+          "!*.sh",
+          "!*.command",
+          "!test_*.py"
+        ]
+      },
+      {
+        "from": "python-embed-${platform}",
+        "to": "python"
+      }
+    ],
+    "asarUnpack": [],
+    "mac": {
+      "category": "public.app-category.medical",
+      "icon": "public/icons/icon-512.png",
+      "target": [
+        "dmg"
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "SPAD PHAKTS Analyzer",
+      "iconSize": 80,
+      "contents": [
+        {
+          "x": 170,
+          "y": 200
+        },
+        {
+          "x": 430,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "icon": "public/icons/icon.ico",
+      "target": [
+        "nsis"
+      ],
+      "extraResources": [
+        {
+          "from": "python-embed-win",
+          "to": "python"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/icons/icon.ico",
+      "uninstallerIcon": "public/icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SPAD PHAKTS Analyzer"
+    },
+    "linux": {
+      "icon": "public/icons/icon-512.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Science"
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.1.0",
+    "mammoth": "^1.11.0",
+    "multer": "^1.4.5-lts.1",
+    "ocrad.js": "^0.0.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.5.207"
+  },
+  "devDependencies": {
+    "electron": "^34.5.8",
+    "electron-builder": "^25.1.8",
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO)",
+  "license": "MIT"
+}

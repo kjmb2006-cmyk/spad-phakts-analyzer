@@ -1,0 +1,822 @@
+{% extends "base.html" %}
+{% block title %}Analyse brute — SPAD Analyzer{% endblock %}
+{% block page_title %}Analyse descriptive complète{% endblock %}
+
+{% block content %}
+<style>
+/* ── Variables & base ────────────────────────────────────────── */
+:root {
+  --navy:   #1A5276;
+  --teal:   #17A589;
+  --orange: #E67E22;
+  --red:    #C0392B;
+  --purple: #7D3C98;
+  --grey:   #85929E;
+}
+
+/* ── KPI strip ───────────────────────────────────────────────── */
+.kpi-strip { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+.kpi-chip {
+  flex:1; min-width:130px;
+  background:#fff;
+  border-radius:12px;
+  padding:14px 18px;
+  box-shadow:0 1px 8px rgba(0,0,0,.07);
+  border-top:3px solid var(--navy);
+  display:flex; flex-direction:column; gap:2px;
+}
+.kpi-chip .kv { font-size:1.6rem; font-weight:800; color:var(--navy); line-height:1; }
+.kpi-chip .kl { font-size:.72rem; color:var(--grey); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.spad-tabs {
+  display:flex; gap:0;
+  border-bottom:2px solid #DDE3EA;
+  margin-bottom:24px;
+  flex-wrap:wrap;
+  position:sticky; top:0; z-index:10;
+  background:#F8FAFB;
+  padding:8px 0 0;
+}
+.spad-tab {
+  background:none; border:none;
+  padding:10px 18px 12px;
+  font-size:.82rem; font-weight:600;
+  color:#6B7A8D;
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;
+  cursor:pointer;
+  transition:color .15s, border-color .15s;
+  white-space:nowrap;
+}
+.spad-tab:hover { color:var(--navy); }
+.spad-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+.spad-tab i { margin-right:5px; }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* ── Variable card ───────────────────────────────────────────── */
+.var-card {
+  background:#fff;
+  border:1px solid #E8ECF0;
+  border-radius:12px;
+  padding:22px 24px;
+  margin-bottom:20px;
+  box-shadow:0 1px 6px rgba(0,0,0,.05);
+}
+.var-card-title {
+  font-size:.95rem; font-weight:700;
+  color:var(--navy); margin-bottom:16px;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.var-type-badge {
+  font-size:.67rem; font-weight:700; text-transform:uppercase;
+  padding:3px 9px; border-radius:20px; letter-spacing:.05em;
+}
+.badge-cont   { background:#EBF5FB; color:#1A6FA8; }
+.badge-cat    { background:#FEF9E7; color:#B7770D; }
+.badge-bin    { background:#E9F7EF; color:#1E8449; }
+.badge-normal { background:#D5F5E3; color:#1E8449; }
+.badge-skew-right { background:#FDEBD0; color:#CA6F1E; }
+.badge-skew-left  { background:#FDEBD0; color:#CA6F1E; }
+.badge-skew-light { background:#FEF9E7; color:#9A7D0A; }
+.badge-warn   { background:#FADBD8; color:#922B21; }
+
+/* ── Stats table ─────────────────────────────────────────────── */
+.stat-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap:8px;
+  margin-bottom:14px;
+}
+.stat-cell {
+  background:#F4F6F9;
+  border-radius:8px;
+  padding:10px 12px;
+  text-align:center;
+}
+.stat-cell .sv { font-size:1.05rem; font-weight:700; color:var(--navy); }
+.stat-cell .sl { font-size:.68rem; color:var(--grey); text-transform:uppercase;
+                  letter-spacing:.05em; margin-top:3px; }
+
+/* ── Outlier & IC tags ───────────────────────────────────────── */
+.info-tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.info-tag {
+  font-size:.75rem; font-weight:600;
+  border-radius:6px; padding:4px 10px;
+  display:flex; align-items:center; gap:5px;
+}
+.tag-outlier { background:#FADBD8; color:var(--red); }
+.tag-ok      { background:#D5F5E3; color:#1E8449; }
+.tag-ic      { background:#EBF5FB; color:#1A6FA8; }
+.tag-cv      { background:#F9EBEA; color:#922B21; }
+
+/* ── Freq table wrapper ──────────────────────────────────────── */
+.freq-table-wrap { max-height:320px; overflow-y:auto; }
+
+/* ── Anomaly & recommendation cards ─────────────────────────── */
+.anomaly-card {
+  border-left:4px solid var(--orange);
+  border-radius:8px;
+  background:#FFFBF5;
+  padding:12px 16px;
+  margin-bottom:10px;
+  font-size:.83rem;
+}
+.anomaly-card.sev-eleve  { border-color:var(--red);    background:#FDF0EE; }
+.anomaly-card.sev-modere { border-color:var(--orange);  background:#FFFBF5; }
+.anomaly-card.sev-faible { border-color:#F0C040;        background:#FFFEF5; }
+
+.rec-card {
+  border-left:4px solid var(--teal);
+  border-radius:8px;
+  background:#F0FBF7;
+  padding:14px 16px;
+  margin-bottom:10px;
+  font-size:.83rem;
+  display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+}
+.rec-card a.btn-rec {
+  background:var(--teal); color:#fff;
+  border-radius:8px; padding:6px 14px;
+  font-size:.75rem; font-weight:600; white-space:nowrap;
+  text-decoration:none; flex-shrink:0;
+}
+.rec-card a.btn-rec:hover { opacity:.85; }
+
+/* ── Section header ──────────────────────────────────────────── */
+.section-hdr {
+  font-size:.7rem; font-weight:800; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--grey);
+  margin:28px 0 14px; padding-bottom:8px;
+  border-bottom:2px solid #EEF0F3;
+  display:flex; align-items:center; gap:8px;
+}
+.section-hdr span { font-size:.8rem; font-weight:700; color:var(--navy);
+                    background:#EBF5FB; padding:2px 8px; border-radius:12px; }
+
+/* ── Profile summary ─────────────────────────────────────────── */
+.profile-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));
+  gap:10px;
+  margin-bottom:20px;
+}
+.profile-item {
+  text-align:center; padding:14px 10px;
+  border-radius:10px; background:#F4F6F9;
+}
+.profile-item .pv { font-size:1.5rem; font-weight:800; color:var(--navy); }
+.profile-item .pl { font-size:.68rem; color:var(--grey); text-transform:uppercase;
+                     letter-spacing:.05em; margin-top:4px; }
+</style>
+
+<!-- ── KPI STRIP ──────────────────────────────────────────────────────────── -->
+<div class="kpi-strip">
+  <div class="kpi-chip" style="border-top-color:var(--navy)">
+    <div class="kv">{{ overview.n_obs }}</div>
+    <div class="kl">Observations</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:var(--teal)">
+    <div class="kv">{{ overview.n_vars }}</div>
+    <div class="kl">Variables</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:var(--orange)">
+    <div class="kv">{{ meta.get('missing_pct', 0) }}%</div>
+    <div class="kl">Données manquantes</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:var(--purple)">
+    <div class="kv">{{ sys_analysis.profile.n_continuous }}</div>
+    <div class="kl">Variables continues</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:#F0C040">
+    <div class="kv">{{ sys_analysis.profile.n_categorical }}</div>
+    <div class="kl">Catégorielles</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:#6fbf73">
+    <div class="kv">{{ sys_analysis.profile.n_binary }}</div>
+    <div class="kl">Binaires</div>
+  </div>
+  <div class="kpi-chip" style="border-top-color:var(--grey)">
+    <div class="kv">{{ meta.get('source','Excel') }}</div>
+    <div class="kl">{{ meta.get('name', meta.get('sheet_name','')) }}</div>
+  </div>
+</div>
+
+<!-- ── TABS ───────────────────────────────────────────────────────────────── -->
+<div class="spad-tabs" id="spadTabs">
+  <button class="spad-tab active" onclick="switchTab(event,'tab-quality')">
+    <i class="bi bi-speedometer2"></i>Qualité & Profil
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-continuous')">
+    <i class="bi bi-bar-chart-line"></i>Variables continues
+    {% if desc_analysis.continuous %}
+      <span class="ms-1 badge bg-primary rounded-pill" style="font-size:.65rem">{{ desc_analysis.continuous|length }}</span>
+    {% endif %}
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-categorical')">
+    <i class="bi bi-tags"></i>Catégorielles
+    {% if desc_analysis.categorical %}
+      <span class="ms-1 badge bg-warning text-dark rounded-pill" style="font-size:.65rem">{{ desc_analysis.categorical|length }}</span>
+    {% endif %}
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-binary')">
+    <i class="bi bi-toggle2-on"></i>Binaires
+    {% if desc_analysis.binary %}
+      <span class="ms-1 badge bg-success rounded-pill" style="font-size:.65rem">{{ desc_analysis.binary|length }}</span>
+    {% endif %}
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-missing')">
+    <i class="bi bi-exclamation-triangle"></i>Manquantes
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-corr')">
+    <i class="bi bi-diagram-3"></i>Corrélations
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-overview')">
+    <i class="bi bi-list-ul"></i>Vue d'ensemble
+  </button>
+  <button class="spad-tab" onclick="switchTab(event,'tab-raw')">
+    <i class="bi bi-table"></i>Tableau brut
+  </button>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 1 — QUALITÉ & PROFIL
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-quality" class="tab-pane active">
+  <div class="row g-4 mb-4">
+    <!-- Jauge qualité -->
+    <div class="col-lg-4">
+      <div class="card h-100" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+        <div class="card-body p-3">
+          <div id="chart-quality" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Composition -->
+    <div class="col-lg-4">
+      <div class="card h-100" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+        <div class="card-body p-3">
+          <div id="chart-composition" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Profil numérique -->
+    <div class="col-lg-4">
+      <div class="card h-100" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+        <div class="card-body p-3">
+          <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:14px">
+            <i class="bi bi-info-circle me-1"></i>Profil du dataset
+          </div>
+          <div class="profile-grid">
+            <div class="profile-item">
+              <div class="pv">{{ sys_analysis.profile.n_obs }}</div>
+              <div class="pl">Observations</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv">{{ sys_analysis.profile.n_vars }}</div>
+              <div class="pl">Variables</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:var(--teal)">{{ sys_analysis.profile.complete_vars }}</div>
+              <div class="pl">Complètes</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:var(--orange)">{{ sys_analysis.profile.vars_with_missing }}</div>
+              <div class="pl">Avec manq.</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:#2E86C1">{{ sys_analysis.profile.n_continuous }}</div>
+              <div class="pl">Continues</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:var(--orange)">{{ sys_analysis.profile.n_categorical }}</div>
+              <div class="pl">Catég.</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:var(--teal)">{{ sys_analysis.profile.n_binary }}</div>
+              <div class="pl">Binaires</div>
+            </div>
+            <div class="profile-item">
+              <div class="pv" style="color:var(--purple)">{{ sys_analysis.profile.n_date }}</div>
+              <div class="pl">Dates</div>
+            </div>
+          </div>
+          <div class="mt-2 p-2 rounded" style="background:#F4F6F9;font-size:.78rem;color:var(--grey)">
+            <i class="bi bi-database me-1"></i>
+            <strong>{{ sys_analysis.missing.missing_count }}</strong> cellules manquantes sur
+            <strong>{{ sys_analysis.missing.total_cells }}</strong>
+            ({{ sys_analysis.missing.missing_pct }}%)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Distributions overview -->
+  {% if chart_distrib %}
+  <div class="card mb-4" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-3">
+      <div id="chart-distrib" style="height:auto;min-height:350px"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Anomalies -->
+  {% if sys_analysis.anomalies %}
+  <div class="section-hdr">
+    <i class="bi bi-exclamation-diamond"></i> Anomalies détectées
+    <span>{{ sys_analysis.anomalies|length }}</span>
+  </div>
+  <div class="row g-3">
+    {% for anom in sys_analysis.anomalies %}
+    <div class="col-md-6">
+      <div class="anomaly-card sev-{{ anom.severity|replace('é','e')|replace('è','e') }}">
+        <div class="d-flex justify-content-between align-items-start">
+          <strong style="color:var(--navy)">{{ anom.type }}</strong>
+          <span class="badge rounded-pill ms-2"
+                style="background:{% if anom.severity == 'élevé' %}var(--red){% elif anom.severity == 'modéré' %}var(--orange){% else %}#F0C040{% endif %};
+                       color:{% if anom.severity == 'élevé' or anom.severity == 'modéré' %}#fff{% else %}#333{% endif %};
+                       font-size:.65rem">
+            {{ anom.severity|upper }}
+          </span>
+        </div>
+        <div class="text-muted small mt-1">📌 <em>{{ anom.variable }}</em></div>
+        <div class="mt-2" style="font-size:.8rem;color:#444">{{ anom.note }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-success border-0 rounded-3" style="background:#D5F5E3">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Aucune anomalie détectée.</strong> Le dataset présente une bonne qualité structurelle.
+  </div>
+  {% endif %}
+
+  <!-- Recommandations -->
+  {% if sys_analysis.recommendations %}
+  <div class="section-hdr mt-4">
+    <i class="bi bi-lightbulb"></i> Recommandations d'analyse
+    <span>{{ sys_analysis.recommendations|length }}</span>
+  </div>
+  {% for rec in sys_analysis.recommendations %}
+  <div class="rec-card">
+    <div>
+      <div style="font-weight:700;color:var(--navy);margin-bottom:4px">
+        <span style="background:var(--teal);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:.72rem;font-weight:800;margin-right:6px">{{ rec.rank }}</span>
+        {{ rec.type }}
+      </div>
+      <div style="color:#555;margin-bottom:6px">{{ rec.rationale }}</div>
+      {% if rec.variables %}
+      <div style="font-size:.75rem;color:var(--grey)">
+        Variables : {{ rec.variables|join(', ') }}
+      </div>
+      {% endif %}
+    </div>
+    <a href="{{ url_for(rec.module) }}" class="btn-rec">
+      <i class="bi bi-arrow-right-circle me-1"></i>Analyser
+    </a>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 2 — VARIABLES CONTINUES
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-continuous" class="tab-pane">
+  {% if desc_analysis.continuous %}
+    {% for item in desc_analysis.continuous %}
+    <div class="var-card">
+      <div class="var-card-title">
+        <span class="var-type-badge badge-cont">Continue</span>
+        {{ item.var }}
+        <span class="var-type-badge {{ item.norm_badge }}" style="font-size:.65rem">
+          {{ item.norm_label }}
+        </span>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['N valides'] }}</div>
+          <div class="sl">N valides</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv" style="color:{% if item.stats['% manq.'] > 20 %}var(--red){% elif item.stats['% manq.'] > 5 %}var(--orange){% else %}var(--teal){% endif %}">
+            {{ item.stats['% manq.'] }}%
+          </div>
+          <div class="sl">Manquantes</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv" style="color:var(--navy)">{{ item.stats['Moyenne'] }}</div>
+          <div class="sl">Moyenne</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Médiane'] }}</div>
+          <div class="sl">Médiane</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Écart-type'] }}</div>
+          <div class="sl">Écart-type</div>
+        </div>
+        {% if item.cv is not none %}
+        <div class="stat-cell">
+          <div class="sv" style="color:{% if item.cv > 100 %}var(--red){% elif item.cv > 50 %}var(--orange){% else %}var(--teal){% endif %}">
+            {{ item.cv }}%
+          </div>
+          <div class="sl">CV</div>
+        </div>
+        {% endif %}
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Min'] }}</div>
+          <div class="sl">Minimum</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Q1'] }}</div>
+          <div class="sl">Q1 (25%)</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Q3'] }}</div>
+          <div class="sl">Q3 (75%)</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Max'] }}</div>
+          <div class="sl">Maximum</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['IQR'] }}</div>
+          <div class="sl">IQR</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Asymétrie'] }}</div>
+          <div class="sl">Asymétrie</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv">{{ item.stats['Aplatissement'] }}</div>
+          <div class="sl">Aplatissement</div>
+        </div>
+      </div>
+
+      <!-- Tags IC + outliers -->
+      <div class="info-tags">
+        <span class="info-tag tag-ic">
+          <i class="bi bi-arrows-collapse"></i>
+          IC 95% : [{{ item.ci95[0] }} — {{ item.ci95[1] }}]
+        </span>
+        {% if item.outliers.has_outliers %}
+        <span class="info-tag tag-outlier">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          {{ item.outliers.count }} outlier(s) ({{ item.outliers.pct }}%)
+          — bornes IQR : [{{ item.outliers.lower }}, {{ item.outliers.upper }}]
+        </span>
+        {% else %}
+        <span class="info-tag tag-ok">
+          <i class="bi bi-check-circle-fill"></i> Aucun outlier détecté
+        </span>
+        {% endif %}
+        {% if item.cv is not none and item.cv > 50 %}
+        <span class="info-tag tag-cv">
+          <i class="bi bi-exclamation-circle"></i>
+          CV élevé ({{ item.cv }}%) — forte dispersion relative
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Graphiques -->
+      <div class="row g-3 mt-2">
+        <div class="col-lg-6">
+          <div id="chist-{{ loop.index0 }}" style="height:300px"></div>
+        </div>
+        <div class="col-lg-6">
+          <div id="cbox-{{ loop.index0 }}" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info border-0 rounded-3">
+      <i class="bi bi-info-circle me-2"></i>Aucune variable continue détectée dans ce dataset.
+    </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 3 — VARIABLES CATÉGORIELLES
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-categorical" class="tab-pane">
+  {% if desc_analysis.categorical %}
+    {% for item in desc_analysis.categorical %}
+    <div class="var-card">
+      <div class="var-card-title">
+        <span class="var-type-badge badge-cat">Catégorielle</span>
+        {{ item.variable }}
+      </div>
+
+      <!-- Meta stats -->
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <div class="sv">{{ item.n_valid }}</div>
+          <div class="sl">N valides</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv" style="color:{% if item.pct_missing > 20 %}var(--red){% elif item.pct_missing > 5 %}var(--orange){% else %}var(--teal){% endif %}">
+            {{ item.pct_missing }}%
+          </div>
+          <div class="sl">Manquantes</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv" style="color:var(--navy)">{{ item.n_categories }}</div>
+          <div class="sl">Modalités</div>
+        </div>
+        <div class="stat-cell" title="Entropie de Shannon normalisée : 0 = concentration maximale, 1 = diversité maximale">
+          <div class="sv">{{ item.norm_entropy }}</div>
+          <div class="sl">Entropie norm.</div>
+        </div>
+        <div class="stat-cell" title="Indice Herfindahl : proche de 1 = une modalité domine tout">
+          <div class="sv">{{ item.herfindahl }}</div>
+          <div class="sl">Herfindahl</div>
+        </div>
+        <div class="stat-cell">
+          <div class="sv" style="color:var(--orange)">{{ item.dominant_pct }}%</div>
+          <div class="sl">Mode dominant</div>
+        </div>
+      </div>
+
+      <div class="info-tags">
+        <span class="info-tag" style="background:#EBF5FB;color:#1A6FA8">
+          <i class="bi bi-star-fill"></i>
+          Mode : <strong>{{ item.dominant }}</strong> ({{ item.dominant_pct }}%)
+        </span>
+        {% if item.top_shown < item.n_categories %}
+        <span class="info-tag" style="background:#F4F6F9;color:var(--grey)">
+          <i class="bi bi-three-dots"></i>
+          {{ item.n_categories - item.top_shown }} modalité(s) supplémentaire(s) non affichée(s)
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="row g-3 mt-2">
+        <!-- Tableau de fréquences -->
+        <div class="col-lg-4">
+          <div style="font-size:.75rem;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+            Tableau des fréquences
+          </div>
+          <div class="freq-table-wrap">{{ item.table|safe }}</div>
+        </div>
+        <!-- Bar chart -->
+        <div class="col-lg-5">
+          <div id="cbar-{{ loop.index0 }}" style="height:{{ [280, 32 * [15, item.n_categories]|min + 80]|max }}px"></div>
+        </div>
+        <!-- Donut -->
+        <div class="col-lg-3">
+          <div id="cpie-{{ loop.index0 }}" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info border-0 rounded-3">
+      <i class="bi bi-info-circle me-2"></i>Aucune variable catégorielle détectée.
+    </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 4 — VARIABLES BINAIRES
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-binary" class="tab-pane">
+  {% if desc_analysis.binary %}
+  <div class="row g-4">
+    {% for item in desc_analysis.binary %}
+    <div class="col-lg-6">
+      <div class="var-card h-100">
+        <div class="var-card-title">
+          <span class="var-type-badge badge-bin">Binaire</span>
+          {{ item.variable }}
+        </div>
+
+        <!-- Stat cells -->
+        <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-cell">
+            <div class="sv">{{ item.n_valid }}</div>
+            <div class="sl">N valides</div>
+          </div>
+          <div class="stat-cell">
+            <div class="sv" style="color:var(--teal)">{{ item.prevalence }}%</div>
+            <div class="sl">Prévalence "{{ item.label_pos }}"</div>
+          </div>
+          <div class="stat-cell">
+            <div class="sv" style="color:{% if item.pct_missing > 20 %}var(--red){% else %}var(--grey){% endif %}">
+              {{ item.pct_missing }}%
+            </div>
+            <div class="sl">Manquantes</div>
+          </div>
+        </div>
+
+        <!-- Freq table -->
+        <div class="mb-3">{{ item.table|safe }}</div>
+
+        <!-- Charts -->
+        <div class="row g-2">
+          <div class="col-7">
+            <div id="bbar-{{ loop.index0 }}" style="height:220px"></div>
+          </div>
+          <div class="col-5">
+            <div id="bgauge-{{ loop.index0 }}" style="height:220px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="alert alert-info border-0 rounded-3">
+      <i class="bi bi-info-circle me-2"></i>Aucune variable binaire détectée.
+    </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 5 — DONNÉES MANQUANTES
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-missing" class="tab-pane">
+  {% if chart_miss %}
+  <div class="card mb-4" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-3">
+      <div id="chart-miss" style="min-height:300px"></div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-success border-0 rounded-3" style="background:#D5F5E3">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Aucune donnée manquante !</strong> Le dataset est complet.
+  </div>
+  {% endif %}
+
+  {% if chart_heat %}
+  <div class="card" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-3">
+      <div id="chart-heat" style="min-height:400px"></div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 6 — CORRÉLATIONS
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-corr" class="tab-pane">
+  {% if chart_corr %}
+  <div class="card mb-3" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-3">
+      <div class="mb-3 p-3 rounded" style="background:#EBF5FB;font-size:.82rem">
+        <i class="bi bi-info-circle me-1" style="color:var(--navy)"></i>
+        <strong>Lecture :</strong> Corrélation de Pearson.
+        <span style="color:var(--red)">■ Rouge foncé = corrélation positive forte (r ≈ +1)</span> ·
+        <span style="color:#2E86C1">■ Bleu foncé = corrélation négative forte (r ≈ -1)</span> ·
+        Blanc = aucune corrélation. Seul le triangle inférieur est affiché.
+      </div>
+      <div id="chart-corr" style="min-height:400px"></div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info border-0 rounded-3">
+    <i class="bi bi-info-circle me-2"></i>
+    Pas assez de variables numériques pour calculer une matrice de corrélations (minimum 2).
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 7 — VUE D'ENSEMBLE
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-overview" class="tab-pane">
+  <div class="card mb-4" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        {{ overview.table_html|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TAB 8 — TABLEAU BRUT
+══════════════════════════════════════════════════════════════════════ -->
+<div id="tab-raw" class="tab-pane">
+  <div class="card" style="border:none;box-shadow:0 1px 8px rgba(0,0,0,.07);border-radius:12px">
+    <div class="card-body p-3">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <input type="text" id="rawSearch" class="form-control form-control-sm"
+               style="max-width:260px;border-radius:8px" placeholder="🔍 Rechercher dans le tableau…"
+               oninput="filterRawTable(this.value)">
+        <span class="text-muted small ms-auto" id="rawCount"></span>
+      </div>
+      <div class="table-responsive" style="max-height:600px;overflow-y:auto">
+        {{ preview_html|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── PLOTLY CHARTS ────────────────────────────────────────────────────── -->
+<script>
+// Registre de tous les graphiques
+const CHARTS = {
+  // Qualité
+  'chart-quality':     {{ chart_quality|safe     if chart_quality     else 'null' }},
+  'chart-composition': {{ chart_composition|safe if chart_composition else 'null' }},
+  'chart-distrib':     {{ chart_distrib|safe     if chart_distrib     else 'null' }},
+  // Manquantes
+  'chart-miss':        {{ chart_miss|safe        if chart_miss        else 'null' }},
+  'chart-heat':        {{ chart_heat|safe        if chart_heat        else 'null' }},
+  // Corrélations
+  'chart-corr':        {{ chart_corr|safe        if chart_corr        else 'null' }},
+  // Continues
+  {% for item in desc_analysis.continuous %}
+  'chist-{{ loop.index0 }}': {{ item.chart_hist|safe }},
+  'cbox-{{ loop.index0 }}':  {{ item.chart_box|safe  }},
+  {% endfor %}
+  // Catégorielles
+  {% for item in desc_analysis.categorical %}
+  'cbar-{{ loop.index0 }}':  {{ item.chart_bar|safe }},
+  'cpie-{{ loop.index0 }}':  {{ item.chart_pie|safe }},
+  {% endfor %}
+  // Binaires
+  {% for item in desc_analysis.binary %}
+  'bbar-{{ loop.index0 }}':   {{ item.chart|safe       }},
+  'bgauge-{{ loop.index0 }}': {{ item.chart_gauge|safe }},
+  {% endfor %}
+};
+
+// Rendu différé : on ne rend que quand le div est visible
+const rendered = new Set();
+
+function renderVisible() {
+  for (const [divId, config] of Object.entries(CHARTS)) {
+    if (!config || rendered.has(divId)) continue;
+    const el = document.getElementById(divId);
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 || el.closest('.tab-pane.active')) {
+      Plotly.newPlot(divId, config.data, config.layout, {responsive: true, displayModeBar: false});
+      rendered.add(divId);
+    }
+  }
+}
+
+// ── Onglets ───────────────────────────────────────────────────────────────
+function switchTab(e, tabId) {
+  e.preventDefault();
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.spad-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  e.currentTarget.classList.add('active');
+  setTimeout(() => {
+    window.dispatchEvent(new Event('resize'));
+    renderVisible();
+  }, 80);
+}
+
+// ── Recherche tableau brut ─────────────────────────────────────────────────
+function filterRawTable(q) {
+  const rows   = document.querySelectorAll('#rawTable tbody tr');
+  let visible  = 0;
+  q = q.toLowerCase();
+  rows.forEach(row => {
+    const show = !q || row.textContent.toLowerCase().includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const cntEl = document.getElementById('rawCount');
+  if (cntEl) cntEl.textContent = q ? `${visible} ligne(s) filtrée(s)` : '';
+}
+
+// Rendu initial
+document.addEventListener('DOMContentLoaded', () => {
+  renderVisible();
+  // Compter les lignes du tableau brut
+  const rows = document.querySelectorAll('#rawTable tbody tr');
+  const cnt  = document.getElementById('rawCount');
+  if (cnt && rows.length) cnt.textContent = `${rows.length} lignes`;
+});
+
+window.addEventListener('resize', () => {
+  rendered.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) Plotly.Plots.resize(el);
+  });
+});
+</script>
+{% endblock %}

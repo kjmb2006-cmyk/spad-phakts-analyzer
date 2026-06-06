@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% block title %}KoboToolbox — SPAD Analyzer{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --kobo-teal:   #17A589;
+    --kobo-navy:   #1A5276;
+    --kobo-orange: #E67E22;
+  }
+
+  /* ── En-tête section ─────────────────────────────── */
+  .kobo-header {
+    background: linear-gradient(135deg, var(--kobo-navy) 0%, #2E4A8A 100%);
+    border-radius: 12px;
+    padding: 28px 32px;
+    color: #fff;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .kobo-logo {
+    width: 52px; height: 52px;
+    background: var(--kobo-teal);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .kobo-header h2  { margin: 0; font-size: 1.4rem; font-weight: 700; }
+  .kobo-header p   { margin: 4px 0 0; font-size: .85rem; opacity: .8; }
+
+  /* ── Carte token ─────────────────────────────────── */
+  .token-card {
+    border: 2px solid #E8EAF0;
+    border-radius: 12px;
+    padding: 28px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  .token-card .form-control {
+    font-family: 'Courier New', monospace;
+    font-size: .85rem;
+    border-radius: 8px;
+    border: 1.5px solid #D5D8DC;
+    padding: 10px 14px;
+  }
+  .token-card .form-control:focus {
+    border-color: var(--kobo-teal);
+    box-shadow: 0 0 0 3px rgba(23,165,137,.15);
+  }
+  .btn-kobo {
+    background: var(--kobo-teal);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: 600;
+    transition: opacity .2s;
+  }
+  .btn-kobo:hover { opacity: .85; color: #fff; }
+
+  /* ── Badge utilisateur ───────────────────────────── */
+  .user-badge {
+    background: #EAF5F1;
+    border: 1.5px solid var(--kobo-teal);
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .user-badge .dot {
+    width: 10px; height: 10px;
+    background: var(--kobo-teal);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Tableau formulaires ─────────────────────────── */
+  .assets-table { border-radius: 10px; overflow: hidden; }
+  .assets-table thead th {
+    background: var(--kobo-navy);
+    color: #fff;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 10px 14px;
+    border: none;
+  }
+  .assets-table tbody tr { transition: background .15s; }
+  .assets-table tbody tr:hover { background: #F0FBF7; cursor: pointer; }
+  .assets-table td { vertical-align: middle; font-size: .85rem; padding: 10px 14px; }
+  .badge-deployed {
+    background: #EAF5F1; color: var(--kobo-teal);
+    font-size: .72rem; border-radius: 20px; padding: 2px 10px; font-weight: 600;
+  }
+  .badge-count {
+    background: #EBF5FB; color: var(--kobo-navy);
+    font-size: .8rem; border-radius: 20px; padding: 2px 10px; font-weight: 700;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Modal détails formulaire ────────────────────── */
+  .form-detail-card {
+    background: #F8F9FA;
+    border-radius: 10px;
+    padding: 16px 20px;
+    border: 1.5px solid #E8EAF0;
+    margin-top: 16px;
+    display: none;
+  }
+  .form-detail-card.visible { display: block; }
+  .form-detail-card .uid-box {
+    font-family: 'Courier New', monospace;
+    font-size: .78rem;
+    color: #555;
+    background: #fff;
+    border: 1px solid #D5D8DC;
+    border-radius: 6px;
+    padding: 6px 10px;
+    word-break: break-all;
+  }
+
+  /* ── Hint token ──────────────────────────────────── */
+  .hint-box {
+    background: #FDF9EE;
+    border-left: 4px solid var(--kobo-orange);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: .82rem;
+    color: #555;
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+  .hint-box a { color: var(--kobo-navy); font-weight: 600; }
+
+  /* ── Spinner ─────────────────────────────────────── */
+  .spinner-border-sm { width: 1rem; height: 1rem; border-width: .15em; }
+</style>
+
+<!-- En-tête -->
+<div class="kobo-header">
+  <div class="kobo-logo">🔗</div>
+  <div>
+    <h2>Connexion KoboToolbox</h2>
+    <p>Liez SPAD Analyzer à votre instance KoboToolbox pour charger vos données directement.</p>
+  </div>
+</div>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+      {{ msg|safe }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<div class="row g-4">
+
+  <!-- ── Colonne gauche : token + déconnexion ─────── -->
+  <div class="col-lg-5">
+    <div class="token-card">
+
+      {% if already %}
+      <!-- Déjà connecté -->
+      <div class="user-badge">
+        <div class="dot"></div>
+        <div>
+          <div style="font-weight:700;font-size:.9rem;color:var(--kobo-navy)">
+            Connecté — {{ username }}
+          </div>
+          <div style="font-size:.78rem;color:#85929E">kf.kobotoolbox.org</div>
+        </div>
+      </div>
+      <a href="{{ url_for('kobo_assets') }}" class="btn btn-kobo w-100 mb-2">
+        🔄 Actualiser la liste des formulaires
+      </a>
+      <a href="{{ url_for('kobo_disconnect') }}" class="btn btn-outline-secondary w-100 btn-sm">
+        Se déconnecter
+      </a>
+      {% else %}
+      <!-- Formulaire de connexion -->
+      <h6 class="fw-bold mb-3" style="color:var(--kobo-navy)">
+        Entrez votre Token API
+      </h6>
+      <form method="POST" action="{{ url_for('kobo_connect') }}">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.82rem">
+            Instance KoboToolbox
+          </label>
+          <select name="custom_instance" class="form-select form-select-sm mb-1" id="instance-select">
+            <option value="">— Détection automatique —</option>
+            <option value="https://kf.kobotoolbox.org">🌐 kf.kobotoolbox.org (Publique mondiale)</option>
+            <option value="https://eu.kobotoolbox.org">🇪🇺 eu.kobotoolbox.org (Europe RGPD)</option>
+            <option value="https://kobo.humanitarianresponse.info">🌍 kobo.humanitarianresponse.info (ONU/WHO)</option>
+            <option value="custom">✏️ Autre URL (saisir manuellement)</option>
+          </select>
+          <input type="text" name="custom_instance" id="custom-url-input"
+                 class="form-control form-control-sm d-none"
+                 placeholder="https://mon-instance.kobotoolbox.org"/>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.82rem">
+            Token API KoboToolbox
+          </label>
+          <input type="password" name="token" class="form-control"
+                 placeholder="Collez votre token ici…" required autocomplete="off"/>
+        </div>
+
+        <button type="submit" class="btn btn-kobo w-100" id="btn-validate">
+          ✓ Valider et se connecter
+        </button>
+      </form>
+
+      <div class="hint-box mt-3">
+        <strong>📍 Où trouver votre token ?</strong><br>
+        Connectez-vous sur votre KoboToolbox
+        → Profil (coin supérieur droit) → <strong>Paramètres du compte</strong>
+        → section <strong>Sécurité</strong> → <strong>Clé API</strong>.
+        <br><br>
+        <strong>❓ Quelle instance choisir ?</strong><br>
+        L'URL que vous utilisez pour accéder à KoboToolbox détermine l'instance.
+        Ex : si vous vous connectez sur <em>eu.kobotoolbox.org</em>, sélectionnez Europe.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Colonne droite : liste des formulaires ────── -->
+  <div class="col-lg-7">
+
+    {% if assets is defined %}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="fw-bold mb-0" style="color:var(--kobo-navy)">
+        Mes formulaires
+        <span class="badge-count ms-2">{{ total }}</span>
+      </h6>
+      <input type="text" id="search-assets" class="form-control form-control-sm w-auto"
+             placeholder="🔍 Rechercher…" style="width:180px!important"/>
+    </div>
+
+    {% if assets %}
+    <div class="table-responsive">
+      <table class="table assets-table mb-0" id="assets-table">
+        <thead>
+          <tr>
+            <th>Nom du formulaire</th>
+            <th class="text-center">Soumissions</th>
+            <th class="text-center">Modifié</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr onclick="selectAsset('{{ asset.uid }}','{{ asset.name|replace("'","") }}',{{ asset.submission_count }},'{{ asset.date_modified }}')">
+            <td>
+              <div class="fw-semibold" style="font-size:.85rem">{{ asset.name }}</div>
+              <div style="margin-top:2px">
+                {% if asset.deployed %}
+                  <span class="badge-deployed">✓ Déployé</span>
+                {% else %}
+                  <span class="badge bg-light text-secondary" style="font-size:.7rem">Brouillon</span>
+                {% endif %}
+                {% if asset.asset_type and asset.asset_type != 'survey' %}
+                  <span class="badge bg-light text-muted ms-1" style="font-size:.68rem">{{ asset.asset_type }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="text-center">
+              <span class="badge-count">{{ asset.submission_count }}</span>
+            </td>
+            <td class="text-center" style="font-size:.78rem;color:#85929E">
+              {{ asset.date_modified }}
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-kobo"
+                onclick="event.stopPropagation();loadAsset('{{ asset.uid }}','{{ asset.name|replace("'","") }}')">
+                Charger
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Détail formulaire sélectionné -->
+    <div class="form-detail-card" id="detail-card">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="fw-bold" id="detail-name" style="color:var(--kobo-navy);font-size:.9rem"></div>
+          <div class="uid-box mt-1" id="detail-uid"></div>
+        </div>
+        <div class="col-auto text-end">
+          <div style="font-size:.78rem;color:#85929E" id="detail-meta"></div>
+        </div>
+      </div>
+      <form method="POST" action="{{ url_for('kobo_load') }}" class="mt-3" id="load-form">
+        <input type="hidden" name="uid"  id="hidden-uid"/>
+        <input type="hidden" name="name" id="hidden-name"/>
+        <button type="submit" class="btn btn-kobo" id="btn-load">
+          ⬇ Charger ce formulaire dans SPAD Analyzer
+        </button>
+      </form>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning">
+      Aucun formulaire déployé trouvé sur ce compte KoboToolbox.
+    </div>
+    {% endif %}
+
+    {% elif already %}
+    <!-- Token valide mais pas encore de liste chargée -->
+    <div class="token-card text-center py-5">
+      <div style="font-size:2.5rem;margin-bottom:12px">📋</div>
+      <p class="text-muted mb-3">Cliquez pour voir vos formulaires disponibles.</p>
+      <a href="{{ url_for('kobo_assets') }}" class="btn btn-kobo">
+        Voir mes formulaires
+      </a>
+    </div>
+
+    {% else %}
+    <!-- Pas encore connecté -->
+    <div class="token-card text-center py-5">
+      <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
+      <p class="text-muted">Connectez-vous avec votre token API pour voir vos formulaires.</p>
+    </div>
+    {% endif %}
+
+  </div><!-- /col -->
+</div><!-- /row -->
+
+<script>
+// ── Sélection d'un formulaire dans le tableau ──────────────────────────────
+function selectAsset(uid, name, count, date) {
+  document.querySelectorAll('#assets-table tbody tr')
+          .forEach(r => r.classList.remove('table-active'));
+  document.getElementById('detail-card').classList.add('visible');
+  document.getElementById('detail-name').textContent = name;
+  document.getElementById('detail-uid').textContent  = uid;
+  document.getElementById('detail-meta').innerHTML   =
+    `<strong>${count}</strong> soumissions &nbsp;·&nbsp; Modifié : ${date}`;
+  document.getElementById('hidden-uid').value  = uid;
+  document.getElementById('hidden-name').value = name;
+}
+
+// ── Chargement direct depuis le bouton de ligne ────────────────────────────
+function loadAsset(uid, name) {
+  document.getElementById('hidden-uid').value  = uid;
+  document.getElementById('hidden-name').value = name;
+  document.getElementById('btn-load').textContent = '⏳ Chargement…';
+  document.getElementById('load-form').submit();
+}
+
+// ── Recherche dans le tableau ──────────────────────────────────────────────
+const searchInput = document.getElementById('search-assets');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#assets-table tbody tr').forEach(row => {
+      const name = row.querySelector('td')?.textContent.toLowerCase() || '';
+      row.style.display = name.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+// ── Sélection de l'instance ────────────────────────────────────────────────
+const instanceSelect  = document.getElementById('instance-select');
+const customUrlInput  = document.getElementById('custom-url-input');
+if (instanceSelect) {
+  instanceSelect.addEventListener('change', function() {
+    if (this.value === 'custom') {
+      customUrlInput.classList.remove('d-none');
+      customUrlInput.required = true;
+      // Désactiver le select pour que seul le champ texte soit soumis
+      instanceSelect.name = '';
+      customUrlInput.name = 'custom_instance';
+    } else {
+      customUrlInput.classList.add('d-none');
+      customUrlInput.required = false;
+      instanceSelect.name = 'custom_instance';
+      customUrlInput.name = '';
+    }
+  });
+}
+
+// ── Feedback bouton validation ─────────────────────────────────────────────
+const btnValidate = document.getElementById('btn-validate');
+if (btnValidate) {
+  btnValidate.closest('form').addEventListener('submit', function() {
+    btnValidate.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2"></span>Vérification en cours…';
+    btnValidate.disabled = true;
+  });
+}
+</script>
+{% endblock %}

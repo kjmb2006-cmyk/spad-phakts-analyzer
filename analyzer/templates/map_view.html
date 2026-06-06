@@ -1,0 +1,773 @@
+{% extends "base.html" %}
+{% block title %}Carte géographique — SPAD Analyzer{% endblock %}
+{% block page_title %}Carte géographique{% endblock %}
+
+{% block content %}
+
+<!-- ── Leaflet CSS + JS ─────────────────────────────────────────────────── -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<style>
+/* ── Layout Power BI : sidebar + carte ─────────────────────────── */
+.map-wrapper {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 130px);
+  min-height: 560px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+}
+
+/* ── Panneau gauche ─────────────────────────────────────────────── */
+.map-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.map-panel-header {
+  padding: 16px 18px 12px;
+  background: linear-gradient(135deg, #1A5276 0%, #2E4A8A 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+.map-panel-header h6 {
+  margin: 0 0 2px;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.map-panel-header small {
+  font-size: .72rem;
+  opacity: .75;
+}
+.map-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+.map-panel-body::-webkit-scrollbar { width: 4px; }
+.map-panel-body::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 4px; }
+
+/* ── KPI chips dans le panel ────────────────────────────────────── */
+.map-kpi-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.map-kpi {
+  flex: 1;
+  background: #F0F4F8;
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.map-kpi .kv { font-size: 1.3rem; font-weight: 800; color: #1A5276; line-height: 1; }
+.map-kpi .kl { font-size: .64rem; color: #85929E; text-transform: uppercase;
+                letter-spacing: .05em; margin-top: 3px; }
+
+/* ── Filtres ────────────────────────────────────────────────────── */
+.filter-section { margin-bottom: 16px; }
+.filter-label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #85929E;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.filter-label i { font-size: .75rem; }
+.filter-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 8px;
+  font-size: .8rem;
+  color: #1A5276;
+  transition: border-color .15s;
+}
+.filter-input:focus {
+  outline: none;
+  border-color: #17A589;
+  box-shadow: 0 0 0 3px rgba(23,165,137,.15);
+}
+
+/* ── Légende régions ────────────────────────────────────────────── */
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .12s;
+  font-size: .78rem;
+}
+.legend-item:hover { background: #F0F4F8; }
+.legend-item.dimmed { opacity: .35; }
+.legend-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(0,0,0,.15);
+}
+.legend-name { flex: 1; font-weight: 600; color: #2D3748; overflow: hidden;
+               white-space: nowrap; text-overflow: ellipsis; }
+.legend-count {
+  font-size: .7rem;
+  font-weight: 700;
+  background: #E2E8F0;
+  color: #4A5568;
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+/* ── Carte ──────────────────────────────────────────────────────── */
+.map-container { flex: 1; position: relative; }
+#map { width: 100%; height: 100%; }
+
+/* ── Barre d'outils carte ───────────────────────────────────────── */
+.map-toolbar {
+  position: absolute;
+  top: 12px; right: 12px;
+  z-index: 800;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.map-btn {
+  width: 36px; height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: .85rem;
+  color: #1A5276;
+  transition: background .15s, transform .12s;
+}
+.map-btn:hover { background: #EBF5FB; transform: scale(1.05); }
+.map-btn.active { background: #1A5276; color: #fff; }
+
+/* ── Badge GPS source ───────────────────────────────────────────── */
+.gps-badge {
+  position: absolute;
+  bottom: 12px; left: 12px;
+  z-index: 800;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: .72rem;
+  color: #4A5568;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  border-left: 3px solid #17A589;
+}
+
+/* ── Popup Leaflet style Power BI ───────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18) !important;
+  padding: 0 !important;
+  min-width: 260px;
+  border: none !important;
+}
+.leaflet-popup-content { margin: 0 !important; }
+.leaflet-popup-tip-container { margin-top: -1px; }
+
+.spad-popup {
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.spad-popup-header {
+  background: linear-gradient(135deg, #1A5276, #2E4A8A);
+  color: #fff;
+  padding: 12px 16px 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.spad-popup-header .popup-icon {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,.2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.spad-popup-header .popup-title {
+  font-size: .82rem; font-weight: 700; margin: 0;
+}
+.spad-popup-header .popup-sub {
+  font-size: .68rem; opacity: .75; margin-top: 1px;
+}
+.spad-popup-body { padding: 12px 16px 14px; }
+.popup-row {
+  display: flex; align-items: flex-start;
+  gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid #F0F4F8;
+  font-size: .78rem;
+}
+.popup-row:last-child { border-bottom: none; padding-bottom: 0; }
+.popup-row .pr-icon {
+  font-size: .82rem; color: #17A589;
+  flex-shrink: 0; margin-top: 1px;
+  width: 16px; text-align: center;
+}
+.popup-row .pr-label {
+  color: #85929E; font-size: .68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em;
+  flex-shrink: 0; min-width: 80px;
+}
+.popup-row .pr-value {
+  color: #1A2744; font-weight: 600; flex: 1;
+  word-break: break-word;
+}
+.popup-coords {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+.popup-coord-chip {
+  flex: 1; text-align: center;
+  background: #F0F4F8; border-radius: 6px;
+  padding: 5px 6px; font-size: .68rem; color: #4A5568;
+}
+.popup-coord-chip strong { display: block; font-size: .82rem; color: #1A5276; }
+
+/* ── Cluster custom ─────────────────────────────────────────────── */
+.marker-cluster-small  { background: rgba(46,134,193,.3); }
+.marker-cluster-medium { background: rgba(23,165,137,.3); }
+.marker-cluster-large  { background: rgba(231,76,60,.3);  }
+.marker-cluster-small  div { background: rgba(46,134,193,.7);  color:#fff; font-weight:700; }
+.marker-cluster-medium div { background: rgba(23,165,137,.7);  color:#fff; font-weight:700; }
+.marker-cluster-large  div { background: rgba(231,76,60,.7);   color:#fff; font-weight:700; }
+
+/* ── Aucune carte ───────────────────────────────────────────────── */
+.no-map-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; text-align: center;
+  padding: 40px;
+  background: #F8FAFB;
+}
+
+/* ── Responsive panel toggle ────────────────────────────────────── */
+@media (max-width: 900px) {
+  .map-panel { width: 240px; }
+}
+</style>
+
+{% if geo_data %}
+<!-- ══════════════════════════════════════════════════════════════════
+     CARTE GÉOGRAPHIQUE
+══════════════════════════════════════════════════════════════════ -->
+
+<!-- Stats strip au-dessus -->
+<div class="d-flex gap-3 mb-3 flex-wrap">
+  <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #1A5276;min-width:130px">
+    <div style="font-size:1.5rem;font-weight:800;color:#1A5276;line-height:1">{{ total_pts }}</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Points localisés</div>
+  </div>
+  {% if no_gps_cnt %}
+  <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #E67E22;min-width:130px">
+    <div style="font-size:1.5rem;font-weight:800;color:#E67E22;line-height:1">{{ no_gps_cnt }}</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Sans coordonnées</div>
+  </div>
+  {% endif %}
+  <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #17A589;min-width:130px">
+    <div style="font-size:1.5rem;font-weight:800;color:#17A589;line-height:1">{{ region_counts|length }}</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Régions</div>
+  </div>
+  {% if ctx_labels.get('aire') %}
+  <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #8E44AD;min-width:130px">
+    <div style="font-size:.78rem;font-weight:700;color:#4A5568;margin-bottom:2px">Source GPS</div>
+    <div style="font-size:.72rem;color:#85929E;font-family:monospace">{{ gps_col }}</div>
+  </div>
+  {% endif %}
+  <div class="ms-auto d-flex align-items-center gap-2">
+    <button onclick="resetFilters()" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem">
+      <i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser
+    </button>
+    <button onclick="exportMap()" class="btn btn-sm" style="background:#1A5276;color:#fff;border-radius:8px;font-size:.78rem">
+      <i class="bi bi-download me-1"></i>Exporter PNG
+    </button>
+  </div>
+</div>
+
+<!-- Conteneur principal -->
+<div class="map-wrapper">
+
+  <!-- ── Panneau latéral ─────────────────────────────────────────── -->
+  <div class="map-panel">
+    <div class="map-panel-header">
+      <h6><i class="bi bi-funnel-fill me-1"></i>Filtres & Légende</h6>
+      <small>{{ total_pts }} observations · {{ region_counts|length }} région(s)</small>
+    </div>
+    <div class="map-panel-body">
+
+      <!-- Recherche rapide -->
+      <div class="filter-section">
+        <div class="filter-label"><i class="bi bi-search"></i>Recherche</div>
+        <input type="text" id="searchFilter" class="filter-input"
+               placeholder="Région, district, enquêteur…"
+               oninput="applyFilters()">
+      </div>
+
+      <!-- Filtre région -->
+      {% if region_counts|length > 1 %}
+      <div class="filter-section">
+        <div class="filter-label"><i class="bi bi-geo-alt"></i>Région sanitaire</div>
+        <select id="regionFilter" class="filter-input" onchange="applyFilters()">
+          <option value="">— Toutes les régions —</option>
+          {% for reg, cnt in region_counts.items()|sort %}
+          <option value="{{ reg }}">{{ reg }} ({{ cnt }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <!-- Filtre district -->
+      <div class="filter-section">
+        <div class="filter-label"><i class="bi bi-building"></i>District sanitaire</div>
+        <select id="districtFilter" class="filter-input" onchange="applyFilters()">
+          <option value="">— Tous les districts —</option>
+        </select>
+      </div>
+
+      <!-- Légende régions -->
+      <div class="filter-section">
+        <div class="filter-label"><i class="bi bi-palette"></i>Régions</div>
+        <div id="legend-list">
+          {% for reg in region_counts|sort %}
+          <div class="legend-item" data-region="{{ reg }}"
+               onclick="toggleRegion('{{ reg }}', this)">
+            <div class="legend-dot" style="background:{{ region_colors[reg] }}"></div>
+            <div class="legend-name" title="{{ reg }}">{{ reg }}</div>
+            <div class="legend-count">{{ region_counts[reg] }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Durée enquête : avertissement si non capturée -->
+      {% if duration_mode == 'none' %}
+      <div class="filter-section">
+        <div class="filter-label" style="color:#E67E22">
+          <i class="bi bi-exclamation-triangle"></i>Durée enquête manquante
+        </div>
+        <div style="font-size:.72rem;background:#FEF9E7;border:1px solid #F0C040;border-radius:7px;padding:9px 11px;color:#6D4C00;line-height:1.55">
+          <strong>Non capturée par ce formulaire.</strong><br>
+          Pour l'activer dans KoboToolbox, ajoutez dans votre XLSForm :
+          <div style="margin-top:6px;font-family:monospace;background:#fff;border-radius:5px;padding:5px 8px;font-size:.68rem;color:#1A5276">
+            type&nbsp;&nbsp;: <b>start</b>&nbsp;→ nom : <b>start</b><br>
+            type&nbsp;&nbsp;: <b>end</b>&nbsp;&nbsp;&nbsp;→ nom : <b>end</b>
+          </div>
+          <div style="margin-top:5px">SPAD calculera automatiquement la durée à la prochaine collecte.</div>
+        </div>
+      </div>
+      {% elif duration_mode == 'computed' %}
+      <div class="filter-section">
+        <div class="filter-label" style="color:#17A589">
+          <i class="bi bi-stopwatch"></i>Durée calculée automatiquement
+        </div>
+        <div style="font-size:.72rem;background:#EAF5F1;border:1px solid #17A589;border-radius:7px;padding:8px 11px;color:#0D5C3A">
+          Calculée depuis <code>{{ ctx_labels.get('durée enquête','start → end') }}</code>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Colonnes détectées -->
+      {% if ctx_labels %}
+      <div class="filter-section mt-2">
+        <div class="filter-label"><i class="bi bi-table"></i>Champs détectés</div>
+        {% for key, col in ctx_labels.items() %}
+        <div style="font-size:.72rem;padding:3px 6px;margin-bottom:3px;background:#F0F4F8;border-radius:5px;display:flex;justify-content:space-between">
+          <span style="color:#85929E;text-transform:capitalize">{{ key }}</span>
+          <span style="color:#1A5276;font-weight:600;font-family:monospace;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ col }}">{{ col }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div><!-- /panel-body -->
+  </div><!-- /map-panel -->
+
+  <!-- ── Carte ───────────────────────────────────────────────────── -->
+  <div class="map-container">
+    <div id="map"></div>
+
+    <!-- Outils carte -->
+    <div class="map-toolbar">
+      <button class="map-btn active" id="btnCluster" onclick="toggleCluster(this)" title="Regroupement">
+        <i class="bi bi-circle-fill" style="font-size:.65rem"></i>
+      </button>
+      <button class="map-btn" id="btnSatellite" onclick="toggleLayer(this)" title="Vue satellite">
+        <i class="bi bi-globe"></i>
+      </button>
+      <button class="map-btn" onclick="fitAll()" title="Tout afficher">
+        <i class="bi bi-fullscreen"></i>
+      </button>
+    </div>
+
+    <!-- Badge source GPS -->
+    <div class="gps-badge">
+      <i class="bi bi-broadcast-pin me-1" style="color:#17A589"></i>
+      GPS : <strong>{{ gps_col }}</strong>
+      &nbsp;·&nbsp;
+      <span id="visibleCount">{{ total_pts }}</span> point(s) visibles
+    </div>
+  </div>
+
+</div><!-- /map-wrapper -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════════ -->
+<script>
+// ── Données injectées par Flask ─────────────────────────────────────
+const GEO_DATA = {{ geo_data | tojson }};
+const CENTER   = [{{ center_lat }}, {{ center_lon }}];
+const ZOOM     = {{ zoom }};
+
+// ── Init carte ──────────────────────────────────────────────────────
+const map = L.map('map', {
+  zoomControl: true,
+  attributionControl: true,
+});
+
+// Fond clair (style Power BI — CartoDB Positron)
+const tileLight = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  { attribution: '© OpenStreetMap © CARTO', maxZoom: 19 }
+).addTo(map);
+
+// Fond satellite (OpenTopoMap / ESRI)
+const tileSat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles © Esri', maxZoom: 19 }
+);
+
+map.setView(CENTER, ZOOM);
+
+// ── Groupe de marqueurs avec cluster ──────────────────────────────
+const clusterGroup = L.markerClusterGroup({
+  chunkedLoading: true,
+  maxClusterRadius: 50,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  iconCreateFunction: function(cluster) {
+    const n    = cluster.getChildCount();
+    const size = n < 10 ? 'small' : n < 50 ? 'medium' : 'large';
+    return L.divIcon({
+      html: `<div><span>${n}</span></div>`,
+      className: `marker-cluster marker-cluster-${size}`,
+      iconSize: [40, 40],
+    });
+  },
+});
+
+// ── Construction des marqueurs ──────────────────────────────────────
+const allMarkers = [];
+
+GEO_DATA.forEach(function(p) {
+  // Icône SVG colorée selon la région
+  const svgIcon = L.divIcon({
+    className: '',
+    html: `
+      <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21S26 22.75 26 13C26 5.82 20.18 0 13 0z"
+              fill="${p.color}" stroke="white" stroke-width="1.5"/>
+        <circle cx="13" cy="13" r="5" fill="white" opacity="0.85"/>
+      </svg>`,
+    iconSize:   [26, 34],
+    iconAnchor: [13, 34],
+    popupAnchor:[0, -34],
+  });
+
+  // Popup riche
+  const popup = `
+    <div class="spad-popup">
+      <div class="spad-popup-header" style="background:linear-gradient(135deg,${p.color},${p.color}cc)">
+        <div class="popup-icon">📍</div>
+        <div>
+          <div class="popup-title">${p.region !== '—' ? p.region : 'Observation #' + p.idx}</div>
+          <div class="popup-sub">#${p.idx} &nbsp;·&nbsp; ${p.date}</div>
+        </div>
+      </div>
+      <div class="spad-popup-body">
+        ${p.region !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-geo-alt-fill pr-icon"></i>
+          <div class="pr-label">Région</div>
+          <div class="pr-value">${p.region}</div>
+        </div>` : ''}
+        ${p.district !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-building pr-icon"></i>
+          <div class="pr-label">District</div>
+          <div class="pr-value">${p.district}</div>
+        </div>` : ''}
+        ${p.aire !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-hospital pr-icon"></i>
+          <div class="pr-label">Aire de santé</div>
+          <div class="pr-value">${p.aire}</div>
+        </div>` : ''}
+        ${p.superviseur !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-person-badge pr-icon"></i>
+          <div class="pr-label">Superviseur</div>
+          <div class="pr-value">${p.superviseur}</div>
+        </div>` : ''}
+        ${p.enqueteur !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-person pr-icon"></i>
+          <div class="pr-label">Enquêteur</div>
+          <div class="pr-value">${p.enqueteur}</div>
+        </div>` : ''}
+        ${p.zone !== '—' ? `
+        <div class="popup-row">
+          <i class="bi bi-house pr-icon"></i>
+          <div class="pr-label">Zone</div>
+          <div class="pr-value">${p.zone}</div>
+        </div>` : ''}
+        <div class="popup-row">
+          <i class="bi bi-stopwatch pr-icon" style="${p.duration ? '' : 'color:#CBD5E0'}"></i>
+          <div class="pr-label">Durée enquête</div>
+          <div class="pr-value">
+            ${p.duration
+              ? `<strong>${p.duration}</strong>`
+              : `<span style="color:#CBD5E0;font-style:italic;font-size:.72rem">
+                   Non capturé par ce formulaire
+                 </span>`}
+          </div>
+        </div>
+        <div class="popup-coords">
+          <div class="popup-coord-chip">
+            <strong>${p.lat}</strong>Latitude
+          </div>
+          <div class="popup-coord-chip">
+            <strong>${p.lon}</strong>Longitude
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const marker = L.marker([p.lat, p.lon], {icon: svgIcon})
+    .bindPopup(popup, {maxWidth: 300, className: ''});
+
+  marker._data = p;
+  allMarkers.push(marker);
+  clusterGroup.addLayer(marker);
+});
+
+map.addLayer(clusterGroup);
+
+// ── Ajuster la vue sur tous les points ─────────────────────────────
+function fitAll() {
+  if (allMarkers.length > 0) {
+    const group = L.featureGroup(allMarkers);
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
+}
+if (allMarkers.length > 1) fitAll();
+
+// ── Filtre dynamique ────────────────────────────────────────────────
+const hiddenRegions = new Set();
+
+function applyFilters() {
+  const search   = (document.getElementById('searchFilter')?.value || '').toLowerCase();
+  const region   = (document.getElementById('regionFilter')?.value || '').toLowerCase();
+  const district = (document.getElementById('districtFilter')?.value || '').toLowerCase();
+
+  clusterGroup.clearLayers();
+  let visible = 0;
+
+  allMarkers.forEach(m => {
+    const p = m._data;
+    const matchSearch = !search || [
+      p.region, p.district, p.aire, p.superviseur, p.enqueteur
+    ].some(v => v.toLowerCase().includes(search));
+    const matchRegion   = !region   || p.region.toLowerCase()   === region;
+    const matchDistrict = !district || p.district.toLowerCase() === district;
+    const matchLegend   = !hiddenRegions.has(p.region);
+
+    if (matchSearch && matchRegion && matchDistrict && matchLegend) {
+      clusterGroup.addLayer(m);
+      visible++;
+    }
+  });
+
+  const cnt = document.getElementById('visibleCount');
+  if (cnt) cnt.textContent = visible;
+
+  // Remplir districts selon région sélectionnée
+  updateDistrictFilter(region);
+}
+
+function updateDistrictFilter(regionFilter) {
+  const sel  = document.getElementById('districtFilter');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Tous les districts —</option>';
+  const districts = new Set();
+  allMarkers.forEach(m => {
+    const p = m._data;
+    if (!regionFilter || p.region.toLowerCase() === regionFilter) {
+      if (p.district !== '—') districts.add(p.district);
+    }
+  });
+  [...districts].sort().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    if (d === prev) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// Init districts
+updateDistrictFilter('');
+
+// ── Toggle légende / région ─────────────────────────────────────────
+function toggleRegion(region, el) {
+  if (hiddenRegions.has(region)) {
+    hiddenRegions.delete(region);
+    el.classList.remove('dimmed');
+  } else {
+    hiddenRegions.add(region);
+    el.classList.add('dimmed');
+  }
+  applyFilters();
+}
+
+// ── Réinitialiser filtres ───────────────────────────────────────────
+function resetFilters() {
+  document.getElementById('searchFilter').value  = '';
+  document.getElementById('regionFilter').value  = '';
+  document.getElementById('districtFilter').value = '';
+  hiddenRegions.clear();
+  document.querySelectorAll('.legend-item').forEach(el => el.classList.remove('dimmed'));
+  applyFilters();
+  fitAll();
+}
+
+// ── Toggle cluster ──────────────────────────────────────────────────
+let clustered = true;
+function toggleCluster(btn) {
+  if (clustered) {
+    map.removeLayer(clusterGroup);
+    allMarkers.forEach(m => m.addTo(map));
+    btn.classList.remove('active');
+    btn.title = 'Activer le regroupement';
+  } else {
+    allMarkers.forEach(m => map.removeLayer(m));
+    map.addLayer(clusterGroup);
+    applyFilters();
+    btn.classList.add('active');
+    btn.title = 'Désactiver le regroupement';
+  }
+  clustered = !clustered;
+}
+
+// ── Toggle fond de carte ────────────────────────────────────────────
+let satellite = false;
+function toggleLayer(btn) {
+  if (satellite) {
+    map.removeLayer(tileSat);
+    tileLight.addTo(map);
+    btn.classList.remove('active');
+  } else {
+    map.removeLayer(tileLight);
+    tileSat.addTo(map);
+    btn.classList.add('active');
+  }
+  satellite = !satellite;
+}
+
+// ── Export PNG (via canvas) ─────────────────────────────────────────
+function exportMap() {
+  // Utilise l'API de capture native du navigateur (simple print)
+  window.print();
+}
+</script>
+
+{% else %}
+<!-- ══════════════════════════════════════════════════════════════════
+     AUCUN POINT GPS
+══════════════════════════════════════════════════════════════════ -->
+<div style="background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden">
+  <div style="background:linear-gradient(135deg,#1A5276,#2E4A8A);padding:20px 28px;color:#fff">
+    <h6 style="margin:0;font-weight:700"><i class="bi bi-map me-2"></i>Carte géographique</h6>
+  </div>
+  <div class="no-map-state">
+    <div style="font-size:3.5rem;margin-bottom:16px">🗺️</div>
+    <h5 style="color:#1A5276;font-weight:700;margin-bottom:8px">Aucune coordonnée GPS détectée</h5>
+    <p style="color:#85929E;max-width:500px;margin:0 auto 24px;line-height:1.7">
+      Pour afficher la carte, votre fichier doit contenir une colonne de coordonnées GPS.<br>
+      SPAD Analyzer reconnaît automatiquement les formats suivants :
+    </p>
+
+    <div class="row g-3 justify-content-center" style="max-width:600px;margin:0 auto">
+      <div class="col-sm-6">
+        <div style="background:#F0F4F8;border-radius:10px;padding:14px 16px;text-align:left">
+          <div style="font-weight:700;color:#1A5276;margin-bottom:6px;font-size:.85rem">
+            <i class="bi bi-phone me-1"></i>Format KoboToolbox
+          </div>
+          <code style="font-size:.78rem;color:#E67E22">start_gps</code>,
+          <code style="font-size:.78rem;color:#E67E22">_geolocation</code>,
+          <code style="font-size:.78rem;color:#E67E22">end_gps</code><br>
+          <span style="font-size:.72rem;color:#85929E;margin-top:4px;display:block">
+            "5.18 -4.60 29.0 4.4" (lat lon alt prec)
+          </span>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div style="background:#F0F4F8;border-radius:10px;padding:14px 16px;text-align:left">
+          <div style="font-weight:700;color:#1A5276;margin-bottom:6px;font-size:.85rem">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Format standard
+          </div>
+          <code style="font-size:.78rem;color:#E67E22">latitude</code>,
+          <code style="font-size:.78rem;color:#E67E22">longitude</code><br>
+          <span style="font-size:.72rem;color:#85929E;margin-top:4px;display:block">
+            Colonnes numériques séparées
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {% if diagnostic %}
+    <div class="mt-4 p-3 rounded" style="background:#FDEDEC;border:1.5px solid #E74C3C;max-width:680px;font-size:.85rem;text-align:left;margin:0 auto">
+      <strong style="color:#922B21">🔎 Diagnostic GPS</strong>
+      <div class="mt-2" style="line-height:1.6">{{ diagnostic.reason }}</div>
+      <div class="mt-2 small" style="color:#566573">
+        {% if diagnostic.gps_col %}<div>• Colonne combinée détectée : <code>{{ diagnostic.gps_col }}</code></div>{% endif %}
+        {% if diagnostic.lat_col or diagnostic.lon_col %}<div>• lat → <code>{{ diagnostic.lat_col or '—' }}</code> · lon → <code>{{ diagnostic.lon_col or '—' }}</code></div>{% endif %}
+        <div>• Lignes sans GPS : <strong>{{ diagnostic.no_gps_cnt }}</strong> / {{ diagnostic.total_rows }}</div>
+        {% if diagnostic.parse_fail_cnt %}<div>• Cellules au format non reconnu : <strong>{{ diagnostic.parse_fail_cnt }}</strong></div>{% endif %}
+        {% if diagnostic.out_of_range_cnt %}<div>• Coordonnées hors limites : <strong>{{ diagnostic.out_of_range_cnt }}</strong></div>{% endif %}
+      </div>
+      {% if diagnostic.sample_cols %}
+      <details class="mt-3">
+        <summary style="cursor:pointer;color:#922B21;font-weight:600">▶ Voir toutes les colonnes du fichier ({{ diagnostic.sample_cols|length }})</summary>
+        <div class="mt-2 d-flex flex-wrap gap-1">
+          {% for c in diagnostic.sample_cols %}
+          <span style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;font-size:.72rem;font-family:monospace">{{ c }}</span>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if meta %}
+    <div class="mt-4 p-3 rounded" style="background:#FEF9E7;border:1.5px solid #F0C040;max-width:500px;font-size:.82rem;text-align:left">
+      <strong>📋 Variables disponibles dans ce dataset :</strong>
+      <div class="mt-2 d-flex flex-wrap gap-1">
+        {% for col in meta.get('columns', [])[:30] %}
+        <span style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;font-size:.72rem;font-family:monospace">{{ col }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

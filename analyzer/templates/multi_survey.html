@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Analyse multi-enquête — SPAD Analyzer{% endblock %}
+{% block page_title %}Analyse multi-enquête (DPF / PHAKTS){% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
+    <i class="bi bi-collection-fill fs-3"></i>
+    <div>
+      <strong>Comparez plusieurs enquêtes</strong> alignées grâce à la codification
+      <strong>PHAKTS / DPF</strong>. Le radical PHAKTS (avant le « __ ») sert de clé
+      d'harmonisation entre fichiers, même si les modalités diffèrent légèrement.
+    </div>
+  </div>
+
+  <!-- ═══════════ Section 1 — Importer des enquêtes ═══════════ -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-upload me-2 text-primary"></i>1. Importer les fichiers d'enquête (.xlsx)
+      </h6>
+    </div>
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+        <input type="hidden" name="action" value="upload">
+        <div class="col-md-9">
+          <label class="form-label small fw-semibold">Sélectionnez plusieurs fichiers Excel</label>
+          <input type="file" class="form-control form-control-sm"
+                 name="files" multiple accept=".xlsx,.xls,.xlsm" required>
+          <small class="text-muted">
+            Idéalement codifiés PHAKTS (colonnes au format <code>Radical__TYPE!contrainte</code>).
+          </small>
+        </div>
+        <div class="col-md-3 d-grid">
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="bi bi-plus-circle me-1"></i>Ajouter à la pile
+          </button>
+        </div>
+      </form>
+
+      {% if surveys_meta %}
+      <hr>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:30px">#</th>
+              <th>Fichier</th>
+              <th class="text-center" style="width:90px">Obs.</th>
+              <th class="text-center" style="width:90px">Variables</th>
+              <th class="text-center" style="width:120px">PHAKTS</th>
+              <th class="text-center" style="width:60px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in surveys_meta %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td><strong>{{ s.name }}</strong></td>
+              <td class="text-center">{{ s.n_obs }}</td>
+              <td class="text-center">{{ s.n_vars }}</td>
+              <td class="text-center">
+                {% if s.phakts_vars %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    {{ s.phakts_vars }} codées
+                  </span>
+                {% else %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle">non codé</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <form method="POST" class="d-inline">
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="idx" value="{{ loop.index0 }}">
+                  <button class="btn btn-sm btn-outline-danger" type="submit"
+                          onclick="return confirm('Retirer cette enquête ?')">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-2 text-end">
+        <form method="POST" class="d-inline">
+          <input type="hidden" name="action" value="reset">
+          <button class="btn btn-sm btn-outline-secondary" type="submit"
+                  onclick="return confirm('Effacer toutes les enquêtes ?')">
+            <i class="bi bi-x-circle me-1"></i>Effacer tout
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if surveys_meta|length >= 1 %}
+  <!-- ═══════════ Section 2 — Couverture variable × enquête ═══════════ -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-grid me-2 text-primary"></i>2. Couverture des variables (alignement DPF / PHAKTS)
+      </h6>
+      <form method="POST" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="action" value="change_mode">
+        <label class="small text-muted mb-0">Mode d'alignement :</label>
+        <select name="align_mode" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>PHAKTS (radical)</option>
+          <option value="exact"  {% if mode=='exact' %}selected{% endif %}>Nom exact</option>
+          <option value="union"  {% if mode=='union' %}selected{% endif %}>Union (libre)</option>
+        </select>
+      </form>
+    </div>
+    <div class="card-body">
+      {% if common_vars %}
+      <div class="mb-2 small">
+        <span class="badge bg-success-subtle text-success border border-success-subtle">
+          {{ common_vars|length }} variable(s) commune(s) à toutes les enquêtes
+        </span>
+      </div>
+      {% endif %}
+      {% if coverage_html %}
+        <div class="table-responsive" style="max-height:360px;overflow-y:auto">
+          {{ coverage_html | safe }}
+        </div>
+        <p class="small text-muted mt-2">Top 80 variables par couverture (1 = présente, 0 = absente).</p>
+      {% else %}
+        <p class="text-muted small mb-0">Importez au moins une enquête pour voir la matrice de couverture.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if surveys_meta|length >= 2 %}
+  <!-- ═══════════ Section 3 — Comparer plusieurs variables entre enquêtes ═══════════ -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>3. Comparer une ou plusieurs variables entre enquêtes
+      </h6>
+      {% if compared_vars %}
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+        {{ compared_vars|length }} variable(s) dans le panier de comparaison
+      </span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+
+      <form method="POST" class="row g-2 align-items-end">
+        <input type="hidden" name="action" value="add_compare">
+        <input type="hidden" name="align_mode" value="{{ mode }}">
+        <div class="col-md-9">
+          <label class="form-label small fw-semibold">
+            Variables à ajouter au panier de comparaison
+            <span class="text-muted fw-normal">— Ctrl/Cmd-clic pour en sélectionner plusieurs</span>
+          </label>
+          <select name="variables" class="form-select form-select-sm" multiple size="8" required>
+            {% for v in candidate_vars %}
+            <option value="{{ v }}" {% if v in compared_vars %}disabled{% endif %}>
+              {{ v }}{% if v in common_vars %} ★{% endif %}{% if v in compared_vars %} (déjà ajoutée){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          <small class="text-muted">★ = variable présente dans toutes les enquêtes</small>
+        </div>
+        <div class="col-md-3 d-grid gap-1">
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="bi bi-plus-circle me-1"></i>Ajouter au panier
+          </button>
+          {% if compared_vars %}
+          <button class="btn btn-outline-secondary btn-sm" type="submit"
+                  formaction="{{ url_for('multi_survey') }}" formmethod="POST"
+                  name="action" value="clear_compare"
+                  onclick="return confirm('Vider le panier de comparaison ?')">
+            <i class="bi bi-x-circle me-1"></i>Vider le panier
+          </button>
+          {% endif %}
+        </div>
+      </form>
+
+      {% if results %}
+      <hr>
+      {% if merged_meta %}
+      <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
+        <div><i class="bi bi-collection me-1"></i><strong>{{ merged_meta.n_surveys }}</strong> enquêtes</div>
+        <div><i class="bi bi-database me-1"></i><strong>{{ merged_meta.n_obs }}</strong> observations fusionnées</div>
+        <div><i class="bi bi-columns me-1"></i><strong>{{ merged_meta.n_vars }}</strong> variables alignées</div>
+        <div><i class="bi bi-tag me-1"></i><strong>{{ results|length }}</strong> comparaison(s) affichée(s)</div>
+      </div>
+      {% endif %}
+
+      <!-- Liste des comparaisons -->
+      <div class="accordion" id="msAccordion">
+      {% for r in results %}
+        <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+          <h2 class="accordion-header" id="hdr-{{ loop.index0 }}">
+            <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                    type="button" data-bs-toggle="collapse"
+                    data-bs-target="#cmp-{{ loop.index0 }}"
+                    aria-expanded="{{ 'true' if loop.first else 'false' }}">
+              <div class="d-flex w-100 align-items-center gap-2">
+                <strong>{{ r.variable }}</strong>
+                {% if r.kind == 'continuous' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle">continue</span>
+                {% elif r.kind == 'categorical' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">catégorielle</span>
+                {% endif %}
+                {% if r.error %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">erreur</span>
+                {% endif %}
+              </div>
+            </button>
+          </h2>
+          <div id="cmp-{{ loop.index0 }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+               data-bs-parent="#msAccordion">
+            <div class="accordion-body">
+              <div class="d-flex justify-content-end mb-2">
+                <form method="POST">
+                  <input type="hidden" name="action" value="remove_compare">
+                  <input type="hidden" name="variable" value="{{ r.variable }}">
+                  <button class="btn btn-sm btn-outline-danger" type="submit"
+                          title="Retirer cette comparaison du panier">
+                    <i class="bi bi-trash me-1"></i>Retirer du panier
+                  </button>
+                </form>
+              </div>
+
+              {% if r.error %}
+              <div class="alert alert-warning small mb-0">{{ r.error }}</div>
+              {% elif r.kind == 'categorical' %}
+              <div class="row g-3">
+                <div class="col-lg-6">
+                  <h6 class="small fw-semibold text-muted">Effectifs</h6>
+                  <div class="table-responsive">{{ r.count_html | safe }}</div>
+                </div>
+                <div class="col-lg-6">
+                  <h6 class="small fw-semibold text-muted">Pourcentages (% colonne)</h6>
+                  <div class="table-responsive">{{ r.pct_html | safe }}</div>
+                </div>
+              </div>
+              <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
+              {% elif r.kind == 'continuous' %}
+              <h6 class="small fw-semibold text-muted">Résumé statistique par enquête</h6>
+              <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
+              <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+      {% elif compared_vars %}
+        <hr>
+        <div class="alert alert-warning small mb-0">
+          Importez au moins 2 enquêtes pour afficher les comparaisons.
+        </div>
+      {% endif %}
+
+      {% if compared_vars %}
+      <hr>
+      <div class="alert alert-success small d-flex align-items-center gap-2 mb-0">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>
+          Ces <strong>{{ compared_vars|length }}</strong> comparaison(s) seront automatiquement
+          incluses dans le <strong>rapport PDF/Word</strong> si vous cochez « Multi-enquête » dans la page Rapport.
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if results %}
+<script>
+(function(){
+  var charts = [
+    {% for r in results %}
+      {% if r.chart %}
+      { id: 'msChart_{{ loop.index0 }}', fig: {{ r.chart | safe }} },
+      {% endif %}
+    {% endfor %}
+  ];
+  charts.forEach(function(c){
+    try { Plotly.newPlot(c.id, c.fig.data, c.fig.layout, { responsive: true, displaylogo: false }); }
+    catch(e) { console.warn('plotly:', c.id, e); }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

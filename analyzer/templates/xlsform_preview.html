@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}XLSForm importé — SPAD Analyzer{% endblock %}
+{% block page_title %}XLSForm importé depuis PHAKTS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  {% if not imported %}
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-5 text-center">
+        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+        <h4 class="mb-2">Aucun XLSForm importé pour l'instant</h4>
+        <p class="text-muted mb-4">
+          Depuis l'onglet <strong>Conception PHAKTS</strong>, générez votre XLSForm puis cliquez sur
+          <em>« Envoyer vers SPAD »</em>. Le formulaire s'affichera ici pour prévisualisation.
+        </p>
+        <a href="{{ url_for('upload') }}" class="btn btn-outline-primary">
+          <i class="bi bi-upload me-1"></i> Importer un fichier de réponses (Excel)
+        </a>
+      </div>
+    </div>
+  {% else %}
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-3 d-flex align-items-center flex-wrap gap-3">
+        <div>
+          <i class="bi bi-file-earmark-spreadsheet-fill text-success display-5 me-2"></i>
+        </div>
+        <div class="flex-grow-1">
+          <h5 class="mb-1">{{ form_title or 'Questionnaire' }}</h5>
+          <div class="text-muted small">
+            <span class="badge bg-light text-dark border me-1">{{ survey|length }} question{% if survey|length > 1 %}s{% endif %}</span>
+            <span class="badge bg-light text-dark border">{{ choices|length }} modalité{% if choices|length > 1 %}s{% endif %}</span>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          {% if session.get('kobo_token') %}
+          <button id="deployBtn" type="button" class="btn btn-primary btn-sm" onclick="deployXlsform()">
+            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Déployer dans KoboToolbox
+          </button>
+          {% else %}
+          <a href="{{ url_for('kobo_connect') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-link-45deg me-1"></i> Connecter KoboToolbox d'abord
+          </a>
+          {% endif %}
+          <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-upload me-1"></i> Charger les réponses
+          </a>
+        </div>
+      </div>
+      <div id="deployStatus" class="mt-2 small d-none"></div>
+    </div>
+
+    <script>
+    async function deployXlsform() {
+      const btn = document.getElementById('deployBtn');
+      const status = document.getElementById('deployStatus');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Déploiement en cours… (≈30 s)';
+      status.className = 'mt-2 small text-muted';
+      status.classList.remove('d-none');
+      status.textContent = 'Upload du XLSForm vers KoboToolbox, polling de l\'import…';
+
+      try {
+        const r = await fetch('{{ url_for("kobo_deploy_xlsform") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        const data = await r.json();
+
+        if (!r.ok || !data.success) {
+          status.className = 'mt-2 small alert alert-danger py-2';
+          status.innerHTML = '<strong>❌ Échec :</strong> ' + (data.error || 'Erreur inconnue');
+          if (data.need_kobo_connect) {
+            status.innerHTML += ' <a href="{{ url_for("kobo_connect") }}" class="alert-link">Se connecter à Kobo</a>';
+          }
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Réessayer';
+          return;
+        }
+
+        status.className = 'mt-2 small alert alert-success py-2';
+        status.innerHTML =
+          '<strong>✅ Déployé !</strong> Le formulaire est disponible sur ' +
+          '<a href="' + data.url + '" target="_blank" class="alert-link">' + data.url + '</a>' +
+          (data.deployed ? ' (déjà actif, prêt à recevoir des soumissions)' : ' (à activer manuellement dans Kobo)');
+        btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Déployé';
+      } catch (e) {
+        status.className = 'mt-2 small alert alert-danger py-2';
+        status.innerHTML = '<strong>❌ Erreur réseau :</strong> ' + e.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Réessayer';
+      }
+    }
+    </script>
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-2">
+        <strong><i class="bi bi-list-ul me-2 text-primary"></i> Feuille <code>survey</code></strong>
+      </div>
+      <div class="card-body p-0" style="max-height:480px;overflow:auto">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              {% for c in survey_cols %}<th class="small">{{ c }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in survey %}
+            <tr>
+              {% for c in survey_cols %}
+                <td class="small" style="vertical-align:top">{{ row[c] }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if choices %}
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-2">
+        <strong><i class="bi bi-list-check me-2 text-success"></i> Feuille <code>choices</code></strong>
+      </div>
+      <div class="card-body p-0" style="max-height:360px;overflow:auto">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              {% for c in choices_cols %}<th class="small">{{ c }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in choices %}
+            <tr>
+              {% for c in choices_cols %}
+                <td class="small" style="vertical-align:top">{{ row[c] }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

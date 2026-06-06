@@ -1,0 +1,28 @@
+{# Bloc commentaire automatique + champ libre pour une variable analysée
+   Paramètres requis (passés via {% include "_comment_block.html" with context %}) :
+     - section : str (clé du contexte, ex: 'descriptive_cat', 'crosstabs', ...)
+     - var     : str (nom de la variable)
+     - auto    : str (commentaire automatique)
+     - user    : str (commentaire libre déjà saisi, depuis session)
+#}
+<div class="comment-block mt-3 p-3 rounded" style="background:#F0F4F8;border-left:4px solid #1A5276">
+  <div class="d-flex align-items-start gap-2">
+    <i class="bi bi-lightbulb-fill text-warning mt-1"></i>
+    <div class="flex-grow-1">
+      <div class="small fw-semibold text-uppercase text-muted mb-1" style="letter-spacing:.04em">
+        Lecture automatique
+      </div>
+      <div class="small" style="color:#2C3E50;line-height:1.55">{{ auto }}</div>
+    </div>
+  </div>
+  <div class="mt-2">
+    <label class="small fw-semibold text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">
+      <i class="bi bi-pencil-square me-1"></i>Votre interprétation (sera reprise dans le rapport)
+    </label>
+    <textarea class="form-control form-control-sm comment-input" rows="2"
+              data-section="{{ section }}" data-var="{{ var }}"
+              placeholder="Ajoutez votre lecture qualitative…"
+              style="font-size:.85rem">{{ user }}</textarea>
+    <span class="comment-status small text-muted" style="font-size:.7rem"></span>
+  </div>
+</div>

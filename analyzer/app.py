@@ -1,0 +1,1878 @@
+import os, json, uuid, re
+import pandas as pd
+from flask import (Flask, render_template, request, session,
+                   redirect, url_for, jsonify, send_file, flash, Response)
+from werkzeug.utils import secure_filename
+from config import Config
+from modules.data_loader import (load_excel, load_excel_sheets, clean_kobo_dataframe,
+                                  get_var_types, summarize_dataframe, get_filtered_vars)
+from modules.descriptive import tris_a_plat, statistiques_continues, analyse_binaire_groupe
+from modules.crosstabs import tableau_croise, tableau_croise_dynamique
+from modules.multi_survey import (merge_surveys, variable_coverage,
+                                    common_variables, phakts_radical,
+                                    is_phakts_coded,
+                                    compare_categorical_by_survey,
+                                    compare_continuous_by_survey)
+from modules.multivariate import run_pca, run_mca, run_clustering, run_ca
+from modules.report_generator import generate_pdf_report, generate_word_report
+from modules.comments import (auto_comment_categorical, auto_comment_continuous,
+                              auto_comment_crosstab, auto_comment_binary_group)
+from modules.raw_analysis import (systematic_analysis, descriptive_summary,
+                                   data_quality_gauge, composition_chart,
+                                   distributions_chart, overview_stats,
+                                   missing_bar_chart, missing_heatmap, correlation_matrix)
+
+# Import sécurisé du connecteur KoboToolbox
+# (nécessite le package 'requests' — installé via : venv/bin/pip install requests)
+try:
+    from modules.kobo_connector import (validate_token, list_assets,
+                                         get_asset_info, load_data as kobo_load_data,
+                                         deploy_xlsform)
+    KOBO_AVAILABLE = True
+except ImportError:
+    KOBO_AVAILABLE = False
+    def validate_token(*a, **k): return {"valid": False, "error": "Package 'requests' manquant. Lancez : venv/bin/pip install requests"}
+    def list_assets(*a, **k):    return {"success": False, "error": "Package 'requests' manquant."}
+    def get_asset_info(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
+    def kobo_load_data(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
+    def deploy_xlsform(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
+
+app = Flask(__name__)
+app.config.from_object(Config)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
+
+
+# ── Gestionnaire d'erreur 500 — affiche le traceback complet ─────────────────
+import traceback
+
+@app.errorhandler(500)
+def internal_error(e):
+    tb = traceback.format_exc()
+    html = f"""
+    <html><head><title>SPAD — Erreur 500</title>
+    <style>
+      body {{font-family:monospace;background:#1C2833;color:#FDFEFE;padding:30px}}
+      h2   {{color:#E74C3C}}
+      pre  {{background:#17202A;padding:20px;border-radius:8px;
+             border-left:4px solid #E74C3C;overflow-x:auto;font-size:13px;line-height:1.6}}
+      .tip {{background:#1A5276;padding:14px 18px;border-radius:8px;
+             margin-top:20px;color:#AED6F1;font-size:13px}}
+    </style></head><body>
+    <h2>⚠ Erreur interne 500</h2>
+    <pre>{tb}</pre>
+    <div class="tip">
+      📋 Copiez ce traceback complet et envoyez-le pour correction immédiate.
+    </div>
+    </body></html>
+    """
+    return html, 500
+
+
+@app.route('/favicon.ico')
+def favicon():
+    """Retourne un favicon SVG inline — évite l'erreur 404 dans le navigateur."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        '<rect width="32" height="32" rx="6" fill="#1A5276"/>'
+        '<text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" '
+        'font-size="18" font-weight="bold" fill="#17A589" '
+        'font-family="Arial,sans-serif">S</text>'
+        '</svg>'
+    )
+    return Response(svg, mimetype='image/svg+xml')
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+def get_dataframe(sheet_key='data_path'):
+    path = session.get(sheet_key)
+    if path and os.path.exists(path):
+        return pd.read_excel(path)
+    return None
+
+
+def detect_binary_groups(df: pd.DataFrame) -> list[dict]:
+    """
+    Détecte les groupes de variables binaires KoBoToolbox (questions à choix multiples).
+    Ex: "Raison/Peur" "Raison/Cout" → groupe "Raison"
+    """
+    var_types = get_var_types(df)
+    bin_cols = [c for c, t in var_types.items() if t == 'binaire']
+    groups = {}
+    for col in bin_cols:
+        if '/' in col:
+            parent = col.rsplit('/', 1)[0].strip()
+            groups.setdefault(parent, []).append(col)
+    # Keep only groups with ≥ 2 items
+    return [{'parent': p, 'vars': v} for p, v in groups.items() if len(v) >= 2]
+
+
+# ─── User comments helpers ──────────────────────────────────────────────────
+def _get_user_comment(section: str, var: str) -> str:
+    """Lit un commentaire libre stocké en session."""
+    return (session.get('user_comments', {}) or {}).get(f"{section}:{var}", '')
+
+
+@app.route('/api/save-comment', methods=['POST'])
+def save_comment():
+    """Stocke un commentaire libre dans la session (par section + variable)."""
+    data = request.get_json(silent=True) or request.form
+    section = (data.get('section') or '').strip()
+    var = (data.get('var') or '').strip()
+    text = (data.get('text') or '').strip()
+    if not section or not var:
+        return jsonify({'error': 'section et var requis'}), 400
+    comments = dict(session.get('user_comments', {}) or {})
+    key = f"{section}:{var}"
+    if text:
+        comments[key] = text[:2000]   # safety cap
+    else:
+        comments.pop(key, None)
+    session['user_comments'] = comments
+    return jsonify({'ok': True})
+
+
+# ─── HOME ─────────────────────────────────────────────────────────────────────
+
+@app.route('/')
+def index():
+    has_data = bool(session.get('data_path') and os.path.exists(session.get('data_path', '')))
+    meta = session.get('data_meta', {})
+    sheets = session.get('sheet_names', [])
+    return render_template('index.html', has_data=has_data, meta=meta, sheets=sheets)
+
+
+# ─── UPLOAD ───────────────────────────────────────────────────────────────────
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('Aucun fichier sélectionné.', 'danger')
+            return redirect(request.url)
+        f = request.files['file']
+        if f.filename == '':
+            flash('Aucun fichier sélectionné.', 'danger')
+            return redirect(request.url)
+        if f and allowed_file(f.filename):
+            fname = str(uuid.uuid4()) + '_' + secure_filename(f.filename)
+            raw_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+            f.save(raw_path)
+            try:
+                # Load all sheets
+                all_sheets = load_excel_sheets(raw_path)
+                sheet_names = list(all_sheets.keys())
+                session['sheet_names'] = sheet_names
+                session['original_filename'] = f.filename
+
+                # Main sheet (first)
+                main_name = sheet_names[0]
+                df_raw = all_sheets[main_name]
+                df_clean = clean_kobo_dataframe(df_raw)
+
+                # Save cleaned main sheet
+                base = fname.rsplit('.', 1)[0]
+                clean_path = os.path.join(
+                    app.config['UPLOAD_FOLDER'], f'clean_{base}.xlsx')
+                df_clean.to_excel(clean_path, index=False, engine='openpyxl')
+                session['data_path'] = clean_path
+                session['data_meta'] = summarize_dataframe(df_clean)
+                session['data_meta']['sheet_name'] = main_name
+
+                # Save child sheet if exists
+                if len(sheet_names) > 1:
+                    df_child = all_sheets[sheet_names[1]]
+                    df_child_clean = clean_kobo_dataframe(df_child)
+                    child_path = os.path.join(
+                        app.config['UPLOAD_FOLDER'], f'child_{base}.xlsx')
+                    df_child_clean.to_excel(child_path, index=False, engine='openpyxl')
+                    session['child_path'] = child_path
+                    session['data_meta']['has_child_sheet'] = True
+                    session['data_meta']['child_sheet_name'] = sheet_names[1]
+                    session['data_meta']['n_child'] = len(df_child_clean)
+                else:
+                    session['data_meta']['has_child_sheet'] = False
+
+                flash(
+                    f'Fichier chargé avec succès — {len(df_clean)} ménages × '
+                    f'{len(df_clean.columns)} variables analysables.',
+                    'success')
+                return redirect(url_for('data_preview'))
+            except Exception as e:
+                flash(f'Erreur lors du chargement : {str(e)}', 'danger')
+        else:
+            flash('Format non supporté. Utilisez .xlsx ou .xls', 'danger')
+    return render_template('upload.html')
+
+
+def _phakts_libelle_from_code(col: str) -> str:
+    """
+    Reconstruit un libellé lisible à partir d'un nom de colonne PHAKTS.
+    Ex.: 'Statut_Matrimonial__X!1*1Statut_Matrimonial_' → 'Statut Matrimonial'.
+    Si le nom n'est pas codifié PHAKTS, renvoie le nom sans suffixe technique.
+    """
+    if not col:
+        return ''
+    s = str(col).strip()
+    # Retire le suffixe PHAKTS (__TYPE...)
+    base = s.split('__', 1)[0] if '__' in s else s
+    # Retire un éventuel suffixe binaire « parent/enfant »
+    base = base.split('/')[-1]
+    return base.replace('_', ' ').strip()
+
+
+def _extract_modalites(series, typ: str, max_items: int = 20) -> str:
+    """
+    Extrait les modalités/valeurs typiques d'une variable, sous une forme
+    compacte adaptée à un questionnaire imprimé.
+      - catégorielle / binaire : « Modalité1, Modalité2, … » (max 20)
+      - continue : « plage : min – max »
+      - date : « plage : min – max »
+      - texte_libre : « (texte libre) »
+    """
+    try:
+        s = series.dropna()
+        if s.empty:
+            return ''
+        if typ in ('categorielle', 'binaire'):
+            # binaire 0/1 → Oui/Non
+            try:
+                import pandas as pd
+                num = pd.to_numeric(s, errors='raise')
+                if set(num.unique()).issubset({0, 1, 0.0, 1.0}):
+                    return 'Oui ; Non'
+            except Exception:
+                pass
+            vals = [str(v).strip() for v in s.astype(str).value_counts().index[:max_items]]
+            extra = '' if len(set(s.astype(str))) <= max_items else f' (+{len(set(s.astype(str)))-max_items} autres)'
+            return ' ; '.join(vals) + extra
+        if typ == 'continue':
+            import pandas as pd
+            num = pd.to_numeric(s, errors='coerce').dropna()
+            if num.empty:
+                return ''
+            return f'plage : {round(float(num.min()), 2)} – {round(float(num.max()), 2)}'
+        if typ == 'date':
+            try:
+                import pandas as pd
+                dt = pd.to_datetime(s, errors='coerce').dropna()
+                if dt.empty:
+                    return ''
+                return f'plage : {dt.min().strftime("%Y-%m-%d")} – {dt.max().strftime("%Y-%m-%d")}'
+            except Exception:
+                return ''
+        return '(texte libre)'
+    except Exception:
+        return ''
+
+
+def _build_var_types_table(df) -> list:
+    """
+    Construit la liste { variable, type, libelle, modalites, n_obs, n_manq, %manq }
+    pour l'affichage et l'export XLSX. La colonne « libellé » privilégie celui
+    saisi par l'utilisateur (session['var_labels']) puis le radical PHAKTS.
+    """
+    var_types = get_var_types(df)
+    user_labels = session.get('var_labels', {}) or {}
+    rows = []
+    n = len(df)
+    for i, (col, typ) in enumerate(var_types.items(), start=1):
+        n_miss = int(df[col].isna().sum())
+        auto_lib = _phakts_libelle_from_code(col)
+        custom_lib = user_labels.get(col, '').strip()
+        rows.append({
+            'idx': i,
+            'variable': col,
+            'libelle': custom_lib or auto_lib,
+            'libelle_auto': auto_lib,
+            'is_custom': bool(custom_lib),
+            'modalites': _extract_modalites(df[col], typ),
+            'type': typ,
+            'n_obs': int(n - n_miss),
+            'n_manq': n_miss,
+            'pct_manq': round(n_miss / n * 100, 1) if n else 0,
+        })
+    return rows
+
+
+@app.route('/api/var-label', methods=['POST'])
+def save_var_label():
+    """Sauvegarde un libellé personnalisé pour une variable, en session."""
+    data = request.get_json(silent=True) or request.form
+    var = (data.get('variable') or '').strip()
+    label = (data.get('label') or '').strip()
+    if not var:
+        return jsonify({'error': "variable requis"}), 400
+    labels = dict(session.get('var_labels', {}) or {})
+    if label:
+        labels[var] = label[:500]
+    else:
+        labels.pop(var, None)
+    session['var_labels'] = labels
+    return jsonify({'ok': True, 'variable': var, 'label': label})
+
+
+@app.route('/data/preview')
+def data_preview():
+    df = get_dataframe()
+    if df is None:
+        flash('Veuillez d\'abord importer un fichier.', 'warning')
+        return redirect(url_for('upload'))
+    var_types = get_var_types(df)
+    var_table = _build_var_types_table(df)
+    bin_groups = detect_binary_groups(df)
+    preview = df.head(20).to_html(
+        classes='table table-sm table-striped table-hover',
+        border=0, index=False, na_rep='—')
+    meta = session.get('data_meta', {})
+
+    # Child sheet preview
+    child_preview = None
+    child_meta = {}
+    if session.get('child_path') and os.path.exists(session['child_path']):
+        df_child = pd.read_excel(session['child_path'])
+        child_preview = df_child.head(20).to_html(
+            classes='table table-sm table-striped table-hover',
+            border=0, index=False, na_rep='—')
+        child_meta = {'n': len(df_child), 'cols': len(df_child.columns)}
+
+    return render_template('data_preview.html',
+                           preview=preview, columns=df.columns.tolist(),
+                           var_types=var_types, var_table=var_table,
+                           meta=meta, shape=df.shape,
+                           bin_groups=bin_groups,
+                           child_preview=child_preview, child_meta=child_meta)
+
+
+@app.route('/data/var-types.xlsx')
+def export_var_types_xlsx():
+    """
+    Export XLSX = vrai questionnaire reconstruit à partir des données.
+    Feuille 1 « Questionnaire » : N° / Variable / Question / Type / Modalités attendues /
+    Obs. valides / Manquantes / % manq.
+    Feuille 2 « Métadonnées » : nom du fichier, taille, date d'export.
+    """
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+    rows = _build_var_types_table(df)
+    TYPE_LABEL = {
+        'categorielle': 'Choix unique / multiple',
+        'continue':     'Numérique',
+        'binaire':      'Booléen (Oui/Non)',
+        'date':         'Date',
+        'texte_libre':  'Texte libre',
+    }
+    table = pd.DataFrame([{
+        'N°': r['idx'],
+        'Variable (code)': r['variable'],
+        'Question / Libellé': r['libelle'],
+        'Type': TYPE_LABEL.get(r['type'], r['type']),
+        'Modalités attendues': r['modalites'],
+        'Obs. valides': r['n_obs'],
+        'Manquantes': r['n_manq'],
+        '% manquantes': r['pct_manq'],
+    } for r in rows])
+
+    meta = pd.DataFrame([
+        ['Fichier source',  session.get('original_filename', '')],
+        ['Nb. observations', int(len(df))],
+        ['Nb. variables',    int(df.shape[1])],
+        ['Date d\'export',   pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')],
+    ], columns=['Indicateur', 'Valeur'])
+
+    from io import BytesIO
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    buf = BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        table.to_excel(writer, index=False, sheet_name='Questionnaire')
+        meta.to_excel(writer, index=False, sheet_name='Métadonnées')
+
+        # Mise en forme feuille « Questionnaire »
+        ws = writer.sheets['Questionnaire']
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill('solid', fgColor='1A5276')
+        thin = Side(border_style='thin', color='BDC3C7')
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = border
+
+        for col_idx, col_cells in enumerate(ws.columns, start=1):
+            max_len = 0
+            for c in col_cells:
+                if c.value is not None:
+                    L = len(str(c.value))
+                    if L > max_len: max_len = L
+                if c.row > 1:
+                    c.alignment = Alignment(vertical='top', wrap_text=True)
+                    c.border = border
+            ws.column_dimensions[col_cells[0].column_letter].width = min(max(12, max_len + 2), 60)
+        ws.row_dimensions[1].height = 30
+
+        # Feuille Métadonnées : entête simple
+        ws2 = writer.sheets['Métadonnées']
+        for cell in ws2[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill('solid', fgColor='E8EAF0')
+
+    buf.seek(0)
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    return send_file(buf, as_attachment=True,
+                      download_name=f'{fname}_questionnaire.xlsx',
+                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@app.route('/data/reset')
+def reset_data():
+    for key in ['data_path', 'child_path']:
+        path = session.get(key)
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+    session.clear()
+    flash('Données effacées.', 'info')
+    return redirect(url_for('index'))
+
+
+@app.route('/data/raw')
+def raw_data():
+    df = get_dataframe()
+    if df is None:
+        return redirect(url_for('upload'))
+
+    overview   = overview_stats(df)
+    chart_miss = missing_bar_chart(df)
+    chart_heat = missing_heatmap(df)
+    chart_corr = correlation_matrix(df)
+    
+    # Analyse systématique complète
+    sys_analysis = systematic_analysis(df)
+    chart_quality = data_quality_gauge(sys_analysis['quality'])
+    chart_distrib = distributions_chart(df)
+    chart_composition = composition_chart(sys_analysis)
+    
+    # Analyse descriptive avec tableaux et graphiques
+    desc_analysis = descriptive_summary(df)
+
+    # Preview table (first 100 rows, paginated client-side via DataTables)
+    preview_html = df.head(200).to_html(
+        classes='table table-sm table-hover table-bordered mb-0',
+        border=0, index=True, na_rep='—', table_id='rawTable')
+
+    return render_template('raw_data.html',
+                           overview=overview,
+                           preview_html=preview_html,
+                           chart_miss=chart_miss,
+                           chart_heat=chart_heat,
+                           chart_corr=chart_corr,
+                           chart_quality=chart_quality,
+                           chart_distrib=chart_distrib,
+                           chart_composition=chart_composition,
+                           sys_analysis=sys_analysis,
+                           desc_analysis=desc_analysis,
+                           meta=session.get('data_meta', {}))
+
+
+@app.route('/map')
+def map_view():
+    """Carte géographique interactive — points GPS avec infobulles."""
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+
+    import re as _re, ast as _ast
+
+    # ── 1. Parseur GPS ──────────────────────────────────────────────────
+    def _parse_gps(val):
+        """
+        Accepte :
+          "5.18 -4.60 29.0 4.4"   → (5.18, -4.60)
+          "[5.18, -4.60]"          → (5.18, -4.60)
+          "5.18,-4.60"             → (5.18, -4.60)
+        """
+        if not val or (isinstance(val, float) and pd.isna(val)):
+            return None, None
+        s = str(val).strip()
+        # Format KoboToolbox "lat lon alt prec"
+        parts = s.replace(',', ' ').split()
+        if len(parts) >= 2:
+            try:
+                lat, lon = float(parts[0]), float(parts[1])
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return round(lat, 6), round(lon, 6)
+            except ValueError:
+                pass
+        # Format "[lat, lon]"
+        m = _re.search(r'\[?\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\]?', s)
+        if m:
+            try:
+                lat, lon = float(m.group(1)), float(m.group(2))
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return round(lat, 6), round(lon, 6)
+            except ValueError:
+                pass
+        return None, None
+
+    # ── 2. Colonnes GPS candidates (par priorité) ───────────────────────
+    # On accepte deux dispositions :
+    #   (a) colonne unique combinée (Kobo : "_geolocation", "gps"…)
+    #   (b) deux colonnes séparées lat/lon (Excel "à la main")
+    GPS_PRIORITY = ['_geolocation', 'start_gps', 'end_gps',
+                    'gps', 'location', 'position', 'coordonnees']
+    gps_col = None
+    lat_col = None
+    lon_col = None
+
+    for cand in GPS_PRIORITY:
+        if cand in df.columns:
+            gps_col = cand
+            break
+
+    if gps_col is None:
+        # Tentative : colonnes lat / lon séparées.
+        # On accepte que "latitude" / "longitude" apparaissent en fin ou
+        # entourés de [_ ] dans le nom (ex: '_Géolocalisation_latitude').
+        LAT_PATTERNS = [
+            r'(?:^|[_ ])latitude(?:[_ ]|$)',
+            r'(?:^|[_ ])lat(?:[_ ]|$)',
+            r'^_?y$',
+            r'coord[_ ]y',
+        ]
+        LON_PATTERNS = [
+            r'(?:^|[_ ])longitude(?:[_ ]|$)',
+            r'(?:^|[_ ])lon(?:[_ ]|$)',
+            r'(?:^|[_ ])lng(?:[_ ]|$)',
+            r'(?:^|[_ ])long(?:[_ ]|$)',
+            r'^_?x$',
+            r'coord[_ ]x',
+        ]
+        for pat in LAT_PATTERNS:
+            for col in df.columns:
+                if _re.search(pat, col, _re.IGNORECASE):
+                    lat_col = col
+                    break
+            if lat_col:
+                break
+        for pat in LON_PATTERNS:
+            for col in df.columns:
+                if _re.search(pat, col, _re.IGNORECASE) and col != lat_col:
+                    lon_col = col
+                    break
+            if lon_col:
+                break
+
+        # Sinon : nom de colonne avec un mot-clé GPS au sens strict.
+        # Word boundaries pour éviter de matcher "geo" dans "Rougeole".
+        if not (lat_col and lon_col):
+            STRICT_GPS_PAT = _re.compile(
+                r'(?:^|[\s_\-/])(gps|geolocation|geo[_\-]?point|geo[_\-]?code|'
+                r'coord|coordonn[eé]es?|location|position|gps_?point)(?:$|[\s_\-/])',
+                _re.IGNORECASE)
+            for col in df.columns:
+                if STRICT_GPS_PAT.search(col):
+                    gps_col = col
+                    break
+
+        # Dernier recours : détection par les VALEURS — on échantillonne chaque
+        # colonne objet et on garde celle dont le plus de cellules parsent comme GPS.
+        if gps_col is None and not (lat_col and lon_col):
+            best_col, best_hits = None, 0
+            sample = df.head(min(20, len(df)))
+            for col in df.columns:
+                if not (df[col].dtype == object or pd.api.types.is_string_dtype(df[col])):
+                    continue
+                hits = 0
+                for v in sample[col]:
+                    la, lo = _parse_gps(v)
+                    if la is not None and lo is not None:
+                        hits += 1
+                if hits > best_hits and hits >= 2:   # au moins 2 hits pour être convaincant
+                    best_col, best_hits = col, hits
+            if best_col:
+                gps_col = best_col
+
+    # ── 3. Colonnes contexte — détection flexible avec normalisation ────
+    # Normalise pour absorber accents et casse : "Région sanitaire" → "region sanitaire"
+    import unicodedata as _ud
+    def _norm(s):
+        s = str(s)
+        # NFKD décompose les caractères accentués ; on supprime les marques combinantes
+        s = ''.join(c for c in _ud.normalize('NFKD', s) if not _ud.combining(c))
+        return s.lower()
+
+    def _find_col(patterns, cols):
+        """Retourne la 1re colonne dont le nom (normalisé) matche un motif."""
+        normed = [(_norm(c), c) for c in cols]
+        for pat in patterns:
+            rx = _re.compile(pat, _re.IGNORECASE)
+            for n, original in normed:
+                if rx.search(n):
+                    return original
+        return None
+
+    cols = df.columns.tolist()
+    ctx = {
+        # Région : "Région sanitaire", "Nom de la région", "Province", "Region 1"
+        'region':      _find_col([
+            r'region[_\s\-]?sanit',
+            r'\bregion\b',
+            r'\bprovince\b',
+            r'zone[_\s\-]?admin',
+        ], cols),
+        # District : "District sanitaire", "Nom du district", "Département"
+        'district':    _find_col([
+            r'district[_\s\-]?sanit',
+            r'\bdistrict\b',
+            r'\bdepartement\b',
+            r'sous[_\s\-]?(region|prefecture)',
+        ], cols),
+        # Aire de santé : "Aire de santé", "Aire sanitaire", "Secteur", "Localité"
+        'aire':        _find_col([
+            r'aire[_\s\-]?(de[_\s\-]?)?sant',
+            r'aire[_\s\-]?sanit',
+            r'\baire\b',
+            r'\bsecteur\b',
+            r'\blocalite\b',
+            r'\bvillage\b',
+        ], cols),
+        # Superviseur : "Nom du superviseur", "Superviseur de l'enquête"
+        'superviseur': _find_col([
+            r'\bsupervis(eur|euse|ion)?\b',
+            r'supervis',                    # filet de sécurité
+        ], cols),
+        # Enquêteur : "Nom de l'enquêteur", "Agent de collecte", "Collecteur"
+        'enqueteur':   _find_col([
+            r'\benqueteur\b',
+            r'\benquetrice\b',
+            r'agent[_\s\-]?(de[_\s\-]?)?collect',
+            r'\bcollecteur\b',
+            r'\benquet',                    # filet de sécurité
+        ], cols),
+        # Date : "Date de collecte", "Date enquête", "Date interview"
+        'date':        _find_col([
+            r'date[_\s\-]?(de[_\s\-]?)?collect',
+            r'date[_\s\-]?(de[_\s\-]?)?(enquet|interview)',
+            r'^date\b',
+        ], cols),
+        # Zone : "Zone d'habitation", "Zone de résidence", "Milieu", "Urbain/rural"
+        'zone':        _find_col([
+            r'zone[_\s\-]?(d[\'_\s\-])?(habit|resid)',
+            r'zone[_\s\-]?(rural|urbain)',
+            r'\bzone\b',
+            r'\bmilieu\b',
+            r'\burbain\b',
+            r'\brural\b',
+        ], cols),
+    }
+
+    # ── Durée d'enquête — calcul automatique depuis start/end ODK ──────
+    # KoboToolbox stocke l'heure de début/fin dans les colonnes 'start' et 'end'
+    # (questions méta ODK). Si présentes, on calcule la durée réelle d'entretien.
+    start_col = _find_col([r'^start$', r'^heure_debut$', r'^debut$', r'^start_time$'], cols)
+    end_col   = _find_col([r'^end$',   r'^heure_fin$',   r'^fin$',   r'^end_time$'],   cols)
+    # Colonne de durée explicite (si le formulaire la calcule)
+    explicit_dur_col = _find_col(
+        [r'duree_entretien', r'duree_enquete', r'temps_enquete',
+         r'interview_duration', r'survey_duration', r'duree_interview'],
+        cols)
+
+    duration_mode = 'none'   # 'computed', 'explicit', 'none'
+    if start_col and end_col:
+        duration_mode = 'computed'
+    elif explicit_dur_col:
+        duration_mode = 'explicit'
+
+    # ── 4. Construction de geo_data ─────────────────────────────────────
+    geo_data   = []
+    no_gps_cnt = 0
+    out_of_range_cnt = 0
+    parse_fail_cnt = 0
+
+    def _to_float(v):
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return None
+        try:
+            return float(str(v).replace(',', '.').strip())
+        except (ValueError, TypeError):
+            return None
+
+    for idx, row in df.iterrows():
+        lat, lon = None, None
+        if gps_col:
+            lat, lon = _parse_gps(row[gps_col])
+            if lat is None or lon is None:
+                # cellule présente mais format pas reconnu vs cellule vide
+                v = row[gps_col]
+                if v is not None and not (isinstance(v, float) and pd.isna(v)):
+                    parse_fail_cnt += 1
+        elif lat_col and lon_col:
+            la = _to_float(row.get(lat_col))
+            lo = _to_float(row.get(lon_col))
+            if la is not None and lo is not None:
+                if -90 <= la <= 90 and -180 <= lo <= 180:
+                    lat, lon = round(la, 6), round(lo, 6)
+                else:
+                    out_of_range_cnt += 1
+        if lat is None or lon is None:
+            no_gps_cnt += 1
+            continue
+
+        def _v(key):
+            col = ctx.get(key)
+            if col and col in row.index:
+                v = row[col]
+                return str(v) if pd.notna(v) else '—'
+            return '—'
+
+        # ── Calcul de la durée d'enquête ────────────────────────────────
+        if duration_mode == 'computed':
+            try:
+                t_start = pd.to_datetime(row[start_col])
+                t_end   = pd.to_datetime(row[end_col])
+                diff_s  = (t_end - t_start).total_seconds()
+                if diff_s > 0:
+                    mins = int(diff_s // 60)
+                    secs = int(diff_s % 60)
+                    duration_str = f'{mins} min {secs:02d} s' if mins < 60 \
+                                   else f'{mins // 60} h {mins % 60:02d} min'
+                else:
+                    duration_str = '—'
+            except Exception:
+                duration_str = '—'
+        elif duration_mode == 'explicit':
+            v = row.get(explicit_dur_col)
+            duration_str = f'{v} min' if pd.notna(v) else '—'
+        else:
+            duration_str = None   # None = champ absent du formulaire
+
+        geo_data.append({
+            'lat':          lat,
+            'lon':          lon,
+            'region':       _v('region'),
+            'district':     _v('district'),
+            'aire':         _v('aire'),
+            'superviseur':  _v('superviseur'),
+            'enqueteur':    _v('enqueteur'),
+            'date':         _v('date'),
+            'duration':     duration_str,   # None si le form ne le capture pas
+            'zone':         _v('zone'),
+            'idx':          int(idx) + 1,
+        })
+
+    # ── 5. Centre & zoom ────────────────────────────────────────────────
+    if geo_data:
+        lats = [p['lat'] for p in geo_data]
+        lons = [p['lon'] for p in geo_data]
+        center_lat = round(sum(lats) / len(lats), 5)
+        center_lon = round(sum(lons) / len(lons), 5)
+        lat_range  = max(lats) - min(lats)
+        lon_range  = max(lons) - min(lons)
+        spread     = max(lat_range, lon_range)
+        zoom = 14 if spread < 0.01 else 12 if spread < 0.05 else \
+               10 if spread < 0.2  else 8  if spread < 1    else \
+               6  if spread < 5    else 5
+    else:
+        center_lat, center_lon, zoom = 5.35, -4.00, 7
+
+    # ── 6. Stats par région ─────────────────────────────────────────────
+    region_counts = {}
+    for p in geo_data:
+        r = p['region']
+        region_counts[r] = region_counts.get(r, 0) + 1
+
+    # Couleurs par région (palette lisible)
+    PALETTE = ['#2E86C1','#17A589','#E67E22','#8E44AD','#C0392B',
+               '#1A5276','#148F77','#B7770D','#6C3483','#922B21',
+               '#117A65','#A04000','#154360','#7D6608','#4D5656']
+    regions_sorted = sorted(region_counts.keys())
+    region_colors  = {r: PALETTE[i % len(PALETTE)]
+                      for i, r in enumerate(regions_sorted)}
+    for p in geo_data:
+        p['color'] = region_colors.get(p['region'], '#1A5276')
+
+    # Libellés des colonnes détectées (pour le panel d'info)
+    ctx_labels = {k: v for k, v in ctx.items() if v}
+    if duration_mode == 'computed':
+        ctx_labels['durée enquête'] = f'{start_col} → {end_col} (calculée)'
+    elif duration_mode == 'explicit':
+        ctx_labels['durée enquête'] = explicit_dur_col
+
+    # ── Diagnostic : si rien de trouvé, on liste ce qui a été inspecté ──
+    diagnostic = None
+    if not geo_data:
+        sample_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) or df[c].dtype == object][:30]
+        if not gps_col and not (lat_col and lon_col):
+            reason = "Aucune colonne GPS détectée. Renommez une colonne en 'latitude'/'longitude', '_geolocation' ou 'gps'."
+        elif parse_fail_cnt:
+            reason = f"Colonne '{gps_col}' trouvée mais le format des cellules n'est pas reconnu (échec de parsing : {parse_fail_cnt})."
+        elif out_of_range_cnt:
+            reason = f"Coordonnées hors limites : lat ∉ [-90,90] ou lon ∉ [-180,180] ({out_of_range_cnt} ligne(s))."
+        else:
+            reason = "Toutes les cellules GPS sont vides."
+        diagnostic = {
+            'reason': reason,
+            'gps_col': gps_col,
+            'lat_col': lat_col,
+            'lon_col': lon_col,
+            'sample_cols': sample_cols,
+            'parse_fail_cnt': parse_fail_cnt,
+            'out_of_range_cnt': out_of_range_cnt,
+            'no_gps_cnt': no_gps_cnt,
+            'total_rows': int(len(df)),
+        }
+
+    label = gps_col or (f'{lat_col} / {lon_col}' if lat_col and lon_col else '—')
+    return render_template(
+        'map_view.html',
+        geo_data      = geo_data,
+        no_gps_cnt    = no_gps_cnt,
+        center_lat    = center_lat,
+        center_lon    = center_lon,
+        zoom          = zoom,
+        region_counts = region_counts,
+        region_colors = region_colors,
+        ctx_labels    = ctx_labels,
+        gps_col       = label,
+        diagnostic    = diagnostic,
+        duration_mode = duration_mode,
+        meta          = session.get('data_meta', {}),
+        total_pts     = len(geo_data),
+    )
+
+
+@app.route('/dashboard')
+def dashboard():
+    """Tableau de bord synthétique."""
+    df = get_dataframe()
+    if df is None:
+        flash('Veuillez d\'abord importer un fichier.', 'warning')
+        return redirect(url_for('upload'))
+    meta = session.get('data_meta', {})
+    return render_template('dashboard.html', meta=meta)
+
+
+@app.route('/settings')
+def settings():
+    """Page de paramètres."""
+    return render_template('settings.html')
+
+
+# ─── DESCRIPTIVE ──────────────────────────────────────────────────────────────
+
+@app.route('/descriptive', methods=['GET', 'POST'])
+def descriptive():
+    df = get_dataframe()
+    if df is None:
+        return redirect(url_for('upload'))
+    var_types = get_var_types(df)
+    cat_vars  = [v for v, t in var_types.items() if t in ('categorielle',)]
+    num_vars  = [v for v, t in var_types.items() if t == 'continue']
+    bin_groups = detect_binary_groups(df)
+
+    results_cat, results_num, results_bin = [], [], []
+    selected_cat, selected_num, selected_bin_groups = [], [], []
+
+    if request.method == 'POST':
+        selected_cat = request.form.getlist('cat_vars')
+        selected_num = request.form.getlist('num_vars')
+        selected_bin_groups = request.form.getlist('bin_groups')
+        # Persiste les sélections pour les retrouver au prochain GET
+        session['descriptive_form'] = {
+            'cat': selected_cat,
+            'num': selected_num,
+            'bin': selected_bin_groups,
+        }
+    else:
+        saved = session.get('descriptive_form')
+        if saved:
+            selected_cat = saved.get('cat', [])
+            selected_num = saved.get('num', [])
+            selected_bin_groups = saved.get('bin', [])
+
+    # Recalcule à partir des sélections (qu'elles viennent du POST ou de la session)
+    for var in selected_cat:
+        if var in df.columns:
+            r = tris_a_plat(df, var)
+            r['auto_comment'] = auto_comment_categorical(r)
+            r['user_comment'] = _get_user_comment('descriptive_cat', var)
+            results_cat.append(r)
+
+    for var in selected_num:
+        if var in df.columns:
+            r = statistiques_continues(df, var)
+            r['auto_comment'] = auto_comment_continuous(r)
+            r['user_comment'] = _get_user_comment('descriptive_num', var)
+            results_num.append(r)
+
+    for parent in selected_bin_groups:
+        group = next((g for g in bin_groups if g['parent'] == parent), None)
+        if group:
+            r = {'parent': parent, **analyse_binaire_groupe(df, group['vars'])}
+            r['auto_comment'] = auto_comment_binary_group(r)
+            r['user_comment'] = _get_user_comment('descriptive_bin', parent)
+            results_bin.append(r)
+
+    return render_template('descriptive.html',
+                           cat_vars=cat_vars, num_vars=num_vars,
+                           bin_groups=bin_groups,
+                           results_cat=results_cat, results_num=results_num,
+                           results_bin=results_bin,
+                           selected_cat=selected_cat,
+                           selected_num=selected_num,
+                           selected_bin_groups=selected_bin_groups)
+
+
+# ─── CROSSTABS ────────────────────────────────────────────────────────────────
+
+@app.route('/crosstabs', methods=['GET', 'POST'])
+def crosstabs():
+    """Analyse Croisée Dynamique (style tableau croisé dynamique Excel)."""
+    df = get_dataframe()
+    if df is None:
+        return redirect(url_for('upload'))
+    var_types = get_var_types(df)
+    cat_vars = [v for v, t in var_types.items() if t in ('categorielle', 'binaire')]
+    num_vars = [v for v, t in var_types.items() if t == 'continue']
+    all_vars = list(df.columns)
+    result = None
+    rows = []
+    cols = []
+    value_var = None
+    agg = 'count'
+    pct_type = 'none'
+    filters = {}
+
+    if request.method == 'POST':
+        rows = [r for r in request.form.getlist('rows') if r]
+        cols = [c for c in request.form.getlist('cols') if c]
+        value_var = (request.form.get('value_var') or '').strip() or None
+        agg = request.form.get('agg', 'count')
+        pct_type = request.form.get('pct_type', 'none')
+        # Filtres : 'filter_<var>' = liste de valeurs
+        for key in request.form.keys():
+            if key.startswith('filter_'):
+                var = key[len('filter_'):]
+                vals = [v for v in request.form.getlist(key) if v]
+                if vals:
+                    filters[var] = vals
+        session['crosstabs_form'] = {
+            'rows': rows, 'cols': cols, 'value_var': value_var,
+            'agg': agg, 'pct_type': pct_type, 'filters': filters,
+        }
+    else:
+        saved = session.get('crosstabs_form') or {}
+        rows     = [r for r in saved.get('rows', []) if r in df.columns]
+        cols     = [c for c in saved.get('cols', []) if c in df.columns]
+        value_var = saved.get('value_var')
+        agg      = saved.get('agg', 'count')
+        pct_type = saved.get('pct_type', 'none')
+        filters  = saved.get('filters', {}) or {}
+
+    if rows:
+        try:
+            result = tableau_croise_dynamique(
+                df, rows=rows, cols=cols,
+                value_var=value_var, agg=agg,
+                pct_type=pct_type, filters=filters,
+            )
+            # Commentaire automatique seulement si comptage 2D simple
+            if agg == 'count' and len(rows) == 1 and len(cols) == 1:
+                # Construire un objet compatible avec auto_comment_crosstab
+                legacy = {
+                    'row_var': rows[0], 'col_var': cols[0],
+                    'n': result['n'], 'chi2': result['chi2'],
+                    'p_val': result['p_val'], 'dof': result['dof'],
+                    'cramers_v': result['cramers_v'],
+                    'sig_label': result['sig_label'],
+                    'assoc_label': result['assoc_label'],
+                    'pct_label': result['pct_label'] or '% ligne',
+                }
+                try:
+                    result['auto_comment'] = auto_comment_crosstab(legacy)
+                except Exception:
+                    result['auto_comment'] = ''
+            else:
+                result['auto_comment'] = (
+                    f"Tableau croisé dynamique : {agg} sur "
+                    f"{value_var or 'observations'} — "
+                    f"{' × '.join(rows)} vs {' × '.join(cols) if cols else '(aucune colonne)'}"
+                )
+            key = '|'.join(rows) + '||' + '|'.join(cols)
+            result['user_comment'] = _get_user_comment('crosstabs', key)
+        except Exception as e:
+            if request.method == 'POST':
+                flash(f'Erreur : {str(e)}', 'danger')
+
+    # Modalités disponibles pour le panneau de filtres (≤ 30 valeurs)
+    filter_options = {}
+    for v in cat_vars:
+        try:
+            vals = [str(x) for x in df[v].dropna().unique()[:30]]
+            if vals:
+                filter_options[v] = vals
+        except Exception:
+            pass
+
+    return render_template('crosstabs.html',
+                            cat_vars=cat_vars, num_vars=num_vars,
+                            all_vars=all_vars,
+                            filter_options=filter_options,
+                            result=result, rows=rows, cols=cols,
+                            value_var=value_var, agg=agg,
+                            pct_type=pct_type, filters=filters)
+
+
+# ─── MULTI-ENQUÊTE ────────────────────────────────────────────────────────────
+
+def _load_multi_surveys() -> dict:
+    """Charge les enquêtes enregistrées en session sous forme {nom: DataFrame}."""
+    surveys = {}
+    entries = session.get('multi_surveys', []) or []
+    for entry in entries:
+        path = entry.get('path')
+        name = entry.get('name') or os.path.basename(path or '')
+        if path and os.path.exists(path):
+            try:
+                surveys[name] = pd.read_excel(path)
+            except Exception:
+                pass
+    return surveys
+
+
+def _compute_ms_comparison(merged, variable):
+    """Calcule la comparaison d'UNE variable entre enquêtes. Renvoie un dict
+    {kind: 'continuous'|'categorical', ...} ou {error: '...'}."""
+    try:
+        if variable not in merged.columns:
+            return {'variable': variable, 'error': f"Variable '{variable}' absente après alignement."}
+        serie = pd.to_numeric(merged[variable], errors='coerce')
+        ratio_num = serie.notna().mean()
+        if ratio_num > 0.8 and serie.nunique() > 10:
+            r = compare_continuous_by_survey(merged, variable)
+            r['kind'] = 'continuous'
+        else:
+            r = compare_categorical_by_survey(merged, variable)
+            r['kind'] = 'categorical'
+        r['variable'] = variable
+        return r
+    except Exception as e:
+        return {'variable': variable, 'error': str(e)}
+
+
+@app.route('/multi-survey', methods=['GET', 'POST'])
+def multi_survey():
+    """Analyse multi-enquête avec alignement DPF/PHAKTS — comparaisons multiples persistées."""
+    surveys_meta = session.get('multi_surveys', []) or []
+    mode = request.form.get('align_mode') or session.get('ms_mode', 'phakts')
+    compared_vars = list(session.get('ms_compared_vars', []) or [])
+    results = []
+    coverage_html = None
+    merged_meta = None
+    common_vars = []
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        if action == 'upload':
+            files = request.files.getlist('files')
+            added = 0
+            for f in files:
+                if not f or not f.filename or not allowed_file(f.filename):
+                    continue
+                fname = str(uuid.uuid4()) + '_' + secure_filename(f.filename)
+                raw_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_' + fname)
+                f.save(raw_path)
+                try:
+                    df_raw = load_excel(raw_path)
+                    df_clean = clean_kobo_dataframe(df_raw)
+                    cleaned_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_clean_' + fname)
+                    df_clean.to_excel(cleaned_path, index=False, engine='openpyxl')
+                    surveys_meta.append({
+                        'name': f.filename,
+                        'path': cleaned_path,
+                        'n_obs': int(len(df_clean)),
+                        'n_vars': int(df_clean.shape[1]),
+                        'phakts_vars': int(sum(1 for c in df_clean.columns if is_phakts_coded(c))),
+                    })
+                    added += 1
+                except Exception as e:
+                    flash(f"Erreur sur « {f.filename} » : {e}", 'danger')
+                finally:
+                    try: os.remove(raw_path)
+                    except Exception: pass
+            session['multi_surveys'] = surveys_meta
+            if added:
+                flash(f"{added} enquête(s) ajoutée(s) — total : {len(surveys_meta)}", 'success')
+
+        elif action == 'remove':
+            idx = int(request.form.get('idx', '-1'))
+            if 0 <= idx < len(surveys_meta):
+                p = surveys_meta[idx].get('path')
+                try: os.remove(p)
+                except Exception: pass
+                del surveys_meta[idx]
+                session['multi_surveys'] = surveys_meta
+                flash("Enquête retirée.", 'info')
+
+        elif action == 'reset':
+            for entry in surveys_meta:
+                try: os.remove(entry.get('path'))
+                except Exception: pass
+            session['multi_surveys'] = []
+            surveys_meta = []
+            session['ms_compared_vars'] = []
+            compared_vars = []
+            flash("Toutes les enquêtes ont été effacées.", 'info')
+
+        elif action == 'add_compare':
+            # Ajoute une ou plusieurs variables à comparer
+            new_vars = [v for v in request.form.getlist('variables') if v]
+            session['ms_mode'] = mode
+            added = 0
+            for v in new_vars:
+                if v not in compared_vars:
+                    compared_vars.append(v)
+                    added += 1
+            session['ms_compared_vars'] = compared_vars
+            if added:
+                flash(f"{added} variable(s) ajoutée(s) aux comparaisons (total : {len(compared_vars)}).", 'success')
+            elif new_vars:
+                flash("Variable(s) déjà présente(s) dans les comparaisons.", 'info')
+
+        elif action == 'remove_compare':
+            v = request.form.get('variable', '')
+            if v in compared_vars:
+                compared_vars.remove(v)
+                session['ms_compared_vars'] = compared_vars
+                flash(f"« {v} » retirée des comparaisons.", 'info')
+
+        elif action == 'clear_compare':
+            session['ms_compared_vars'] = []
+            compared_vars = []
+            flash("Toutes les comparaisons ont été retirées.", 'info')
+
+        elif action == 'change_mode':
+            session['ms_mode'] = mode
+
+    surveys = _load_multi_surveys()
+
+    if len(surveys) >= 1:
+        try:
+            cov = variable_coverage(surveys, mode=mode)
+            coverage_html = cov.head(80).to_html(
+                classes='table table-sm table-bordered text-center',
+                border=0, na_rep='—')
+        except Exception:
+            pass
+        try:
+            common_vars = common_variables(surveys, mode=mode)
+        except Exception:
+            common_vars = []
+
+        if len(surveys) >= 2 and compared_vars:
+            try:
+                merged = merge_surveys(surveys, mode=mode)
+                merged_meta = {
+                    'n_obs': int(len(merged)),
+                    'n_vars': int(merged.shape[1] - 1),
+                    'n_surveys': len(surveys),
+                }
+                for v in compared_vars:
+                    results.append(_compute_ms_comparison(merged, v))
+            except Exception as e:
+                flash(f"Erreur d'analyse : {e}", 'danger')
+
+    # Variables proposées (union + variables PHAKTS)
+    candidate_vars = []
+    if surveys:
+        all_cols_by_survey = []
+        for df in surveys.values():
+            if mode == 'phakts':
+                all_cols_by_survey.append(set(phakts_radical(c) for c in df.columns))
+            else:
+                all_cols_by_survey.append(set(df.columns))
+        if all_cols_by_survey:
+            union = sorted(set().union(*all_cols_by_survey) - {'__survey__'})
+            candidate_vars = union
+
+    return render_template('multi_survey.html',
+                            surveys_meta=surveys_meta,
+                            mode=mode,
+                            coverage_html=coverage_html,
+                            common_vars=common_vars,
+                            candidate_vars=candidate_vars,
+                            compared_vars=compared_vars,
+                            results=results,
+                            merged_meta=merged_meta)
+
+
+# ─── MULTIVARIATE ─────────────────────────────────────────────────────────────
+
+@app.route('/multivariate', methods=['GET', 'POST'])
+def multivariate():
+    df = get_dataframe()
+    if df is None:
+        return redirect(url_for('upload'))
+    var_types = get_var_types(df)
+    cat_vars = [v for v, t in var_types.items() if t == 'categorielle']
+    num_vars = [v for v, t in var_types.items() if t == 'continue']
+    # Include binary numeric for PCA/clustering
+    bin_vars = [v for v, t in var_types.items() if t == 'binaire']
+    num_vars_all = num_vars + bin_vars
+
+    result = None
+    method = None
+    selected = []
+    n_components = 2
+    n_clusters = 3
+    ca_row = ca_col = None
+
+    if request.method == 'POST':
+        method   = request.form.get('method')
+        selected = request.form.getlist('variables')
+        n_components = int(request.form.get('n_components', 2))
+        n_clusters   = int(request.form.get('n_clusters', 3))
+        ca_row = request.form.get('ca_row')
+        ca_col = request.form.get('ca_col')
+        # Persiste tous les paramètres pour le prochain GET
+        session['multivariate_form'] = {
+            'method': method, 'selected': selected,
+            'n_components': n_components, 'n_clusters': n_clusters,
+            'ca_row': ca_row, 'ca_col': ca_col,
+        }
+    else:
+        saved = session.get('multivariate_form')
+        if saved:
+            method = saved.get('method')
+            selected = saved.get('selected', [])
+            n_components = saved.get('n_components', 2)
+            n_clusters = saved.get('n_clusters', 3)
+            ca_row = saved.get('ca_row')
+            ca_col = saved.get('ca_col')
+
+    # Filtre les variables qui n'existent plus dans le df actuel
+    selected = [v for v in selected if v in df.columns]
+
+    if method:
+        try:
+            if method == 'pca' and len(selected) >= 2:
+                result = run_pca(df, selected, n_components)
+            elif method == 'mca' and len(selected) >= 2:
+                result = run_mca(df, selected, n_components)
+            elif method == 'ca' and ca_row and ca_col and ca_row in df.columns and ca_col in df.columns:
+                result = run_ca(df, ca_row, ca_col)
+            elif method == 'clustering' and len(selected) >= 2:
+                result = run_clustering(df, selected, n_clusters)
+            elif request.method == 'POST':
+                flash('Sélectionnez au moins 2 variables.', 'warning')
+        except Exception as e:
+            if request.method == 'POST':
+                flash(f'Erreur d\'analyse : {str(e)}', 'danger')
+
+    return render_template('multivariate.html',
+                           cat_vars=cat_vars,
+                           num_vars=num_vars_all,
+                           result=result, method=method,
+                           selected_vars=selected,
+                           n_components=n_components,
+                           n_clusters=n_clusters,
+                           ca_row=ca_row, ca_col=ca_col)
+
+
+# ─── REPORT ───────────────────────────────────────────────────────────────────
+
+@app.route('/report', methods=['GET', 'POST'])
+def report():
+    df = get_dataframe()
+    if df is None:
+        return redirect(url_for('upload'))
+    var_types  = get_var_types(df)
+    cat_vars   = [v for v, t in var_types.items() if t == 'categorielle']
+    num_vars   = [v for v, t in var_types.items() if t == 'continue']
+    bin_groups = detect_binary_groups(df)
+
+    if request.method == 'POST':
+        format_type        = request.form.get('report_format', 'pdf')
+        title              = request.form.get('report_title', 'Rapport d\'analyse')
+        author             = request.form.get('report_author', 'Analyste')
+        selected_analyses  = request.form.getlist('analyses')
+        if not selected_analyses:
+            selected_analyses = ['descriptive']
+
+        # Debug: log and show which analyses were selected (helps diagnose missing sections)
+        app.logger.info('Selected analyses from form: %s', selected_analyses)
+        flash(f"Analyses choisies : {', '.join(selected_analyses)}", 'info')
+        selected_cat       = request.form.getlist('cat_vars')
+        selected_num       = request.form.getlist('num_vars')
+        selected_bin_grps  = request.form.getlist('bin_groups')
+        crosstabs_row      = request.form.get('crosstabs_row')
+        crosstabs_col      = request.form.get('crosstabs_col')
+
+        extension = 'pdf' if format_type == 'pdf' else 'docx'
+        report_path = os.path.join(
+            app.config['REPORTS_FOLDER'],
+            f'rapport_{uuid.uuid4().hex[:8]}.{extension}')
+        try:
+            user_comments = session.get('user_comments', {}) or {}
+            # ── Multi-enquête : si demandé, on calcule les comparaisons à partir
+            # des variables du panier (session) et on les passe au générateur.
+            multi_survey_results = []
+            multi_survey_meta = None
+            if 'multi_survey' in selected_analyses:
+                compared = list(session.get('ms_compared_vars', []) or [])
+                surveys  = _load_multi_surveys()
+                if compared and len(surveys) >= 2:
+                    try:
+                        mode = session.get('ms_mode', 'phakts')
+                        merged = merge_surveys(surveys, mode=mode)
+                        multi_survey_meta = {
+                            'n_obs': int(len(merged)),
+                            'n_vars': int(merged.shape[1] - 1),
+                            'n_surveys': len(surveys),
+                            'mode': mode,
+                        }
+                        for v in compared:
+                            multi_survey_results.append(_compute_ms_comparison(merged, v))
+                    except Exception as e:
+                        flash(f"Erreur multi-enquête dans le rapport : {e}", 'warning')
+                elif not compared:
+                    flash("Aucune variable dans le panier multi-enquête — section ignorée.", 'warning')
+                elif len(surveys) < 2:
+                    flash("Moins de 2 enquêtes — section multi-enquête ignorée.", 'warning')
+
+            if format_type == 'pdf':
+                generate_pdf_report(
+                    df, report_path,
+                    title=title, author=author,
+                    selected_analyses=selected_analyses,
+                    cat_vars=selected_cat,
+                    num_vars=selected_num,
+                    bin_groups=[g for g in bin_groups if g['parent'] in selected_bin_grps],
+                    crosstabs_row=crosstabs_row,
+                    crosstabs_col=crosstabs_col,
+                    user_comments=user_comments,
+                    multi_survey_results=multi_survey_results,
+                    multi_survey_meta=multi_survey_meta,
+                )
+            else:  # word
+                generate_word_report(
+                    df, report_path,
+                    title=title, author=author,
+                    selected_analyses=selected_analyses,
+                    cat_vars=selected_cat,
+                    num_vars=selected_num,
+                    bin_groups=[g for g in bin_groups if g['parent'] in selected_bin_grps],
+                    crosstabs_row=crosstabs_row,
+                    crosstabs_col=crosstabs_col,
+                    user_comments=user_comments,
+                    multi_survey_results=multi_survey_results,
+                    multi_survey_meta=multi_survey_meta,
+                )
+            return send_file(report_path, as_attachment=True,
+                             download_name=f'{title.replace(" ","_")}.{extension}')
+        except Exception as e:
+            flash(f'Erreur génération rapport : {str(e)}', 'danger')
+
+    # Pré-remplir le formulaire avec les sélections faites dans les onglets
+    # descriptive / crosstabs (sinon : tout cocher par défaut, comportement précédent).
+    desc_state = session.get('descriptive_form', {})
+    ct_state   = session.get('crosstabs_form', {})
+    default_cat = desc_state.get('cat') if desc_state else cat_vars
+    default_num = desc_state.get('num') if desc_state else num_vars
+    default_bin = desc_state.get('bin') if desc_state else [g['parent'] for g in bin_groups]
+    default_ct_row = ct_state.get('row_var', '') if ct_state else ''
+    default_ct_col = ct_state.get('col_var', '') if ct_state else ''
+
+    return render_template('report.html',
+                           cat_vars=cat_vars, num_vars=num_vars,
+                           bin_groups=bin_groups,
+                           default_cat=default_cat,
+                           default_num=default_num,
+                           default_bin=default_bin,
+                           default_ct_row=default_ct_row,
+                           default_ct_col=default_ct_col,
+                           meta=session.get('data_meta', {}))
+
+
+
+# ─── KOBO CONNECT ─────────────────────────────────────────────────────────────
+
+@app.route('/kobo/connect', methods=['GET', 'POST'])
+def kobo_connect():
+    """Page de connexion KoboToolbox — saisie et validation du token."""
+    if request.method == 'POST':
+        token           = request.form.get('token', '').strip()
+        custom_instance = request.form.get('custom_instance', '').strip()
+        if not token:
+            flash('Veuillez saisir votre token API.', 'warning')
+            return redirect(url_for('kobo_connect'))
+        result = validate_token(token, custom_instance=custom_instance or None)
+        if result['valid']:
+            session['kobo_token']    = token
+            session['kobo_username'] = result.get('username', '')
+            session['kobo_instance'] = result.get('instance', '')
+            flash(
+                f"Connecté en tant que <strong>{result.get('username','—')}</strong> "
+                f"— Instance : <strong>{result.get('instance_label','KoboToolbox')}</strong>.",
+                'success'
+            )
+            return redirect(url_for('kobo_assets'))
+        else:
+            flash(f"Connexion échouée : {result['error']}", 'danger')
+    already = bool(session.get('kobo_token'))
+    return render_template('kobo_connect.html', already=already,
+                           username=session.get('kobo_username', ''),
+                           instance=session.get('kobo_instance', ''))
+
+
+@app.route('/kobo/assets')
+def kobo_assets():
+    """Liste les formulaires disponibles pour le token en session."""
+    token    = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    result = list_assets(token, instance=instance)
+    if not result['success']:
+        flash(f"Impossible de lister les formulaires : {result['error']}", 'danger')
+        return redirect(url_for('kobo_connect'))
+    # Mémoriser l'instance si elle a été détectée
+    if result.get('instance'):
+        session['kobo_instance'] = result['instance']
+    return render_template('kobo_connect.html',
+                           assets=result['assets'],
+                           total=result['total'],
+                           username=session.get('kobo_username', ''),
+                           instance=session.get('kobo_instance', ''),
+                           already=True)
+
+
+@app.route('/kobo/load', methods=['POST'])
+def kobo_load():
+    """
+    Charge les soumissions du formulaire sélectionné depuis KoboToolbox.
+    Sauvegarde le DataFrame en Excel et redirige vers data_preview
+    — même mécanique que le flux upload fichier.
+    """
+    token = session.get('kobo_token')
+    uid   = request.form.get('uid', '').strip()
+    name  = request.form.get('name', 'Formulaire KoboToolbox')
+    if not token:
+        flash('Session expirée. Reconnectez-vous à KoboToolbox.', 'warning')
+        return redirect(url_for('kobo_connect'))
+    if not uid:
+        flash('UID de formulaire manquant.', 'danger')
+        return redirect(url_for('kobo_assets'))
+
+    result = kobo_load_data(token, uid)
+    if not result['success']:
+        flash(f"Erreur de chargement : {result['error']}", 'danger')
+        return redirect(url_for('kobo_assets'))
+
+    df        = result['df']
+    fname     = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+
+    session['data_path']           = save_path
+    session['data_meta']           = summarize_dataframe(df)
+    session['data_meta']['source'] = 'KoboToolbox'
+    session['data_meta']['name']   = name
+    session['kobo_uid']            = uid
+    session['kobo_asset_name']     = name
+    session['original_filename']   = f"{name}.xlsx"
+    session.pop('child_path', None)
+
+    flash(
+        f"<strong>{name}</strong> chargé avec succès — "
+        f"{result['n_obs']} soumissions × {result['n_vars']} variables analysables.",
+        'success'
+    )
+    return redirect(url_for('data_preview'))
+
+
+@app.route('/kobo/refresh')
+def kobo_refresh():
+    """
+    Re-télécharge les dernières soumissions du formulaire en session.
+    Accessible depuis data_preview via le bouton Rafraîchir.
+    """
+    token = session.get('kobo_token')
+    uid   = session.get('kobo_uid')
+    name  = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    if not token or not uid:
+        flash('Aucun formulaire KoboToolbox actif en session.', 'warning')
+        return redirect(url_for('kobo_connect'))
+
+    result = kobo_load_data(token, uid)
+    if not result['success']:
+        flash(f"Erreur de rafraîchissement : {result['error']}", 'danger')
+        return redirect(url_for('data_preview'))
+
+    df = result['df']
+    old_path = session.get('data_path')
+    if old_path and os.path.exists(old_path):
+        try: os.remove(old_path)
+        except Exception: pass
+
+    fname     = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+
+    session['data_path']           = save_path
+    session['data_meta']           = summarize_dataframe(df)
+    session['data_meta']['source'] = 'KoboToolbox'
+    session['data_meta']['name']   = name
+
+    flash(
+        f"Données rafraîchies — {result['n_obs']} soumissions "
+        f"× {result['n_vars']} variables.",
+        'success'
+    )
+    return redirect(url_for('data_preview'))
+
+
+@app.route('/kobo/disconnect')
+def kobo_disconnect():
+    """Efface le token KoboToolbox de la session."""
+    for k in ('kobo_token', 'kobo_username', 'kobo_uid', 'kobo_asset_name', 'kobo_instance'):
+        session.pop(k, None)
+    flash('Déconnecté de KoboToolbox.', 'info')
+    return redirect(url_for('kobo_connect'))
+
+
+# ─── Webhook KoboToolbox (REST Services) ──────────────────────────────────────
+
+@app.route('/webhook/kobo', methods=['GET', 'POST'])
+def kobo_webhook():
+    """
+    Endpoint reçu par KoboToolbox REST Services à chaque nouvelle soumission.
+    GET  → retourne 200 + JSON de confirmation (test de connectivité KoboToolbox).
+    POST → reçoit la soumission JSON, la sauvegarde et recharge le DataFrame en session.
+    """
+    if request.method == 'GET':
+        return jsonify({'status': 'ok', 'service': 'SPAD Analyzer Webhook'}), 200
+
+    payload = request.get_json(silent=True) or request.form.to_dict()
+    if not payload:
+        return jsonify({'status': 'error', 'message': 'Corps vide'}), 400
+
+    # Accumulation des soumissions dans un fichier NDJSON local
+    webhook_dir  = os.path.join(app.config['UPLOAD_FOLDER'], 'webhook')
+    os.makedirs(webhook_dir, exist_ok=True)
+    webhook_file = os.path.join(webhook_dir, 'submissions.jsonl')
+
+    with open(webhook_file, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(payload, ensure_ascii=False) + '\n')
+
+    # Reconstruction du DataFrame et mise à jour de la session
+    try:
+        rows = []
+        with open(webhook_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+        if rows:
+            df_raw   = pd.DataFrame(rows)
+            df_clean = clean_kobo_dataframe(df_raw)
+            fname    = f"webhook_{uuid.uuid4().hex[:8]}.xlsx"
+            fpath    = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+            df_clean.to_excel(fpath, index=False)
+            meta = summarize_dataframe(df_clean)
+            session['data_path']          = fpath
+            session['original_filename']  = 'KoboToolbox (webhook)'
+            session['data_meta']          = meta
+    except Exception as e:
+        app.logger.error(f'Webhook rebuild error: {e}')
+
+    return jsonify({'status': 'ok', 'received': True}), 200
+
+
+# ─── API JSON (AJAX) ──────────────────────────────────────────────────────────
+
+@app.route('/api/kobo/assets')
+def api_kobo_assets():
+    """Endpoint JSON — liste les formulaires (appel AJAX)."""
+    token = session.get('kobo_token')
+    if not token:
+        return jsonify({'success': False, 'error': 'Non connecté.'})
+    return jsonify(list_assets(token))
+
+
+@app.route('/api/kobo/asset_info')
+def api_kobo_asset_info():
+    """Endpoint JSON — info d'un formulaire par UID (appel AJAX)."""
+    token = session.get('kobo_token')
+    uid   = request.args.get('uid', '')
+    if not token or not uid:
+        return jsonify({'success': False, 'error': 'Paramètres manquants.'})
+    return jsonify(get_asset_info(token, uid))
+
+
+@app.route('/kobo/diagnostic', methods=['GET', 'POST'])
+def kobo_diagnostic():
+    """Diagnostic KoboToolbox — teste chaque instance × endpoint."""
+    from modules.kobo_connector import diagnose as kobo_diagnose
+    results = []
+    token   = ''
+    if request.method == 'POST':
+        token = request.form.get('token', '').strip()
+        if token:
+            results = kobo_diagnose(token)
+
+    rows_html = ''
+    global_ok = False
+
+    for inst in results:
+        base      = inst.get('instance', '')
+        reachable = inst.get('reachable', False)
+        username  = inst.get('username', '')
+        label     = '🌍 ONU/WHO/GPEI' if 'humanitarian' in base else '🌐 Publique'
+
+        ep_rows = ''
+        for ep in inst.get('endpoints', []):
+            s  = ep.get('status', '')
+            hc = ep.get('http_code', '—')
+            er = ep.get('error', '')
+            if s == 'ok':
+                icon = '✅'; color = '#17A589'; global_ok = True
+            elif 'invalide' in s:
+                icon = '🔑'; color = '#E67E22'
+            elif s == 'injoignable':
+                icon = '🚫'; color = '#C0392B'
+            elif s == 'ssl_error':
+                icon = '🔒'; color = '#E67E22'
+            elif s == 'timeout':
+                icon = '⏱'; color = '#E67E22'
+            else:
+                icon = '❓'; color = '#85929E'
+
+            ep_rows += f"""
+            <tr>
+              <td style="font-family:monospace;font-size:.78rem">{ep['endpoint']}</td>
+              <td><span style="color:{color};font-weight:700">{icon} {s}</span></td>
+              <td class="text-center"><span class="badge bg-secondary">{hc}</span></td>
+              <td style="font-size:.75rem;color:#C0392B">{er}</td>
+            </tr>"""
+
+        border = '#17A589' if reachable else '#C0392B'
+        rows_html += f"""
+        <div class="card mb-3" style="border-left:4px solid {border}">
+          <div class="card-header d-flex justify-content-between align-items-center"
+               style="background:#F8F9FA">
+            <span style="font-weight:700;color:#1A5276">{label} &nbsp;·&nbsp; {base}</span>
+            {'<span style="color:#17A589;font-weight:700">✅ Connecté — ' + username + '</span>'
+              if username else
+              '<span style="color:#C0392B">✗ Non connecté</span>'}
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+              <thead><tr>
+                <th>Endpoint testé</th><th>Statut</th>
+                <th class="text-center">HTTP</th><th>Détail</th>
+              </tr></thead>
+              <tbody>{ep_rows}</tbody>
+            </table>
+          </div>
+        </div>"""
+
+    # Conseil final
+    conseil = ''
+    if results:
+        if global_ok:
+            conseil = '''<div class="alert alert-success mt-3">
+              ✅ <strong>Connexion opérationnelle.</strong>
+              Retournez à <a href="/kobo/connect">la page de connexion</a>
+              et entrez votre token — il sera accepté.
+            </div>'''
+        else:
+            all_ep_statuses = [
+                ep.get('status','')
+                for inst in results
+                for ep in inst.get('endpoints', [])
+            ]
+            if any('invalide' in s for s in all_ep_statuses):
+                conseil = '''<div class="alert alert-warning mt-3">
+                  🔑 <strong>Token invalide ou expiré.</strong><br>
+                  Régénérez votre clé API : KoboToolbox → Profil →
+                  Paramètres du compte → Sécurité → <strong>Clé API → Régénérer</strong>.
+                </div>'''
+            elif any(s == 'injoignable' for s in all_ep_statuses):
+                conseil = '''<div class="alert alert-danger mt-3">
+                  🚫 <strong>Instances injoignables.</strong><br>
+                  Vérifiez votre connexion internet. Si vous êtes derrière un
+                  proxy ONU/WHO, contactez votre administrateur réseau.
+                </div>'''
+            else:
+                conseil = '''<div class="alert alert-warning mt-3">
+                  ❓ <strong>Résultat inattendu.</strong>
+                  Copiez les détails ci-dessus et partagez-les pour analyse.
+                </div>'''
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr"><head>
+  <meta charset="UTF-8">
+  <title>Diagnostic KoboToolbox</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body {{ background:#F0F4F8; font-family:'Inter',sans-serif; padding:30px }}
+    .card {{ border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.08) }}
+    thead th {{ background:#1A5276; color:#fff; font-size:.75rem;
+               text-transform:uppercase; letter-spacing:.05em }}
+  </style>
+</head><body>
+<div style="max-width:800px;margin:0 auto">
+  <h4 style="color:#1A5276;margin-bottom:4px">🔍 Diagnostic KoboToolbox</h4>
+  <p class="text-muted small mb-4">
+    Teste chaque instance × endpoint pour identifier la cause exacte.
+  </p>
+
+  <div class="card p-4 mb-4">
+    <form method="POST">
+      <label class="form-label fw-bold">Token API</label>
+      <input type="password" name="token" class="form-control mb-3"
+             placeholder="Collez votre token ici…" required
+             style="font-family:monospace;font-size:.85rem"/>
+      <button type="submit" class="btn btn-primary me-2">▶ Lancer le diagnostic</button>
+      <a href="/" class="btn btn-outline-secondary">← Application</a>
+    </form>
+  </div>
+
+  {rows_html}
+  {conseil}
+</div></body></html>"""
+
+    return html
+
+
+# ─── XLSForm IMPORT (V2 — handoff depuis PHAKTS·STUDIO) ──────────────────────
+# Permet à PHAKTS de pousser son XLSForm directement dans SPAD pour
+# prévisualisation de la structure (sans passer par un upload manuel).
+
+@app.after_request
+def _add_cors_for_local(resp):
+    """Autorise les appels iframe-to-other-port en mode embarqué Electron."""
+    origin = request.headers.get('Origin', '')
+    if origin.startswith('http://127.0.0.1:') or origin.startswith('http://localhost:'):
+        resp.headers['Access-Control-Allow-Origin'] = origin
+        resp.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+        resp.headers['Vary'] = 'Origin'
+    return resp
+
+
+@app.route('/api/xlsform-import', methods=['POST', 'OPTIONS'])
+def xlsform_import():
+    """Reçoit un XLSForm .xlsx envoyé par PHAKTS, le stocke et le résume."""
+    if request.method == 'OPTIONS':
+        return ('', 204)
+
+    if 'file' not in request.files:
+        return jsonify({'error': "Aucun fichier 'file' dans la requête."}), 400
+    f = request.files['file']
+    if not f.filename:
+        return jsonify({'error': 'Nom de fichier vide.'}), 400
+
+    fname = secure_filename(f.filename) or 'phakts_xlsform.xlsx'
+    if not fname.lower().endswith('.xlsx'):
+        fname += '.xlsx'
+
+    target_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsforms')
+    os.makedirs(target_dir, exist_ok=True)
+    saved_path = os.path.join(target_dir, fname)
+    f.save(saved_path)
+
+    # Parse the XLSForm pour le récap
+    try:
+        survey = pd.read_excel(saved_path, sheet_name='survey')
+        try:
+            choices = pd.read_excel(saved_path, sheet_name='choices')
+        except Exception:
+            choices = pd.DataFrame()
+        try:
+            settings = pd.read_excel(saved_path, sheet_name='settings')
+        except Exception:
+            settings = pd.DataFrame()
+    except Exception as e:
+        return jsonify({'error': f'XLSForm invalide : {e}'}), 400
+
+    form_title = ''
+    if not settings.empty and 'form_title' in settings.columns:
+        form_title = str(settings.iloc[0].get('form_title', '') or '')
+
+    session['xlsform_path'] = saved_path
+    session['xlsform_title'] = form_title or fname
+
+    return jsonify({
+        'ok': True,
+        'form_title': form_title or fname,
+        'questions': int(len(survey)),
+        'choices': int(len(choices)),
+        'preview_url': url_for('xlsform_preview', _external=False)
+    })
+
+
+@app.route('/api/kobo/deploy-xlsform', methods=['POST'])
+def kobo_deploy_xlsform():
+    """Déploie le XLSForm importé depuis PHAKTS dans le compte KoboToolbox de l'utilisateur."""
+    saved_path = session.get('xlsform_path')
+    if not saved_path or not os.path.exists(saved_path):
+        return jsonify({'success': False, 'error': "Aucun XLSForm à déployer. Importez-le d'abord depuis l'onglet Conception PHAKTS."}), 400
+
+    token = session.get('kobo_token')
+    if not token:
+        return jsonify({'success': False, 'error': "Connectez-vous d'abord à KoboToolbox (onglet Mes formulaires).",
+                        'need_kobo_connect': True}), 401
+
+    name = session.get('xlsform_title') or 'PHAKTS XLSForm'
+    instance = session.get('kobo_instance')
+    custom = session.get('kobo_custom_instance')
+
+    res = deploy_xlsform(token, saved_path, name=name, instance=instance, custom_instance=custom)
+    status = 200 if res.get('success') else 502
+    return jsonify(res), status
+
+
+@app.route('/xlsform/preview')
+def xlsform_preview():
+    """Affiche la structure du XLSForm importé depuis PHAKTS."""
+    saved_path = session.get('xlsform_path')
+    if not saved_path or not os.path.exists(saved_path):
+        return render_template('xlsform_preview.html',
+                               imported=False,
+                               form_title='', survey=[], choices=[])
+
+    survey_df = pd.read_excel(saved_path, sheet_name='survey').fillna('')
+    try:
+        choices_df = pd.read_excel(saved_path, sheet_name='choices').fillna('')
+    except Exception:
+        choices_df = pd.DataFrame()
+
+    return render_template(
+        'xlsform_preview.html',
+        imported=True,
+        form_title=session.get('xlsform_title', ''),
+        survey=survey_df.to_dict(orient='records'),
+        choices=choices_df.to_dict(orient='records'),
+        survey_cols=list(survey_df.columns),
+        choices_cols=list(choices_df.columns) if not choices_df.empty else [],
+    )
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5050)

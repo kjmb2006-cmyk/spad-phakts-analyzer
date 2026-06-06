@@ -1,0 +1,141 @@
+name: Release — Build multi-OS et publier
+
+# Déclencheurs :
+#   - Quand vous poussez un tag de la forme v1.0.0, v1.1.0, etc.
+#   - Manuel via l'onglet Actions (pour tester sans tag)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # nécessaire pour créer la GitHub Release
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════
+  # WINDOWS
+  # ════════════════════════════════════════════════════════════════════════
+  build-windows:
+    name: Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+
+      - name: Préparer python-embed-win
+        shell: pwsh
+        run: |
+          $V = "3.11.9"
+          Invoke-WebRequest "https://www.python.org/ftp/python/$V/python-$V-embed-amd64.zip" -OutFile py.zip
+          Expand-Archive py.zip -DestinationPath python-embed-win
+          $pth = Get-ChildItem python-embed-win\python*._pth | Select-Object -First 1
+          (Get-Content $pth.FullName) -replace '#import site','import site' | Set-Content $pth.FullName
+          Invoke-WebRequest "https://bootstrap.pypa.io/get-pip.py" -OutFile python-embed-win\get-pip.py
+          .\python-embed-win\python.exe python-embed-win\get-pip.py --no-warn-script-location
+          .\python-embed-win\python.exe -m pip install --no-warn-script-location -r analyzer\requirements.txt
+          if (Test-Path python-embed) { Move-Item python-embed python-embed-mac } else { New-Item -ItemType Directory -Path python-embed-mac }
+
+      - run: npm ci
+      - name: Construire installeur Windows
+        env:
+          ELECTRON_CACHE: ${{ github.workspace }}\.cache\electron
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
+        run: npm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-windows
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.blockmap
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════
+  # macOS (Universal — Intel + Apple Silicon)
+  # ════════════════════════════════════════════════════════════════════════
+  build-macos:
+    name: macOS (.dmg)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+
+      - name: Préparer python-embed-mac (via Homebrew)
+        run: |
+          # Sur runner GitHub Mac, Python est déjà installé — on copie une distribution
+          # autoportée minimum dans python-embed-mac.
+          PY=$(which python3.11 || which python3)
+          PY_PREFIX=$($PY -c 'import sys, os; print(sys.prefix)')
+          mkdir -p python-embed-mac/bin python-embed-mac/lib
+          cp -R "$PY_PREFIX/bin/python3"* python-embed-mac/bin/ 2>/dev/null || true
+          cp -R "$PY_PREFIX/lib/python"* python-embed-mac/lib/ 2>/dev/null || true
+          # Installer les requirements dans cette distribution
+          $PY -m pip install --target python-embed-mac/lib/python-site -r analyzer/requirements.txt
+          # Placeholder pour la cible win
+          mkdir -p python-embed-win
+
+      - run: npm ci
+      - name: Construire DMG macOS
+        env:
+          ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+        run: npm run dist:mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-macos
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.blockmap
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════
+  # PUBLIER LA RELEASE GITHUB (uniquement sur tag)
+  # ════════════════════════════════════════════════════════════════════════
+  publish-release:
+    name: Publier la release GitHub
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Lister les artefacts téléchargés
+        run: |
+          echo "Contenu de artifacts/ :"
+          find artifacts -type f | sort
+
+      - name: Créer la release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SPAD PHAKTS Analyzer ${{ github.ref_name }}
+          body: |
+            ## SPAD PHAKTS Analyzer ${{ github.ref_name }}
+
+            Codification de santé publique, générateur XLSForm KoboToolbox et analyse statistique SPAD.
+
+            **Auteur :** Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO)
+
+            ### Téléchargements
+
+            - **Windows** : `SPAD PHAKTS Analyzer Setup *.exe` (installeur NSIS)
+            - **macOS** : `SPAD PHAKTS Analyzer-*.dmg` (Intel + Apple Silicon)
+
+            ### Installation Windows
+            Double-cliquez sur l'installeur. À la première ouverture, Windows
+            SmartScreen peut afficher un avertissement (clé non signée). Cliquez
+            sur « Informations complémentaires » puis « Exécuter quand même ».
+
+            ### Installation macOS
+            Ouvrez le DMG, glissez l'application dans Applications. À la première
+            ouverture : clic droit → Ouvrir → Ouvrir quand même.
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+          draft: false
+          prerelease: false

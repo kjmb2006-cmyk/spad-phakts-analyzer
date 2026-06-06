@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/mac/Desktop/SPAD-PHAKTS-Analyzer 2>/dev/null && echo \"EXISTS\" || echo \"DOES NOT EXIST — safe to create\")",
+      "Bash(rm -rf '/Users/mac/Desktop/SPAD-PHAKTS-Analyzer/public/PHAKTS STUDIO.app')",
+      "Bash(rm -f /Users/mac/Desktop/SPAD-PHAKTS-Analyzer/public/PHAKTS·STUDIO.html.bak)",
+      "Bash(rm -f /Users/mac/Desktop/SPAD-PHAKTS-Analyzer/public/.Rhistory)",
+      "Bash(rsync -a --exclude=venv --exclude=__pycache__ '--exclude=*.pyc' --exclude=.DS_Store '/Users/mac/Desktop/dossier sans titre/spad_analyzer copie/' /Users/mac/Desktop/SPAD-PHAKTS-Analyzer/analyzer/)"
+    ]
+  }
+}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Importer les données — SPAD Analyzer{% endblock %}
+{% block page_title %}Importer les données{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom py-3">
+          <h5 class="mb-0"><i class="bi bi-upload me-2 text-primary"></i>Importer un fichier Excel</h5>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            <!-- Drop zone -->
+            <div class="drop-zone" id="dropZone">
+              <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" class="d-none" required>
+              <div id="dropContent">
+                <i class="bi bi-file-earmark-excel display-4 text-success mb-3"></i>
+                <h5 class="mb-1">Glissez-déposez votre fichier ici</h5>
+                <p class="text-muted mb-3">ou cliquez pour sélectionner</p>
+                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                  <i class="bi bi-folder2-open me-2"></i>Parcourir…
+                </button>
+                <p class="text-muted small mt-3 mb-0">Formats acceptés : .xlsx, .xls &nbsp;|&nbsp; Taille max : 50 Mo</p>
+              </div>
+              <div id="filePreview" class="d-none">
+                <i class="bi bi-file-earmark-check-fill display-4 text-success mb-2"></i>
+                <h5 id="fileName" class="mb-1 text-success"></h5>
+                <p id="fileSize" class="text-muted small"></p>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="resetFile()">
+                  <i class="bi bi-x-circle me-1"></i>Changer de fichier
+                </button>
+              </div>
+            </div>
+
+            <!-- Options -->
+            <div class="mt-4">
+              <h6 class="text-muted text-uppercase small fw-semibold mb-3">Options d'import</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-medium">Feuille Excel</label>
+                  <select name="sheet" class="form-select form-select-sm">
+                    <option value="0">Première feuille (par défaut)</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-medium">Encodage</label>
+                  <select name="encoding" class="form-select form-select-sm">
+                    <option value="utf-8">UTF-8</option>
+                    <option value="latin-1">Latin-1</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                <span class="spinner-border spinner-border-sm d-none me-2" id="spinner"></span>
+                <i class="bi bi-cloud-upload-fill me-2" id="uploadIcon"></i>
+                <span id="submitText">Charger les données</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="card border-0 bg-info-subtle mt-4">
+        <div class="card-body">
+          <h6 class="text-info-emphasis mb-2"><i class="bi bi-info-circle-fill me-2"></i>Format attendu</h6>
+          <ul class="small mb-0 text-info-emphasis">
+            <li>La <strong>première ligne</strong> doit contenir les noms de variables</li>
+            <li>Chaque ligne correspond à une <strong>observation</strong> (individu enquêté)</li>
+            <li>Les variables catégorielles doivent contenir des <strong>chaînes de caractères</strong> ou des codes</li>
+            <li>Les valeurs manquantes peuvent être laissées <strong>vides</strong></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const submitBtn = document.getElementById('submitBtn');
+
+['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, ev => {
+  ev.preventDefault(); dropZone.classList.add('drag-over');
+}));
+['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => {
+  ev.preventDefault(); dropZone.classList.remove('drag-over');
+}));
+dropZone.addEventListener('drop', ev => {
+  const files = ev.dataTransfer.files;
+  if (files.length) { fileInput.files = files; handleFile(files[0]); }
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  const valid = file.name.match(/\.(xlsx|xls)$/i);
+  if (!valid) { alert('Format non supporté. Utilisez .xlsx ou .xls'); return; }
+  document.getElementById('dropContent').classList.add('d-none');
+  document.getElementById('filePreview').classList.remove('d-none');
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' Mo';
+  submitBtn.disabled = false;
+}
+function resetFile() {
+  fileInput.value = '';
+  document.getElementById('dropContent').classList.remove('d-none');
+  document.getElementById('filePreview').classList.add('d-none');
+  submitBtn.disabled = true;
+}
+document.getElementById('uploadForm').addEventListener('submit', () => {
+  document.getElementById('spinner').classList.remove('d-none');
+  document.getElementById('uploadIcon').classList.add('d-none');
+  document.getElementById('submitText').textContent = 'Chargement en cours…';
+  submitBtn.disabled = true;
+});
+</script>
+{% endblock %}
