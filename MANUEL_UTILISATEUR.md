@@ -2,7 +2,7 @@
 
 **Version 1.0 — 2026**
 **Auteur :** Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO)
-**Équipe SPAD :** Dr Wognin V., Dr M'Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah
+**Équipe SPAD :** Dr Wognin V., Dr M'Bra V. D. P., Dr KORANDJI J. M. B., Mlle Dieng S., Mme Aman A. Sarah
 
 ---
 
@@ -706,6 +706,7 @@ SPAD (WHO) — Bureau régional Afrique
 
 - Dr Wognin Venance
 - Dr M'Bra Vincent De Paul
+- Dr KORANDJI Jean-Marc Bertrand
 - Mlle Dieng Soraya
 - Mme Aman A. Sarah
 
