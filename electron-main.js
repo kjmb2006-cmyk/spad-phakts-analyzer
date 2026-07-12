@@ -126,15 +126,34 @@ function startNodeServer() {
 let flaskProcess = null;
 
 function resolvePythonBin() {
-  // Packaged mode: bundled python-embed
+  const isWin = process.platform === "win32";
+
+  // 1. Explicit override via PYTHON_BIN in .env (works packaged + dev)
+  const envBin = process.env.PYTHON_BIN;
+  if (envBin && fs.existsSync(envBin)) return envBin;
+
+  // 2. Packaged mode: try bundled python-embed
   if (IS_PACKAGED) {
-    const isWin = process.platform === "win32";
-    return isWin
+    const embeddedPy = isWin
       ? path.join(RES_ROOT, "python", "python.exe")
       : path.join(RES_ROOT, "python", "bin", "python3");
+    if (fs.existsSync(embeddedPy)) return embeddedPy;
+
+    // 3. Fallback: common macOS/Linux Python locations
+    const fallbacks = isWin ? [] : [
+      "/opt/homebrew/bin/python3.12",
+      "/usr/local/bin/python3.12",
+      "/opt/homebrew/bin/python3",
+      "/usr/local/bin/python3",
+      "/usr/bin/python3",
+    ];
+    for (const p of fallbacks) {
+      if (fs.existsSync(p)) return p;
+    }
+    return "python3";
   }
+
   // Dev mode: prefer the venv inside analyzer/, then fall back to system python3
-  const isWin = process.platform === "win32";
   const venvPython = isWin
     ? path.join(ANALYZER_DIR, "venv", "Scripts", "python.exe")
     : path.join(ANALYZER_DIR, "venv", "bin", "python3");
@@ -171,13 +190,12 @@ function startFlaskServer() {
         },
       });
 
-      flaskProcess.stdout.on("data", (d) => process.stdout.write(`[Flask] ${d}`));
-      flaskProcess.stderr.on("data", (d) => process.stderr.write(`[Flask] ${d}`));
-      flaskProcess.on("error", (err) => reject(err));
+      // Route Flask output through console so it appears in main-process.log
+      flaskProcess.stdout.on("data", (d) => console.log(`[Flask] ${d.toString().trimEnd()}`));
+      flaskProcess.stderr.on("data", (d) => console.error(`[Flask:err] ${d.toString().trimEnd()}`));
+      flaskProcess.on("error", (err) => { console.error(`[Flask] spawn error: ${err.message}`); reject(err); });
       flaskProcess.on("exit", (code, signal) => {
-        if (code !== 0 && code !== null) {
-          console.error(`[Flask] exited with code ${code} (signal ${signal})`);
-        }
+        console.error(`[Flask] exited — code=${code} signal=${signal}`);
       });
 
       waitForHttp(`http://127.0.0.1:${flaskPort}/`, 30000)
@@ -265,13 +283,36 @@ app.whenReady().then(async () => {
     app.quit();
   }
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  app.on("activate", async () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      // Flask may have been killed between sessions; restart it if needed
+      const flaskDead = !flaskProcess || flaskProcess.killed || flaskProcess.exitCode !== null;
+      if (flaskDead) {
+        console.log("[main] activate: Flask is not running — restarting…");
+        try {
+          const f = await startFlaskServer();
+          console.log(`[main] activate: Flask restarted on :${f}`);
+        } catch (err) {
+          console.error(`[main] activate: Flask restart failed: ${err.message}`);
+          dialog.showErrorBox(
+            "SPAD PHAKTS Analyzer — Erreur Flask",
+            `Impossible de redémarrer l'analyseur SPAD :\n\n${err.message}`
+          );
+          return;
+        }
+      }
+      createWindow();
+    }
   });
 });
 
 app.on("before-quit", () => { stopFlaskServer(); });
 app.on("window-all-closed", () => {
-  stopFlaskServer();
-  if (process.platform !== "darwin") app.quit();
+  // On macOS keep Flask alive — the app stays in the Dock and the user
+  // may reopen the window via activate; killing Flask here causes
+  // ERR_CONNECTION_REFUSED when the window reopens.
+  if (process.platform !== "darwin") {
+    stopFlaskServer();
+    app.quit();
+  }
 });
