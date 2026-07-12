@@ -1272,6 +1272,31 @@
         </table>
       </div>
 
+      <!-- ═══ J. EXTENSIONS DE GRAMMAIRE (personnalisation) ═══ -->
+      <div class="grammar-card" id="dpfCardRules" style="border:1px solid #818cf844">
+        <h3>J. Extensions de Grammaire
+          <button class="btn-icon btn-edit" style="margin-left:8px;vertical-align:middle" onclick="addDpfRule()" title="Ajouter un type ou une règle personnalisée">＋</button>
+        </h3>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
+          Ajoutez ici vos <strong>types PHAKTS personnalisés</strong>, des règles spécifiques
+          à votre domaine ou des contraintes supplémentaires. Ces extensions sont automatiquement
+          injectées dans le prompt de l'<strong>Agent IA</strong> et exportées avec le DPF.
+        </p>
+        <table class="grammar-table">
+          <thead><tr>
+            <th style="width:22%">Type / Code</th>
+            <th style="width:36%">Description</th>
+            <th style="width:34%">Exemple</th>
+            <th style="width:8%;text-align:center">Actions</th>
+          </tr></thead>
+          <tbody id="dpfRulesBody">
+            <tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">
+              Aucune extension pour le moment — cliquez ＋ pour en ajouter.
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- ═══ I. CODIFICATIONS APPRISES PAR L'AGENT IA (DPF dynamique) ═══ -->
       <div class="grammar-card" id="dpfCardLearned" style="border:1px solid #22c55e44">
         <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1325,7 +1350,7 @@
 
 <!-- ── FOOTER ── -->
 <footer>
-  <span>Copyright © 2026 Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO) · PHAKTS · STUDIO · v2026 · EQUIPE SPAD · Dr Wognin V., Dr M’Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah</span>
+  <span>Copyright © 2026 Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO) · PHAKTS · STUDIO · v2026 · EQUIPE SPAD · Dr Wognin V., Dr M’Bra V. D. P., Dr KORANDJI J. M. B., Mlle Dieng S., Mme Aman A. Sarah</span>
   <span>Public Health Assessment & Knowledge Taxonomy & Grammar</span>
 </footer>
 
@@ -1941,7 +1966,7 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name === 'analyse') ensureSpadLoaded();
   if (name === 'agent') ensureAgentInit();
-  if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} }
+  if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} }
 }
 function switchTabById(name) {
   const tabs = document.querySelectorAll('.tab');
@@ -2830,6 +2855,17 @@ function syncDpfToGrammar() {
     }
   });
 
+  if (dpfCustomRules && dpfCustomRules.length > 0) {
+    section += '\nEXTENSIONS DE GRAMMAIRE PERSONNALIS\u00c9ES (Section J):\n';
+    dpfCustomRules.forEach(r => {
+      if (r.code || r.description) {
+        section += '- ' + (r.code || '') + ' \u2192 ' + (r.description || '');
+        if (r.exemple) section += ' | Exemple: ' + r.exemple;
+        section += '\n';
+      }
+    });
+  }
+
   const startTag = '\nLISTES PR\u00c9D\u00c9FINIES (DPF):';
   const endTag = '\nINSTRUCTIONS:';
   const existingStart = SYSTEM.indexOf(startTag);
@@ -2850,6 +2886,98 @@ function resetDpfListes() {
   persistDpfListes();
   syncDpfToGrammar();
   showStatus('Listes DPF r\u00e9initialis\u00e9es \u2014 grammaire synchronis\u00e9e.', 'success');
+}
+
+// ─── DPF Extensions de Grammaire (Section J) — CRUD ─────────────────────────
+let dpfCustomRules = [];
+let dpfRulesEditingIdx = -1;
+
+function initDpfRules() {
+  try {
+    const saved = localStorage.getItem('phakts_dpf_rules');
+    dpfCustomRules = saved ? JSON.parse(saved) : [];
+  } catch (_) { dpfCustomRules = []; }
+  renderDpfRules();
+}
+
+function persistDpfRules() {
+  try { localStorage.setItem('phakts_dpf_rules', JSON.stringify(dpfCustomRules)); } catch (_) {}
+}
+
+function renderDpfRules() {
+  const tbody = document.getElementById('dpfRulesBody');
+  if (!tbody) return;
+  if (dpfCustomRules.length === 0) {
+    tbody.innerHTML = '<tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">Aucune extension pour le moment — cliquez ＋ pour en ajouter.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = dpfCustomRules.map((r, i) => {
+    if (dpfRulesEditingIdx === i) {
+      return `<tr style="background:var(--bg2)">
+        <td><input id="dpfRC_${i}" value="${esc(r.code||'')}" placeholder="Ex: __2P" style="width:100%;padding:4px 6px;font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td><input id="dpfRD_${i}" value="${esc(r.description||'')}" placeholder="Description courte" style="width:100%;padding:4px 6px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td><input id="dpfRE_${i}" value="${esc(r.exemple||'')}" placeholder="Ex: Score_Douleur__2P!0<R<100" style="width:100%;padding:4px 6px;font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td style="text-align:center;white-space:nowrap">
+          <button class="btn-icon btn-edit" onclick="saveDpfRule(${i})" title="Enregistrer">✓</button>
+          <button class="btn-icon btn-reset" onclick="cancelDpfRule()" title="Annuler">✕</button>
+        </td></tr>`;
+    }
+    return `<tr>
+      <td class="gc">${esc(r.code||'—')}</td>
+      <td class="gd">${esc(r.description||'')}</td>
+      <td class="gm">${esc(r.exemple||'')}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-icon btn-edit" onclick="editDpfRule(${i})" title="Modifier">✎</button>
+        <button class="btn-icon btn-reset" onclick="removeDpfRule(${i})" title="Supprimer">✕</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function addDpfRule() {
+  dpfCustomRules.push({ code: '', description: '', exemple: '' });
+  dpfRulesEditingIdx = dpfCustomRules.length - 1;
+  renderDpfRules();
+  const el = document.getElementById(`dpfRC_${dpfRulesEditingIdx}`);
+  if (el) el.focus();
+}
+
+function editDpfRule(idx) {
+  dpfRulesEditingIdx = idx;
+  renderDpfRules();
+  const el = document.getElementById(`dpfRC_${idx}`);
+  if (el) el.focus();
+}
+
+function saveDpfRule(idx) {
+  const code = (document.getElementById(`dpfRC_${idx}`)?.value || '').trim();
+  const desc = (document.getElementById(`dpfRD_${idx}`)?.value || '').trim();
+  const ex   = (document.getElementById(`dpfRE_${idx}`)?.value || '').trim();
+  if (!code && !desc) { removeDpfRule(idx); return; }
+  dpfCustomRules[idx] = { code, description: desc, exemple: ex };
+  dpfRulesEditingIdx = -1;
+  persistDpfRules();
+  renderDpfRules();
+  syncDpfToGrammar();
+  showStatus('Extension de grammaire enregistrée — Agent IA mis à jour.', 'success');
+}
+
+function cancelDpfRule() {
+  const r = dpfCustomRules[dpfRulesEditingIdx];
+  if (dpfRulesEditingIdx >= 0 && r && !r.code && !r.description) {
+    dpfCustomRules.splice(dpfRulesEditingIdx, 1);
+  }
+  dpfRulesEditingIdx = -1;
+  renderDpfRules();
+}
+
+function removeDpfRule(idx) {
+  if (!confirm('Supprimer cette extension de grammaire ?')) return;
+  dpfCustomRules.splice(idx, 1);
+  if (dpfRulesEditingIdx >= idx) dpfRulesEditingIdx = -1;
+  persistDpfRules();
+  renderDpfRules();
+  syncDpfToGrammar();
+  showStatus('Extension supprimée — grammaire mise à jour.', 'info');
 }
 
 async function downloadDPF() {
@@ -2911,6 +3039,15 @@ async function downloadDPF() {
     { header: 'Identifiant', key: 'identifiant', width: 30 },
     { header: 'Valeurs', key: 'valeurs', width: 70 }
   ]);
+
+  // ── Sheet J: Extensions de Grammaire (dynamique) ──
+  if (dpfCustomRules && dpfCustomRules.length > 0) {
+    addObjectWorksheet(workbook, 'J_Extensions_Grammaire', dpfCustomRules.map(r => ({ code: r.code, description: r.description, exemple: r.exemple })), [
+      { header: 'Type / Code', key: 'code', width: 22 },
+      { header: 'Description', key: 'description', width: 45 },
+      { header: 'Exemple', key: 'exemple', width: 50 }
+    ]);
+  }
 
   // ── Sheet 5: Skip Logic ──
   const skipData = [
@@ -4099,6 +4236,7 @@ window.addEventListener('DOMContentLoaded', () => {
   syncLearnedFromServer();
   loadPersistedResults();
   initDpfListes();
+  initDpfRules();
 });
 
 // ─── Cmd+Shift+R → réinitialiser résultats ───────────────────────────────────
