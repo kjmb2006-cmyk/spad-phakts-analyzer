@@ -1081,7 +1081,7 @@
   <!-- ════════════ GRAMMAR PANEL ════════════ -->
   <div id="panelGrammar" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-      <label class="section-label">▸ Dictionnaire des Propriétés Fonctionnelles <span>PHAKTS · STUDIO · v2026 · EQUIPE · SPAD · Dr Korandji J.-M. B., Dr Wognin V., Dr M’Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah / WHO</span></label>
+      <label class="section-label">▸ Dictionnaire des Propriétés Fonctionnelles <span>PHAKTS · STUDIO · v2026 · Grammaire v2025.10.22-ext2 · EQUIPE SPAD · Dr Korandji J.-M. B., Dr Wognin V., Dr M’Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah / WHO</span></label>
       <button class="btn-cyan" onclick="downloadDPF()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Télécharger DPF
@@ -1096,6 +1096,7 @@
           <thead><tr><th style="width:28%">Code</th><th>Description</th></tr></thead>
           <tbody>
             <tr><td class="gc">__B!boolean</td><td class="gd">Question booléenne → <strong>Oui</strong> | <strong>Non</strong></td></tr>
+            <tr><td class="gc">__C!trilean</td><td class="gd">Triléen → <strong>Oui</strong> | <strong>Non</strong> | <strong>Autre</strong> (3 états : 1/0/2) <em>Règle 11 ext.</em></td></tr>
             <tr><td class="gc">__X!1*1Liste_</td><td class="gd">Choix unique (select_one) — séparateur virgule <code>,</code></td></tr>
             <tr><td class="gc">__X!1*Liste_</td><td class="gd">Choix multiples (select_multiple) — séparateur pipe <code>|</code></td></tr>
             <tr><td class="gc">__SRC!1*Source_</td><td class="gd">Source d'information (choix multiple)</td></tr>
@@ -1123,6 +1124,13 @@
             <tr><td class="gc">__2T</td><td class="gd">Réel en °C</td><td class="gm">Temperature__2T!35&lt;R&lt;42</td></tr>
             <tr><td class="gc">__2L</td><td class="gd">Réel en mètres</td><td class="gm">Taille__2L!0&lt;R&lt;3</td></tr>
             <tr><td class="gc">__2S</td><td class="gd">Réel en secondes</td><td class="gm">Reflex_Time__2S</td></tr>
+            <tr><td class="gc">__1Q</td><td class="gd">Entier en Trimestres (Q=Quarter) <em>Règle 20</em></td><td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td></tr>
+            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
+            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
+            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
+            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
+            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em></td><td class="gm">ID_Etablissement__E</td></tr>
+            <tr><td class="gc">__G__X!DMS</td><td class="gd">Géolocalisation geopoint · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G__X!DMS</td></tr>
           </tbody>
         </table>
       </div>
@@ -1270,6 +1278,68 @@
             <tr><td class="gc">pf_skip</td><td class="gd">Champ optionnel — vide si pas de branchement</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- ═══ K. EXTENSIONS OFFICIELLES PHAKTS v2025.10.22-ext2 (Règles 15–20) ═══ -->
+      <div class="grammar-card" style="border:1px solid #f59e0b44">
+        <h3>K. Extensions Officielles PHAKTS <span style="font-size:11px;font-weight:400;color:var(--text3)">v2025.10.22-ext2 · Règles 15–20</span></h3>
+        <table class="grammar-table">
+          <thead><tr><th style="width:8%">Règle</th><th style="width:24%">Syntaxe</th><th style="width:30%">Signification</th><th>Exemple</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="gc">14 ext.</td>
+              <td class="gc">n&lt;=TYPE&lt;=n</td>
+              <td class="gd">Borne inclusive (crochet fermé [0,31])</td>
+              <td class="gm">0&lt;=N&lt;=31</td>
+            </tr>
+            <tr>
+              <td class="gc">14 ext.</td>
+              <td class="gc">date&lt;A&lt;date</td>
+              <td class="gd">Plage calendaire sur xType A (Date)</td>
+              <td class="gm">2000/01/01&lt;A&lt;2026/12/31</td>
+            </tr>
+            <tr>
+              <td class="gc">15</td>
+              <td class="gc">&lt;AAAA&gt;__Expression</td>
+              <td class="gd">Préfixe temporel absolu (série chronologique)</td>
+              <td class="gm">2025__AS__Population__1!0&lt;N&lt;1000000</td>
+            </tr>
+            <tr>
+              <td class="gc">16</td>
+              <td class="gc">Admin_Radical_</td>
+              <td class="gd">Référentiel administratif externe (Dictionnaire Genesis / pulldata XLSForm)</td>
+              <td class="gm">Admin_District_Sanitaire_, Admin_Region_Sanitaire_</td>
+            </tr>
+            <tr>
+              <td class="gc">17</td>
+              <td class="gc">Lexia = val -&gt; @Lexia</td>
+              <td class="gd">Skip Logic — afficher cible si source = valeur</td>
+              <td class="gm">PCIME_Offert__B = Oui -&gt; @PCIME_Activites__B</td>
+            </tr>
+            <tr>
+              <td class="gc">18</td>
+              <td class="gc">_Rad__1Mot__2Mot__M2!liste&gt;T1|T2</td>
+              <td class="gd">Champ composite répété (matrice 2 colonnes) — XLSForm begin_repeat</td>
+              <td class="gm">_Service__PCIME__1Activite__2Cout__M2!PCIME_Activite_&gt;Expression|Number</td>
+            </tr>
+            <tr>
+              <td class="gc">19</td>
+              <td class="gc">Expr__G__X!DMS</td>
+              <td class="gd">Géolocalisation geopoint (<code>!DMS</code> = degrés-min-sec / <code>!DD</code> = degrés décimaux)</td>
+              <td class="gm">Etablissement__Coordonnees__G__X!DMS</td>
+            </tr>
+            <tr>
+              <td class="gc">20</td>
+              <td class="gc">__1Q</td>
+              <td class="gd">Période Trimestre (Q = Quarter)</td>
+              <td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size:10.5px;color:var(--text3);margin-top:10px;line-height:1.5">
+          Source : <em>PHAKTS_v2025.10.22-ext2_Consolide_VF.docx</em> &amp; <em>PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx</em>
+          · Statut : <strong>Confirmé</strong> (règles 14–17, 20) · <strong>Formalisé</strong> (règles 16, 18, 19)
+        </p>
       </div>
 
       <!-- ═══ J. EXTENSIONS DE GRAMMAIRE (personnalisation) ═══ -->
@@ -2987,35 +3057,45 @@ async function downloadDPF() {
 
   // ── Sheet 1: Types de Questions ──
   const typesData = [
-    { code: '__B!boolean', description: 'Question booléenne \u2192 Oui | Non' },
-    { code: '__X!1*1Liste_', description: 'Choix unique (select_one)' },
-    { code: '__X!1*Liste_', description: 'Choix multiples (select_multiple)' },
-    { code: '__SRC!1*Source_', description: "Source d'information (choix multiple)" },
-    { code: '__Z!1*Expression', description: 'Texte libre (free text)' },
-    { code: '__A!YYYY/MM/DD', description: 'Date au format ISO' },
+    { code: '__B!boolean', description: 'Question booléenne → Oui | Non', statut: 'Confirmé' },
+    { code: '__C!trilean', description: 'Triléen → Oui | Non | Autre (3 états 1/0/2)', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__X!1*1Liste_', description: 'Choix unique (select_one) — séparateur virgule', statut: 'Confirmé' },
+    { code: '__X!1*Liste_', description: 'Choix multiples (select_multiple) — séparateur pipe', statut: 'Confirmé' },
+    { code: '__SRC!1*Source_', description: "Source d'information (choix multiple)", statut: 'Confirmé' },
+    { code: '__Z!1*Expression', description: 'Texte libre (free text)', statut: 'Confirmé' },
+    { code: '__E', description: 'Identifiant externe alphanum. (DHIS2, Kobo, code unique)', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__A!YYYY/MM/DD', description: 'Date ISO 8601 ; range: 2000/01/01<A<2026/12/31', statut: 'Confirmé — Règle 14 ext.' },
+    { code: '__G__X!DMS', description: 'Géolocalisation geopoint (!DMS ou !DD)', statut: 'Confirmé — Règle 19' },
   ];
   const numData = [
-    { code: '__1', type: 'Entier générique', exemple: 'Score__1' },
-    { code: '__1Y!Y', type: 'Entier en Années', exemple: 'Age__1Y!0<N<120' },
-    { code: '__1M!M', type: 'Entier en Mois', exemple: 'Grossesse__1M!0<N<24' },
-    { code: '__1W!W', type: 'Entier en Semaines', exemple: 'Age_Gestationnel__1W!0<N<42' },
-    { code: '__1D', type: 'Entier en Jours', exemple: 'Duree_Hospitalisation__1D' },
-    { code: '__1H', type: 'Entier en Heures', exemple: 'Duree_Care__1H' },
-    { code: '__1U', type: 'Entier en Minutes', exemple: 'Monitoring_Time__1U' },
-    { code: '__2', type: 'Réel pur', exemple: 'BMI__2' },
-    { code: '__2K', type: 'Réel en Kg', exemple: 'Poids__2K!0<R<300' },
-    { code: '__2T', type: 'Réel en °C', exemple: 'Temperature__2T!35<R<42' },
-    { code: '__2L', type: 'Réel en mètres', exemple: 'Taille__2L!0<R<3' },
-    { code: '__2S', type: 'Réel en secondes', exemple: 'Reflex_Time__2S' },
+    { code: '__1', type: 'Entier générique', exemple: 'Score__1', statut: 'Confirmé' },
+    { code: '__1Y!Y', type: 'Entier en Années', exemple: 'Age__1Y!0<N<120', statut: 'Confirmé' },
+    { code: '__1M!M', type: 'Entier en Mois', exemple: 'Grossesse__1M!0<N<24', statut: 'Confirmé' },
+    { code: '__1W!W', type: 'Entier en Semaines', exemple: 'Age_Gestationnel__1W!0<N<42', statut: 'Confirmé' },
+    { code: '__1D', type: 'Entier en Jours', exemple: 'Duree_Hospitalisation__1D', statut: 'Confirmé' },
+    { code: '__1H', type: 'Entier en Heures', exemple: 'Duree_Care__1H', statut: 'Confirmé' },
+    { code: '__1U', type: 'Entier en Minutes', exemple: 'Monitoring_Time__1U', statut: 'Confirmé' },
+    { code: '__1Q', type: 'Entier en Trimestres (Q=Quarter)', exemple: '2025__CPN1__1Q!0<N<5', statut: 'Confirmé — Règle 20' },
+    { code: '__2', type: 'Réel pur', exemple: 'BMI__2', statut: 'Confirmé' },
+    { code: '__2K', type: 'Réel en Kg', exemple: 'Poids__2K!0<R<300', statut: 'Confirmé' },
+    { code: '__2T', type: 'Réel en °C', exemple: 'Temperature__2T!35<R<42', statut: 'Confirmé' },
+    { code: '__2L', type: 'Réel en mètres', exemple: 'Taille__2L!0<R<3', statut: 'Confirmé' },
+    { code: '__2S', type: 'Réel en secondes', exemple: 'Reflex_Time__2S', statut: 'Confirmé' },
+    { code: '__2P', type: 'Réel en % / Proportion', exemple: 'Couverture_Vaccinale__2P!0<R<100', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__2V', type: 'Réel en Volume (mL/L)', exemple: 'Dose_Vaccin__2V!0<R<10', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__2F', type: 'Réel — Monnaie/Montant (XOF…)', exemple: 'Cout_Consultation__2F!0<R<100000', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__2I', type: 'Réel — Indice/Score composite', exemple: 'Score_DEA__2I', statut: 'Confirmé — Règle 11 ext.' },
   ];
   addObjectWorksheet(workbook, 'A_Types_Questions', typesData, [
     { header: 'Code', key: 'code', width: 25 },
-    { header: 'Description', key: 'description', width: 50 }
+    { header: 'Description', key: 'description', width: 50 },
+    { header: 'Statut', key: 'statut', width: 30 }
   ]);
   addObjectWorksheet(workbook, 'B_Types_Numeriques', numData, [
     { header: 'Code', key: 'code', width: 18 },
-    { header: 'Type', key: 'type', width: 30 },
-    { header: 'Exemple', key: 'exemple', width: 40 }
+    { header: 'Type', key: 'type', width: 35 },
+    { header: 'Exemple', key: 'exemple', width: 40 },
+    { header: 'Statut', key: 'statut', width: 30 }
   ]);
 
   // ── Sheet 3: Conventions Syntaxiques ──
@@ -3087,13 +3167,14 @@ let SYSTEM = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PH
 
 RÈGLES DE CODIFICATION PHAKTS:
 
-A. TYPES BOOLÉEN & DATE:
-1.  __B               → Booléen (Oui / Non). Cas spécial Trilean: 3 états (Oui=1, Non=0, Autre=2)
-2.  __A!YYYY/MM/DD    → Date formatée ISO 8601
+A. TYPES BOOLÉEN, TRILÉEN & DATE:
+1.  __B!boolean       → Booléen (Oui / Non) — questions fermées Oui/Non uniquement
+2.  __C!trilean       → Triléen : 3 états (Oui=1, Non=0, Autre=2) — ex. Trilean_=[Oui,Non,Ne_Sait_Pas] [Règle 11 ext.]
+3.  __A!YYYY/MM/DD    → Date formatée ISO 8601 ; plage calendaire : 2000/01/01<A<2026/12/31 [Règle 14 ext.]
 
 B. TYPES CHOIX (MULTIPLE CHOICES):
-3.  __X!1*1Liste_     → Choix UNIQUE (select_one)   → Liste_=[Opt1,Opt2,0]
-4.  __X!1*Liste_      → Choix MULTIPLES              → Liste_=[Opt1|Opt2|0]
+4.  __X!1*1Liste_     → Choix UNIQUE (select_one)   → Liste_=[Opt1,Opt2,0]
+5.  __X!1*Liste_      → Choix MULTIPLES              → Liste_=[Opt1|Opt2|0]
     SÉPARATEURS DANS LES LISTES:
     - Virgule ','  → choix EXCLUSIFS (radio/select_one) : Sport__X![Football,Natation]
     - Pipe '|'     → choix CUMULABLES (checkbox/select_multiple) : Sport__X![Football|Course|Natation]
@@ -3102,39 +3183,70 @@ B. TYPES CHOIX (MULTIPLE CHOICES):
     - *3  = minimum 3 choix requis
     - *   = aucune limite de sélection
 
-C. TYPES TEXTE LIBRE:
-5.  __Z               → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
+C. TYPES TEXTE LIBRE & IDENTIFIANT:
+6.  __Z!1*Expression  → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
+7.  __E               → Identifiant externe alphanumérique fixe (ID DHIS2, ID Kobo, code unique) [Règle 11 ext.]
 
 D. TYPES NUMÉRIQUES ENTIERS (__1):
-6.  __1               → Entier pur (sans unité) : Score__1, Nb_Contacts__1
-7.  __1Y              → Entier + Années (Y=Year) : Age__1Y!0<N<120
-8.  __1M              → Entier + Mois (M=Month) : Age__1M!0<N<24
-9.  __1W              → Entier + Semaines (W=Week) : Age_Gestationnel__1W!0<N<42
-10. __1D              → Entier + Jours (D=Day) : Duree_Hospitalisation__1D
-11. __1H              → Entier + Heures (H=Hour) : Duree_Care__1H
-12. __1U              → Entier + Minutes (U=mUnute) : Monitoring_Time__1U
+8.  __1               → Entier pur (sans unité) : Score__1, Nb_Contacts__1
+9.  __1Y              → Entier + Années (Y=Year) : Age__1Y!0<N<120
+10. __1M              → Entier + Mois (M=Month) : Grossesse__1M!0<N<24
+11. __1W              → Entier + Semaines (W=Week) : Age_Gestationnel__1W!0<N<42
+12. __1D              → Entier + Jours (D=Day) : Duree_Hospitalisation__1D
+13. __1H              → Entier + Heures (H=Hour) : Duree_Care__1H
+14. __1U              → Entier + Minutes (U=mUnute) : Monitoring_Time__1U
+15. __1Q              → Entier + Trimestres (Q=Quarter) [Règle 20] : 2025__CPN1__1Q!0<N<5
 
 E. TYPES NUMÉRIQUES RÉELS (__2):
-13. __2               → Réel pur (sans unité) : BMI__2, BP_Systolic__2!50<R<250
-14. __2K              → Réel + Kilogrammes (K=Kg) : Poids__2K!0<R<300
-15. __2T              → Réel + Température (T=°C) : Temperature_Corporelle__2T!35<R<42
-16. __2L              → Réel + Longueur en mètres (L=Length) : Taille__2L!0<R<3
-17. __2S              → Réel + Secondes (S=Second) : Reflex_Time__2S
+16. __2               → Réel pur (sans unité) : BMI__2, BP_Systolic__2!50<R<250
+17. __2K              → Réel + Kilogrammes (K=Kg) : Poids__2K!0<R<300
+18. __2T              → Réel + Température (T=°C) : Temperature_Corporelle__2T!35<R<42
+19. __2L              → Réel + Longueur en mètres (L=Length) : Taille__2L!0<R<3
+20. __2S              → Réel + Secondes (S=Second) : Reflex_Time__2S
+21. __2P              → Réel + Proportion/Pourcentage (0–100) [Règle 11 ext.] : Couverture_Vaccinale__2P!0<R<100
+22. __2V              → Réel + Volume (mL ou L, préciser en contrainte) [Règle 11 ext.] : Dose_Vaccin__2V!0<R<10
+23. __2F              → Réel + Monnaie/Montant financier (devise en contrainte) [Règle 11 ext.] : Cout_Consultation__2F!0<R<100000
+24. __2I              → Réel + Indice/Score composite signé (z-score, indice DEA) [Règle 11 ext.] : Score_DEA__2I
 
 F. SOURCE D'INFORMATION:
-18. __SRC!1*Source_   → Source d'information (choix multiple)
+25. __SRC!1*Source_   → Source d'information (choix multiple)
+
+G. TYPE GÉOGRAPHIQUE:
+26. __G__X!DMS        → Géolocalisation geopoint — format !DMS (degrés-min-sec) ou !DD (degrés décimaux) [Règle 19]
+    Exemple : Etablissement__Coordonnees__G__X!DMS
 
 CONTRAINTES DE PLAGE (après !):
-- N = type entier, R = type réel décimal
-- Syntaxe: borne_inf<TYPE<borne_sup (bornes exclusives par défaut)
-- Exemples: 0<N<120 (âge), 0<R<300 (poids kg), 35<R<42 (température °C), 50<R<250 (pression artérielle)
+- N = type entier, R = type réel décimal, A = date
+- Bornes EXCLUSIVES par défaut : borne_inf<TYPE<borne_sup  →  ]0, 120[
+- Bornes INCLUSIVES (Règle 14 ext.) : borne_inf<=TYPE<=borne_sup  →  [0, 31]
+- Exemples: 0<N<120 (âge), 0<R<300 (poids kg), 35<R<42 (température °C), 0<R<100 (pourcentage)
+- Range calendaire (Règle 14 ext.) : 2000/01/01<A<2026/12/31
 
 RÈGLES STRICTES DE FORMAT:
 - Booléen: TOUJOURS écrire __B!boolean (jamais __B seul). pf_modalites DOIT être "Oui | Non" (jamais "boolean")
+- Triléen: écrire __C!trilean, pf_modalites = "Oui | Non | Autre" (ou "Oui | Non | Ne_Sait_Pas")
 - Entier temporel SANS contexte clinique précis: utiliser le raccourci lettre → __1Y!Y, __1M!M, __1W!W, __1D!D
 - Entier temporel AVEC contexte clinique précis: utiliser la plage numérique → __1Y!0<N<80, __1W!0<N<42
-- Réel: TOUJOURS utiliser la plage numérique → __2K!0<R<300, __2T!35<R<42
+- Réel: TOUJOURS utiliser la plage numérique → __2K!0<R<300, __2T!35<R<42, __2P!0<R<100
 - Texte libre: TOUJOURS écrire __Z!1*Expression (jamais __Z seul)
+- Identifiant externe: utiliser __E (pas __Z) pour les codes ID DHIS2, Kobo, etc.
+- Géolocalisation: utiliser __G__X!DMS ou __G__X!DD (jamais __Z pour les coordonnées GPS)
+- Série chronologique: préfixer par l'année → 2025__Expression__type (Règle 15)
+- Référentiel admin. externe: Admin_Radical_ (jamais de liste inline pour les unités admin.) (Règle 16)
+- Bornes inclusives: utiliser <= pour inclure les bornes → 0<=N<=10 (Règle 14 ext.)
+- Trimestre: utiliser __1Q pour les données trimestrielles (Règle 20)
+- Caractères accentués: INTERDITS dans les noms codifiés → translittérer (Coordonnees, Region, Determine)
+
+EXTENSIONS PHAKTS v2025.10.22 (Règles 15–20):
+- Règle 15 — Préfixe année: <AAAA>__<expression>  →  2025__AS__Population__1!0<N<1000000
+- Règle 16 — Référentiels admin.: Admin_<Radical>_  →  Admin_District_Sanitaire_, Admin_Region_Sanitaire_
+  ⚠ Ces listes pointent vers un référentiel externe (Dictionnaire Genesis) via pulldata/select_one_external en XLSForm, jamais en dur.
+- Règle 17 — Skip Logic: <lexia> = <valeur> -> @<lexia>  →  PCIME_Offert__B = Oui -> @PCIME_Activites__B
+- Règle 18 — Champ composite répété (matrice M2): _<Radical>__1<Mot>__2<Mot>__M2!<liste>><Type1>|<Type2>
+  →  _Service__PCIME__1Activite__2Cout__M2!PCIME_Activite_>Expression|Number
+  (XLSForm = begin_repeat à 2 colonnes ; M2 et non L2 pour éviter collision avec xType Longueur)
+- Règle 19 — Géolocalisation: <Expr>__G__X!DMS ou !DD  →  Etablissement__Coordonnees__G__X!DMS
+- Règle 20 — Trimestre Q: Period Q ajouté  →  2025__CPN1__1Q!0<N<5
 
 RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le type):
 - "Âge / Age" → TOUJOURS entier __1Y!0<N<120 ou __1Y!Y, JAMAIS __Z!1*Expression. Le mot "âge" implique systématiquement un entier en années.
@@ -3148,6 +3260,15 @@ RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le ty
 - "À quel moment / Quand / À quelle période" → __X!1*1Liste_ (select_one) ou __Z!1*Expression si non structurable, JAMAIS __B!boolean
 - "Quels sont les antécédents / issues / résultats" → __X!1*Liste_ (select_multiple) si les options sont structurables, sinon __Z!1*Expression
 - __B!boolean = RÉSERVÉ UNIQUEMENT aux questions fermées OUI/NON ("Avez-vous...?", "Êtes-vous...?", "Est-ce que...?", "Consommez-vous...?")
+- __C!trilean = pour les questions à 3 états (Oui/Non/Autre, Oui/Non/Ne_Sait_Pas, Oui/Non/En_cours) — JAMAIS __B
+- __2P = pour tout POURCENTAGE ou TAUX (couverture, prévalence, proportion) — JAMAIS __2 seul ni __1
+- __2V = pour les VOLUMES de liquide (doses, capacités) — préciser l'unité dans la contrainte
+- __2F = pour les MONTANTS FINANCIERS (coûts, tarifs, budgets) — préciser la devise dans la contrainte
+- __2I = pour les INDICES et SCORES composites (z-scores, indices nutritionnels, DEA) — peut être négatif
+- __E = pour les IDENTIFIANTS EXTERNES fixes (codes DHIS2, numéros Kobo, codes établissements) — JAMAIS __Z
+- __G__X!DMS = pour les COORDONNÉES GPS — JAMAIS __Z ni __X standard
+- __1Q = pour les DONNÉES TRIMESTRIELLES — préférer __1Q à __1M/4 ou __1 avec note
+- "Oui / Non / Ne sait pas" → TOUJOURS __C!trilean, JAMAIS __B!boolean ni __X
 - IGNORER les préfixes "Selon vous", "Si oui", "D'après vous" — ils ne changent PAS le type. Analyser le MOT-CLÉ principal: quel/quels/combien/comment/pourquoi/où
 - Si la question attend un NOMBRE en réponse → __1 (entier) ou __2 (réel), JAMAIS __B!boolean
 - Si la question attend un CHOIX parmi une liste → __X, JAMAIS __B!boolean
@@ -3163,16 +3284,22 @@ CONVENTIONS SYNTAXIQUES:
 - '_' compose les mots d'un radical (Snake_Case) : Collecte_Routine, Statut_Matrimonial
 - '__' (double underscore) sépare les parties : Radical__Déterminant__Affix
 - '!' introduit la contrainte : Age__1Y!0<N<120
+- '<=' borne inclusive (Règle 14 ext.) : 0<=N<=31
 - '0' préfixe la négation / option Autre/Aucun
+- '->' opérateur de Skip Logic : Lexia = Valeur -> @Cible
+- '@' ancre la question cible dans le Skip Logic
+- 'Admin_' préfixe de référentiel administratif externe (Règle 16)
+- '<AAAA>__' préfixe temporel absolu pour séries chronologiques (Règle 15)
+- '_Radical__1Mot__2Mot__M2' champ composite répété (Règle 18)
 - Identifiant de liste (ex: Statut_Matrimonial_) = vocabulaire contrôlé réutilisable
-- Radicaux ABSTRAITS et GÉNÉRIQUES (pas de déterminant dans le radical)
+- Radicaux ABSTRAITS et GÉNÉRIQUES — jamais d'accents, jamais copie de la phrase
 
 MÉTHODE DE CODAGE EN 5 ÉTAPES:
 1. Partir de la question terrain
-2. Identifier le sens métier central (radical abstrait)
-3. Choisir le type de réponse (B, A, X, Z, 1, 2)
-4. Ajouter période/unité utile (Y, M, W, D, H, U, S, K, T, L)
-5. Poser la contrainte de qualité (!plage ou !liste)
+2. Identifier le sens métier central (radical abstrait, sans accents)
+3. Choisir le type de réponse (B, C, A, X, Z, E, G, 1, 2)
+4. Ajouter période/unité utile (Y, M, W, D, H, U, S, Q, K, T, L, P, V, F, I)
+5. Poser la contrainte de qualité (!plage, !<=bornes, !liste, !DMS/DD)
 
 EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Quel est votre âge ?"                          → Age__1Y!0<N<120

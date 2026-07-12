@@ -1,4 +1,4 @@
-const CACHE_NAME = 'phakts-studio-v35';
+const CACHE_NAME = 'phakts-studio-v36';
 const APP_SHELL = [
   './PHAKTS\u00b7STUDIO.html',
   './manifest.webmanifest',
