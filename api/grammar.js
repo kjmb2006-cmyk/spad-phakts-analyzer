@@ -296,7 +296,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE:
 IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est détecté. Sinon, il contient la Skip Rule complète.
 ⛔ RAPPEL CRITIQUE: Dans 90% des cas, pf_skip sera "". N'invente JAMAIS de condition de saut. Seuls les mots-clés explicites dans le libellé ("si oui", "si non", "en cas de", "lorsque") autorisent un pf_skip non vide.`;
 
-const PHAKTS_MODEL = process.env.PHAKTS_MODEL || "claude-sonnet-4-20250514";
+const PHAKTS_MODEL = process.env.PHAKTS_MODEL || "claude-sonnet-5";
 const PHAKTS_MAX_TOKENS = 16384;
 
 module.exports = { PHAKTS_SYSTEM_PROMPT, PHAKTS_MODEL, PHAKTS_MAX_TOKENS };
