@@ -480,6 +480,10 @@
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
   /* ── Grammar reference panel ── */
   .grammar-grid {
@@ -1634,50 +1638,123 @@ function resetAgentChat() {
   }
 }
 
+/* ── Utilitaires agent ───────────────────────────────────── */
+function _esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _md(text) {
+  return _esc(text)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code style="font-family:var(--mono);background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;color:var(--accent2)">$1</code>')
+    .replace(/\n/g,'<br>');
+}
+function _stripJson(text) {
+  return (text||'')
+    .replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g,'')
+    .replace(/\{[^{}]*"items"\s*:\s*\[[\s\S]*?\]\s*\}/g,'')
+    .replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function _codifCard(item, idx) {
+  const code      = (item.pf_question||'').trim();
+  const libelle   = (item.libelle||'').trim();
+  const modalites = (item.pf_modalites||'').trim();
+  const skip      = (item.pf_skip||'').trim();
+
+  /* chips modalités */
+  const chips = modalites
+    ? modalites.split(/[,|]/).map(m=>m.trim()).filter(Boolean)
+        .map(m=>`<span style="display:inline-block;background:#0c2240;border:1px solid #1e4976;border-radius:4px;padding:1px 8px;font-size:10.5px;color:#93c5fd;margin:2px 3px 2px 0">${_esc(m)}</span>`).join('')
+    : '';
+
+  /* skip badge */
+  const skipBadge = skip
+    ? `<div style="margin-top:7px;padding:4px 9px;background:#160f00;border:1px solid #78350f55;border-radius:5px;font-size:10.5px;font-family:var(--mono);color:#fcd34d">
+         <span style="opacity:.55;margin-right:5px">⤳ Skip</span>${_esc(skip)}</div>`
+    : '';
+
+  /* safe JSON pour onclick */
+  const itemJson = JSON.stringify([item]).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+  const card = document.createElement('div');
+  card.style.cssText=`background:#050e1c;border:1px solid #1e3a5f;border-left:3px solid #38bdf8;border-radius:10px;padding:12px 14px;animation:fadeSlideUp .18s ease both;animation-delay:${idx*0.06}s`;
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+      <div style="font-size:12px;color:#cbd5e1;line-height:1.45;flex:1">${_esc(libelle)}</div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <button title="Copier le code PHAKTS"
+          onclick="navigator.clipboard.writeText('${code.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1200)})"
+          style="background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;color:#7dd3fc;transition:background .15s"
+          onmouseover="this.style.background='#0f2040'" onmouseout="this.style.background='#0a1628'">📋</button>
+        <button title="Ajouter aux Résultats"
+          onclick="agentImportToResults(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify([item]))}')))"
+          style="background:#071a10;border:1px solid #166534;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:11px;color:#4ade80;font-weight:600;transition:background .15s"
+          onmouseover="this.style.background='#0a2818'" onmouseout="this.style.background='#071a10'">+ Résultats</button>
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:13.5px;font-weight:700;color:#38bdf8;background:#020c18;border:1px solid #1e3a5f;border-radius:6px;padding:7px 11px;letter-spacing:.03em;word-break:break-all">${_esc(code)}</div>
+    ${chips?`<div style="margin-top:8px;line-height:1.9">${chips}</div>`:''}
+    ${skipBadge}
+  `;
+  return card;
+}
+
 function addAgentMessage(role, content, items, saved) {
   const chat = document.getElementById('agentChat');
   if (!chat) return;
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-bottom: 14px;';
+  wrap.style.cssText = 'margin-bottom:16px';
   const isUser = role === 'user';
-  const bubble = document.createElement('div');
-  bubble.style.cssText = `
-    max-width: 88%;
-    padding: 11px 16px;
-    border-radius: 12px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    ${isUser
-      ? 'margin-left: auto; background: linear-gradient(135deg, #1d4ed8, #2563eb); color: #fff;'
-      : 'background: var(--bg2); border: 1px solid var(--border); color: var(--text);'}
-  `;
-  // Très simple markdown : **bold**, `code`
-  const html = String(content || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code style="font-family:var(--mono);background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;color:var(--accent2)">$1</code>')
-    .replace(/```(?:json)?\n?([\s\S]*?)\n?```/g,
-      '<pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:6px;font-size:11.5px;color:#86efac;overflow-x:auto;font-family:var(--mono)">$1</pre>');
-  bubble.innerHTML = '<div style="font-size:10px;opacity:0.65;margin-bottom:5px;font-family:var(--mono);letter-spacing:0.06em">'
-    + (isUser ? 'VOUS' : '🤖 AGENT PHAKTS')
-    + '</div>' + html;
 
+  /* ── Bulle utilisateur ── */
+  if (isUser) {
+    const b = document.createElement('div');
+    b.style.cssText='max-width:88%;margin-left:auto;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;white-space:pre-wrap;word-wrap:break-word';
+    b.innerHTML='<div style="font-size:10px;opacity:.65;margin-bottom:5px;font-family:var(--mono);letter-spacing:.06em">VOUS</div>'+_esc(content);
+    wrap.appendChild(b);
+    chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight; return;
+  }
+
+  /* ── Bulle agent ── */
+  const bubble = document.createElement('div');
+  bubble.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;color:var(--text)';
+
+  /* label agent */
+  const lbl = document.createElement('div');
+  lbl.style.cssText='font-size:10px;opacity:.6;padding:10px 14px 0;font-family:var(--mono);letter-spacing:.06em';
+  lbl.textContent='🤖 AGENT PHAKTS';
+  bubble.appendChild(lbl);
+
+  /* prose (JSON retiré) */
+  const prose = _stripJson(content);
+  if (prose) {
+    const p = document.createElement('div');
+    p.style.cssText='padding:8px 14px 12px;white-space:pre-wrap;word-wrap:break-word;line-height:1.65;font-size:13.5px';
+    p.innerHTML = _md(prose);
+    bubble.appendChild(p);
+  }
   wrap.appendChild(bubble);
 
-  // Bandeau d'items extraits + boutons d'action
-  if (!isUser && Array.isArray(items) && items.length) {
-    const meta = document.createElement('div');
-    meta.style.cssText = 'margin-top:8px;padding:10px 14px;background:#0a1a14;border:1px solid #22c55e44;border-radius:10px;font-size:12px;color:#86efac';
-    const savedLine = saved ? `<span style="color:#22c55e;font-weight:700">✓ ${saved} sauvegardée(s) dans le DPF</span>` : '';
-    meta.innerHTML = `
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <strong>📦 ${items.length} codification(s) extraite(s)</strong>
-        ${savedLine}
-        <span style="flex:1"></span>
-        <button class="btn-add" style="padding:5px 12px;font-size:11px" onclick='agentImportToResults(${JSON.stringify(items).replace(/'/g,"&#39;")})'>↪ Insérer dans Résultats</button>
-      </div>
-    `;
-    wrap.appendChild(meta);
+  /* ── Cartes de codification ── */
+  if (Array.isArray(items) && items.length) {
+    const deck = document.createElement('div');
+    deck.style.cssText='margin-top:8px;display:flex;flex-direction:column;gap:6px';
+    items.forEach((it,i) => deck.appendChild(_codifCard(it, i)));
+    wrap.appendChild(deck);
+
+    /* barre d'action globale */
+    const bar = document.createElement('div');
+    bar.style.cssText='margin-top:6px;padding:9px 14px;background:#081a10;border:1px solid #22c55e33;border-radius:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+    const allJson = encodeURIComponent(JSON.stringify(items));
+    bar.innerHTML=`
+      <span style="font-size:12px;color:#86efac;font-weight:600">📦 ${items.length} codification${items.length>1?'s':''} générée${items.length>1?'s':''}</span>
+      ${saved?`<span style="font-size:11px;color:#4ade80;font-weight:700">✓ ${saved} sauvegardée${saved>1?'s':''} dans le DPF</span>`:''}
+      <span style="flex:1"></span>
+      <button class="btn-add" style="padding:5px 14px;font-size:11px"
+        onclick="agentImportToResults(JSON.parse(decodeURIComponent('${allJson}')))">
+        ↪ Insérer tout dans Résultats
+      </button>`;
+    wrap.appendChild(bar);
   }
 
   chat.appendChild(wrap);

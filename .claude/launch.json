@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "SPAD PHAKTS Analyzer",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["api/server.js"],
+      "port": 8080
+    }
+  ]
+}
