@@ -746,7 +746,7 @@ app.post("/api/extract-and-codify", async (req, res) => {
     }
 
     // Parse JSON from Claude response
-    let raw = (message.content?.[0]?.text || "").trim();
+    let raw = (message.content?.find(b => b.type === 'text')?.text || "").trim();
     
     // Remove markdown code blocks if present
     raw = raw.replace(/```json\n?|\n?```/g, "").trim();
@@ -870,7 +870,7 @@ app.post("/api/codify", async (req, res) => {
     }
 
     // ── Parse JSON from Claude response
-    let raw = (message.content?.[0]?.text || "").trim();
+    let raw = (message.content?.find(b => b.type === 'text')?.text || "").trim();
     
     // Remove markdown code blocks if present
     raw = raw.replace(/```json\n?|\n?```/g, "").trim();
@@ -1014,7 +1014,7 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
       }
     }
 
-    const reply = (message.content?.[0]?.text || "").trim();
+    const reply = (message.content?.find(b => b.type === 'text')?.text || "").trim();
 
     // Tente d'extraire un bloc JSON `{"items":[...]}`
     let items = [];
@@ -1140,7 +1140,7 @@ app.post("/api/codify-and-convert", async (req, res) => {
       ],
     });
 
-    const raw = (message.content?.[0]?.text || "").replace(/```json|```/g, "").trim();
+    const raw = (message.content?.find(b => b.type === 'text')?.text || "").replace(/```json|```/g, "").trim();
     let parsed;
     try {
       parsed = JSON.parse(raw);
