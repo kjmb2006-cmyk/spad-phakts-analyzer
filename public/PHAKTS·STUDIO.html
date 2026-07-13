@@ -792,6 +792,7 @@
   <button class="tab" onclick="switchTab('editor', this)">✎ Éditeur</button>
   <button class="tab" onclick="switchTab('upload', this)">⬆ Uploads</button>
   <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ Résultats <span id="resultsCount" style="display:none"></span></button>
+  <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 Questionnaire Codifié</button>
   <button class="tab" onclick="switchTab('agent', this)">🤖 Agent IA PHAKTS</button>
   <button class="tab" onclick="switchTab('grammar', this)">⊘ Dictionnaire des Propriétés Fonctionnelles</button>
   <button class="tab" onclick="switchTab('analyse', this)" id="tabAnalyse">📊 Analyse SPAD</button>
@@ -1404,6 +1405,85 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- ════════════ QUESTIONNAIRE CODIFIÉ PANEL ════════════ -->
+  <div id="panelQcodif" style="display:none;padding:24px 28px;max-width:1100px;margin:0 auto">
+
+    <label class="section-label" style="margin-bottom:16px">
+      ▸ Questionnaire Codifié
+      <span>Importez un fichier XLSX ou CSV contenant un questionnaire déjà codifié en PHAKTS — génération instantanée du XLSForm KoboToolbox</span>
+    </label>
+
+    <!-- Zone de dépôt -->
+    <div id="qcodifDropzone"
+      style="border:2px dashed #1e3a5f;border-radius:14px;background:#050e1c;padding:40px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:20px"
+      onclick="document.getElementById('qcodifFileInput').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#38bdf8';this.style.background='#071a2e'"
+      ondragleave="this.style.borderColor='#1e3a5f';this.style.background='#050e1c'"
+      ondrop="event.preventDefault();this.style.borderColor='#1e3a5f';this.style.background='#050e1c';qcodifHandleFile(event.dataTransfer.files[0])">
+      <div style="font-size:36px;margin-bottom:10px">📂</div>
+      <div style="font-size:14px;color:#7dd3fc;font-weight:600;margin-bottom:6px">Glisser-déposer un fichier ici</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">ou cliquer pour sélectionner</div>
+      <div style="display:inline-block;padding:6px 18px;border:1px solid #38bdf8;border-radius:8px;font-size:12px;color:#38bdf8">Parcourir…</div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text3)">Formats acceptés : <strong>.xlsx</strong> · <strong>.csv</strong></div>
+      <input type="file" id="qcodifFileInput" accept=".xlsx,.csv" style="display:none"
+        onchange="qcodifHandleFile(this.files[0])">
+    </div>
+
+    <!-- Format attendu -->
+    <div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12px;color:var(--text3)">
+      <strong style="color:#7dd3fc">Format attendu des colonnes :</strong>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Libellé</strong> — texte de la question</span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#38bdf8"><strong>Code PHAKTS</strong> — ex: Age__1Y!0&lt;N&lt;120</span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Modalités</strong> — liste des choix (optionnel)</span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#fcd34d"><strong>Skip Logic</strong> — condition de saut (optionnel)</span>
+      </div>
+      <div style="margin-top:10px;color:var(--text3)">Les noms de colonnes sont détectés automatiquement (insensible à la casse).</div>
+    </div>
+
+    <!-- Message état -->
+    <div id="qcodifStatus" style="display:none;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px"></div>
+
+    <!-- Aperçu -->
+    <div id="qcodifPreviewSection" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="font-size:13px;font-weight:600;color:#7dd3fc" id="qcodifPreviewTitle">Aperçu</div>
+        <span style="flex:1"></span>
+        <button class="btn-ghost" style="padding:5px 12px;font-size:11px" onclick="qcodifClear()">✕ Effacer</button>
+      </div>
+
+      <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px;margin-bottom:16px">
+        <table id="qcodifTable" style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
+              <th style="padding:10px 12px;text-align:left;color:#7dd3fc;font-weight:600;white-space:nowrap">#</th>
+              <th style="padding:10px 12px;text-align:left;color:#7dd3fc;font-weight:600">Libellé</th>
+              <th style="padding:10px 12px;text-align:left;color:#38bdf8;font-weight:600;font-family:var(--mono)">Code PHAKTS</th>
+              <th style="padding:10px 12px;text-align:left;color:#93c5fd;font-weight:600">Modalités</th>
+              <th style="padding:10px 12px;text-align:left;color:#fcd34d;font-weight:600">Skip</th>
+            </tr>
+          </thead>
+          <tbody id="qcodifTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Boutons d'action -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 0;border-top:1px solid #1e3a5f">
+        <button class="btn-add" style="padding:8px 18px;font-size:12px" id="btnQcodifResults" onclick="qcodifLoadToResults()">
+          ⊞ Charger dans Résultats
+        </button>
+        <button class="btn-purple" style="padding:8px 18px;font-size:12px" id="btnQcodifXlsform" onclick="qcodifDownloadXLSForm()">
+          📘 XLSForm KoboToolbox
+        </button>
+        <button class="btn-purple" style="padding:8px 18px;font-size:12px;background:#1a3a2a;border-color:#22c55e55;color:#86efac" id="btnQcodifXlsx" onclick="qcodifDownloadXLSX()">
+          📊 Télécharger XLSX
+        </button>
+        <span id="qcodifCount" style="font-size:11px;color:var(--text3);margin-left:4px"></span>
+      </div>
+    </div>
+
   </div>
 
   <!-- ════════════ ANALYSE SPAD PANEL ════════════ -->
@@ -2128,7 +2208,7 @@ function agentInsertSample(kind) {
 
 // ─── Tab Management ───────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  ['input','editor','upload','results','agent','grammar','analyse'].forEach(p => {
+  ['input','editor','upload','results','qcodif','agent','grammar','analyse'].forEach(p => {
     const el = document.getElementById('panel' + p.charAt(0).toUpperCase() + p.slice(1));
     if (el) el.style.display = 'none';
   });
@@ -2142,7 +2222,7 @@ function switchTab(name, btn) {
 }
 function switchTabById(name) {
   const tabs = document.querySelectorAll('.tab');
-  const idxMap = { input: 0, editor: 1, upload: 2, results: 3, agent: 4, grammar: 5, analyse: 6 };
+  const idxMap = { input: 0, editor: 1, upload: 2, results: 3, qcodif: 4, agent: 5, grammar: 6, analyse: 7 };
   const idx = idxMap[name] ?? 0;
   switchTab(name, tabs[idx]);
 }
@@ -5624,6 +5704,265 @@ async function extractAndCodifyFile(fileData, fileItem) {
     showStatus(`Erreur: ${err.message}`, 'error');
     throw err;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  QUESTIONNAIRE CODIFIÉ — import XLSX/CSV → XLSForm KoboToolbox
+// ═══════════════════════════════════════════════════════════════════
+let qcodifItems = [];
+
+/* Affiche un message d'état dans le panel */
+function qcodifSetStatus(msg, type = 'info') {
+  const el = document.getElementById('qcodifStatus');
+  if (!el) return;
+  const colors = {
+    info:    { bg: '#0a1e38', border: '#1e4976', color: '#7dd3fc' },
+    success: { bg: '#081a10', border: '#166534', color: '#86efac' },
+    error:   { bg: '#1a0a0a', border: '#7f1d1d', color: '#f87171' },
+  };
+  const c = colors[type] || colors.info;
+  el.style.cssText = `display:block;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;background:${c.bg};border:1px solid ${c.border};color:${c.color}`;
+  el.textContent = msg;
+}
+
+/* Détecte l'index d'une colonne par mots-clés (insensible à la casse) */
+function qcodifDetectCol(headers, keywords) {
+  const h = headers.map(s => String(s||'').toLowerCase().trim());
+  for (const kw of keywords) {
+    const idx = h.findIndex(x => x.includes(kw));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+/* Parse un fichier XLSX ou CSV et peuple qcodifItems */
+async function qcodifHandleFile(file) {
+  if (!file) return;
+  qcodifClear();
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  qcodifSetStatus(`Lecture de « ${file.name } »…`, 'info');
+
+  try {
+    if (ext === 'csv') {
+      await qcodifParseCSV(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      await qcodifParseXLSX(file);
+    } else {
+      qcodifSetStatus('Format non supporté. Utilisez .xlsx ou .csv', 'error');
+      return;
+    }
+
+    if (!qcodifItems.length) {
+      qcodifSetStatus('Aucune donnée trouvée. Vérifiez le format du fichier.', 'error');
+      return;
+    }
+    qcodifRenderPreview();
+    qcodifSetStatus(`✓ ${qcodifItems.length} question(s) importée(s) depuis « ${file.name} »`, 'success');
+  } catch (err) {
+    qcodifSetStatus('Erreur de lecture : ' + err.message, 'error');
+    console.error('[qcodif]', err);
+  }
+}
+
+/* Parse CSV (détection séparateur virgule ou point-virgule) */
+async function qcodifParseCSV(file) {
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return;
+
+  const sep = (lines[0].match(/;/g)||[]).length >= (lines[0].match(/,/g)||[]).length ? ';' : ',';
+  const parseRow = line => {
+    const cols = []; let cur = ''; let inQ = false;
+    for (const ch of line) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === sep && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cols.push(cur.trim());
+    return cols;
+  };
+
+  const headers = parseRow(lines[0]);
+  const colLib  = qcodifDetectCol(headers, ['libellé','libelle','question','label','intitulé','intitule']);
+  const colCode = qcodifDetectCol(headers, ['code phakts','pf_question','code','codification','phakts']);
+  const colMod  = qcodifDetectCol(headers, ['modalités','modalites','pf_modalites','choix','choices','options','modalite']);
+  const colSkip = qcodifDetectCol(headers, ['skip','pf_skip','saut','relevance','relevant','condition']);
+
+  if (colCode === -1) {
+    qcodifSetStatus('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '), 'error');
+    return;
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseRow(lines[i]);
+    const code = (row[colCode] || '').trim();
+    if (!code) continue;
+    qcodifItems.push({
+      libelle:      colLib  !== -1 ? (row[colLib]  || '').trim() : '',
+      pf_question:  code,
+      pf_modalites: colMod  !== -1 ? (row[colMod]  || '').trim() : '',
+      pf_skip:      colSkip !== -1 ? (row[colSkip] || '').trim() : '',
+    });
+  }
+}
+
+/* Parse XLSX via ExcelJS */
+async function qcodifParseXLSX(file) {
+  await ensureExcelJsReady();
+  const buffer = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.worksheets[0];
+  if (!ws) return;
+
+  const headers = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => {
+    headers[colNum - 1] = String(cell.value || '');
+  });
+
+  const colLib  = qcodifDetectCol(headers, ['libellé','libelle','question','label','intitulé','intitule']);
+  const colCode = qcodifDetectCol(headers, ['code phakts','pf_question','code','codification','phakts']);
+  const colMod  = qcodifDetectCol(headers, ['modalités','modalites','pf_modalites','choix','choices','options','modalite']);
+  const colSkip = qcodifDetectCol(headers, ['skip','pf_skip','saut','relevance','relevant','condition']);
+
+  if (colCode === -1) {
+    qcodifSetStatus('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '), 'error');
+    return;
+  }
+
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    if (rowNum === 1) return;
+    const get = idx => idx !== -1 ? String(row.getCell(idx + 1).value || '').trim() : '';
+    const code = get(colCode);
+    if (!code) return;
+    qcodifItems.push({
+      libelle:      get(colLib),
+      pf_question:  code,
+      pf_modalites: get(colMod),
+      pf_skip:      get(colSkip),
+    });
+  });
+}
+
+/* Affiche le tableau d'aperçu */
+function qcodifRenderPreview() {
+  const section = document.getElementById('qcodifPreviewSection');
+  const tbody   = document.getElementById('qcodifTableBody');
+  const title   = document.getElementById('qcodifPreviewTitle');
+  const count   = document.getElementById('qcodifCount');
+  if (!section || !tbody) return;
+
+  title.textContent = `Aperçu — ${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''}`;
+  count.textContent = `${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''} prête${qcodifItems.length > 1 ? 's' : ''}`;
+
+  tbody.innerHTML = '';
+  qcodifItems.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.style.cssText = `border-bottom:1px solid #0f2040;${i % 2 === 0 ? '' : 'background:#040c1a'}`;
+
+    const modalChips = (item.pf_modalites || '')
+      .split(/[,|]/).map(m => m.trim()).filter(Boolean).slice(0, 5)
+      .map(m => `<span style="display:inline-block;background:#0c2240;border:1px solid #1e4976;border-radius:3px;padding:1px 6px;font-size:10px;color:#93c5fd;margin:1px 2px 1px 0">${_esc(m)}</span>`)
+      .join('');
+    const moreChips = (item.pf_modalites || '').split(/[,|]/).filter(Boolean).length > 5
+      ? `<span style="font-size:10px;color:var(--text3)">+${(item.pf_modalites||'').split(/[,|]/).filter(Boolean).length - 5}</span>` : '';
+
+    tr.innerHTML = `
+      <td style="padding:9px 12px;color:var(--text3);font-family:var(--mono);font-size:11px">${i + 1}</td>
+      <td style="padding:9px 12px;color:var(--text);font-size:12px;max-width:280px">${_esc(item.libelle || '—')}</td>
+      <td style="padding:9px 12px;font-family:var(--mono);font-size:12px;font-weight:600;color:#38bdf8;white-space:nowrap">${_esc(item.pf_question)}</td>
+      <td style="padding:9px 12px">${modalChips}${moreChips}</td>
+      <td style="padding:9px 12px;font-family:var(--mono);font-size:10.5px;color:#fcd34d">${_esc(item.pf_skip || '')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  section.style.display = 'block';
+}
+
+/* Charge les items dans l'onglet Résultats */
+function qcodifLoadToResults() {
+  if (!qcodifItems.length) return;
+  const cleaned = cleanResults(qcodifItems.map(sanitizePhaktsItemClient));
+  results = cleaned;
+  renderTable();
+  persistResults();
+  showStatus(`✓ ${cleaned.length} question(s) chargée(s) dans Résultats`, 'success');
+  switchTabById('results');
+}
+
+/* Génère et télécharge le XLSForm KoboToolbox */
+async function qcodifDownloadXLSForm() {
+  if (!qcodifItems.length) return;
+  const prev = results.slice();
+  try {
+    results = cleanResults(qcodifItems.map(sanitizePhaktsItemClient));
+    await downloadXLSForm();
+  } finally {
+    results = prev;
+  }
+}
+
+/* Génère et télécharge un XLSX de synthèse (tableau des codifications) */
+async function qcodifDownloadXLSX() {
+  if (!qcodifItems.length) return;
+  await ensureExcelJsReady();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PHAKTS STUDIO';
+  const ws = wb.addWorksheet('Questionnaire_Codifié');
+
+  /* En-têtes */
+  const cols = [
+    { header: 'N°',          key: 'num',          width: 6  },
+    { header: 'Libellé',     key: 'libelle',       width: 55 },
+    { header: 'Code PHAKTS', key: 'pf_question',   width: 45 },
+    { header: 'Modalités',   key: 'pf_modalites',  width: 50 },
+    { header: 'Skip Logic',  key: 'pf_skip',       width: 35 },
+  ];
+  ws.columns = cols;
+
+  /* Style en-tête */
+  const hdrRow = ws.getRow(1);
+  hdrRow.font = { bold: true, color: { argb: 'FF7DD3FC' } };
+  hdrRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1628' } };
+  hdrRow.height = 22;
+
+  /* Données */
+  qcodifItems.forEach((item, i) => {
+    const row = ws.addRow({
+      num:          i + 1,
+      libelle:      item.libelle || '',
+      pf_question:  item.pf_question || '',
+      pf_modalites: item.pf_modalites || '',
+      pf_skip:      item.pf_skip || '',
+    });
+    /* Code PHAKTS en cyan */
+    row.getCell('pf_question').font = { color: { argb: 'FF38BDF8' }, bold: true, name: 'Courier New' };
+    if (i % 2 === 0) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF050E1C' } };
+    }
+  });
+
+  /* Bordures en-tête */
+  hdrRow.eachCell(cell => {
+    cell.border = { bottom: { style: 'medium', color: { argb: 'FF38BDF8' } } };
+  });
+
+  const title = (document.getElementById('formTitle')?.value || 'Questionnaire') + '_Codifié';
+  const saved = await saveWorkbook(wb, `${title}.xlsx`);
+  if (saved) qcodifSetStatus('✓ Téléchargement XLSX prêt.', 'success');
+}
+
+/* Réinitialise le panel */
+function qcodifClear() {
+  qcodifItems = [];
+  const section = document.getElementById('qcodifPreviewSection');
+  if (section) section.style.display = 'none';
+  const status = document.getElementById('qcodifStatus');
+  if (status) status.style.display = 'none';
+  const input = document.getElementById('qcodifFileInput');
+  if (input) input.value = '';
 }
 
 </script>
