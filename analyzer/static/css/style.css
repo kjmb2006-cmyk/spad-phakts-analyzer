@@ -3,6 +3,7 @@
 :root {
   --sidebar-w:     240px;
   --topbar-h:      56px;
+  --ribbon-h:      48px;
   --navy:          #1A5276;
   --navy-dark:     #154360;
   --teal:          #17A589;
@@ -30,12 +31,67 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Bandeau institutionnel ───────────────────────── */
+.brand-ribbon {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--ribbon-h);
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 20px;
+  z-index: 1100;
+}
+.brand-ribbon-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--muted);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.brand-ribbon-ministry { white-space: normal; }
+.brand-ribbon-mark {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: var(--navy);
+  color: var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.brand-ribbon-title {
+  margin-left: auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  text-align: right;
+}
+.brand-ribbon-year {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.01em;
+}
+.brand-ribbon-sub {
+  font-size: .62rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* ── Sidebar ──────────────────────────────────────── */
 .sidebar {
   position: fixed;
-  top: 0; left: 0;
+  top: var(--ribbon-h); left: 0;
   width: var(--sidebar-w);
-  height: 100vh;
+  height: calc(100vh - var(--ribbon-h));
   background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
@@ -108,7 +164,8 @@ body {
 /* ── Main content ─────────────────────────────────── */
 .main-content {
   margin-left: var(--sidebar-w);
-  min-height: 100vh;
+  margin-top: var(--ribbon-h);
+  min-height: calc(100vh - var(--ribbon-h));
   transition: margin-left .25s ease;
 }
 
@@ -121,7 +178,7 @@ body {
   align-items: center;
   padding: 0 24px;
   position: sticky;
-  top: 0;
+  top: var(--ribbon-h);
   z-index: 900;
   gap: 12px;
 }
@@ -449,6 +506,83 @@ body {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-content { margin-left: 0; }
+}
+
+/* ── Status pills (préparation du futur suivi temps réel) ─ */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-pill::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-pill--zero       { background: #F1F3F5; color: #718096; }
+.status-pill--zero::before       { background: #A0AEC0; }
+.status-pill--en-cours   { background: #FEF3E2; color: #B7620A; }
+.status-pill--en-cours::before   { background: var(--orange); }
+.status-pill--cible      { background: #EAF5EE; color: #1E7A46; }
+.status-pill--cible::before      { background: #2E7D4F; }
+.status-pill--verifier   { background: #FCEAEA; color: #A32E2E; }
+.status-pill--verifier::before   { background: var(--red); }
+
+/* ── Barre de progression fine (taux de complétude) ───── */
+.progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 4px;
+  background: #E9EDF2;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--teal);
+  transition: width .3s ease;
+}
+.progress-fill.is-zero      { background: #CBD5E0; }
+.progress-fill.is-en-cours  { background: var(--orange); }
+.progress-fill.is-cible     { background: #2E7D4F; }
+.progress-fill.is-verifier  { background: var(--red); }
+
+/* ── Chips de filtre (région / district / statut) ─────── */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.chip:hover { border-color: #c5d5e8; }
+.chip.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+.chip.chip-ghost {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
 }
 
 /* ── Utilities ────────────────────────────────────── */
