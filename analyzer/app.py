@@ -37,6 +37,8 @@ except ImportError:
     def kobo_load_data(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def deploy_xlsform(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
 
+from modules import kobo_sync
+
 app = Flask(__name__)
 app.config.from_object(Config)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -1729,6 +1731,7 @@ def kobo_load():
         flash('UID de formulaire manquant.', 'danger')
         return redirect(url_for('kobo_assets'))
 
+    kobo_sync.stop()  # un nouveau formulaire est chargé : le polling précédent ne s'applique plus
     result = kobo_load_data(token, uid)
     if not result['success']:
         flash(f"Erreur de chargement : {result['error']}", 'danger')
@@ -1788,6 +1791,7 @@ def kobo_refresh():
     session['data_meta']           = summarize_dataframe(df)
     session['data_meta']['source'] = 'KoboToolbox'
     session['data_meta']['name']   = name
+    kobo_sync.set_baseline(result['n_obs'])
 
     flash(
         f"Données rafraîchies — {result['n_obs']} soumissions "
@@ -1800,13 +1804,90 @@ def kobo_refresh():
 @app.route('/kobo/disconnect')
 def kobo_disconnect():
     """Efface le token KoboToolbox de la session."""
+    kobo_sync.stop()
     for k in ('kobo_token', 'kobo_username', 'kobo_uid', 'kobo_asset_name', 'kobo_instance'):
         session.pop(k, None)
     flash('Déconnecté de KoboToolbox.', 'info')
     return redirect(url_for('kobo_connect'))
 
 
+# ─── Actualisation automatique KoboToolbox (polling en tâche de fond) ─────────
+#
+# Application desktop mono-utilisateur, sans URL publique : impossible de
+# recevoir un webhook KoboToolbox en conditions réelles (voir note sur
+# /webhook/kobo plus bas). L'actualisation « quasi temps réel » repose donc
+# sur un sondage périodique de l'API, dans un thread dédié (modules/kobo_sync.py).
+# Les nouvelles données ne remplacent jamais silencieusement le jeu de données
+# en cours d'analyse : l'utilisateur les applique explicitement.
+
+@app.route('/kobo/sync/start', methods=['POST'])
+def kobo_sync_start():
+    token    = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    uid      = session.get('kobo_uid')
+    name     = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    if not token or not uid:
+        return jsonify({"success": False, "error": "Aucun formulaire KoboToolbox actif en session."}), 400
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        interval = int(payload.get('interval_seconds', 300))
+    except (TypeError, ValueError):
+        interval = 300
+
+    baseline = (session.get('data_meta') or {}).get('n_obs')
+    kobo_sync.start(token, uid, instance, name, interval, baseline)
+    return jsonify({"success": True, "status": kobo_sync.status()})
+
+
+@app.route('/kobo/sync/stop', methods=['POST'])
+def kobo_sync_stop():
+    kobo_sync.stop()
+    return jsonify({"success": True})
+
+
+@app.route('/kobo/sync/status')
+def kobo_sync_status():
+    return jsonify(kobo_sync.status())
+
+
+@app.route('/kobo/sync/apply', methods=['POST'])
+def kobo_sync_apply():
+    """Applique les nouvelles soumissions détectées par le polling en cours."""
+    df = kobo_sync.pop_pending_df()
+    if df is None:
+        return jsonify({"success": False, "error": "Aucune nouvelle donnée à appliquer."}), 400
+
+    name     = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    old_path = session.get('data_path')
+    if old_path and os.path.exists(old_path):
+        try: os.remove(old_path)
+        except Exception: pass
+
+    fname     = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+
+    session['data_path']           = save_path
+    session['data_meta']           = summarize_dataframe(df)
+    session['data_meta']['source'] = 'KoboToolbox'
+    session['data_meta']['name']   = name
+    session.pop('child_path', None)
+
+    return jsonify({"success": True, "n_obs": len(df), "n_vars": int(df.shape[1])})
+
+
 # ─── Webhook KoboToolbox (REST Services) ──────────────────────────────────────
+#
+# NOTE : cet endpoint ne peut recevoir de requêtes que si l'application est
+# exposée sur une URL publique (ex. tunnel ngrok/Cloudflare) — non configuré
+# à ce jour. En l'état, KoboToolbox (hébergé dans le cloud) ne peut pas
+# atteindre 127.0.0.1 sur le poste de l'utilisateur : ce chemin est inactif
+# tant qu'aucun tunnel n'est mis en place. Le mécanisme actif est le polling
+# ci-dessus (/kobo/sync/*). À corriger avant toute mise en service de ce
+# webhook : il écrit dans `session`, qui est liée au cookie de la requête
+# entrante (celle de KoboToolbox) et non à la session du navigateur de
+# l'utilisateur — la mise à jour ne serait donc pas visible dans l'interface.
 
 @app.route('/webhook/kobo', methods=['GET', 'POST'])
 def kobo_webhook():
