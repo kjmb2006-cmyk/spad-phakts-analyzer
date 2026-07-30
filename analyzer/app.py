@@ -38,6 +38,7 @@ except ImportError:
     def deploy_xlsform(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
 
 from modules import kobo_sync
+from modules import kobo_track
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -1856,10 +1857,119 @@ def kobo_refresh():
 def kobo_disconnect():
     """Efface le token KoboToolbox de la session."""
     kobo_sync.stop()
+    kobo_track.clear_all()
     for k in ('kobo_token', 'kobo_username', 'kobo_uid', 'kobo_asset_name', 'kobo_instance'):
         session.pop(k, None)
     flash('Déconnecté de KoboToolbox.', 'info')
     return redirect(url_for('kobo_connect'))
+
+
+# ─── Suivi multi-formulaires (plusieurs enquêtes en parallèle) ────────────────
+#
+# Complète /kobo/sync/* (qui suit UN formulaire, celui en cours d'analyse) par
+# un suivi simultané de PLUSIEURS formulaires — sondage léger (compteur de
+# soumissions uniquement, jamais les données complètes) pour rester rapide
+# même avec plusieurs formulaires suivis en parallèle.
+
+@app.route('/suivi')
+def suivi():
+    """Page de suivi multi-formulaires."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox pour suivre des formulaires.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    instance = session.get('kobo_instance')
+    assets_result = list_assets(token, instance=instance)
+    assets = assets_result.get('assets', []) if assets_result.get('success') else []
+    tracked_uids = {t['uid'] for t in kobo_track.list_tracked()}
+    return render_template(
+        'suivi.html',
+        assets=assets,
+        tracked_uids=tracked_uids,
+        assets_error=None if assets_result.get('success') else assets_result.get('error'),
+    )
+
+
+@app.route('/suivi/add', methods=['POST'])
+def suivi_add():
+    token = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    if not token:
+        return jsonify({"success": False, "error": "Non connecté à KoboToolbox."}), 400
+    uid = (request.form.get('uid') or '').strip()
+    name = (request.form.get('name') or 'Formulaire').strip()
+    target_raw = (request.form.get('target') or '').strip()
+    if not uid:
+        return jsonify({"success": False, "error": "Formulaire manquant."}), 400
+    target = None
+    if target_raw:
+        try:
+            target = int(target_raw)
+            if target <= 0:
+                target = None
+        except ValueError:
+            return jsonify({"success": False, "error": "Cible invalide (nombre entier attendu)."}), 400
+    kobo_track.add(token, instance, uid, name, target=target)
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/remove', methods=['POST'])
+def suivi_remove():
+    uid = (request.form.get('uid') or '').strip()
+    kobo_track.remove(uid)
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/target', methods=['POST'])
+def suivi_target():
+    uid = (request.form.get('uid') or '').strip()
+    target_raw = (request.form.get('target') or '').strip()
+    target = None
+    if target_raw:
+        try:
+            target = int(target_raw)
+            if target <= 0:
+                target = None
+        except ValueError:
+            return jsonify({"success": False, "error": "Cible invalide (nombre entier attendu)."}), 400
+    if not kobo_track.is_tracked(uid):
+        return jsonify({"success": False, "error": "Formulaire non suivi."}), 400
+    kobo_track.set_target(uid, target)
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/status')
+def suivi_status():
+    return jsonify({"tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/analyser/<uid>')
+def suivi_analyser(uid):
+    """Charge ce formulaire suivi dans le flux d'analyse mono-enquête existant."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    tracked = {t['uid']: t for t in kobo_track.list_tracked()}
+    name = tracked.get(uid, {}).get('name', 'Formulaire KoboToolbox')
+    kobo_sync.stop()
+    result = kobo_load_data(token, uid)
+    if not result['success']:
+        flash(f"Erreur de chargement : {result['error']}", 'danger')
+        return redirect(url_for('suivi'))
+    df = result['df']
+    fname = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+    session['data_path']           = save_path
+    session['data_meta']           = summarize_dataframe(df)
+    session['data_meta']['source'] = 'KoboToolbox'
+    session['data_meta']['name']   = name
+    session['kobo_uid']            = uid
+    session['kobo_asset_name']     = name
+    session.pop('child_path', None)
+    flash(f"<strong>{name}</strong> chargé pour analyse — {result['n_obs']} soumissions × {result['n_vars']} variables.", 'success')
+    return redirect(url_for('data_preview'))
 
 
 # ─── Actualisation automatique KoboToolbox (polling en tâche de fond) ─────────

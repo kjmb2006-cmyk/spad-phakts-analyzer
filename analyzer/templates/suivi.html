@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Suivi multi-formulaires — SPAD Analyzer{% endblock %}
+{% block page_title %}Suivi multi-formulaires{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
+    <i class="bi bi-broadcast fs-3"></i>
+    <div>
+      <strong>Suivez plusieurs formulaires KoboToolbox en même temps.</strong>
+      Chaque formulaire suivi est sondé automatiquement en arrière-plan (toutes les 2 minutes) —
+      donnez-lui une cible pour voir sa progression, ou laissez vide pour un simple compteur.
+    </div>
+  </div>
+
+  <!-- ═══ Formulaires suivis ═══ -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="section-label"><i class="bi bi-grid-1x2 me-1"></i>Formulaires suivis</span>
+    <span id="trackedCount" class="text-muted small"></span>
+  </div>
+
+  <div id="trackedGrid" class="row g-3 mb-4"></div>
+  <div id="trackedEmpty" class="card border-0 shadow-sm d-none">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-broadcast-pin display-3 mb-3 d-block opacity-25"></i>
+      <h5 class="fw-semibold mb-2">Aucun formulaire suivi pour l'instant</h5>
+      <p class="small mb-0">Ajoutez-en un depuis la liste ci-dessous.</p>
+    </div>
+  </div>
+
+  <!-- ═══ Ajouter un formulaire ═══ -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Ajouter un formulaire au suivi</h6>
+    </div>
+    <div class="card-body">
+      {% if assets_error %}
+      <div class="alert alert-danger small mb-0">{{ assets_error }}</div>
+      {% elif not assets %}
+      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Formulaire</th>
+              <th class="text-center" style="width:120px">Soumissions</th>
+              <th class="text-center" style="width:160px">Cible (optionnel)</th>
+              <th class="text-center" style="width:120px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in assets %}
+            <tr data-uid="{{ a.uid }}" data-name="{{ a.name }}">
+              <td class="small fw-semibold">
+                {{ a.name }}
+                {% if not a.deployed %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1">non déployé</span>{% endif %}
+              </td>
+              <td class="text-center small">{{ a.submission_count }}</td>
+              <td class="text-center">
+                <input type="number" min="1" class="form-control form-control-sm target-input"
+                       placeholder="ex. 1800" {% if a.uid in tracked_uids %}disabled{% endif %}>
+              </td>
+              <td class="text-center">
+                {% if a.uid in tracked_uids %}
+                <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px">
+                  <i class="bi bi-check-lg me-1"></i>Suivi
+                </span>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
+                  <i class="bi bi-plus-lg me-1"></i>Suivre
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const grid       = document.getElementById('trackedGrid');
+  const emptyState = document.getElementById('trackedEmpty');
+  const countEl    = document.getElementById('trackedCount');
+
+  const STATUS_LABEL = {
+    zero:      ['status-pill--zero',     '0 %'],
+    en_cours:  ['status-pill--en-cours', 'En cours'],
+    cible:     ['status-pill--cible',    'Cible atteinte'],
+    suivi:     ['status-pill--zero',     'Suivi (sans cible)'],
+    inconnu:   ['status-pill--zero',     'En attente…'],
+  };
+
+  function fmtNum(n) { return (n === null || n === undefined) ? '—' : n.toLocaleString('fr-FR'); }
+
+  function cardHtml(t) {
+    const [pillClass, pillLabel] = STATUS_LABEL[t.status] || STATUS_LABEL.inconnu;
+    const pct = (t.pct !== null && t.pct !== undefined) ? Math.min(t.pct, 100) : null;
+    const progressClass = t.status === 'cible' ? 'is-cible' : (t.status === 'en_cours' ? 'is-en-cours' : 'is-zero');
+    const errorLine = t.error
+      ? `<div class="small text-danger mt-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>${t.error}</div>`
+      : '';
+    const lastSync = t.last_success_at
+      ? `Dernière synchro : ${t.last_success_at}`
+      : (t.last_check_at ? `Vérifié à ${t.last_check_at} (échec)` : 'En attente du premier sondage…');
+
+    return `
+      <div class="col-md-6 col-xl-4">
+        <div class="stat-card-v ${t.status === 'cible' ? 'kpi-success' : (t.status === 'en_cours' ? 'kpi-warning' : 'kpi-primary')}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="mb-0 fw-semibold" style="font-size:.88rem;max-width:75%">${t.name}</h6>
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 btn-track-remove" data-uid="${t.uid}" title="Retirer du suivi">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <div class="d-flex align-items-baseline gap-2 mb-1">
+            <span class="stat-value-v" style="font-size:1.6rem">${fmtNum(t.count)}</span>
+            ${t.target ? `<span class="text-muted small">/ ${fmtNum(t.target)}</span>` : ''}
+          </div>
+          ${pct !== null ? `
+          <div class="progress-track mb-2">
+            <div class="progress-fill ${progressClass}" style="width:${pct}%"></div>
+          </div>` : '<div class="mb-2"></div>'}
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span class="status-pill ${pillClass}">${pillLabel}${pct !== null ? ' · ' + t.pct + ' %' : ''}</span>
+            <a href="/suivi/analyser/${t.uid}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
+              Analyser <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+          <div class="small text-muted mt-2">${lastSync}</div>
+          ${errorLine}
+        </div>
+      </div>`;
+  }
+
+  function render(tracked) {
+    countEl.textContent = tracked.length ? `${tracked.length} formulaire(s)` : '';
+    if (!tracked.length) {
+      grid.innerHTML = '';
+      emptyState.classList.remove('d-none');
+      return;
+    }
+    emptyState.classList.add('d-none');
+    grid.innerHTML = tracked.map(cardHtml).join('');
+    grid.querySelectorAll('.btn-track-remove').forEach(btn => {
+      btn.addEventListener('click', () => removeTracked(btn.dataset.uid));
+    });
+  }
+
+  function refreshStatus() {
+    fetch('/suivi/status').then(r => r.json()).then(data => render(data.tracked)).catch(() => {});
+  }
+
+  function removeTracked(uid) {
+    const fd = new FormData();
+    fd.append('uid', uid);
+    fetch('/suivi/remove', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          render(res.tracked);
+          const row = document.querySelector(`tr[data-uid="${uid}"]`);
+          if (row) {
+            const cell = row.querySelector('td:last-child');
+            cell.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>';
+            cell.querySelector('.btn-track-add').addEventListener('click', () => addTracked(row));
+            row.querySelector('.target-input').disabled = false;
+          }
+        }
+      });
+  }
+
+  function addTracked(row) {
+    const uid = row.dataset.uid;
+    const name = row.dataset.name;
+    const target = row.querySelector('.target-input').value.trim();
+    const fd = new FormData();
+    fd.append('uid', uid);
+    fd.append('name', name);
+    if (target) fd.append('target', target);
+    fetch('/suivi/add', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          render(res.tracked);
+          const cell = row.querySelector('td:last-child');
+          cell.innerHTML = '<span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>';
+          row.querySelector('.target-input').disabled = true;
+        } else {
+          alert(res.error || 'Erreur inconnue.');
+        }
+      });
+  }
+
+  document.querySelectorAll('.btn-track-add').forEach(btn => {
+    btn.addEventListener('click', () => addTracked(btn.closest('tr')));
+  });
+
+  refreshStatus();
+  setInterval(refreshStatus, 10000);
+})();
+</script>
+{% endblock %}
