@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Complétude nationale — SPAD Analyzer{% endblock %}
+{% block page_title %}Complétude nationale{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
+    <i class="bi bi-clipboard2-pulse fs-3"></i>
+    <div>
+      <strong>Vue de complétude nationale, façon spadapp-zeta.vercel.app.</strong>
+      Associez chacun des 7 formulaires SPAD à votre formulaire KoboToolbox réel, puis calculez
+      les taux de complétude par rapport au référentiel (120 établissements, 12 districts).
+    </div>
+  </div>
+
+  <!-- ═══ Correspondance formulaires ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>Correspondance formulaire SPAD ↔ formulaire KoboToolbox</h6>
+      {% if computed_at %}
+      <span class="text-muted small"><i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if assets_error %}
+      <div class="alert alert-danger small mb-0">{{ assets_error }}</div>
+      {% elif not assets %}
+      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      {% else %}
+      <!-- Formulaire de calcul déclaré séparément (pas imbriqué — le HTML
+           n'autorise pas les <form> imbriqués) ; le bouton "Calculer" s'y
+           rattache via l'attribut form="". -->
+      <form id="calculerForm" method="POST" action="{{ url_for('completude_calculer') }}"></form>
+
+      <form method="POST" action="{{ url_for('completude_mapper') }}">
+        <div class="row g-3">
+          {% for code in form_codes %}
+          <div class="col-md-6 col-lg-4">
+            <label class="form-label small fw-semibold">
+              {{ code }} — {{ form_labels[code] }}
+            </label>
+            <select name="uid_{{ code }}" class="form-select form-select-sm">
+              <option value="">— Non associé —</option>
+              {% for a in assets %}
+              <option value="{{ a.uid }}" {% if mapping.get(code) == a.uid %}selected{% endif %}>
+                {{ a.name }} ({{ a.submission_count }} soum.)
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-save me-1"></i>Enregistrer la correspondance
+          </button>
+          <button type="submit" form="calculerForm" class="btn btn-primary btn-sm" {% if not mapping %}disabled{% endif %}>
+            <i class="bi bi-calculator me-1"></i>Calculer la complétude
+          </button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══ Résultats ═══ -->
+  {% if result %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="section-label"><i class="bi bi-bar-chart-line me-1"></i>Complétude par formulaire</span>
+  </div>
+  <div class="row g-3 mb-4">
+    {% for code in form_codes %}
+    {% set r = result[code] %}
+    <div class="col-md-6 col-lg-4">
+      <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="mb-0 fw-semibold" style="font-size:.85rem">{{ code }} — {{ r.label }}</h6>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-1">
+          <span class="stat-value-v" style="font-size:1.5rem">{{ r.recu }}</span>
+          <span class="text-muted small">/ {{ r.cible }}</span>
+        </div>
+        {% if r.taux is not none %}
+        <div class="progress-track mb-2">
+          <div class="progress-fill {% if r.statut == 'cible' %}is-cible{% elif r.statut == 'en_cours' %}is-en-cours{% elif r.statut == 'verifier' %}is-en-cours{% else %}is-zero{% endif %}"
+               style="width:{{ [r.taux, 100] | min }}%"></div>
+        </div>
+        {% endif %}
+        <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero')) }}">
+          {% if r.statut == 'inconnu' %}Non calculé
+          {% elif r.statut == 'zero' %}0 %
+          {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          {% elif r.statut == 'verifier' %}À vérifier · {{ r.taux }} %
+          {% else %}{{ r.statut }}
+          {% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

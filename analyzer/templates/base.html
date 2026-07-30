@@ -58,6 +58,9 @@
     <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}">
       <i class="bi bi-broadcast"></i> Suivi multi-formulaires
     </a>
+    <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
+    </a>
     {% endif %}
 
     {% if session.get('data_path') %}

@@ -1,4 +1,4 @@
-import os, json, uuid, re
+import os, json, uuid, re, datetime
 import pandas as pd
 from flask import (Flask, render_template, request, session,
                    redirect, url_for, jsonify, send_file, flash, Response)
@@ -39,6 +39,8 @@ except ImportError:
 
 from modules import kobo_sync
 from modules import kobo_track
+from modules import reference_data as ref_data
+from modules import completeness as cp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -1970,6 +1972,83 @@ def suivi_analyser(uid):
     session.pop('child_path', None)
     flash(f"<strong>{name}</strong> chargé pour analyse — {result['n_obs']} soumissions × {result['n_vars']} variables.", 'success')
     return redirect(url_for('data_preview'))
+
+
+# ─── Complétude nationale (référentiel + moteur de complétude) ────────────────
+#
+# Reproduit le tableau de bord de complétude façon spadapp-zeta.vercel.app :
+# l'utilisateur associe chacun des 7 formulaires SPAD à son formulaire Kobo
+# réel (un mapping, pas une détection automatique — les UID Kobo ne portent
+# aucune information sur le formulaire), puis « Calculer » tire les données
+# de chaque formulaire mappé et calcule reçu/cible/taux/statut via
+# modules/completeness.py, au regard du référentiel modules/reference_data.py.
+
+@app.route('/completude')
+def completude():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox pour calculer la complétude.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    instance = session.get('kobo_instance')
+    assets_result = list_assets(token, instance=instance)
+    assets = assets_result.get('assets', []) if assets_result.get('success') else []
+    mapping = session.get('spad_form_mapping', {})
+    result = session.get('completude_result')
+    return render_template(
+        'completude.html',
+        assets=assets,
+        assets_error=None if assets_result.get('success') else assets_result.get('error'),
+        mapping=mapping,
+        form_codes=ref_data.FORM_CODES,
+        form_labels=ref_data.FORM_LABELS,
+        result=result,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/mapper', methods=['POST'])
+def completude_mapper():
+    mapping = {}
+    for code in ref_data.FORM_CODES:
+        uid = (request.form.get(f'uid_{code}') or '').strip()
+        if uid:
+            mapping[code] = uid
+    session['spad_form_mapping'] = mapping
+    flash(f"Correspondance enregistrée pour {len(mapping)} formulaire(s) sur {len(ref_data.FORM_CODES)}.", 'success')
+    return redirect(url_for('completude'))
+
+
+@app.route('/completude/calculer', methods=['POST'])
+def completude_calculer():
+    token = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    mapping = session.get('spad_form_mapping', {})
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('completude'))
+    if not mapping:
+        flash("Associez au moins un formulaire avant de calculer.", 'warning')
+        return redirect(url_for('completude'))
+
+    ref = ref_data.load()
+    form_dataframes = {}
+    errors = []
+    for code, uid in mapping.items():
+        res = kobo_load_data(token, uid, instance=instance)
+        if res.get('success'):
+            form_dataframes[code] = res['df']
+        else:
+            errors.append(f"{code} : {res.get('error', 'erreur inconnue')}")
+
+    summary = cp.national_summary(ref, form_dataframes)
+    session['completude_result'] = summary
+    session['completude_computed_at'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+
+    if errors:
+        flash("Calcul partiel — erreurs : " + " · ".join(errors), 'warning')
+    else:
+        flash(f"Complétude calculée pour {len(form_dataframes)} formulaire(s).", 'success')
+    return redirect(url_for('completude'))
 
 
 # ─── Actualisation automatique KoboToolbox (polling en tâche de fond) ─────────
