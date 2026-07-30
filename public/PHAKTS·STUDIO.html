@@ -2727,6 +2727,7 @@ function typeTag(code) {
   if (code.includes('__X') && code.includes('1*1')) return {label:'Select 1', bg:'#1a3a2a', fg:'#86efac'};
   if (code.includes('__SRC')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
   if (code.includes('__X')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
+  if (code.includes('__Z!1*Tel')) return {label:'Téléphone', bg:'#1a3040', fg:'#67e8f9'};
   if (code.includes('__Z')) return {label:'Texte', bg:'#3a2a1a', fg:'#fbbf24'};
   if (code.includes('__A')) return {label:'Date', bg:'#3a1a1a', fg:'#f87171'};
   if (/__1[YMWDH]/.test(code)) return {label:'Entier', bg:'#1a2a3a', fg:'#67e8f9'};
@@ -3245,6 +3246,7 @@ async function downloadDPF() {
     { code: '__X!1*Liste_', description: 'Choix multiples (select_multiple) — séparateur pipe', statut: 'Confirmé' },
     { code: '__SRC!1*Source_', description: "Source d'information (choix multiple)", statut: 'Confirmé' },
     { code: '__Z!1*Expression', description: 'Texte libre (free text)', statut: 'Confirmé' },
+    { code: '__Z!1*Tel', description: 'Numéro de téléphone (texte + regex ^\+?[0-9 ]{8,20}$ — jamais __1)', statut: 'Confirmé' },
     { code: '__E', description: 'Identifiant externe alphanum. (DHIS2, Kobo, code unique)', statut: 'Confirmé — Règle 11 ext.' },
     { code: '__A!YYYY/MM/DD', description: 'Date ISO 8601 ; range: 2000/01/01<A<2026/12/31', statut: 'Confirmé — Règle 14 ext.' },
     { code: '__G__X!DMS', description: 'Géolocalisation geopoint (!DMS ou !DD)', statut: 'Confirmé — Règle 19' },
@@ -3367,6 +3369,7 @@ B. TYPES CHOIX (MULTIPLE CHOICES):
 
 C. TYPES TEXTE LIBRE & IDENTIFIANT:
 6.  __Z!1*Expression  → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
+6b. __Z!1*Tel         → Numéro de téléphone (texte validé regex ^\+?[0-9 ]{8,20}$ — JAMAIS __1 pour un tel)
 7.  __E               → Identifiant externe alphanumérique fixe (ID DHIS2, ID Kobo, code unique) [Règle 11 ext.]
 
 D. TYPES NUMÉRIQUES ENTIERS (__1):
@@ -3436,7 +3439,8 @@ RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le ty
 - "Quel/Quelle/Quels/Quelles + nom" (secteur, type, moment, issue...) → TOUJOURS __X (select) ou __Z!1*Expression (texte libre selon le contexte), JAMAIS __B!boolean
 - "Pourquoi / Pour quelle raison" → TOUJOURS __X!1*Raison_ (select) ou __Z!1*Expression (texte libre), JAMAIS __B!boolean. Le mot "pourquoi" demande une RAISON, pas Oui/Non.
 - "Où / Dans quel lieu / À quel endroit" → TOUJOURS __X!1*1Lieu_ (select_one) ou __Z!1*Expression, JAMAIS __B!boolean. Le mot "où" demande un LIEU, pas Oui/Non.
-- "Numéro de / N°" → TOUJOURS __1 (entier) si purement numérique, ou __Z!1*Expression si alphanumérique (code, identifiant). JAMAIS __B!boolean.
+- "Numéro de téléphone / Téléphone / Contact / Tel / Portable / Mobile" → TOUJOURS __Z!1*Tel (JAMAIS __1 — un téléphone est un TEXTE, peut commencer par 0 ou +).
+- "Numéro de / N°" → __1 (entier) si purement numérique (ex: N° dossier entier), __Z!1*Tel si téléphone/contact, __Z!1*Expression si alphanumérique (code, identifiant). JAMAIS __B!boolean.
 - "Secteur d'activité / Zone d'habitation / Zone de résidence" → TOUJOURS __X!1*1Liste_ (select_one) avec liste prédéfinie. JAMAIS __Z!1*Expression (ces champs sont TOUJOURS structurables).
 - "Niveau d'éducation / Niveau d'instruction" → SYNONYMES. TOUJOURS Niveau_Instruction__X!1*1Instruction_ avec liste prédéfinie Instruction_=[Primaire,Secondaire,Supérieur,Autre]. JAMAIS créer une liste inline Education_Niveau_.
 - "À quel moment / Quand / À quelle période" → __X!1*1Liste_ (select_one) ou __Z!1*Expression si non structurable, JAMAIS __B!boolean
@@ -3974,7 +3978,7 @@ async function codify() {
         results = cleanResults((od.items || []).map(sanitizePhaktsItemClient));
         usedOffline = true;
       } else if (res && data) {
-        results = cleanResults(data.items || []);
+        results = cleanResults((data.items || []).map(sanitizePhaktsItemClient));
         // Post-pass : compléter les Skip Logic manquantes par détection locale
         try { inferSkipRulesInPlace(results); } catch (_) {}
       }
@@ -4055,6 +4059,24 @@ function sanitizePhaktsItemClient(item) {
       rest = lm[1] + shortKey;
       modal = modal.replace(new RegExp('\\b' + oldKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '_?\\s*=', 'g'), shortKey + '=');
     }
+  }
+  // Auto-fix: __X avec modalités brutes (pas de NomListe_=[...]) — reconstruit depuis le nom de liste du code
+  if ((rest.includes('__X') || rest.includes('__SRC')) && modal && !/\w+_\s*=\s*\[/.test(modal)) {
+    const lnM = rest.match(/![\d*]+([A-Za-z][A-Za-z0-9_]*_)$/);
+    if (lnM) {
+      const listName = lnM[1];
+      const isOne = rest.includes('1*1');
+      const sep = isOne ? ',' : '|';
+      const values = modal.split(/[,|]/).map(s => s.trim()).filter(Boolean);
+      if (values.length > 0) modal = listName + '=[' + values.join(sep) + ']';
+    }
+  }
+  // Auto-upgrade __Z!1*Expression → __Z!1*Tel si libellé ou radical indique un numéro de téléphone
+  const _TEL_LIB_RX = /t[ée]l[ée]phon|telephone|portable|mobile|whatsapp/i;
+  const _TEL_RAD_RX = /(?:^|_)Tel(?:ephone)?(?:_|$)/i;
+  if (rest === '__Z!1*Expression' && (_TEL_LIB_RX.test(item.libelle || '') || _TEL_RAD_RX.test(radical) || _TEL_RAD_RX.test(item.pf_question || ''))) {
+    rest = '__Z!1*Tel';
+    modal = 'Numéro de téléphone (ex: 0XXXXXXXXX)';
   }
   return { ...item, pf_question: radical + rest, pf_modalites: modal };
 }
@@ -4305,6 +4327,7 @@ function inferModalites(code) {
   if (/__2S/.test(code)) return 'Réel en secondes';
   if (/__2(?![a-zA-Z])/.test(code)) return 'Réel';
   if (/__A(?![a-z])/i.test(code)) return 'Date (YYYY/MM/DD)';
+  if (/__Z!1\*Tel/.test(code)) return 'Numéro de téléphone (ex: 0XXXXXXXXX)';
   if (/__Z(?![a-z])/i.test(code)) return 'Texte libre';
   return '';
 }
@@ -4359,6 +4382,9 @@ function inferCode(libelle, normalized) {
   if (/\b(quel type|quelle|lequel|laquelle)\b/i.test(libelle)) {
     const listName = radical.replace(/__/g, '_') + '_';
     return { libelle, pf_question: radical + '__X!1*1' + listName, pf_modalites: listName + '=[...]' };
+  }
+  if (/t[ée]l[ée]phon|telephone|portable|mobile|whatsapp/i.test(libelle) || /(?:^|_)Tel(?:ephone)?(?:_|$)/i.test(radical)) {
+    return { libelle, pf_question: radical + '__Z!1*Tel', pf_modalites: 'Numéro de téléphone (ex: 0XXXXXXXXX)' };
   }
   if (/\b(comment|pourquoi|decrivez|expliquez|citez|precisez|profession)\b/i.test(libelle)) {
     return { libelle, pf_question: radical + '__Z!1*Expression', pf_modalites: 'Texte libre' };
@@ -4595,10 +4621,10 @@ function buildDefaultConstraint(pfQuestion, constraintPart, type, libelle) {
     };
   }
 
-  if (/\b(telephone|contact|whatsapp|portable|mobile|numero)\b/.test(normalizedLabel)) {
+  if (/\b(telephone|contact|whatsapp|portable|mobile|numero)\b/.test(normalizedLabel) || pfQuestion.includes('__Z!1*Tel')) {
     return {
       expression: "regex(., '^\\+?[0-9 ]{8,20}$')",
-      message: 'Veuillez saisir un numero de telephone valide.'
+      message: 'Veuillez saisir un numero de telephone valide (8 a 20 chiffres).'
     };
   }
 

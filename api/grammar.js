@@ -24,6 +24,7 @@ B. TYPES CHOIX (MULTIPLE CHOICES):
 
 C. TYPES TEXTE LIBRE:
 5.  __Z               → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
+5b. __Z!1*Tel         → Numéro de téléphone (texte + contrainte regex ^\+?[0-9 ]{8,20}$ — JAMAIS __1)
 
 D. TYPES NUMÉRIQUES ENTIERS (__1):
 6.  __1               → Entier pur (sans unité) : Score__1, Nb_Contacts__1
@@ -55,6 +56,7 @@ RÈGLES STRICTES DE FORMAT:
 - Entier temporel AVEC contexte clinique précis: utiliser la plage numérique → __1Y!0<N<80, __1W!0<N<42
 - Réel: TOUJOURS utiliser la plage numérique → __2K!0<R<300, __2T!35<R<42
 - Texte libre: TOUJOURS écrire __Z!1*Expression (jamais __Z seul)
+- Téléphone: TOUJOURS écrire __Z!1*Tel (jamais __Z!1*Expression ni __1 — un numéro de tél commence souvent par 0 ou + et est un TEXTE, pas un entier)
 
 RÈGLES DE MODALITÉS (CRITIQUE — à respecter STRICTEMENT):
 - ⛔ NE JAMAIS inventer de modalités supplémentaires qui ne sont pas dans la grammaire ou le libellé de la question.
@@ -76,6 +78,7 @@ RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le ty
 - IGNORER les préfixes "Selon vous", "Si oui", "D'après vous" — ils ne changent PAS le type. Analyser le MOT-CLÉ principal: quel/quels/combien/comment
 - Si la question attend un NOMBRE en réponse → __1 (entier) ou __2 (réel), JAMAIS __B!boolean
 - Si la question attend un CHOIX parmi une liste → __X, JAMAIS __B!boolean
+- "Numéro de téléphone / Téléphone / Contact / Tel / Portable / Mobile / WhatsApp" → TOUJOURS __Z!1*Tel (JAMAIS __1 ni __Z!1*Expression — un numéro de tél est un TEXTE, peut commencer par 0 ou +, ne se calcule pas). pf_modalites = "Numéro de téléphone (ex: 0XXXXXXXXX)"
 - Si la question attend du TEXTE LIBRE → __Z!1*Expression
 - DISCRIMINATION SÉMANTIQUE DU RADICAL: lire le COMPLÉMENT D'OBJET pour choisir le bon radical:
   • "effets sur la fertilité" → Fumer_Effet_Fertilite_ (ovocytes, hormones, ménopause...)
@@ -202,6 +205,10 @@ EXEMPLES DÉMOGRAPHIQUES (Fiche Identité Patient):
 - "Employé(e) actuellement ?"                       → Emploi__B!boolean
 - "Niveau d'éducation ?"                            → Education_Niveau__X!1*1Education_Niveau_            Education_Niveau_=[Aucun,Primaire,Secondaire,Superieur,Universitaire]
 - "Lieu de résidence ?"                             → Residence__Z!1*Expression                            Expression
+- "Numéro de téléphone du patient ?"               → Patient__Telephone__Z!1*Tel                           Numéro de téléphone (ex: 0XXXXXXXXX)
+- "Numéro de téléphone de l'enquêteur ?"           → Enqueteur_Telephone__Z!1*Tel                          Numéro de téléphone (ex: 0XXXXXXXXX)
+  ⚠️ ERREUR COURANTE: __Z!1*Expression — "numéro de téléphone" = texte avec validation regex → TOUJOURS __Z!1*Tel, JAMAIS __Z!1*Expression générique
+  ⚠️ ERREUR COURANTE: __1 — un numéro de téléphone peut commencer par 0 ou +, c'est un TEXTE, PAS un entier
 - "Nombre de personnes au foyer ?"                  → Menage__Taille__1!0<N<30
 
 EXEMPLES CLINIQUES (Paramètres Vitaux):

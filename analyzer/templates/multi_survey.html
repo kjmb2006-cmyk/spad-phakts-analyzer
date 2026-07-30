@@ -9,73 +9,191 @@
     <i class="bi bi-collection-fill fs-3"></i>
     <div>
       <strong>Comparez plusieurs enquêtes</strong> alignées grâce à la codification
-      <strong>PHAKTS / DPF</strong>. Le radical PHAKTS (avant le « __ ») sert de clé
-      d'harmonisation entre fichiers, même si les modalités diffèrent légèrement.
+      <strong>PHAKTS / DPF</strong>. Importez des fichiers Excel ou connectez-vous à
+      <strong>KoboToolbox</strong> pour charger vos formulaires directement.
     </div>
   </div>
 
-  <!-- ═══════════ Section 1 — Importer des enquêtes ═══════════ -->
+  <!-- ═══════════════════════════════════════════════════════════════════
+       RUBRIQUE 1 — Import + Analyse multivariée (tout-en-un)
+  ═══════════════════════════════════════════════════════════════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-upload me-2 text-primary"></i>1. Importer les fichiers d'enquête (.xlsx)
+        <i class="bi bi-upload me-2 text-primary"></i>
+        1. Importer les fichiers d'enquête — et lancer une analyse multivariée
       </h6>
     </div>
     <div class="card-body">
-      <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
-        <input type="hidden" name="action" value="upload">
-        <div class="col-md-9">
-          <label class="form-label small fw-semibold">Sélectionnez plusieurs fichiers Excel</label>
-          <input type="file" class="form-control form-control-sm"
-                 name="files" multiple accept=".xlsx,.xls,.xlsm" required>
-          <small class="text-muted">
-            Idéalement codifiés PHAKTS (colonnes au format <code>Radical__TYPE!contrainte</code>).
-          </small>
-        </div>
-        <div class="col-md-3 d-grid">
-          <button class="btn btn-primary btn-sm" type="submit">
-            <i class="bi bi-plus-circle me-1"></i>Ajouter à la pile
-          </button>
-        </div>
-      </form>
 
+      <!-- ─── Onglets : Excel / KoboToolbox ─────────────────────────────── -->
+      <ul class="nav nav-tabs nav-tabs-sm mb-3" id="importTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active fw-semibold small px-3 py-2" id="tab-excel"
+                  data-bs-toggle="tab" data-bs-target="#pane-excel" type="button">
+            <i class="bi bi-file-earmark-excel me-1 text-success"></i>Fichier Excel (.xlsx)
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-semibold small px-3 py-2" id="tab-kobo"
+                  data-bs-toggle="tab" data-bs-target="#pane-kobo" type="button">
+            <i class="bi bi-cloud-arrow-down me-1 text-primary"></i>KoboToolbox
+            {% if not kobo_connected %}
+              <span class="badge bg-secondary ms-1" style="font-size:.65em">non connecté</span>
+            {% else %}
+              <span class="badge bg-success ms-1" style="font-size:.65em">connecté</span>
+            {% endif %}
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+
+        <!-- ── Onglet Excel ──────────────────────────────────────────────── -->
+        <div class="tab-pane fade show active" id="pane-excel" role="tabpanel">
+          <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <input type="hidden" name="action" value="upload">
+            <div class="col-md-9">
+              <label class="form-label small fw-semibold">Sélectionnez un ou plusieurs fichiers Excel</label>
+              <input type="file" class="form-control form-control-sm"
+                     name="files" multiple accept=".xlsx,.xls,.xlsm" required>
+              <small class="text-muted">
+                Idéalement codifiés PHAKTS (colonnes <code>Radical__TYPE!contrainte</code>).
+              </small>
+            </div>
+            <div class="col-md-3 d-grid">
+              <button class="btn btn-primary btn-sm" type="submit">
+                <i class="bi bi-plus-circle me-1"></i>Ajouter à la pile
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ── Onglet KoboToolbox ───────────────────────────────────────── -->
+        <div class="tab-pane fade" id="pane-kobo" role="tabpanel">
+          {% if not kobo_connected %}
+          <div class="alert alert-warning d-flex align-items-center gap-3 mb-0">
+            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+            <div>
+              Vous n'êtes pas encore connecté à KoboToolbox.
+              <a href="{{ url_for('kobo_connect') }}" class="fw-semibold">
+                Se connecter maintenant →
+              </a>
+            </div>
+          </div>
+          {% else %}
+          <div class="row g-2 align-items-end mb-2">
+            <div class="col-auto">
+              <span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3">
+                <i class="bi bi-person-check me-1"></i>Connecté à KoboToolbox
+              </span>
+            </div>
+            <div class="col-auto">
+              <form method="POST">
+                <input type="hidden" name="action" value="kobo_refresh_ms">
+                <button class="btn btn-sm btn-outline-primary" type="submit">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Actualiser la liste des formulaires
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {% if ms_kobo_assets %}
+          <form method="POST" class="row g-2 align-items-end">
+            <input type="hidden" name="action" value="kobo_add">
+            <div class="col-md-9">
+              <label class="form-label small fw-semibold">
+                Formulaires disponibles
+                <span class="text-muted fw-normal">({{ ms_kobo_assets|length }} formulaire(s))</span>
+              </label>
+              <select name="kobo_uid" id="koboUidSelect" class="form-select form-select-sm"
+                      required size="5"
+                      onchange="var o=this.options[this.selectedIndex];
+                                document.getElementById('koboNameField').value=o.dataset.name||''">
+                <option value="">— Choisissez un formulaire —</option>
+                {% for a in ms_kobo_assets %}
+                <option value="{{ a.uid }}" data-name="{{ a.name }}">
+                  {{ a.name }}
+                  {% if a.submission_count %} — {{ a.submission_count }} soumissions{% endif %}
+                  {% if not a.deployed %} (non déployé){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+              <input type="hidden" name="kobo_asset_name" id="koboNameField" value="">
+            </div>
+            <div class="col-md-3 d-grid">
+              <button class="btn btn-success btn-sm" type="submit">
+                <i class="bi bi-cloud-plus me-1"></i>Importer ce formulaire
+              </button>
+            </div>
+          </form>
+          {% else %}
+          <div class="alert alert-light border small d-flex align-items-center gap-2 mb-0">
+            <i class="bi bi-info-circle text-primary"></i>
+            Cliquez sur <strong>Actualiser la liste</strong> pour voir vos formulaires KoboToolbox.
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+
+      </div>{# /tab-content #}
+
+      <!-- ─── Pile des enquêtes importées ───────────────────────────────── -->
       {% if surveys_meta %}
-      <hr>
-      <div class="table-responsive">
+      <hr class="my-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-semibold small text-secondary">
+          <i class="bi bi-stack me-1"></i>{{ surveys_meta|length }} enquête(s) dans la pile
+        </span>
+        <form method="POST" class="d-inline">
+          <input type="hidden" name="action" value="reset">
+          <button class="btn btn-sm btn-outline-danger" type="submit"
+                  onclick="return confirm('Effacer toutes les enquêtes ?')">
+            <i class="bi bi-trash me-1"></i>Tout effacer
+          </button>
+        </form>
+      </div>
+      <div class="table-responsive mb-0">
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th style="width:30px">#</th>
-              <th>Fichier</th>
-              <th class="text-center" style="width:90px">Obs.</th>
-              <th class="text-center" style="width:90px">Variables</th>
-              <th class="text-center" style="width:120px">PHAKTS</th>
-              <th class="text-center" style="width:60px"></th>
+              <th style="width:28px">#</th>
+              <th>Fichier / Formulaire</th>
+              <th class="text-center" style="width:80px">Obs.</th>
+              <th class="text-center" style="width:80px">Variables</th>
+              <th class="text-center" style="width:110px">PHAKTS</th>
+              <th class="text-center" style="width:60px">Source</th>
+              <th class="text-center" style="width:50px"></th>
             </tr>
           </thead>
           <tbody>
             {% for s in surveys_meta %}
             <tr>
-              <td class="text-muted">{{ loop.index }}</td>
-              <td><strong>{{ s.name }}</strong></td>
-              <td class="text-center">{{ s.n_obs }}</td>
-              <td class="text-center">{{ s.n_vars }}</td>
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td class="fw-semibold small">{{ s.name }}</td>
+              <td class="text-center small">{{ s.n_obs }}</td>
+              <td class="text-center small">{{ s.n_vars }}</td>
               <td class="text-center">
                 {% if s.phakts_vars %}
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">
-                    {{ s.phakts_vars }} codées
-                  </span>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">{{ s.phakts_vars }} codées</span>
                 {% else %}
                   <span class="badge bg-warning-subtle text-warning border border-warning-subtle">non codé</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if s.source == 'kobo' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Kobo</span>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Excel</span>
                 {% endif %}
               </td>
               <td class="text-center">
                 <form method="POST" class="d-inline">
                   <input type="hidden" name="action" value="remove">
                   <input type="hidden" name="idx" value="{{ loop.index0 }}">
-                  <button class="btn btn-sm btn-outline-danger" type="submit"
-                          onclick="return confirm('Retirer cette enquête ?')">
-                    <i class="bi bi-trash"></i>
+                  <button class="btn btn-sm btn-outline-danger py-0 px-1" type="submit"
+                          onclick="return confirm('Retirer cette enquête ?')" title="Retirer">
+                    <i class="bi bi-x-lg" style="font-size:.75rem"></i>
                   </button>
                 </form>
               </td>
@@ -84,21 +202,222 @@
           </tbody>
         </table>
       </div>
-      <div class="mt-2 text-end">
-        <form method="POST" class="d-inline">
-          <input type="hidden" name="action" value="reset">
-          <button class="btn btn-sm btn-outline-secondary" type="submit"
-                  onclick="return confirm('Effacer toutes les enquêtes ?')">
-            <i class="bi bi-x-circle me-1"></i>Effacer tout
-          </button>
-        </form>
+      {% endif %}
+
+      <!-- ─── Analyse multivariée — disponible dès 1 enquête ────────────── -->
+      {% if surveys_meta|length >= 1 %}
+      <hr class="my-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <span class="fw-semibold text-dark">
+            <i class="bi bi-diagram-3-fill text-primary me-1"></i>Analyse multivariée des données importées
+          </span>
+          <span class="text-muted small ms-2">— ACP · ACM · AFC · Classification K-Means</span>
+        </div>
+        {% if mv_result %}
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{{ url_for('multi_survey_download_xlsx') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Télécharger XLSX
+          </a>
+          <form method="POST" class="d-inline">
+            <input type="hidden" name="action" value="clear_mv_ms">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">
+              <i class="bi bi-x-circle me-1"></i>Réinitialiser
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Formulaire de choix de méthode -->
+      <form method="POST" class="border rounded p-3 bg-light mb-3">
+        <input type="hidden" name="action" value="run_mv_ms">
+        <input type="hidden" name="align_mode" value="{{ mode }}">
+        <div class="row g-3 align-items-start">
+
+          <!-- Méthode -->
+          <div class="col-sm-4 col-lg-3">
+            <label class="form-label small fw-semibold mb-1">Méthode d'analyse</label>
+            <select name="mv_method" id="mvMethod" class="form-select form-select-sm"
+                    onchange="toggleMvFields(this.value)">
+              <option value="pca"        {% if mv_params.method=='pca'        %}selected{% endif %}>ACP — Composantes Principales</option>
+              <option value="mca"        {% if mv_params.method=='mca'        %}selected{% endif %}>ACM — Correspondances Multiples</option>
+              <option value="ca"         {% if mv_params.method=='ca'         %}selected{% endif %}>AFC — Correspondances (2 var.)</option>
+              <option value="clustering" {% if mv_params.method=='clustering' %}selected{% endif %}>K-Means — Classification</option>
+            </select>
+          </div>
+
+          <!-- Variables numériques (ACP / K-Means) -->
+          <div class="col-sm-8 col-lg-6" id="mvNumVarsBlock">
+            <label class="form-label small fw-semibold mb-1">
+              Variables numériques
+              <span class="text-muted fw-normal">(Ctrl/Cmd pour plusieurs)</span>
+            </label>
+            <select name="mv_variables" id="mvNumVars"
+                    class="form-select form-select-sm" multiple size="5">
+              {% for v in mv_num_vars %}
+              <option value="{{ v }}"
+                {% if mv_params.variables and v in mv_params.variables %}selected{% endif %}>
+                {{ v }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Variables catégorielles (ACM) -->
+          <div class="col-sm-8 col-lg-6 d-none" id="mvCatVarsBlock">
+            <label class="form-label small fw-semibold mb-1">
+              Variables catégorielles
+              <span class="text-muted fw-normal">(Ctrl/Cmd pour plusieurs)</span>
+            </label>
+            <select name="mv_variables" id="mvCatVars"
+                    class="form-select form-select-sm" multiple size="5">
+              {% for v in mv_cat_vars %}
+              <option value="{{ v }}"
+                {% if mv_params.variables and v in mv_params.variables %}selected{% endif %}>
+                {{ v }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Deux variables (AFC) -->
+          <div class="col-sm-8 col-lg-6 d-none" id="mvCaBlock">
+            <label class="form-label small fw-semibold mb-1">Variable ligne (AFC)</label>
+            <select name="mv_ca_row" class="form-select form-select-sm mb-2">
+              <option value="">— choisir —</option>
+              {% for v in mv_cat_vars %}
+              <option value="{{ v }}" {% if mv_params.ca_row==v %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+            <label class="form-label small fw-semibold mb-1">Variable colonne (AFC)</label>
+            <select name="mv_ca_col" class="form-select form-select-sm">
+              <option value="">— choisir —</option>
+              {% for v in mv_cat_vars %}
+              <option value="{{ v }}" {% if mv_params.ca_col==v %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Paramètre complémentaire -->
+          <div class="col-sm-4 col-lg-2" id="mvNcBlock">
+            <label class="form-label small fw-semibold mb-1">Nombre d'axes</label>
+            <input type="number" name="mv_n_components" class="form-control form-control-sm"
+                   value="{{ mv_params.n_components or 2 }}" min="2" max="10">
+          </div>
+          <div class="col-sm-4 col-lg-2 d-none" id="mvNkBlock">
+            <label class="form-label small fw-semibold mb-1">Nombre de classes (k)</label>
+            <input type="number" name="mv_n_clusters" class="form-control form-control-sm"
+                   value="{{ mv_params.n_clusters or 3 }}" min="2" max="12">
+          </div>
+
+          <!-- Bouton -->
+          <div class="col-12 col-lg-1 d-flex align-items-end">
+            <button class="btn btn-primary btn-sm w-100" type="submit">
+              <i class="bi bi-play-fill me-1"></i>Lancer
+            </button>
+          </div>
+
+        </div>
+      </form>
+
+      <!-- Résultats de l'analyse -->
+      {% if mv_result %}
+      <div class="alert alert-info border-0 small d-flex flex-wrap align-items-center gap-3 mb-3 py-2">
+        <span><i class="bi bi-info-circle-fill me-1"></i><strong>{{ mv_result.method }}</strong></span>
+        <span><i class="bi bi-database me-1"></i>{{ mv_result.n_obs }} observations</span>
+        {% if mv_result.variables is defined %}
+        <span><i class="bi bi-columns me-1"></i>{{ mv_result.variables|length }} variables</span>
+        {% endif %}
+        {% if mv_result.silhouette is defined %}
+        <span><i class="bi bi-award me-1"></i>Silhouette = <strong>{{ mv_result.silhouette }}</strong></span>
+        {% endif %}
+        <a href="{{ url_for('multi_survey_download_xlsx') }}" class="ms-auto btn btn-success btn-sm">
+          <i class="bi bi-file-earmark-excel me-1"></i>Télécharger XLSX
+        </a>
+      </div>
+
+      <!-- ACP -->
+      {% if mv_method == 'pca' %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">Valeurs propres</h6>
+          <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
+        </div>
+        <div class="col-md-6">
+          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">Saturations (loadings)</h6>
+          <div class="table-responsive">{{ mv_result.loadings_table | safe }}</div>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-4"><div id="mvScree" style="min-height:300px"></div></div>
+        <div class="col-lg-4"><div id="mvBiplot" style="min-height:300px"></div></div>
+        <div class="col-lg-4"><div id="mvCircle" style="min-height:300px"></div></div>
+      </div>
+
+      <!-- ACM -->
+      {% elif mv_method == 'mca' %}
+      <div class="mb-3">
+        <h6 class="small fw-semibold text-muted text-uppercase">Axes factoriels (ACM)</h6>
+        <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-6"><div id="mvRows" style="min-height:340px"></div></div>
+        <div class="col-lg-6"><div id="mvCats" style="min-height:340px"></div></div>
+      </div>
+
+      <!-- AFC -->
+      {% elif mv_method == 'ca' %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-7">
+          <h6 class="small fw-semibold text-muted text-uppercase">Tableau de contingence</h6>
+          <div class="table-responsive">{{ mv_result.ct_html | safe }}</div>
+        </div>
+        <div class="col-md-5">
+          <h6 class="small fw-semibold text-muted text-uppercase">Valeurs propres (AFC)</h6>
+          <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
+        </div>
+      </div>
+      <div id="mvCaBiplot" style="min-height:380px"></div>
+
+      <!-- K-Means -->
+      {% elif mv_method == 'clustering' %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <h6 class="small fw-semibold text-muted text-uppercase">Effectifs par classe</h6>
+          <div class="table-responsive">{{ mv_result.counts_table | safe }}</div>
+        </div>
+        <div class="col-md-9">
+          <h6 class="small fw-semibold text-muted text-uppercase">Moyennes par classe</h6>
+          <div class="table-responsive">{{ mv_result.means_table | safe }}</div>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-4"><div id="mvElbow"   style="min-height:300px"></div></div>
+        <div class="col-lg-4"><div id="mvScatter" style="min-height:300px"></div></div>
+        <div class="col-lg-4"><div id="mvRadar"   style="min-height:300px"></div></div>
       </div>
       {% endif %}
-    </div>
-  </div>
+
+      {% elif not mv_num_vars and not mv_cat_vars %}
+      <div class="alert alert-warning small mb-0">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Aucune variable exploitable détectée dans les enquêtes chargées.
+      </div>
+      {% else %}
+      <div class="alert alert-light border small mb-0">
+        <i class="bi bi-arrow-up-circle text-primary me-1"></i>
+        Choisissez une méthode et des variables, puis cliquez sur <strong>Lancer</strong>.
+      </div>
+      {% endif %}
+
+      {% endif %}{# surveys_meta >= 1 #}
+
+    </div>{# /card-body #}
+  </div>{# /card section 1 #}
 
   {% if surveys_meta|length >= 1 %}
-  <!-- ═══════════ Section 2 — Couverture variable × enquête ═══════════ -->
+  <!-- ═══════════ Section 2 — Couverture ═══════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
       <h6 class="mb-0 fw-semibold">
@@ -106,11 +425,11 @@
       </h6>
       <form method="POST" class="d-flex align-items-center gap-2">
         <input type="hidden" name="action" value="change_mode">
-        <label class="small text-muted mb-0">Mode d'alignement :</label>
+        <label class="small text-muted mb-0">Alignement :</label>
         <select name="align_mode" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>PHAKTS (radical)</option>
-          <option value="exact"  {% if mode=='exact' %}selected{% endif %}>Nom exact</option>
-          <option value="union"  {% if mode=='union' %}selected{% endif %}>Union (libre)</option>
+          <option value="exact"  {% if mode=='exact'  %}selected{% endif %}>Nom exact</option>
+          <option value="union"  {% if mode=='union'  %}selected{% endif %}>Union (libre)</option>
         </select>
       </form>
     </div>
@@ -135,27 +454,26 @@
   {% endif %}
 
   {% if surveys_meta|length >= 2 %}
-  <!-- ═══════════ Section 3 — Comparer plusieurs variables entre enquêtes ═══════════ -->
+  <!-- ═══════════ Section 3 — Comparaisons croisées ═══════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>3. Comparer une ou plusieurs variables entre enquêtes
+        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>3. Comparer des variables entre enquêtes
       </h6>
       {% if compared_vars %}
       <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-        {{ compared_vars|length }} variable(s) dans le panier de comparaison
+        {{ compared_vars|length }} variable(s) dans le panier
       </span>
       {% endif %}
     </div>
     <div class="card-body">
-
       <form method="POST" class="row g-2 align-items-end">
         <input type="hidden" name="action" value="add_compare">
         <input type="hidden" name="align_mode" value="{{ mode }}">
         <div class="col-md-9">
           <label class="form-label small fw-semibold">
-            Variables à ajouter au panier de comparaison
-            <span class="text-muted fw-normal">— Ctrl/Cmd-clic pour en sélectionner plusieurs</span>
+            Variables à ajouter au panier
+            <span class="text-muted fw-normal">— Ctrl/Cmd pour plusieurs</span>
           </label>
           <select name="variables" class="form-select form-select-sm" multiple size="8" required>
             {% for v in candidate_vars %}
@@ -174,7 +492,7 @@
           <button class="btn btn-outline-secondary btn-sm" type="submit"
                   formaction="{{ url_for('multi_survey') }}" formmethod="POST"
                   name="action" value="clear_compare"
-                  onclick="return confirm('Vider le panier de comparaison ?')">
+                  onclick="return confirm('Vider le panier ?')">
             <i class="bi bi-x-circle me-1"></i>Vider le panier
           </button>
           {% endif %}
@@ -186,13 +504,11 @@
       {% if merged_meta %}
       <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
         <div><i class="bi bi-collection me-1"></i><strong>{{ merged_meta.n_surveys }}</strong> enquêtes</div>
-        <div><i class="bi bi-database me-1"></i><strong>{{ merged_meta.n_obs }}</strong> observations fusionnées</div>
+        <div><i class="bi bi-database me-1"></i><strong>{{ merged_meta.n_obs }}</strong> obs. fusionnées</div>
         <div><i class="bi bi-columns me-1"></i><strong>{{ merged_meta.n_vars }}</strong> variables alignées</div>
-        <div><i class="bi bi-tag me-1"></i><strong>{{ results|length }}</strong> comparaison(s) affichée(s)</div>
+        <div><i class="bi bi-tag me-1"></i><strong>{{ results|length }}</strong> comparaison(s)</div>
       </div>
       {% endif %}
-
-      <!-- Liste des comparaisons -->
       <div class="accordion" id="msAccordion">
       {% for r in results %}
         <div class="accordion-item border-0 mb-3 shadow-sm rounded">
@@ -221,13 +537,11 @@
                 <form method="POST">
                   <input type="hidden" name="action" value="remove_compare">
                   <input type="hidden" name="variable" value="{{ r.variable }}">
-                  <button class="btn btn-sm btn-outline-danger" type="submit"
-                          title="Retirer cette comparaison du panier">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">
                     <i class="bi bi-trash me-1"></i>Retirer du panier
                   </button>
                 </form>
               </div>
-
               {% if r.error %}
               <div class="alert alert-warning small mb-0">{{ r.error }}</div>
               {% elif r.kind == 'categorical' %}
@@ -237,13 +551,13 @@
                   <div class="table-responsive">{{ r.count_html | safe }}</div>
                 </div>
                 <div class="col-lg-6">
-                  <h6 class="small fw-semibold text-muted">Pourcentages (% colonne)</h6>
+                  <h6 class="small fw-semibold text-muted">% colonne</h6>
                   <div class="table-responsive">{{ r.pct_html | safe }}</div>
                 </div>
               </div>
               <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
               {% elif r.kind == 'continuous' %}
-              <h6 class="small fw-semibold text-muted">Résumé statistique par enquête</h6>
+              <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
               <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
               <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
               {% endif %}
@@ -254,9 +568,7 @@
       </div>
       {% elif compared_vars %}
         <hr>
-        <div class="alert alert-warning small mb-0">
-          Importez au moins 2 enquêtes pour afficher les comparaisons.
-        </div>
+        <div class="alert alert-warning small mb-0">Importez au moins 2 enquêtes.</div>
       {% endif %}
 
       {% if compared_vars %}
@@ -264,8 +576,8 @@
       <div class="alert alert-success small d-flex align-items-center gap-2 mb-0">
         <i class="bi bi-check-circle-fill fs-5"></i>
         <div>
-          Ces <strong>{{ compared_vars|length }}</strong> comparaison(s) seront automatiquement
-          incluses dans le <strong>rapport PDF/Word</strong> si vous cochez « Multi-enquête » dans la page Rapport.
+          Ces <strong>{{ compared_vars|length }}</strong> comparaison(s) seront incluses dans le
+          <strong>rapport PDF/Word</strong> si vous cochez « Multi-enquête » dans la page Rapport.
         </div>
       </div>
       {% endif %}
@@ -277,20 +589,83 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// ── Bascule des panneaux selon la méthode multivariée ─────────────────────
+function toggleMvFields(method) {
+  var numBlock = document.getElementById('mvNumVarsBlock');
+  var catBlock = document.getElementById('mvCatVarsBlock');
+  var caBlock  = document.getElementById('mvCaBlock');
+  var ncBlock  = document.getElementById('mvNcBlock');
+  var nkBlock  = document.getElementById('mvNkBlock');
+  var numSel   = document.getElementById('mvNumVars');
+  var catSel   = document.getElementById('mvCatVars');
+
+  [numBlock, catBlock, caBlock, ncBlock, nkBlock].forEach(function(el){ if(el) el.classList.add('d-none'); });
+  if (numSel) numSel.disabled = true;
+  if (catSel) catSel.disabled = true;
+
+  if (method === 'pca' || method === 'clustering') {
+    if (numBlock) numBlock.classList.remove('d-none');
+    if (numSel)  numSel.disabled = false;
+    if (method === 'clustering') { if(nkBlock) nkBlock.classList.remove('d-none'); }
+    else                         { if(ncBlock) ncBlock.classList.remove('d-none'); }
+  } else if (method === 'mca') {
+    if (catBlock) catBlock.classList.remove('d-none');
+    if (catSel)   catSel.disabled = false;
+    if (ncBlock)  ncBlock.classList.remove('d-none');
+  } else if (method === 'ca') {
+    if (caBlock) caBlock.classList.remove('d-none');
+  }
+}
+(function(){
+  var sel = document.getElementById('mvMethod');
+  if (sel) toggleMvFields(sel.value);
+})();
+</script>
+
 {% if results %}
 <script>
 (function(){
   var charts = [
-    {% for r in results %}
-      {% if r.chart %}
-      { id: 'msChart_{{ loop.index0 }}', fig: {{ r.chart | safe }} },
-      {% endif %}
-    {% endfor %}
+    {% for r in results %}{% if r.chart %}
+    { id: 'msChart_{{ loop.index0 }}', fig: {{ r.chart | safe }} },
+    {% endif %}{% endfor %}
   ];
   charts.forEach(function(c){
-    try { Plotly.newPlot(c.id, c.fig.data, c.fig.layout, { responsive: true, displaylogo: false }); }
-    catch(e) { console.warn('plotly:', c.id, e); }
+    try { Plotly.newPlot(c.id, c.fig.data, c.fig.layout, {responsive:true,displaylogo:false}); }
+    catch(e){ console.warn('plotly', c.id, e); }
   });
+})();
+</script>
+{% endif %}
+
+{% if mv_result %}
+<script>
+(function(){
+  var cfg = {responsive: true, displaylogo: false};
+  {% if mv_method == 'pca' %}
+  var sc = {{ mv_result.chart_scree  | safe }};
+  var bp = {{ mv_result.chart_biplot | safe }};
+  var cr = {{ mv_result.chart_circle | safe }};
+  try { Plotly.newPlot('mvScree',  sc.data, sc.layout, cfg); } catch(e){}
+  try { Plotly.newPlot('mvBiplot', bp.data, bp.layout, cfg); } catch(e){}
+  try { Plotly.newPlot('mvCircle', cr.data, cr.layout, cfg); } catch(e){}
+  {% elif mv_method == 'mca' %}
+  var rw = {{ mv_result.chart_rows | safe }};
+  var ct = {{ mv_result.chart_cats | safe }};
+  try { Plotly.newPlot('mvRows', rw.data, rw.layout, cfg); } catch(e){}
+  try { Plotly.newPlot('mvCats', ct.data, ct.layout, cfg); } catch(e){}
+  {% elif mv_method == 'ca' %}
+  var ca = {{ mv_result.chart_biplot | safe }};
+  try { Plotly.newPlot('mvCaBiplot', ca.data, ca.layout, cfg); } catch(e){}
+  {% elif mv_method == 'clustering' %}
+  var el = {{ mv_result.chart_elbow   | safe }};
+  var sc = {{ mv_result.chart_scatter | safe }};
+  var rd = {{ mv_result.chart_radar   | safe }};
+  try { Plotly.newPlot('mvElbow',   el.data, el.layout, cfg); } catch(e){}
+  try { Plotly.newPlot('mvScatter', sc.data, sc.layout, cfg); } catch(e){}
+  try { Plotly.newPlot('mvRadar',   rd.data, rd.layout, cfg); } catch(e){}
+  {% endif %}
 })();
 </script>
 {% endif %}

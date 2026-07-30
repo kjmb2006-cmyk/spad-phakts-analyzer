@@ -1070,6 +1070,107 @@ def _compute_ms_comparison(merged, variable):
         return {'variable': variable, 'error': str(e)}
 
 
+def _ms_build_xlsx(mv_result: dict, mv_method: str) -> bytes:
+    """Construit un fichier XLSX à partir du résultat d'une analyse multivariée."""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    header_font  = Font(bold=True, color='FFFFFF')
+    header_fill  = PatternFill('solid', fgColor='1a6fa8')
+    title_font   = Font(bold=True, size=12)
+
+    def _write_df(ws, df: pd.DataFrame, start_row: int = 1):
+        ws.cell(row=start_row, column=1, value=df.index.name or 'Index')
+        ws.cell(row=start_row, column=1).font = header_font
+        ws.cell(row=start_row, column=1).fill = header_fill
+        for ci, col in enumerate(df.columns, start=2):
+            c = ws.cell(row=start_row, column=ci, value=str(col))
+            c.font = header_font
+            c.fill = header_fill
+        for ri, (idx, row) in enumerate(df.iterrows(), start=start_row + 1):
+            ws.cell(row=ri, column=1, value=str(idx))
+            for ci, val in enumerate(row, start=2):
+                ws.cell(row=ri, column=ci, value=round(float(val), 4) if isinstance(val, (float, int)) else str(val))
+        for col_cells in ws.columns:
+            length = max(len(str(c.value or '')) for c in col_cells) + 2
+            ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(length, 40)
+
+    def _write_html_table(ws, html: str, title: str, start_row: int = 1) -> int:
+        try:
+            dfs = pd.read_html(html)
+            if dfs:
+                df = dfs[0]
+                t = ws.cell(row=start_row, column=1, value=title)
+                t.font = title_font
+                start_row += 1
+                for ci, col in enumerate(df.columns, start=1):
+                    c = ws.cell(row=start_row, column=ci, value=str(col))
+                    c.font = header_font
+                    c.fill = header_fill
+                start_row += 1
+                for _, row in df.iterrows():
+                    for ci, val in enumerate(row, start=1):
+                        try:
+                            ws.cell(row=start_row, column=ci, value=float(val))
+                        except Exception:
+                            ws.cell(row=start_row, column=ci, value=str(val) if pd.notna(val) else '')
+                    start_row += 1
+                return start_row + 1
+        except Exception:
+            pass
+        return start_row
+
+    method_label = {
+        'pca': 'ACP', 'mca': 'ACM', 'ca': 'AFC', 'clustering': 'Classification K-Means'
+    }.get(mv_method, mv_method)
+
+    # Feuille synthèse
+    ws_info = wb.create_sheet('Synthèse')
+    ws_info['A1'] = f'Méthode : {method_label}'
+    ws_info['A1'].font = title_font
+    ws_info['A2'] = f'Observations : {mv_result.get("n_obs", "—")}'
+    ws_info['A3'] = f'Variables : {mv_result.get("n_vars", mv_result.get("n_vars", "—"))}'
+    if 'variables' in mv_result:
+        ws_info['A5'] = 'Variables utilisées :'
+        ws_info['A5'].font = Font(bold=True)
+        for i, v in enumerate(mv_result['variables'], start=6):
+            ws_info.cell(row=i, column=1, value=v)
+
+    row = 1
+    if mv_method == 'pca':
+        ws_eig = wb.create_sheet('Valeurs propres')
+        row = _write_html_table(ws_eig, mv_result.get('eig_table', ''), 'Tableau des valeurs propres', 1)
+        ws_load = wb.create_sheet('Saturations (loadings)')
+        _write_html_table(ws_load, mv_result.get('loadings_table', ''), 'Saturations factorielles', 1)
+
+    elif mv_method == 'mca':
+        ws_eig = wb.create_sheet('Valeurs propres (ACM)')
+        _write_html_table(ws_eig, mv_result.get('eig_table', ''), 'Tableau des axes', 1)
+
+    elif mv_method == 'ca':
+        ws_ct = wb.create_sheet('Tableau de contingence')
+        _write_html_table(ws_ct, mv_result.get('ct_html', ''), 'Tableau de contingence', 1)
+        ws_eig = wb.create_sheet('Valeurs propres (AFC)')
+        _write_html_table(ws_eig, mv_result.get('eig_table', ''), 'Tableau des axes', 1)
+
+    elif mv_method == 'clustering':
+        ws_eff = wb.create_sheet('Effectifs des classes')
+        _write_html_table(ws_eff, mv_result.get('counts_table', ''), 'Effectifs par classe', 1)
+        ws_moy = wb.create_sheet('Moyennes par classe')
+        _write_html_table(ws_moy, mv_result.get('means_table', ''), 'Moyennes par classe', 1)
+        ws_info['A7'] = f'Indice de silhouette : {mv_result.get("silhouette", "—")}'
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
+
+
 @app.route('/multi-survey', methods=['GET', 'POST'])
 def multi_survey():
     """Analyse multi-enquête avec alignement DPF/PHAKTS — comparaisons multiples persistées."""
@@ -1165,6 +1266,62 @@ def multi_survey():
         elif action == 'change_mode':
             session['ms_mode'] = mode
 
+        elif action == 'kobo_refresh_ms':
+            token = session.get('kobo_token')
+            instance = session.get('kobo_instance')
+            if not token:
+                flash("Connectez-vous d'abord à KoboToolbox (menu Connexion KoboToolbox).", 'warning')
+            else:
+                res = list_assets(token, instance=instance or None)
+                if res.get('success'):
+                    session['ms_kobo_assets'] = res['assets']
+                    session['kobo_instance'] = res.get('instance', instance)
+                    flash(f"{res['total']} formulaire(s) KoboToolbox chargé(s).", 'success')
+                else:
+                    flash(f"KoboToolbox : {res.get('error', 'Erreur inconnue')}", 'danger')
+
+        elif action == 'kobo_add':
+            token = session.get('kobo_token')
+            instance = session.get('kobo_instance')
+            uid = request.form.get('kobo_uid', '').strip()
+            if not token:
+                flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+            elif not uid:
+                flash("Sélectionnez un formulaire KoboToolbox.", 'warning')
+            else:
+                res = kobo_load_data(token, uid, instance=instance or None)
+                if res.get('success'):
+                    df_kobo = res['df']
+                    asset_name = request.form.get('kobo_asset_name') or f'Kobo_{uid[:8]}'
+                    fname = f"ms_kobo_{uuid.uuid4().hex[:8]}.xlsx"
+                    fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                    df_kobo.to_excel(fpath, index=False, engine='openpyxl')
+                    surveys_meta.append({
+                        'name': asset_name,
+                        'path': fpath,
+                        'n_obs': int(len(df_kobo)),
+                        'n_vars': int(df_kobo.shape[1]),
+                        'phakts_vars': int(sum(1 for c in df_kobo.columns if is_phakts_coded(c))),
+                        'source': 'kobo',
+                    })
+                    session['multi_surveys'] = surveys_meta
+                    flash(f"Enquête KoboToolbox « {asset_name} » ajoutée ({len(df_kobo)} obs.).", 'success')
+                else:
+                    flash(f"Chargement KoboToolbox : {res.get('error', 'Erreur')}", 'danger')
+
+        elif action == 'run_mv_ms':
+            session['ms_mv_params'] = {
+                'method':       request.form.get('mv_method', 'pca'),
+                'variables':    request.form.getlist('mv_variables'),
+                'n_components': int(request.form.get('mv_n_components', 2)),
+                'n_clusters':   int(request.form.get('mv_n_clusters', 3)),
+                'ca_row':       request.form.get('mv_ca_row', ''),
+                'ca_col':       request.form.get('mv_ca_col', ''),
+            }
+
+        elif action == 'clear_mv_ms':
+            session.pop('ms_mv_params', None)
+
     surveys = _load_multi_surveys()
 
     if len(surveys) >= 1:
@@ -1206,6 +1363,42 @@ def multi_survey():
             union = sorted(set().union(*all_cols_by_survey) - {'__survey__'})
             candidate_vars = union
 
+    # ── Analyse multivariée sur jeu fusionné ─────────────────────────────────
+    mv_result = None
+    mv_method = None
+    mv_params = session.get('ms_mv_params') or {}
+    mv_num_vars = []
+    mv_cat_vars = []
+    mv_merged_df = None
+
+    if surveys:
+        try:
+            mv_merged_df = merge_surveys(surveys, mode=mode)
+            vt = get_var_types(mv_merged_df)
+            mv_num_vars = [v for v, t in vt.items() if t in ('continue', 'binaire') and v != '__survey__']
+            mv_cat_vars = [v for v, t in vt.items() if t == 'categorielle' and v != '__survey__']
+        except Exception:
+            pass
+
+    if mv_params and mv_merged_df is not None:
+        mv_method = mv_params.get('method', 'pca')
+        mv_sel    = [v for v in mv_params.get('variables', []) if v in (mv_merged_df.columns.tolist())]
+        mv_nc     = mv_params.get('n_components', 2)
+        mv_nk     = mv_params.get('n_clusters', 3)
+        mv_row    = mv_params.get('ca_row', '')
+        mv_col    = mv_params.get('ca_col', '')
+        try:
+            if mv_method == 'pca' and len(mv_sel) >= 2:
+                mv_result = run_pca(mv_merged_df, mv_sel, mv_nc)
+            elif mv_method == 'mca' and len(mv_sel) >= 2:
+                mv_result = run_mca(mv_merged_df, mv_sel, mv_nc)
+            elif mv_method == 'ca' and mv_row and mv_col:
+                mv_result = run_ca(mv_merged_df, mv_row, mv_col)
+            elif mv_method == 'clustering' and len(mv_sel) >= 2:
+                mv_result = run_clustering(mv_merged_df, mv_sel, mv_nk)
+        except Exception as e:
+            flash(f"Analyse multivariée : {e}", 'danger')
+
     return render_template('multi_survey.html',
                             surveys_meta=surveys_meta,
                             mode=mode,
@@ -1214,7 +1407,67 @@ def multi_survey():
                             candidate_vars=candidate_vars,
                             compared_vars=compared_vars,
                             results=results,
-                            merged_meta=merged_meta)
+                            merged_meta=merged_meta,
+                            kobo_connected=bool(session.get('kobo_token')),
+                            ms_kobo_assets=session.get('ms_kobo_assets', []),
+                            mv_result=mv_result,
+                            mv_method=mv_method,
+                            mv_params=mv_params,
+                            mv_num_vars=mv_num_vars,
+                            mv_cat_vars=mv_cat_vars)
+
+
+@app.route('/multi-survey/download-xlsx')
+def multi_survey_download_xlsx():
+    """Télécharge en XLSX les résultats de l'analyse multivariée multi-enquête."""
+    mv_params = session.get('ms_mv_params') or {}
+    if not mv_params:
+        flash("Lancez d'abord une analyse multivariée.", 'warning')
+        return redirect(url_for('multi_survey'))
+
+    surveys = _load_multi_surveys()
+    if not surveys:
+        flash("Aucune enquête chargée.", 'warning')
+        return redirect(url_for('multi_survey'))
+
+    mode = session.get('ms_mode', 'phakts')
+    try:
+        merged = merge_surveys(surveys, mode=mode)
+    except Exception as e:
+        flash(f"Fusion impossible : {e}", 'danger')
+        return redirect(url_for('multi_survey'))
+
+    mv_method = mv_params.get('method', 'pca')
+    mv_sel    = [v for v in mv_params.get('variables', []) if v in merged.columns.tolist()]
+    mv_nc     = mv_params.get('n_components', 2)
+    mv_nk     = mv_params.get('n_clusters', 3)
+    mv_row    = mv_params.get('ca_row', '')
+    mv_col    = mv_params.get('ca_col', '')
+
+    try:
+        if mv_method == 'pca' and len(mv_sel) >= 2:
+            result = run_pca(merged, mv_sel, mv_nc)
+        elif mv_method == 'mca' and len(mv_sel) >= 2:
+            result = run_mca(merged, mv_sel, mv_nc)
+        elif mv_method == 'ca' and mv_row and mv_col:
+            result = run_ca(merged, mv_row, mv_col)
+        elif mv_method == 'clustering' and len(mv_sel) >= 2:
+            result = run_clustering(merged, mv_sel, mv_nk)
+        else:
+            flash("Paramètres insuffisants pour l'analyse.", 'warning')
+            return redirect(url_for('multi_survey'))
+    except Exception as e:
+        flash(f"Erreur lors de l'analyse : {e}", 'danger')
+        return redirect(url_for('multi_survey'))
+
+    import io
+    xlsx_bytes = _ms_build_xlsx(result, mv_method)
+    method_labels = {'pca': 'ACP', 'mca': 'ACM', 'ca': 'AFC', 'clustering': 'Classification'}
+    fname = f"analyse_multi_{method_labels.get(mv_method, mv_method)}.xlsx"
+    return send_file(io.BytesIO(xlsx_bytes),
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name=fname)
 
 
 # ─── MULTIVARIATE ─────────────────────────────────────────────────────────────

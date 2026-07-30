@@ -7,6 +7,33 @@ import numpy as np
 import plotly.io as pio
 import tempfile
 
+# Contournement bug Kaleido : son script shell fait `cd $DIR` sans guillemets,
+# ce qui plante quand le chemin contient des espaces ("Consultance 2026").
+# Stratégie : on cherche plotly.min.js dans cet ordre :
+#   1. /tmp/plotly_spad.min.js  — copie faite au démarrage (hors-ligne ✓)
+#   2. static/vendor/plotly.min.js — bundlé dans le projet (hors-ligne ✓)
+#   3. CDN Plotly                  — fallback si Internet disponible
+def _setup_kaleido():
+    import shutil, pathlib
+    tmp_js = pathlib.Path('/tmp/plotly_spad.min.js')
+    # Copie depuis static/vendor si absent de /tmp
+    vendor = pathlib.Path(__file__).parent.parent / 'static' / 'vendor' / 'plotly.min.js'
+    if not tmp_js.exists() and vendor.exists():
+        shutil.copy2(str(vendor), str(tmp_js))
+    if tmp_js.exists():
+        try:
+            pio.kaleido.scope.plotlyjs = str(tmp_js)
+            return
+        except Exception:
+            pass
+    # Dernier recours : CDN (nécessite Internet)
+    try:
+        pio.kaleido.scope.plotlyjs = 'https://cdn.plot.ly/plotly-latest.min.js'
+    except Exception:
+        pass
+
+_setup_kaleido()
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
