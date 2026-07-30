@@ -44,6 +44,14 @@ app.config.from_object(Config)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
 
+if os.environ.get('ANALYZER_PASSWORD') and not os.environ.get('SECRET_KEY'):
+    print(
+        "\n⚠️  ANALYZER_PASSWORD est défini mais SECRET_KEY ne l'est pas — "
+        "les sessions utilisent la clé par défaut du code source (non secrète). "
+        "Définissez SECRET_KEY (valeur aléatoire) dans les variables d'environnement "
+        "avant toute mise en production.\n"
+    )
+
 
 # ── Gestionnaire d'erreur 500 — affiche le traceback complet ─────────────────
 import traceback
@@ -83,6 +91,49 @@ def favicon():
         '</svg>'
     )
     return Response(svg, mimetype='image/svg+xml')
+
+
+# ─── Authentification (mot de passe partagé) ──────────────────────────────────
+#
+# En local (poste de l'utilisateur), l'accès est déjà restreint par le système
+# d'exploitation : seule la personne devant la machine peut atteindre 127.0.0.1.
+# Dès que l'app est hébergée sur une URL publique (ex. Render), ce n'est plus
+# vrai — d'où ce verrou, activé uniquement si ANALYZER_PASSWORD est défini
+# (donc sans impact sur l'usage desktop local existant tant que la variable
+# n'est pas positionnée).
+ANALYZER_PASSWORD = os.environ.get('ANALYZER_PASSWORD', '').strip()
+
+
+@app.before_request
+def require_login():
+    if not ANALYZER_PASSWORD:
+        return  # pas de mot de passe configuré : gate désactivée (usage desktop local)
+    if request.endpoint in ('login', 'static', 'favicon'):
+        return
+    if request.path.startswith('/static/'):
+        return
+    if not session.get('authenticated'):
+        return redirect(url_for('login', next=request.path))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if not ANALYZER_PASSWORD:
+        return redirect(url_for('index'))
+    error = None
+    if request.method == 'POST':
+        if request.form.get('password', '') == ANALYZER_PASSWORD:
+            session['authenticated'] = True
+            session.permanent = True
+            return redirect(request.args.get('next') or url_for('index'))
+        error = 'Mot de passe incorrect.'
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('authenticated', None)
+    return redirect(url_for('login'))
 
 
 def allowed_file(filename):

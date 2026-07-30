@@ -1,0 +1,25 @@
+# Déploiement Render — SPAD Analyzer (module Flask uniquement)
+#
+# Ce dépôt contient deux applications (PHAKTS Studio en Node/Express, et
+# SPAD Analyzer en Python/Flask, toutes deux embarquées dans l'app desktop
+# Electron). Seul SPAD Analyzer est déployé ici — voir DEPLOIEMENT_RENDER.md
+# à la racine du dépôt pour la marche à suivre complète.
+#
+# Pour activer : sur render.com → New → Blueprint → sélectionner ce dépôt.
+# Render détecte ce fichier automatiquement.
+
+services:
+  - type: web
+    name: spad-analyzer
+    runtime: python
+    plan: free
+    rootDir: analyzer
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ANALYZER_PASSWORD
+        sync: false
