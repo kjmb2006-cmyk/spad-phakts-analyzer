@@ -147,7 +147,7 @@
         <!-- Stats banner -->
         {% if result.chi2 is not none %}
         <div class="alert border-0 mb-3 py-3"
-             style="background:linear-gradient(135deg,#1a3c5e 0%,#1a6fa8 100%);color:white;border-radius:12px">
+             style="background:linear-gradient(135deg, var(--navy) 0%, #1a4a6e 60%, #0d3550 100%);color:white;border-radius:12px">
           <div class="row text-center g-3">
             <div class="col-6 col-md-3">
               <div class="fw-bold fs-5">{{ result.chi2 }}</div>
@@ -167,10 +167,12 @@
             </div>
           </div>
           <hr class="my-2 opacity-25">
-          <p class="mb-0 small text-center">
-            Liaison <strong>{{ result.assoc_label }}</strong> —
-            Association <strong>{{ result.sig_label }}</strong>
-          </p>
+          <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+            <span class="small opacity-75">Liaison {{ result.assoc_label }}</span>
+            <span class="status-pill {{ 'status-pill--cible' if not result.sig_label.startswith('non') else 'status-pill--zero' }}">
+              {{ result.sig_label }}
+            </span>
+          </div>
         </div>
         {% else %}
         <div class="alert alert-info py-2 small mb-3">
