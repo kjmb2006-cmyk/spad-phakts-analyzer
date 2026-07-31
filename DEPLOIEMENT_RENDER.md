@@ -49,6 +49,33 @@ une panne.
    URL du type `https://spad-analyzer.onrender.com`. C'est celle-ci que vous
    partagez avec l'équipe, accompagnée du mot de passe défini à l'étape 4.
 
+## Optionnel : afficher les noms réels des enquêteurs/superviseurs en ligne
+
+Par défaut, les vues « par enquêteur » / « par superviseur » affichent les
+noms réels **uniquement sur votre poste local** (fichier
+`analyzer/data/reference/noms_personnel.local.json`, jamais commité — le
+dépôt GitHub public ne contient que les codes, ex. `D01ENQ1`). La version
+déployée sur Render affiche donc les codes tant que rien de plus n'est fait.
+
+Pour que la version en ligne (protégée par le mot de passe `ANALYZER_PASSWORD`)
+affiche elle aussi les vrais noms, sans jamais les mettre sur GitHub, utilisez
+un **Secret File** Render :
+
+1. Sur votre poste, ouvrez `analyzer/data/reference/noms_personnel.local.json`
+   et copiez tout son contenu.
+2. Dans le tableau de bord Render → votre service `spad-analyzer` →
+   onglet **Environment** → section **Secret Files** → **Add Secret File**.
+3. Renseignez :
+   - **Filename** (chemin de montage) : `/etc/secrets/noms_personnel.local.json`
+   - **Contents** : collez le contenu copié à l'étape 1
+4. Enregistrez — Render redéploie automatiquement. Le fichier est monté
+   uniquement dans le conteneur en cours d'exécution ; il n'apparaît jamais
+   dans le dépôt Git ni dans l'historique des commits.
+
+Pour retirer les noms de la version en ligne plus tard, supprimez simplement
+ce Secret File dans le tableau de bord Render — le code retombe alors sur
+les codes, sans rien changer côté application.
+
 ## Après le déploiement
 
 - **Tester** : ouvrez l'URL, entrez le mot de passe, vérifiez qu'un import

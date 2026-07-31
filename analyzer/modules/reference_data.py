@@ -11,6 +11,11 @@ data/reference/ :
     ces noms sont des données personnelles. Les établissements gardent leur
     nom complet (ce ne sont pas des données personnelles). Le fichier source
     original (avec noms) reste uniquement sur le poste local de l'utilisateur.
+  - noms_personnel.local.json (optionnel, non versionné — voir .gitignore) :
+    complète les noms réels des enquêteurs/superviseurs pour l'affichage LOCAL
+    uniquement (vues « par enquêteur »/« par superviseur »). Absent par
+    défaut (dépôt public, machines tierces, build packagée) → l'app retombe
+    alors sur le code (comportement actuel, sans régression de confidentialité).
   - tirage_etablissements.xlsx : dérivé de
     « tirage_10_etsa_par_district_kd_vu.xlsx » — tirage au sort des 120
     établissements (méthodologie : 1 EPHR/EPHD + 4 CSU + 5 CSR par district,
@@ -46,12 +51,15 @@ primaire.
 """
 import os
 import re
+import json
 import openpyxl
 
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ANALYZER_DIR = os.path.dirname(_MODULE_DIR)
 DEFAULT_ORG_UNIT_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'org_unit.xlsx')
 DEFAULT_TIRAGE_PATH   = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'tirage_etablissements.xlsx')
+DEFAULT_LOCAL_NAMES_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'noms_personnel.local.json')
+RENDER_SECRET_NAMES_PATH = '/etc/secrets/noms_personnel.local.json'
 
 FORM_CODES = ['F5', 'F6', 'F7', 'F8', 'F01', 'F02', 'F07']
 
@@ -188,6 +196,38 @@ def _apply_tirage_targets(ref, tirage_path):
     return ref
 
 
+def _apply_local_names(ref, paths):
+    """Superpose les noms réels des enquêteurs/superviseurs pour l'affichage,
+    à partir du premier fichier trouvé parmi `paths` — jamais versionné sur
+    Git (voir .gitignore). Deux emplacements possibles :
+      - en local (poste de l'utilisateur) : data/reference/noms_personnel.local.json
+      - en ligne (Render) : /etc/secrets/noms_personnel.local.json, injecté
+        via un « Secret File » Render — jamais présent dans le dépôt GitHub,
+        monté uniquement sur le serveur déployé (voir DEPLOIEMENT_RENDER.md).
+    Si aucun des deux n'existe (dépôt public cloné ailleurs, build packagée
+    sans le fichier local, Render sans secret configuré) → no-op silencieux,
+    le code reste affiché comme avant (comportement sans régression de
+    confidentialité)."""
+    noms = None
+    for path in paths:
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                noms = json.load(f)
+            break
+        except Exception:
+            continue
+    if noms is None:
+        return
+    for code, nom in noms.get('enqueteurs', {}).items():
+        if code in ref['enqueteurs']:
+            ref['enqueteurs'][code]['nom_complet'] = nom
+    for code, nom in noms.get('superviseurs', {}).items():
+        if code in ref['superviseurs']:
+            ref['superviseurs'][code]['nom_complet'] = nom
+
+
 def load(org_unit_path=None, tirage_path=None, use_cache=True):
     """Charge (et met en cache) le référentiel complet à partir des fichiers Excel fournis
     (par défaut : data/reference/org_unit.xlsx et data/reference/tirage_etablissements.xlsx)."""
@@ -200,6 +240,7 @@ def load(org_unit_path=None, tirage_path=None, use_cache=True):
     ref = _load_org_unit(org_unit_path)
     if tirage_path:
         _apply_tirage_targets(ref, tirage_path)
+    _apply_local_names(ref, [DEFAULT_LOCAL_NAMES_PATH, RENDER_SECRET_NAMES_PATH])
 
     _cache[cache_key] = ref
     return ref

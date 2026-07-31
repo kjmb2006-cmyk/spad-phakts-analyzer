@@ -49,3 +49,5 @@ analyzer/data/learned.json
 data/learned.json
 analyzer/data/projets/
 analyzer/data/completude_historique.jsonl
+# Noms réels enquêteurs/superviseurs — données personnelles, jamais commitées (dépôt public)
+analyzer/data/reference/*.local.json

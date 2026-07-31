@@ -28,13 +28,16 @@ etab_par_enq = Counter(e['enqueteur_code'] for e in ref['etablissements'].values
 assert set(etab_par_enq.values()) == {2}, etab_par_enq
 print("OK — chaque enquêteur est rattaché à exactement 2 établissements")
 
-# Anonymisation : aucun nom propre ne doit subsister dans le référentiel
-# enquêteur/superviseur committé (le code doit être identique au "nom_complet")
-for e in ref['enqueteurs'].values():
-    assert e['nom_complet'] == e['code'], f"nom non expurgé : {e}"
-for s in ref['superviseurs'].values():
-    assert s['nom_complet'] == s['code'], f"nom non expurgé : {s}"
-print("OK — noms d'enquêteurs/superviseurs bien expurgés (codes uniquement)")
+# Anonymisation : le fichier COMMITTÉ (org_unit.xlsx) ne doit jamais contenir
+# de nom propre — on le vérifie sur son contenu brut, indépendamment d'un
+# éventuel fichier local non versionné (noms_personnel.local.json) que
+# load() superpose ensuite pour l'affichage sur le poste de l'utilisateur.
+raw = rd._load_org_unit(rd.DEFAULT_ORG_UNIT_PATH)
+for e in raw['enqueteurs'].values():
+    assert e['nom_complet'] == e['code'], f"nom non expurgé dans org_unit.xlsx : {e}"
+for s in raw['superviseurs'].values():
+    assert s['nom_complet'] == s['code'], f"nom non expurgé dans org_unit.xlsx : {s}"
+print("OK — org_unit.xlsx (fichier committé) bien expurgé (codes uniquement)")
 
 nat = rd.national_targets(ref)
 print()
