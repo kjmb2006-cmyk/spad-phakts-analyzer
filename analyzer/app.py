@@ -47,6 +47,13 @@ app.config.from_object(Config)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
 
+@app.context_processor
+def inject_current_year():
+    """Année courante (calendrier grégorien) injectée dans tous les templates —
+    évite de coder en dur « SPAD 2026 » dans le bandeau (voir base.html)."""
+    return {'current_year': datetime.datetime.now().year}
+
+
 if os.environ.get('ANALYZER_PASSWORD') and not os.environ.get('SECRET_KEY'):
     print(
         "\n⚠️  ANALYZER_PASSWORD est défini mais SECRET_KEY ne l'est pas — "
