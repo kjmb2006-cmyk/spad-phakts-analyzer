@@ -1,4 +1,4 @@
-import os, json, uuid, re, datetime
+import os, json, uuid, re, datetime, io, csv
 import pandas as pd
 from flask import (Flask, render_template, request, session,
                    redirect, url_for, jsonify, send_file, flash, Response)
@@ -42,6 +42,7 @@ from modules import kobo_track
 from modules import reference_data as ref_data
 from modules import completeness as cp
 from modules import projets as proj
+from modules import tendance
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -2129,6 +2130,80 @@ def completude_anomalies():
     )
 
 
+@app.route('/completude/graphiques')
+def completude_graphiques():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+
+    statut_counts = {'zero': 0, 'en_cours': 0, 'cible': 0, 'verifier': 0}
+    for r in cached.get('export', []):
+        if r['statut'] in statut_counts:
+            statut_counts[r['statut']] += 1
+
+    return render_template(
+        'completude_graphiques.html',
+        district_table=cached.get('district', {}),
+        form_codes=ref_data.FORM_CODES,
+        form_labels=ref_data.FORM_LABELS,
+        statut_counts=statut_counts,
+        historique=tendance.load_history(30),
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+def _export_filename(ext):
+    return f"spad_completude_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.{ext}"
+
+
+@app.route('/completude/export.csv')
+def completude_export_csv():
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    rows = cached.get('export', [])
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['région', 'district', 'établissement', 'formulaire', 'libellé formulaire',
+                      'cible', 'reçu', 'taux (%)', 'statut'])
+    for r in rows:
+        writer.writerow([r['region'], r['district'], r['unite'], r['formulaire'], r['formulaire_label'],
+                          r['cible'], r['recu'], r['taux'] if r['taux'] is not None else '', r['statut']])
+
+    resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{_export_filename("csv")}"'
+    return resp
+
+
+@app.route('/completude/export.xlsx')
+def completude_export_xlsx():
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    rows = cached.get('export', [])
+
+    df = pd.DataFrame(rows, columns=['region', 'district', 'unite', 'formulaire', 'formulaire_label',
+                                      'cible', 'recu', 'taux', 'statut'])
+    df.columns = ['Région', 'District', 'Établissement', 'Formulaire', 'Libellé formulaire',
+                  'Cible', 'Reçu', 'Taux (%)', 'Statut']
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Complétude')
+    buf.seek(0)
+    return send_file(
+        buf, as_attachment=True, download_name=_export_filename('xlsx'),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
 # ─── Projets d'enquête génériques (Kobo/ODK — hors référentiel SPAD) ──────────
 #
 # Généralise le suivi de complétude (reçu/cible/taux/statut) à n'importe
@@ -2296,15 +2371,18 @@ def completude_calculer():
     # mêmes formulaires depuis Kobo pour chaque vue (nationale/région/district).
     # Résultat écrit sur disque (voir _load_completude_cache) : bien trop
     # volumineux pour un cookie de session.
+    national = cp.national_summary(ref, form_dataframes)
     cache = {
-        'national':       cp.national_summary(ref, form_dataframes),
+        'national':       national,
         'district':       cp.district_table(ref, form_dataframes),
         'region':         cp.region_table(ref, form_dataframes),
         'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
         'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
+        'export':           cp.export_rows(ref, form_dataframes),
     }
+    tendance.add_snapshot(national)  # un point d'historique par jour calendaire (voir modules/tendance.py)
     old_path = session.get('completude_path')
     if old_path and os.path.exists(old_path):
         try: os.remove(old_path)

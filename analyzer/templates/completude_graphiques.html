@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Graphiques — SPAD Analyzer{% endblock %}
+{% block page_title %}Graphiques et analyses{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('completude_export_csv') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-filetype-csv me-1"></i>Export CSV
+      </a>
+      <a href="{{ url_for('completude_export_xlsx') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i>Export XLSX
+      </a>
+      <a href="{{ url_for('completude') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Vue nationale
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <!-- ═══ Taux par district ═══ -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Taux de complétude par district</h6>
+          <select id="formSelect" class="form-select form-select-sm" style="width:auto">
+            {% for code in form_codes %}
+            <option value="{{ code }}">{{ code }} — {{ form_labels[code] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="card-body">
+          <div id="chart-district" style="min-height:420px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Répartition des statuts ═══ -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Répartition des statuts</h6>
+        </div>
+        <div class="card-body">
+          <div id="chart-statuts" style="min-height:420px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tendance 30 jours ═══ -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-graph-up me-2 text-primary"></i>Tendance (30 derniers jours)</h6>
+    </div>
+    <div class="card-body">
+      {% if historique|length < 2 %}
+      <div class="text-center py-4 text-muted">
+        <i class="bi bi-hourglass-split display-4 mb-3 d-block opacity-25"></i>
+        <p class="mb-1">{{ historique|length }} jour(s) d'historique — en cours de constitution.</p>
+        <p class="small mb-0">
+          Un point est enregistré à chaque calcul de complétude (un par jour). La courbe apparaîtra
+          dès que 2 jours distincts seront disponibles.
+        </p>
+      </div>
+      {% else %}
+      <div id="chart-tendance" style="min-height:360px"></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const districtTable = {{ district_table | tojson }};
+  const formLabels    = {{ form_labels | tojson }};
+  const statutCounts  = {{ statut_counts | tojson }};
+  const historique     = {{ historique | tojson }};
+  const formCodes      = {{ form_codes | tojson }};
+
+  const STATUT_COLOR = { zero: '#A0AEC0', en_cours: '#E67E22', cible: '#2E7D4F', verifier: '#C0392B' };
+  const STATUT_LABEL = { zero: '0 %', en_cours: 'En cours', cible: 'Cible atteinte', verifier: 'À vérifier' };
+  const cfg = { responsive: true, displaylogo: false };
+
+  function drawDistrictChart(formCode) {
+    const districts = Object.values(districtTable).sort((a, b) => a.nom.localeCompare(b.nom));
+    const x = districts.map(d => d.nom);
+    const y = districts.map(d => {
+      const cell = d.forms[formCode];
+      return (cell && cell.taux !== null && cell.taux !== undefined) ? cell.taux : 0;
+    });
+    const colors = districts.map(d => {
+      const cell = d.forms[formCode];
+      return cell ? (STATUT_COLOR[cell.statut] || '#A0AEC0') : '#A0AEC0';
+    });
+    Plotly.newPlot('chart-district', [{
+      type: 'bar', x: x, y: y, marker: { color: colors },
+      text: y.map(v => v + ' %'), textposition: 'outside',
+    }], {
+      margin: { t: 10, r: 10, b: 90, l: 50 },
+      yaxis: { title: 'Taux (%)', rangemode: 'tozero' },
+      xaxis: { tickangle: -35 },
+    }, cfg);
+  }
+
+  document.getElementById('formSelect').addEventListener('change', (e) => drawDistrictChart(e.target.value));
+  drawDistrictChart(formCodes[0]);
+
+  const statutKeys = Object.keys(statutCounts).filter(k => statutCounts[k] > 0);
+  Plotly.newPlot('chart-statuts', [{
+    type: 'pie', hole: 0.5,
+    labels: statutKeys.map(k => STATUT_LABEL[k] || k),
+    values: statutKeys.map(k => statutCounts[k]),
+    marker: { colors: statutKeys.map(k => STATUT_COLOR[k]) },
+  }], { margin: { t: 10, r: 10, b: 10, l: 10 }, showlegend: true }, cfg);
+
+  if (historique.length >= 2) {
+    const dates = historique.map(h => h.date);
+    const traces = formCodes.map(code => ({
+      type: 'scatter', mode: 'lines+markers', name: code,
+      x: dates, y: historique.map(h => h.taux[code]),
+    }));
+    Plotly.newPlot('chart-tendance', traces, {
+      margin: { t: 10, r: 10, b: 40, l: 50 },
+      yaxis: { title: 'Taux (%)', rangemode: 'tozero' },
+    }, cfg);
+  }
+})();
+</script>
+{% endblock %}

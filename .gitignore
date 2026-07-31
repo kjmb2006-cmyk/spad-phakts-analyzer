@@ -48,3 +48,4 @@ analyzer/static/reports/
 analyzer/data/learned.json
 data/learned.json
 analyzer/data/projets/
+analyzer/data/completude_historique.jsonl

@@ -271,6 +271,38 @@ def anomalies_excess(ref, form_code, df, threshold=2.0):
     return [r for r in rows if r['cible'] and r['recu'] >= threshold * r['cible']]
 
 
+def export_rows(ref, form_dataframes):
+    """Grain établissement × formulaire (F5/F6/F7/F8/F02) et district ×
+    formulaire (F01/F07) — une ligne par couple, pour l'export CSV/XLSX.
+    N'inclut que les formulaires effectivement mappés (comme les autres vues)."""
+    rows = []
+    for code in rd.FORM_CODES:
+        df = form_dataframes.get(code)
+        if df is None:
+            continue
+        if code in ETABLISSEMENT_FORMS:
+            for r in etablissement_completeness(ref, code, df):
+                rows.append({
+                    'region':        ref['regions'].get(r['region_code'], {}).get('nom', r['region_code']),
+                    'district':      ref['districts'].get(r['district_code'], {}).get('nom', r['district_code']),
+                    'unite':         r['etablissement_nom'],
+                    'formulaire':    code,
+                    'formulaire_label': rd.FORM_LABELS[code],
+                    'cible': r['cible'], 'recu': r['recu'], 'taux': r['taux'], 'statut': r['statut'],
+                })
+        else:
+            for r in district_completeness(ref, code, df):
+                rows.append({
+                    'region':        ref['regions'].get(r['region_code'], {}).get('nom', r['region_code']),
+                    'district':      r['district_nom'],
+                    'unite':         r['district_nom'],
+                    'formulaire':    code,
+                    'formulaire_label': rd.FORM_LABELS[code],
+                    'cible': r['cible'], 'recu': r['recu'], 'taux': r['taux'], 'statut': r['statut'],
+                })
+    return rows
+
+
 def _unit_label(row):
     """Nom de l'unité concernée, que la ligne soit au niveau établissement
     (F5/F6/F7/F8/F02) ou district (F01/F07)."""

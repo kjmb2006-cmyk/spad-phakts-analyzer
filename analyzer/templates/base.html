@@ -74,6 +74,9 @@
     <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-exclamation-triangle"></i> — anomalies
     </a>
+    <a href="{{ url_for('completude_graphiques') }}" class="nav-item {% if request.endpoint == 'completude_graphiques' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-graph-up"></i> — graphiques
+    </a>
     {% endif %}
 
     {% if session.get('data_path') %}
