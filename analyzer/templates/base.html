@@ -67,6 +67,12 @@
     <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint == 'completude_districts' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-pin-map"></i> — par district
     </a>
+    <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint == 'completude_enqueteurs' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-person-walking"></i> — par enquêteur
+    </a>
+    <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint == 'completude_superviseurs' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-person-badge"></i> — par superviseur
+    </a>
     {% endif %}
 
     {% if session.get('data_path') %}

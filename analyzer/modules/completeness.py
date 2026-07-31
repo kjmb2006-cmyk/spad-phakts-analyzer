@@ -207,6 +207,58 @@ def region_table(ref, form_dataframes):
     return table
 
 
+ENQUETEUR_FORMS = ('F5', 'F6', 'F7', 'F8')
+SUPERVISEUR_FORMS = ('F01', 'F02', 'F07')
+
+
+def enqueteur_table(ref, form_dataframes):
+    """Table enquêteur × formulaire (F5/F6/F7/F8 uniquement — les seuls
+    formulaires remplis par les enquêteurs). Agrège les 2 établissements
+    assignés à chaque enquêteur (voir etab['enqueteur_code'] dans le
+    référentiel)."""
+    etabs_par_enq = {}
+    for ecode, etab in ref['etablissements'].items():
+        etabs_par_enq.setdefault(etab['enqueteur_code'], []).append(ecode)
+
+    table = {code: {'nom': e['nom_complet'], 'sous_titre': e['district_code'], 'forms': {}}
+              for code, e in ref['enqueteurs'].items()}
+
+    for form_code in ENQUETEUR_FORMS:
+        df = form_dataframes.get(form_code)
+        if df is None:
+            for code in table:
+                table[code]['forms'][form_code] = _empty_cell()
+            continue
+        rows = etablissement_completeness(ref, form_code, df)
+        by_etab = {r['etablissement_code']: r for r in rows}
+        for enq_code, etab_codes in etabs_par_enq.items():
+            if enq_code not in table:
+                continue  # code enquêteur du référentiel étab. absent de la liste enquêteurs (ne devrait pas arriver)
+            recu  = sum(by_etab[e]['recu'] for e in etab_codes if e in by_etab)
+            cible = sum((by_etab[e]['cible'] or 0) for e in etab_codes if e in by_etab)
+            table[enq_code]['forms'][form_code] = {
+                'recu': recu, 'cible': cible,
+                'taux': round(100 * recu / cible, 1) if cible else None,
+                'statut': status_for(recu, cible),
+            }
+    return table
+
+
+def superviseur_table(ref, form_dataframes):
+    """Table superviseur × formulaire (F01/F02/F07 — le volet RDM). Un
+    superviseur par district, reprend directement district_table()."""
+    dtable = district_table(ref, form_dataframes)
+    table = {}
+    for code, s in ref['superviseurs'].items():
+        d = s['district_code']
+        drow = dtable.get(d, {'forms': {}})
+        table[code] = {
+            'nom': s['nom_complet'], 'sous_titre': d,
+            'forms': {fc: drow['forms'].get(fc, _empty_cell()) for fc in SUPERVISEUR_FORMS},
+        }
+    return table
+
+
 def anomalies_zero(ref, form_code, df):
     """Établissements/districts à 0 soumission alors que le formulaire est déployé."""
     rows = form_completeness(ref, form_code, df)

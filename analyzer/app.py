@@ -2060,6 +2060,42 @@ def completude_districts():
     )
 
 
+@app.route('/completude/enqueteurs')
+def completude_enqueteurs():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    return render_template(
+        'completude_table.html',
+        title='Complétude par enquêteur', echelon='enquêteur', sous_titre_label='District',
+        rows=cached['enqueteur'], form_codes=list(cp.ENQUETEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/superviseurs')
+def completude_superviseurs():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    return render_template(
+        'completude_table.html',
+        title='Complétude par superviseur', echelon='superviseur', sous_titre_label='District',
+        rows=cached['superviseur'], form_codes=list(cp.SUPERVISEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
 @app.route('/completude/mapper', methods=['POST'])
 def completude_mapper():
     mapping = {}
@@ -2099,9 +2135,11 @@ def completude_calculer():
     # Résultat écrit sur disque (voir _load_completude_cache) : bien trop
     # volumineux pour un cookie de session.
     cache = {
-        'national': cp.national_summary(ref, form_dataframes),
-        'district': cp.district_table(ref, form_dataframes),
-        'region':   cp.region_table(ref, form_dataframes),
+        'national':    cp.national_summary(ref, form_dataframes),
+        'district':    cp.district_table(ref, form_dataframes),
+        'region':      cp.region_table(ref, form_dataframes),
+        'enqueteur':   cp.enqueteur_table(ref, form_dataframes),
+        'superviseur': cp.superviseur_table(ref, form_dataframes),
     }
     old_path = session.get('completude_path')
     if old_path and os.path.exists(old_path):
