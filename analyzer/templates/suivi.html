@@ -46,7 +46,8 @@
             <tr>
               <th>Formulaire</th>
               <th class="text-center" style="width:120px">Soumissions</th>
-              <th class="text-center" style="width:160px">Cible (optionnel)</th>
+              <th style="width:190px">Type (détection auto.)</th>
+              <th class="text-center" style="width:140px">Cible manuelle</th>
               <th class="text-center" style="width:120px"></th>
             </tr>
           </thead>
@@ -58,6 +59,14 @@
                 {% if not a.deployed %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1">non déployé</span>{% endif %}
               </td>
               <td class="text-center small">{{ a.submission_count }}</td>
+              <td>
+                <select class="form-select form-select-sm form-type-select" {% if a.uid in tracked_uids %}disabled{% endif %}>
+                  <option value="">— Libre (cible manuelle) —</option>
+                  {% for code in form_codes %}
+                  <option value="{{ code }}">{{ code }} — {{ form_labels[code] }}</option>
+                  {% endfor %}
+                </select>
+              </td>
               <td class="text-center">
                 <input type="number" min="1" class="form-control form-control-sm target-input"
                        placeholder="ex. 1800" {% if a.uid in tracked_uids %}disabled{% endif %}>
@@ -122,9 +131,16 @@
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
-          <div class="d-flex align-items-baseline gap-2 mb-1">
+          <div class="d-flex align-items-baseline gap-2 mb-1 flex-wrap">
             <span class="stat-value-v" style="font-size:1.6rem">${fmtNum(t.count)}</span>
             ${t.target ? `<span class="text-muted small">/ ${fmtNum(t.target)}</span>` : ''}
+            ${t.target_source === 'detectee'
+              ? `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.62rem">
+                   <i class="bi bi-magic me-1"></i>${t.form_type} détecté
+                 </span>`
+              : (t.target_source === 'manuelle'
+                  ? `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.62rem">cible manuelle</span>`
+                  : '')}
           </div>
           ${pct !== null ? `
           <div class="progress-track mb-2">
@@ -174,6 +190,7 @@
             cell.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>';
             cell.querySelector('.btn-track-add').addEventListener('click', () => addTracked(row));
             row.querySelector('.target-input').disabled = false;
+            row.querySelector('.form-type-select').disabled = false;
           }
         }
       });
@@ -182,10 +199,12 @@
   function addTracked(row) {
     const uid = row.dataset.uid;
     const name = row.dataset.name;
+    const formType = row.querySelector('.form-type-select').value;
     const target = row.querySelector('.target-input').value.trim();
     const fd = new FormData();
     fd.append('uid', uid);
     fd.append('name', name);
+    if (formType) fd.append('form_type', formType);
     if (target) fd.append('target', target);
     fetch('/suivi/add', { method: 'POST', body: fd })
       .then(r => r.json())
@@ -195,11 +214,29 @@
           const cell = row.querySelector('td:last-child');
           cell.innerHTML = '<span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>';
           row.querySelector('.target-input').disabled = true;
+          row.querySelector('.form-type-select').disabled = true;
         } else {
           alert(res.error || 'Erreur inconnue.');
         }
       });
   }
+
+  // Sélectionner un type SPAD reconnu désactive et vide la cible manuelle —
+  // la cible sera détectée automatiquement depuis le référentiel.
+  document.querySelectorAll('.form-type-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const row = sel.closest('tr');
+      const targetInput = row.querySelector('.target-input');
+      if (sel.value) {
+        targetInput.value = '';
+        targetInput.disabled = true;
+        targetInput.placeholder = 'détectée automatiquement';
+      } else {
+        targetInput.disabled = false;
+        targetInput.placeholder = 'ex. 1800';
+      }
+    });
+  });
 
   document.querySelectorAll('.btn-track-add').forEach(btn => {
     btn.addEventListener('click', () => addTracked(btn.closest('tr')));

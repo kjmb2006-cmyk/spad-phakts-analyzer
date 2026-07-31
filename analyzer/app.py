@@ -1889,7 +1889,26 @@ def suivi():
         assets=assets,
         tracked_uids=tracked_uids,
         assets_error=None if assets_result.get('success') else assets_result.get('error'),
+        form_codes=ref_data.FORM_CODES,
+        form_labels=ref_data.FORM_LABELS,
     )
+
+
+def _parse_target_form(request_form):
+    """Lit uid/name/target/form_type communs à /suivi/add et /suivi/target."""
+    target_raw = (request_form.get('target') or '').strip()
+    form_type = (request_form.get('form_type') or '').strip() or None
+    if form_type and form_type not in ref_data.FORM_CODES:
+        form_type = None
+    target = None
+    if target_raw:
+        try:
+            target = int(target_raw)
+            if target <= 0:
+                target = None
+        except ValueError:
+            return None, None, "Cible invalide (nombre entier attendu)."
+    return target, form_type, None
 
 
 @app.route('/suivi/add', methods=['POST'])
@@ -1900,18 +1919,12 @@ def suivi_add():
         return jsonify({"success": False, "error": "Non connecté à KoboToolbox."}), 400
     uid = (request.form.get('uid') or '').strip()
     name = (request.form.get('name') or 'Formulaire').strip()
-    target_raw = (request.form.get('target') or '').strip()
     if not uid:
         return jsonify({"success": False, "error": "Formulaire manquant."}), 400
-    target = None
-    if target_raw:
-        try:
-            target = int(target_raw)
-            if target <= 0:
-                target = None
-        except ValueError:
-            return jsonify({"success": False, "error": "Cible invalide (nombre entier attendu)."}), 400
-    kobo_track.add(token, instance, uid, name, target=target)
+    target, form_type, err = _parse_target_form(request.form)
+    if err:
+        return jsonify({"success": False, "error": err}), 400
+    kobo_track.add(token, instance, uid, name, target=target, form_type=form_type)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 
@@ -1925,18 +1938,12 @@ def suivi_remove():
 @app.route('/suivi/target', methods=['POST'])
 def suivi_target():
     uid = (request.form.get('uid') or '').strip()
-    target_raw = (request.form.get('target') or '').strip()
-    target = None
-    if target_raw:
-        try:
-            target = int(target_raw)
-            if target <= 0:
-                target = None
-        except ValueError:
-            return jsonify({"success": False, "error": "Cible invalide (nombre entier attendu)."}), 400
+    target, form_type, err = _parse_target_form(request.form)
+    if err:
+        return jsonify({"success": False, "error": err}), 400
     if not kobo_track.is_tracked(uid):
         return jsonify({"success": False, "error": "Formulaire non suivi."}), 400
-    kobo_track.set_target(uid, target)
+    kobo_track.set_target(uid, target=target, form_type=form_type)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 

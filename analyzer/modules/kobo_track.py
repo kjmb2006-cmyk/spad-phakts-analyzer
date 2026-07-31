@@ -8,10 +8,15 @@ soumissions par formulaire, évolution dans le temps, cible optionnelle.
 
 Périmètre volontairement restreint par rapport à un tableau de complétude
 complet (type spadapp-zeta.vercel.app) : pas de notion d'établissement ni
-de district — SPAD Analyzer n'a pas de référentiel de ce type. Ici, une
-« cible » est un simple nombre optionnel saisi par l'utilisateur pour un
-formulaire donné (ex. 1800 soumissions attendues), pas une cible calculée
-par établissement.
+de district — SPAD Analyzer n'a pas de référentiel de ce type ici (voir
+modules/completeness.py pour le suivi établissement/district des 7
+formulaires officiels). Ici, la cible est soit :
+  - saisie librement par l'utilisateur (cible « manuelle ») ;
+  - détectée automatiquement (cible « détectée ») si l'utilisateur indique
+    que ce formulaire suivi correspond à l'un des 7 formulaires SPAD
+    officiels (F5-F07) — la cible nationale du référentiel est alors reprise
+    telle quelle, sans jamais interroger l'établissement du formulaire (ce
+    module ne connaît que le compteur global, pas la répartition).
 
 Sondage léger : interroge uniquement le compteur de soumissions
 (`get_asset_info`), jamais les données complètes — pour rester rapide même
@@ -27,12 +32,29 @@ _trackers = {}       # uid -> dict d'état (voir _new_entry)
 DEFAULT_INTERVAL = 120  # secondes — plus long que kobo_sync (un seul formulaire, plus léger)
 
 
-def _new_entry(uid, name, target, instance):
+def resolve_target(form_type, target_manuel):
+    """Détermine (cible, source) à partir d'un type de formulaire SPAD optionnel
+    et/ou d'une cible saisie librement. La détection automatique est
+    prioritaire dès que form_type est un code SPAD reconnu."""
+    if form_type:
+        from modules import reference_data as rd
+        ref = rd.load()
+        nat = rd.national_targets(ref)
+        if form_type in nat:
+            return nat[form_type], "detectee"
+    if target_manuel:
+        return target_manuel, "manuelle"
+    return None, None
+
+
+def _new_entry(uid, name, target, instance, form_type=None, target_source=None):
     return {
         "uid": uid,
         "name": name,
         "instance": instance,
         "target": target,          # int ou None
+        "form_type": form_type,    # code SPAD (F5..F07) si détecté, sinon None
+        "target_source": target_source,  # 'detectee' | 'manuelle' | None
         "count": None,             # dernier effectif connu
         "history": [],             # [(HH:MM:SS, count), ...] — mémoire courte, non persistée
         "last_check_at": None,
@@ -87,11 +109,17 @@ def _loop(token, uid, instance, interval, stop_event):
             break
 
 
-def add(token, instance, uid, name, target=None, interval=DEFAULT_INTERVAL):
-    """Ajoute (ou remplace) un formulaire au suivi et démarre son polling."""
+def add(token, instance, uid, name, target=None, interval=DEFAULT_INTERVAL, form_type=None):
+    """Ajoute (ou remplace) un formulaire au suivi et démarre son polling.
+
+    `target` est la cible saisie librement (ignorée si `form_type` est un
+    code SPAD reconnu — la cible est alors détectée automatiquement, voir
+    resolve_target())."""
     remove(uid)
+    resolved_target, target_source = resolve_target(form_type, target)
     with _lock:
-        _trackers[uid] = _new_entry(uid, name, target, instance)
+        _trackers[uid] = _new_entry(uid, name, resolved_target, instance,
+                                     form_type=form_type, target_source=target_source)
     stop_event = threading.Event()
     t = threading.Thread(target=_loop, args=(token, uid, instance, interval, stop_event), daemon=True)
     with _lock:
@@ -109,10 +137,13 @@ def remove(uid):
         stop_event.set()
 
 
-def set_target(uid, target):
+def set_target(uid, target=None, form_type=None):
+    resolved_target, target_source = resolve_target(form_type, target)
     with _lock:
         if uid in _trackers:
-            _trackers[uid]["target"] = target
+            _trackers[uid]["target"] = resolved_target
+            _trackers[uid]["form_type"] = form_type
+            _trackers[uid]["target_source"] = target_source
 
 
 def list_tracked():
