@@ -2006,13 +2006,35 @@ def _load_completude_cache():
     dépassent largement la limite d'un cookie de session Flask (~4 Ko) — donc,
     comme pour le jeu de données analysé (session['data_path']), seul le
     CHEMIN du fichier de résultat est stocké en session, jamais son contenu.
+
+    Filet de sécurité : si le cookie de session ne référence pas (ou plus)
+    de fichier valide — observé en usage réel dans le contexte iframe de
+    l'app desktop Electron, cause exacte non confirmée — on retombe sur le
+    fichier completude_*.json le plus récent du dossier d'upload plutôt que
+    de perdre un calcul qui a pourtant réussi côté serveur. Une incohérence
+    multi-utilisateur n'est pas un risque ici (app mono-utilisateur locale).
     """
     path = session.get('completude_path')
-    if not path or not os.path.exists(path):
-        return None
+    if path and os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        candidates = [
+            os.path.join(app.config['UPLOAD_FOLDER'], f)
+            for f in os.listdir(app.config['UPLOAD_FOLDER'])
+            if f.startswith('completude_') and f.endswith('.json')
+        ]
+        if not candidates:
+            return None
+        latest = max(candidates, key=os.path.getmtime)
+        with open(latest, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        session['completude_path'] = latest  # resynchronise la session pour les prochaines requêtes
+        return data
     except Exception:
         return None
 
