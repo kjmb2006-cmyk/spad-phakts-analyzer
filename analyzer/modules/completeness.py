@@ -269,3 +269,46 @@ def anomalies_excess(ref, form_code, df, threshold=2.0):
     """Couples au-delà de `threshold` × cible — doublons potentiels."""
     rows = form_completeness(ref, form_code, df)
     return [r for r in rows if r['cible'] and r['recu'] >= threshold * r['cible']]
+
+
+def _unit_label(row):
+    """Nom de l'unité concernée, que la ligne soit au niveau établissement
+    (F5/F6/F7/F8/F02) ou district (F01/F07)."""
+    return row.get('etablissement_nom') or row.get('district_nom')
+
+
+def all_anomalies_zero(ref, form_dataframes):
+    """Combine anomalies_zero() sur tous les formulaires effectivement mappés."""
+    out = []
+    for code in rd.FORM_CODES:
+        df = form_dataframes.get(code)
+        if df is None:
+            continue
+        for r in anomalies_zero(ref, code, df):
+            out.append({
+                'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
+                'unite': _unit_label(r), 'district_code': r.get('district_code'),
+                'cible': r['cible'],
+            })
+    return out
+
+
+def all_anomalies_excess(ref, form_dataframes, threshold=2.0):
+    """Combine anomalies_excess() sur tous les formulaires effectivement mappés.
+    F07 exclu : sa cible est un plancher (somme des décès SIG) — la dépasser
+    est normal, pas une anomalie (voir modules/reference_data.py)."""
+    out = []
+    for code in rd.FORM_CODES:
+        if code == 'F07':
+            continue
+        df = form_dataframes.get(code)
+        if df is None:
+            continue
+        for r in anomalies_excess(ref, code, df, threshold=threshold):
+            out.append({
+                'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
+                'unite': _unit_label(r), 'district_code': r.get('district_code'),
+                'recu': r['recu'], 'cible': r['cible'],
+                'ratio': round(r['recu'] / r['cible'], 2) if r['cible'] else None,
+            })
+    return out

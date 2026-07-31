@@ -68,6 +68,9 @@
     <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint == 'completude_superviseurs' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-person-badge"></i> — par superviseur
     </a>
+    <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-exclamation-triangle"></i> — anomalies
+    </a>
     {% endif %}
 
     {% if session.get('data_path') %}

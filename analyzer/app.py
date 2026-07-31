@@ -2103,6 +2103,24 @@ def completude_superviseurs():
     )
 
 
+@app.route('/completude/anomalies')
+def completude_anomalies():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    return render_template(
+        'completude_anomalies.html',
+        zeros=cached.get('anomalies_zero', []),
+        excess=cached.get('anomalies_excess', []),
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
 @app.route('/completude/mapper', methods=['POST'])
 def completude_mapper():
     mapping = {}
@@ -2142,11 +2160,13 @@ def completude_calculer():
     # Résultat écrit sur disque (voir _load_completude_cache) : bien trop
     # volumineux pour un cookie de session.
     cache = {
-        'national':    cp.national_summary(ref, form_dataframes),
-        'district':    cp.district_table(ref, form_dataframes),
-        'region':      cp.region_table(ref, form_dataframes),
-        'enqueteur':   cp.enqueteur_table(ref, form_dataframes),
-        'superviseur': cp.superviseur_table(ref, form_dataframes),
+        'national':       cp.national_summary(ref, form_dataframes),
+        'district':       cp.district_table(ref, form_dataframes),
+        'region':         cp.region_table(ref, form_dataframes),
+        'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
+        'superviseur':    cp.superviseur_table(ref, form_dataframes),
+        'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
+        'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
     }
     old_path = session.get('completude_path')
     if old_path and os.path.exists(old_path):

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Anomalies — SPAD Analyzer{% endblock %}
+{% block page_title %}Anomalies et signalements{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Retour à la vue nationale
+    </a>
+  </div>
+
+  <!-- ═══ Établissements/districts à 0 % ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-exclamation-circle-fill me-2 text-secondary"></i>
+        Établissements/districts à 0 % ({{ zeros|length }})
+      </h6>
+      <p class="text-muted small mb-0 mt-1">Aucune soumission reçue pour un formulaire mappé alors qu'une cible est attendue.</p>
+    </div>
+    <div class="card-body p-0">
+      {% if not zeros %}
+      <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type — ou aucun formulaire mappé pour l'instant.</p>
+      {% else %}
+      <div class="table-responsive" style="max-height:420px;overflow-y:auto">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0">
+            <tr>
+              <th>Établissement / district</th>
+              <th>Formulaire</th>
+              <th class="text-center">Cible</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in zeros %}
+            <tr>
+              <td class="small">{{ a.unite }}</td>
+              <td class="small">
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                {{ a.formulaire_label }}
+              </td>
+              <td class="text-center small">{{ a.cible }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══ Excès — doublons potentiels ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>
+        Excès — soumissions au-delà de la cible ({{ excess|length }})
+      </h6>
+      <p class="text-muted small mb-0 mt-1">
+        Au moins 200 % de la cible atteinte — signe possible de doublons, à vérifier sur KoboToolbox.
+        F07 (grille RDM) est exclu : sa cible est un plancher, la dépasser est normal.
+      </p>
+    </div>
+    <div class="card-body p-0">
+      {% if not excess %}
+      <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type — ou aucun formulaire mappé pour l'instant.</p>
+      {% else %}
+      <div class="table-responsive" style="max-height:420px;overflow-y:auto">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0">
+            <tr>
+              <th>Établissement / district</th>
+              <th>Formulaire</th>
+              <th class="text-center">Reçu / cible</th>
+              <th class="text-center">Ratio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in excess %}
+            <tr>
+              <td class="small">{{ a.unite }}</td>
+              <td class="small">
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                {{ a.formulaire_label }}
+              </td>
+              <td class="text-center small">{{ a.recu }} / {{ a.cible }}</td>
+              <td class="text-center">
+                <span class="status-pill status-pill--verifier">{{ (a.ratio * 100) | round(0, 'floor') | int }} %</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
