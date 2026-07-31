@@ -39,6 +39,9 @@
     <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}">
       <i class="bi bi-collection-fill"></i> Analyse multi-enquête
     </a>
+    <a href="{{ url_for('projets_liste') }}" class="nav-item {% if request.endpoint in ['projets_liste', 'projets_detail'] %}active{% endif %}">
+      <i class="bi bi-folder2-open"></i> Autres enquêtes (projets)
+    </a>
 
     {% if session.get('kobo_token') %}
     <div class="nav-section-label mt-3">KoboToolbox</div>

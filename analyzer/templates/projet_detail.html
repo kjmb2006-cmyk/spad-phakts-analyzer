@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ p.nom }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ p.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {{ p.n_unites }} unité(s) dans le référentiel · Créé le {{ p.created_at }}
+      {% if p.computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ p.computed_at }}{% endif %}
+    </span>
+    <a href="{{ url_for('projets_liste') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Tous les projets
+    </a>
+  </div>
+
+  <!-- ═══ Lien KoboToolbox ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>Formulaire KoboToolbox suivi</h6>
+    </div>
+    <div class="card-body">
+      {% if not kobo_connected %}
+      <div class="alert alert-warning small mb-0">
+        Connectez-vous à KoboToolbox pour lier un formulaire.
+        <a href="{{ url_for('kobo_connect') }}">Se connecter →</a>
+      </div>
+      {% elif not assets %}
+      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      {% else %}
+      <form method="POST" action="{{ url_for('projets_lier', projet_id=p.id) }}" class="row g-2 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label small fw-semibold">Formulaire</label>
+          <select name="kobo_uid" id="koboUidSelect" class="form-select form-select-sm"
+                  onchange="var o=this.options[this.selectedIndex];document.getElementById('koboNameField').value=o.dataset.name||''">
+            <option value="">— Non lié —</option>
+            {% for a in assets %}
+            <option value="{{ a.uid }}" data-name="{{ a.name }}" {% if p.kobo_uid == a.uid %}selected{% endif %}>
+              {{ a.name }} ({{ a.submission_count }} soum.)
+            </option>
+            {% endfor %}
+          </select>
+          <input type="hidden" name="kobo_name" id="koboNameField" value="{{ p.kobo_name or '' }}">
+        </div>
+        <div class="col-md-4 d-grid">
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-save me-1"></i>Enregistrer le lien
+          </button>
+        </div>
+      </form>
+      {% if p.kobo_uid %}
+      <form method="POST" action="{{ url_for('projets_calculer', projet_id=p.id) }}" class="mt-3">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-calculator me-1"></i>Calculer la complétude
+        </button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if groupes %}
+  <!-- ═══ Par groupe ═══ -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="section-label"><i class="bi bi-diagram-3 me-1"></i>Complétude par groupe</span>
+  </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr><th>Groupe</th><th class="text-center">Reçu / Cible</th><th class="text-center">Statut</th></tr>
+          </thead>
+          <tbody>
+            {% for g in groupes %}
+            <tr>
+              <td class="small fw-semibold">{{ g.groupe }}</td>
+              <td class="text-center small">{{ g.recu }} / {{ g.cible }}</td>
+              <td class="text-center">
+                <span class="status-pill status-pill--{{ 'cible' if g.statut == 'cible' else ('en-cours' if g.statut == 'en_cours' else ('verifier' if g.statut == 'verifier' else 'zero')) }}">
+                  {% if g.taux is not none %}{{ g.taux }} %{% else %}{{ g.recu }}{% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if unites %}
+  <!-- ═══ Par unité ═══ -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="section-label"><i class="bi bi-list-ol me-1"></i>Complétude par unité ({{ unites|length }})</span>
+  </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive" style="max-height:520px;overflow-y:auto">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0">
+            <tr>
+              <th>Unité</th>
+              {% if groupes %}<th>Groupe</th>{% endif %}
+              <th class="text-center">Reçu / Cible</th>
+              <th class="text-center">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in unites %}
+            <tr>
+              <td class="small fw-semibold">{{ u.nom }}</td>
+              {% if groupes %}<td class="small text-muted">{{ u.groupe or '—' }}</td>{% endif %}
+              <td class="text-center small">{{ u.recu }} / {{ u.cible }}</td>
+              <td class="text-center">
+                <span class="status-pill status-pill--{{ 'cible' if u.statut == 'cible' else ('en-cours' if u.statut == 'en_cours' else ('verifier' if u.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.68rem;padding:2px 8px">
+                  {% if u.taux is not none %}{{ u.taux }} %{% else %}{{ u.recu }}{% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% elif p.kobo_uid %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-calculator display-3 mb-3 d-block opacity-25"></i>
+      <p class="mb-0">Cliquez sur « Calculer la complétude » ci-dessus pour voir les résultats.</p>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

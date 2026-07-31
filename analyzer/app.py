@@ -41,6 +41,7 @@ from modules import kobo_sync
 from modules import kobo_track
 from modules import reference_data as ref_data
 from modules import completeness as cp
+from modules import projets as proj
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -2126,6 +2127,135 @@ def completude_anomalies():
         excess=cached.get('anomalies_excess', []),
         computed_at=session.get('completude_computed_at'),
     )
+
+
+# ─── Projets d'enquête génériques (Kobo/ODK — hors référentiel SPAD) ──────────
+#
+# Généralise le suivi de complétude (reçu/cible/taux/statut) à n'importe
+# quelle autre enquête, à partir d'un fichier de référence fourni par
+# l'utilisateur (colonnes minimales : code, cible) plutôt que du référentiel
+# SPAD figé. Voir modules/projets.py pour le détail.
+
+@app.route('/projets')
+def projets_liste():
+    token = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    assets = []
+    assets_error = None
+    if token:
+        assets_result = list_assets(token, instance=instance)
+        assets = assets_result.get('assets', []) if assets_result.get('success') else []
+        assets_error = None if assets_result.get('success') else assets_result.get('error')
+    return render_template(
+        'projets.html',
+        projets=proj.list_projets(),
+        kobo_connected=bool(token),
+        assets=assets,
+        assets_error=assets_error,
+    )
+
+
+@app.route('/projets/creer', methods=['POST'])
+def projets_creer():
+    nom = (request.form.get('nom') or '').strip()
+    champ_unite = (request.form.get('champ_unite') or '').strip()
+    kobo_uid = (request.form.get('kobo_uid') or '').strip() or None
+    kobo_name = (request.form.get('kobo_name') or '').strip() or None
+
+    if not nom or not champ_unite:
+        flash("Nom du projet et champ d'identification de l'unité obligatoires.", 'warning')
+        return redirect(url_for('projets_liste'))
+    if 'reference' not in request.files or request.files['reference'].filename == '':
+        flash('Fichier de référence manquant (colonnes minimales : code, cible).', 'warning')
+        return redirect(url_for('projets_liste'))
+
+    f = request.files['reference']
+    if not allowed_file(f.filename):
+        flash('Format non supporté pour le fichier de référence (.xlsx / .xls attendu).', 'danger')
+        return redirect(url_for('projets_liste'))
+
+    try:
+        entry = proj.create_projet(
+            nom, f, champ_unite,
+            kobo_uid=kobo_uid, kobo_name=kobo_name,
+            kobo_instance=session.get('kobo_instance'),
+        )
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('projets_liste'))
+
+    flash(f"Projet « {entry['nom']} » créé — {entry['n_unites']} unité(s) dans le référentiel.", 'success')
+    return redirect(url_for('projets_detail', projet_id=entry['id']))
+
+
+@app.route('/projets/<projet_id>')
+def projets_detail(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    result = proj.load_result(projet_id)
+    token = session.get('kobo_token')
+    instance = session.get('kobo_instance')
+    assets = []
+    if token:
+        assets_result = list_assets(token, instance=instance)
+        assets = assets_result.get('assets', []) if assets_result.get('success') else []
+    return render_template(
+        'projet_detail.html',
+        p=p, assets=assets, kobo_connected=bool(token),
+        unites=result['unites'] if result else None,
+        groupes=result['groupes'] if result else None,
+    )
+
+
+@app.route('/projets/<projet_id>/lier', methods=['POST'])
+def projets_lier(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    kobo_uid = (request.form.get('kobo_uid') or '').strip()
+    kobo_name = (request.form.get('kobo_name') or '').strip()
+    if kobo_uid:
+        proj.update_kobo_link(projet_id, kobo_uid, kobo_name, kobo_instance=session.get('kobo_instance'))
+        flash(f"Formulaire KoboToolbox « {kobo_name} » associé au projet.", 'success')
+    return redirect(url_for('projets_detail', projet_id=projet_id))
+
+
+@app.route('/projets/<projet_id>/calculer', methods=['POST'])
+def projets_calculer(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    if not p.get('kobo_uid'):
+        flash("Associez d'abord un formulaire KoboToolbox à ce projet.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    res = kobo_load_data(token, p['kobo_uid'], instance=p.get('kobo_instance') or session.get('kobo_instance'))
+    if not res.get('success'):
+        flash(f"Erreur de chargement : {res.get('error')}", 'danger')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    reference = proj.load_reference(projet_id)
+    unites = proj.unit_completeness(reference, p['champ_unite'], res['df'])
+    groupes = proj.group_completeness(unites)
+    proj.save_result(projet_id, unites, groupes)
+
+    flash(f"Complétude recalculée — {res['n_obs']} soumissions traitées.", 'success')
+    return redirect(url_for('projets_detail', projet_id=projet_id))
+
+
+@app.route('/projets/<projet_id>/supprimer', methods=['POST'])
+def projets_supprimer(projet_id):
+    proj.delete_projet(projet_id)
+    flash('Projet supprimé.', 'info')
+    return redirect(url_for('projets_liste'))
 
 
 @app.route('/completude/mapper', methods=['POST'])

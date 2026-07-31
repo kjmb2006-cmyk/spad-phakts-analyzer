@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Projets d'enquête — SPAD Analyzer{% endblock %}
+{% block page_title %}Projets d'enquête{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
+    <i class="bi bi-collection-fill fs-3"></i>
+    <div>
+      <strong>Suivez la complétude de n'importe quelle autre enquête KoboToolbox ou ODK</strong> —
+      pas seulement les 7 formulaires SPAD. Fournissez votre propre liste d'unités
+      (établissement, école, village…) avec leur cible, et l'application applique
+      exactement la même logique (reçu / cible / taux / statut) que pour SPAD.
+    </div>
+  </div>
+
+  <!-- ═══ Projets existants ═══ -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="section-label"><i class="bi bi-folder2-open me-1"></i>Projets</span>
+  </div>
+
+  {% if not projets %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-folder-plus display-3 mb-3 d-block opacity-25"></i>
+      <h5 class="fw-semibold mb-2">Aucun projet pour l'instant</h5>
+      <p class="small mb-0">Créez-en un ci-dessous à partir d'un fichier de référence.</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="row g-3 mb-4">
+    {% for p in projets %}
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('projets_detail', projet_id=p.id) }}" class="feature-card d-block">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="mb-0">{{ p.nom }}</h5>
+          <form method="POST" action="{{ url_for('projets_supprimer', projet_id=p.id) }}"
+                onclick="event.stopPropagation();" onsubmit="return confirm('Supprimer ce projet et son référentiel ?');">
+            <button type="submit" class="btn btn-sm btn-link text-muted p-0" title="Supprimer">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+        <p class="text-muted small mb-2">
+          <i class="bi bi-list-ol me-1"></i>{{ p.n_unites }} unité(s)
+          {% if p.kobo_name %}· <i class="bi bi-link-45deg me-1"></i>{{ p.kobo_name }}{% else %}· <span class="text-warning">non lié à un formulaire</span>{% endif %}
+        </p>
+        <p class="text-muted small mb-0" style="font-size:.72rem">
+          Créé le {{ p.created_at }}
+          {% if p.computed_at %}· Calculé le {{ p.computed_at }}{% endif %}
+        </p>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ═══ Créer un projet ═══ -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Créer un projet</h6>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('projets_creer') }}" enctype="multipart/form-data">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Nom du projet</label>
+            <input type="text" name="nom" class="form-control form-control-sm" placeholder="ex. Enquête nutrition Katiola 2026" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">
+              Champ d'identification de l'unité
+              <i class="bi bi-info-circle text-muted" title="Le nom exact du champ Kobo/ODK (ex. select_one) qui contient le code de l'unité dans les soumissions."></i>
+            </label>
+            <input type="text" name="champ_unite" class="form-control form-control-sm" placeholder="ex. Ecole_Sanitaire__X" required>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Fichier de référence (.xlsx)</label>
+            <input type="file" name="reference" class="form-control form-control-sm" accept=".xlsx,.xls" required>
+            <small class="text-muted">
+              Colonnes minimales : <code>code</code> (doit correspondre exactement aux valeurs soumises), <code>cible</code>.
+              Optionnel : <code>nom</code> (libellé affiché), <code>groupe</code> (zone/district d'agrégation).
+            </small>
+          </div>
+
+          {% if kobo_connected and assets %}
+          <div class="col-md-8">
+            <label class="form-label small fw-semibold">Formulaire KoboToolbox à suivre (optionnel ici, modifiable ensuite)</label>
+            <select name="kobo_uid" id="koboUidSelect" class="form-select form-select-sm"
+                    onchange="var o=this.options[this.selectedIndex];document.getElementById('koboNameField').value=o.dataset.name||''">
+              <option value="">— Choisir plus tard —</option>
+              {% for a in assets %}
+              <option value="{{ a.uid }}" data-name="{{ a.name }}">{{ a.name }} ({{ a.submission_count }} soum.)</option>
+              {% endfor %}
+            </select>
+            <input type="hidden" name="kobo_name" id="koboNameField">
+          </div>
+          {% elif not kobo_connected %}
+          <div class="col-12">
+            <div class="alert alert-warning small mb-0">
+              Pas connecté à KoboToolbox — vous pourrez lier un formulaire après la création du projet.
+              <a href="{{ url_for('kobo_connect') }}">Se connecter maintenant →</a>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-check-lg me-1"></i>Créer le projet
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
