@@ -61,6 +61,12 @@
     <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
       <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
     </a>
+    <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-map"></i> — par région
+    </a>
+    <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint == 'completude_districts' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-pin-map"></i> — par district
+    </a>
     {% endif %}
 
     {% if session.get('data_path') %}

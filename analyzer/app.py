@@ -1983,6 +1983,24 @@ def suivi_analyser(uid):
 # de chaque formulaire mappé et calcule reçu/cible/taux/statut via
 # modules/completeness.py, au regard du référentiel modules/reference_data.py.
 
+def _load_completude_cache():
+    """Relit le résultat de calcul depuis le fichier JSON référencé en session.
+
+    Les tables région/district (12 × 7 formulaires × plusieurs champs)
+    dépassent largement la limite d'un cookie de session Flask (~4 Ko) — donc,
+    comme pour le jeu de données analysé (session['data_path']), seul le
+    CHEMIN du fichier de résultat est stocké en session, jamais son contenu.
+    """
+    path = session.get('completude_path')
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
 @app.route('/completude')
 def completude():
     token = session.get('kobo_token')
@@ -1993,7 +2011,7 @@ def completude():
     assets_result = list_assets(token, instance=instance)
     assets = assets_result.get('assets', []) if assets_result.get('success') else []
     mapping = session.get('spad_form_mapping', {})
-    result = session.get('completude_result')
+    cached = _load_completude_cache()
     return render_template(
         'completude.html',
         assets=assets,
@@ -2001,7 +2019,43 @@ def completude():
         mapping=mapping,
         form_codes=ref_data.FORM_CODES,
         form_labels=ref_data.FORM_LABELS,
-        result=result,
+        result=cached['national'] if cached else None,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/regions')
+def completude_regions():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    return render_template(
+        'completude_table.html',
+        title='Complétude par région', echelon='région',
+        rows=cached['region'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/districts')
+def completude_districts():
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    return render_template(
+        'completude_table.html',
+        title='Complétude par district', echelon='district',
+        rows=cached['district'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2040,8 +2094,24 @@ def completude_calculer():
         else:
             errors.append(f"{code} : {res.get('error', 'erreur inconnue')}")
 
-    summary = cp.national_summary(ref, form_dataframes)
-    session['completude_result'] = summary
+    # Calcul en une seule passe sur les données tirées — évite de retirer les
+    # mêmes formulaires depuis Kobo pour chaque vue (nationale/région/district).
+    # Résultat écrit sur disque (voir _load_completude_cache) : bien trop
+    # volumineux pour un cookie de session.
+    cache = {
+        'national': cp.national_summary(ref, form_dataframes),
+        'district': cp.district_table(ref, form_dataframes),
+        'region':   cp.region_table(ref, form_dataframes),
+    }
+    old_path = session.get('completude_path')
+    if old_path and os.path.exists(old_path):
+        try: os.remove(old_path)
+        except Exception: pass
+    fname = f"completude_{uuid.uuid4().hex[:8]}.json"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    with open(save_path, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False)
+    session['completude_path'] = save_path
     session['completude_computed_at'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
     if errors:

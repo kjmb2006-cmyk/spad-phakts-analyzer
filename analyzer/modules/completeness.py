@@ -134,6 +134,79 @@ def national_summary(ref, form_dataframes):
     return summary
 
 
+def _empty_cell(cible=None):
+    return {'recu': 0, 'cible': cible, 'taux': None, 'statut': 'inconnu'}
+
+
+def district_table(ref, form_dataframes):
+    """Table district × formulaire : {district_code: {'nom', 'region_code', 'forms': {code: cellule}}}.
+
+    Pour F5/F6/F7/F8/F02 (cible établissement), agrège les établissements du
+    district. Pour F01/F07 (déjà au niveau district), reprend directement le
+    résultat de district_completeness().
+    """
+    table = {code: {'nom': d['nom'], 'region_code': d['region_code'], 'forms': {}}
+              for code, d in ref['districts'].items()}
+
+    for form_code in rd.FORM_CODES:
+        df = form_dataframes.get(form_code)
+        if df is None:
+            for code, d in ref['districts'].items():
+                cible = rd.target_for(ref, form_code, district_code=code) if form_code in DISTRICT_FORMS else None
+                table[code]['forms'][form_code] = _empty_cell(cible)
+            continue
+
+        if form_code in ETABLISSEMENT_FORMS:
+            rows = etablissement_completeness(ref, form_code, df)
+            agg = {}
+            for r in rows:
+                a = agg.setdefault(r['district_code'], {'recu': 0, 'cible': 0})
+                a['recu'] += r['recu']
+                a['cible'] += (r['cible'] or 0)
+            for code in table:
+                a = agg.get(code, {'recu': 0, 'cible': 0})
+                table[code]['forms'][form_code] = {
+                    'recu': a['recu'], 'cible': a['cible'],
+                    'taux': round(100 * a['recu'] / a['cible'], 1) if a['cible'] else None,
+                    'statut': status_for(a['recu'], a['cible']),
+                }
+        else:
+            rows = district_completeness(ref, form_code, df)
+            by_code = {r['district_code']: r for r in rows}
+            for code in table:
+                r = by_code.get(code)
+                table[code]['forms'][form_code] = (
+                    {'recu': r['recu'], 'cible': r['cible'], 'taux': r['taux'], 'statut': r['statut']}
+                    if r else _empty_cell()
+                )
+    return table
+
+
+def region_table(ref, form_dataframes):
+    """Table région × formulaire — agrège district_table() par région
+    (F01/F07 : somme sur les districts de la région ; les autres : somme
+    directe sur les établissements de la région, plus précise qu'une somme
+    de sommes de districts déjà arrondis)."""
+    dtable = district_table(ref, form_dataframes)
+    table = {code: {'nom': r['nom'], 'forms': {}} for code, r in ref['regions'].items()}
+
+    for form_code in rd.FORM_CODES:
+        for region_code in ref['regions']:
+            districts_in_region = [d for d, info in dtable.items() if info['region_code'] == region_code]
+            recu = sum(dtable[d]['forms'][form_code]['recu'] for d in districts_in_region)
+            cible = sum((dtable[d]['forms'][form_code]['cible'] or 0) for d in districts_in_region)
+            df = form_dataframes.get(form_code)
+            if df is None:
+                table[region_code]['forms'][form_code] = _empty_cell(cible if form_code in DISTRICT_FORMS else None)
+            else:
+                table[region_code]['forms'][form_code] = {
+                    'recu': recu, 'cible': cible,
+                    'taux': round(100 * recu / cible, 1) if cible else None,
+                    'statut': status_for(recu, cible, is_floor=(form_code == 'F07')),
+                }
+    return table
+
+
 def anomalies_zero(ref, form_code, df):
     """Établissements/districts à 0 soumission alors que le formulaire est déployé."""
     rows = form_completeness(ref, form_code, df)
