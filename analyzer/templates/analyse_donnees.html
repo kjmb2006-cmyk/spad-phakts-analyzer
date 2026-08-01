@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Analyse de données — SPAD Analyzer{% endblock %}
+{% block page_title %}Analyse de données{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="mb-4">
+    <h4 class="fw-semibold mb-1">D'où viennent vos données ?</h4>
+    <p class="text-muted mb-0">Choisissez une source pour lancer l'analyse statistique — un fichier Excel déjà sur votre ordinateur, ou vos données à jour sur KoboToolbox.</p>
+  </div>
+
+  {% if has_data %}
+  <div class="alert alert-success d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+      <i class="bi bi-database-fill-check me-2"></i>
+      Données déjà chargées — {{ data_meta.n_obs }} observations × {{ data_meta.n_vars }} variables
+      {% if data_meta.source %} <span class="text-muted">({{ data_meta.source }})</span>{% endif %}
+    </div>
+    <a href="{{ url_for('data_preview') }}" class="btn btn-sm btn-outline-success">
+      <i class="bi bi-table me-1"></i>Voir l'aperçu
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- ═══ Fichier local ═══ -->
+    <div class="col-md-6">
+      <div class="feature-card h-100" style="cursor:default">
+        <div class="feature-icon" style="background:#eaf5ea;color:#198754">
+          <i class="bi bi-file-earmark-excel-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Fichier Excel local</h5>
+        <p class="text-muted small mb-3">
+          Importez un fichier <strong>.xlsx</strong> ou <strong>.xls</strong> déjà présent sur votre ordinateur
+          (export Kobo manuel, saisie manuelle, données SPAD déjà nettoyées…).
+        </p>
+        <a href="{{ url_for('upload') }}" class="btn btn-success btn-sm">
+          <i class="bi bi-upload me-2"></i>Importer un fichier local
+        </a>
+      </div>
+    </div>
+
+    <!-- ═══ KoboToolbox ═══ -->
+    <div class="col-md-6">
+      <div class="feature-card h-100" style="cursor:default">
+        <div class="feature-icon" style="background:#e8f4fd;color:#1a6fa8">
+          <i class="bi bi-cloud-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">KoboToolbox</h5>
+        {% if kobo_connected %}
+        <p class="text-muted small mb-2">
+          Connecté en tant que <strong>{{ kobo_username }}</strong>.
+          {% if kobo_asset_name %}Formulaire actif : <strong>{{ kobo_asset_name }}</strong>.{% endif %}
+        </p>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{{ url_for('kobo_assets') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-collection-fill me-2"></i>Voir mes formulaires
+          </a>
+          {% if kobo_asset_name %}
+          <a href="{{ url_for('kobo_refresh') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-clockwise me-2"></i>Rafraîchir
+          </a>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-3">
+          Connectez-vous avec votre token API pour charger directement vos soumissions
+          depuis un formulaire KoboToolbox — sans export manuel.
+        </p>
+        <a href="{{ url_for('kobo_connect') }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plug-fill me-2"></i>Se connecter à KoboToolbox
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <p class="text-muted small mt-4">
+    <i class="bi bi-info-circle me-1"></i>
+    Pour le suivi de complétude par région/district/établissement des enquêtes officielles SPAD,
+    utilisez plutôt <a href="{{ url_for('completude') }}">Complétude nationale</a> dans le menu KoboToolbox.
+  </p>
+
+</div>
+{% endblock %}

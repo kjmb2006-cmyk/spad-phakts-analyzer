@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}{{ etablissement.nom }} — Complétude — SPAD Analyzer{% endblock %}
+{% block page_title %}Établissement — {{ etablissement.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <nav aria-label="breadcrumb" class="small">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('completude_regions') }}">Régions</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('completude_region_detail', region_code=etablissement.region_code) }}">{{ region.nom or etablissement.region_code }}</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('completude_district_detail', district_code=etablissement.district_code) }}">{{ district.nom or etablissement.district_code }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ etablissement.nom }}</li>
+      </ol>
+    </nav>
+    <a href="{{ url_for('completude_district_detail', district_code=etablissement.district_code) }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Retour au district
+    </a>
+  </div>
+
+  {% if computed_at %}
+  <p class="text-muted small"><i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}</p>
+  {% endif %}
+
+  <!-- ═══ Établissement ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-hospital me-2 text-primary"></i>{{ etablissement.nom }}</h6>
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ etablissement.type }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              {% for code in etab_form_codes %}
+              <th class="text-center" title="{{ form_labels[code] }}">{{ code }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {% for code in etab_form_codes %}
+              {% set cell = etablissement.forms[code] %}
+              <td class="text-center">
+                {% if cell.statut == 'inconnu' %}
+                <span class="text-muted small">—</span>
+                {% else %}
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                      title="{{ cell.recu }} / {{ cell.cible }}">
+                  {% if cell.taux is not none %}{{ cell.taux }} %{% else %}{{ cell.recu }}{% endif %}
+                </span>
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- ═══ Enquêteur assigné ═══ -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-person-walking me-2 text-primary"></i>Enquêteur assigné</h6>
+        </div>
+        <div class="card-body p-0">
+          {% if not enqueteur %}
+          <p class="text-muted small p-3 mb-0">Aucun enquêteur trouvé pour cet établissement dans le référentiel.</p>
+          {% else %}
+          <div class="p-3 pb-0">
+            <div class="fw-semibold small mb-1">{{ enqueteur.nom }}</div>
+            <p class="text-muted small mb-2">Score agrégé sur les établissements affectés à cet enquêteur.</p>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  {% for code in enq_form_codes %}
+                  <th class="text-center" title="{{ form_labels[code] }}">{{ code }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {% for code in enq_form_codes %}
+                  {% set cell = enqueteur.forms[code] %}
+                  <td class="text-center">
+                    {% if cell.statut == 'inconnu' %}
+                    <span class="text-muted small">—</span>
+                    {% else %}
+                    <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                          style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
+                      {% if cell.taux is not none %}{{ cell.taux }} %{% else %}{{ cell.recu }}{% endif %}
+                    </span>
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Superviseur du district ═══ -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-person-badge me-2 text-primary"></i>Superviseur du district</h6>
+        </div>
+        <div class="card-body p-0">
+          {% if not superviseurs %}
+          <p class="text-muted small p-3 mb-0">Aucun superviseur trouvé pour ce district dans le référentiel.</p>
+          {% else %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Superviseur</th>
+                  {% for code in sup_form_codes %}
+                  <th class="text-center" title="{{ form_labels[code] }}">{{ code }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for code, sup in superviseurs.items() %}
+                <tr>
+                  <td class="fw-semibold small">{{ sup.nom }}</td>
+                  {% for fc in sup_form_codes %}
+                  {% set cell = sup.forms[fc] %}
+                  <td class="text-center">
+                    {% if cell.statut == 'inconnu' %}
+                    <span class="text-muted small">—</span>
+                    {% else %}
+                    <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                          style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
+                      {% if cell.taux is not none %}{{ cell.taux }} %{% else %}{{ cell.recu }}{% endif %}
+                    </span>
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Anomalies de l'établissement ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>
+        Anomalies de collecte ({{ (anomalies_zero|length) + (anomalies_excess|length) }})
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      {% if not anomalies_zero and not anomalies_excess %}
+      <p class="text-muted small p-3 mb-0">Aucune anomalie détectée pour cet établissement.</p>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Formulaire</th>
+              <th class="text-center">Reçu / cible</th>
+              <th class="text-center">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in anomalies_zero %}
+            <tr>
+              <td class="small">
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                {{ a.formulaire_label }}
+              </td>
+              <td class="text-center small">0 / {{ a.cible }}</td>
+              <td class="text-center"><span class="status-pill status-pill--zero">0 %</span></td>
+            </tr>
+            {% endfor %}
+            {% for a in anomalies_excess %}
+            <tr>
+              <td class="small">
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                {{ a.formulaire_label }}
+              </td>
+              <td class="text-center small">{{ a.recu }} / {{ a.cible }}</td>
+              <td class="text-center"><span class="status-pill status-pill--verifier">{{ (a.ratio * 100) | round(0, 'floor') | int }} %</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

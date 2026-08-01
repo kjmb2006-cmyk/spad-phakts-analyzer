@@ -33,6 +33,9 @@
     <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
       <i class="bi bi-house-fill"></i> Tableau de bord
     </a>
+    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}">
+      <i class="bi bi-database-fill-gear"></i> Analyse de données
+    </a>
     <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}">
       <i class="bi bi-upload"></i> Importer les données
     </a>
