@@ -916,6 +916,22 @@ def map_view():
     )
 
 
+@app.route('/analyse-donnees')
+def analyse_donnees():
+    """Point d'entrée unique pour accéder aux données à analyser : import
+    d'un fichier Excel local, ou connexion à un formulaire KoboToolbox.
+    Ne fait aucun chargement lui-même — redirige vers /upload ou le flux
+    KoboToolbox existant (kobo_connect / kobo_assets)."""
+    return render_template(
+        'analyse_donnees.html',
+        has_data=bool(session.get('data_path')),
+        data_meta=session.get('data_meta', {}),
+        kobo_connected=bool(session.get('kobo_token')),
+        kobo_username=session.get('kobo_username', ''),
+        kobo_asset_name=session.get('kobo_asset_name', ''),
+    )
+
+
 @app.route('/dashboard')
 def dashboard():
     """Tableau de bord synthétique."""
@@ -2055,6 +2071,34 @@ def completude_regions():
         title='Complétude par région', echelon='région',
         rows=cached['region'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
+        row_link_endpoint='completude_region_detail', row_link_param='region_code',
+    )
+
+
+@app.route('/completude/regions/<region_code>')
+def completude_region_detail(region_code):
+    """Détail d'une région : liste de ses districts (drill-down région → district)."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    ref = ref_data.load()
+    region = ref['regions'].get(region_code)
+    if not region:
+        flash("Région inconnue du référentiel.", 'danger')
+        return redirect(url_for('completude_regions'))
+    rows = {code: row for code, row in cached['district'].items() if row['region_code'] == region_code}
+    return render_template(
+        'completude_table.html',
+        title=f"Districts — région {region['nom']}", echelon='district',
+        rows=rows, form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+        row_link_endpoint='completude_district_detail', row_link_param='district_code',
+        back_label='Retour à la vue par région', back_endpoint='completude_regions',
     )
 
 
@@ -2072,6 +2116,90 @@ def completude_districts():
         'completude_table.html',
         title='Complétude par district', echelon='district',
         rows=cached['district'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+        row_link_endpoint='completude_district_detail', row_link_param='district_code',
+    )
+
+
+@app.route('/completude/districts/<district_code>')
+def completude_district_detail(district_code):
+    """Détail d'un district : établissements, enquêteurs et superviseur(s)
+    rattachés, avec leurs scores et les anomalies de collecte propres à ce
+    district (drill-down district → établissement)."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    ref = ref_data.load()
+    district = ref['districts'].get(district_code)
+    if not district:
+        flash("District inconnu du référentiel.", 'danger')
+        return redirect(url_for('completude_districts'))
+    region = ref['regions'].get(district['region_code'], {})
+
+    etablissements = {code: row for code, row in cached.get('etablissement', {}).items()
+                       if row['district_code'] == district_code}
+    enqueteurs = {code: row for code, row in cached['enqueteur'].items()
+                  if row['sous_titre'] == district_code}
+    superviseurs = {code: row for code, row in cached['superviseur'].items()
+                    if row['sous_titre'] == district_code}
+    anomalies_zero = [a for a in cached['anomalies_zero'] if a.get('district_code') == district_code]
+    anomalies_excess = [a for a in cached['anomalies_excess'] if a.get('district_code') == district_code]
+
+    return render_template(
+        'completude_district_detail.html',
+        district=district, district_code=district_code, region=region,
+        district_row=cached['district'].get(district_code),
+        etablissements=etablissements, enqueteurs=enqueteurs, superviseurs=superviseurs,
+        anomalies_zero=anomalies_zero, anomalies_excess=anomalies_excess,
+        form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        etab_form_codes=cp.ETABLISSEMENT_FORMS, enq_form_codes=cp.ENQUETEUR_FORMS,
+        sup_form_codes=cp.SUPERVISEUR_FORMS,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/etablissements/<etablissement_code>')
+def completude_etablissement_detail(etablissement_code):
+    """Détail d'un établissement : scores par formulaire, enquêteur assigné
+    et superviseur du district, avec les anomalies de collecte propres à
+    cet établissement (dernier niveau du drill-down région → district →
+    établissement)."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    ref = ref_data.load()
+    etablissement = cached.get('etablissement', {}).get(etablissement_code)
+    etab_ref = ref['etablissements'].get(etablissement_code)
+    if not etablissement or not etab_ref:
+        flash("Établissement inconnu — recalculez la complétude si le référentiel a changé.", 'danger')
+        return redirect(url_for('completude_districts'))
+    district = ref['districts'].get(etab_ref['district_code'], {})
+    region = ref['regions'].get(etab_ref['region_code'], {})
+    enqueteur_code = etab_ref.get('enqueteur_code')
+    enqueteur = cached['enqueteur'].get(enqueteur_code) if enqueteur_code else None
+    superviseurs = {code: row for code, row in cached['superviseur'].items()
+                     if row['sous_titre'] == etab_ref['district_code']}
+    anomalies_zero = [a for a in cached['anomalies_zero'] if a.get('etablissement_code') == etablissement_code]
+    anomalies_excess = [a for a in cached['anomalies_excess'] if a.get('etablissement_code') == etablissement_code]
+
+    return render_template(
+        'completude_etablissement_detail.html',
+        etablissement=etablissement, etablissement_code=etablissement_code,
+        district=district, region=region,
+        enqueteur=enqueteur, enqueteur_code=enqueteur_code, superviseurs=superviseurs,
+        anomalies_zero=anomalies_zero, anomalies_excess=anomalies_excess,
+        etab_form_codes=cp.ETABLISSEMENT_FORMS, enq_form_codes=cp.ENQUETEUR_FORMS,
+        sup_form_codes=cp.SUPERVISEUR_FORMS, form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2374,8 +2502,9 @@ def completude_calculer():
     national = cp.national_summary(ref, form_dataframes)
     cache = {
         'national':       national,
-        'district':       cp.district_table(ref, form_dataframes),
         'region':         cp.region_table(ref, form_dataframes),
+        'district':       cp.district_table(ref, form_dataframes),
+        'etablissement':  cp.etablissement_table(ref, form_dataframes),
         'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
