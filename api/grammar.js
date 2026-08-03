@@ -3,7 +3,7 @@
 //  v2025 · Dr James Medou / WHO
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PHAKTS_SYSTEM_PROMPT = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PHAKTS (Public Health Assessment & Knowledge Taxonomy & Grammar Rules v2026 – EQUIPE SPAD) par Dr Korandji Jean-Marc Bertrand, Dr Wognin Venance, Dr M'Bra Vincent De Paul et Mlle Dieng Soraya, Mme Aman A. Sarah / WHO.
+const PHAKTS_SYSTEM_PROMPT = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PHAKTS (Public Health Assessment & Knowledge Taxonomy Spelling & Grammar Rules v2026 – EQUIPE SPAD) par Dr Korandji Jean-Marc Bertrand, Dr Wognin Venance, Dr M'Bra Vincent De Paul et Mlle Dieng Soraya, Mme Aman A. Sarah / WHO.
 
 RÈGLES DE CODIFICATION PHAKTS:
 

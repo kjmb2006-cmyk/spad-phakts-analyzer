@@ -8,11 +8,34 @@
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-clipboard2-pulse fs-3"></i>
     <div>
-      <strong>Vue de complétude nationale, façon spadapp-zeta.vercel.app.</strong>
+      <strong>Vue de complétude nationale.</strong>
       Associez chacun des 7 formulaires SPAD à votre formulaire KoboToolbox réel, puis calculez
       les taux de complétude par rapport au référentiel (120 établissements, 12 districts).
     </div>
   </div>
+
+  {% if mapping_erreurs %}
+  <div class="alert alert-danger border-0 d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-x-octagon-fill fs-3"></i>
+    <div>
+      <strong>Correspondance incorrecte — le calcul est bloqué tant que ce n'est pas corrigé :</strong>
+      <ul class="mb-0 mt-1">
+        {% for e in mapping_erreurs %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+  {% if mapping_avertissements %}
+  <div class="alert alert-warning border-0 d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+    <div>
+      <strong>Vérifiez ces correspondances — le nom du formulaire sélectionné est inhabituel pour ce code :</strong>
+      <ul class="mb-0 mt-1">
+        {% for a in mapping_avertissements %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- ═══ Correspondance formulaires ═══ -->
   <div class="card border-0 shadow-sm mb-4">
@@ -66,8 +89,11 @@
 
   <!-- ═══ Résultats ═══ -->
   {% if result %}
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="section-label"><i class="bi bi-bar-chart-line me-1"></i>Complétude par formulaire</span>
+    <a href="{{ url_for('completude_export_docx') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-file-earmark-word me-1"></i>Télécharger le rapport (Word)
+    </a>
   </div>
   <div class="row g-3 mb-4">
     {% for code in form_codes %}

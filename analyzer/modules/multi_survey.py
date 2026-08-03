@@ -12,6 +12,9 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from scipy import stats
+
+from modules.xlsform_dictionary import _xtype_key, GRILLE_XTYPE
 
 
 # ─── Extraction du code PHAKTS / radical ─────────────────────────────────────
@@ -183,3 +186,117 @@ def compare_continuous_by_survey(merged: pd.DataFrame, variable: str) -> dict:
         'chart': fig.to_json(),
         'n_total': int(summary['Effectif'].sum()),
     }
+
+
+# ─── Interopérabilité — détection automatique des indicateurs communs ────────
+#
+# Une colonne codifiée PHAKTS porte déjà, dans son nom, l'information de
+# type (xType — voir modules/xlsform_dictionary.py, même grammaire que le
+# dictionnaire PHAKTS v2025.10.22-ext2) : pas besoin du XLSForm d'origine
+# pour savoir comment traiter statistiquement une variable alignée entre
+# plusieurs enquêtes, le nom suffit. C'est ce qui rend l'alignement DPF/
+# PHAKTS déjà en place ci-dessus réellement exploitable automatiquement,
+# plutôt que de se limiter à un simple regroupement de colonnes.
+
+def detect_common_indicators(surveys: dict, mode: str = 'phakts', min_surveys: int = 2) -> list:
+    """Identifie les radicaux PHAKTS présents dans au moins `min_surveys`
+    enquêtes, avec le xType détecté et le traitement statistique recommandé
+    (même grille que modules/xlsform_dictionary.py). Une colonne non
+    codifiée PHAKTS (pas de suffixe __TYPE reconnu) n'entre pas dans la
+    détection automatique — elle reste accessible en mode manuel."""
+    if mode != 'phakts':
+        return []  # la détection de type suppose l'alignement par radical
+
+    occurrences = {}  # radical -> {survey_name: (colonne_originale, suffixe)}
+    for survey_name, df in surveys.items():
+        for col in df.columns:
+            radical = phakts_radical(col)
+            suffix = phakts_type(col)
+            if not suffix:
+                continue
+            occurrences.setdefault(radical, {})[survey_name] = (col, suffix)
+
+    indicators = []
+    for radical, per_survey in occurrences.items():
+        if len(per_survey) < min_surveys:
+            continue
+        suffixes = [s for _, s in per_survey.values()]
+        suffix = max(set(suffixes), key=suffixes.count)  # majoritaire si divergence rare entre enquêtes
+        xkey = _xtype_key(suffix, is_multi=False)
+        if xkey not in ('B', 'C', 'X_one', 'X_multi', 'period', 'I'):
+            continue  # A/Z/E/G : hors analyse quantitative automatique (voir GRILLE_XTYPE)
+        indicators.append({
+            'radical': radical, 'suffix': suffix, 'xkey': xkey,
+            'n_surveys': len(per_survey),
+            'surveys': sorted(per_survey.keys()),
+            'traitement': GRILLE_XTYPE.get(xkey, "À déterminer manuellement"),
+        })
+    indicators.sort(key=lambda i: (-i['n_surveys'], i['radical']))
+    return indicators
+
+
+def _categorical_cross_survey_test(merged: pd.DataFrame, radical: str):
+    """Test d'association entre l'enquête d'origine et la variable
+    (χ² d'indépendance) — l'indicateur diffère-t-il significativement
+    d'une enquête à l'autre ?"""
+    sub = merged[['__survey__', radical]].dropna()
+    if sub.empty:
+        return None
+    ct = pd.crosstab(sub[radical], sub['__survey__'])
+    if ct.shape[0] < 2 or ct.shape[1] < 2:
+        return None
+    chi2, p, dof, _ = stats.chi2_contingency(ct)
+    return {'test': 'χ² (indépendance)', 'stat': round(float(chi2), 2),
+            'p_value': round(float(p), 4), 'dof': int(dof), 'n': int(ct.values.sum())}
+
+
+def _continuous_cross_survey_test(merged: pd.DataFrame, radical: str):
+    """Compare la moyenne/médiane de la variable entre enquêtes — ANOVA si
+    la distribution est normale dans chaque enquête, Kruskal-Wallis sinon."""
+    sub = merged[['__survey__', radical]].copy()
+    sub[radical] = pd.to_numeric(sub[radical], errors='coerce')
+    sub = sub.dropna()
+    groups = [g[radical].values for _, g in sub.groupby('__survey__') if len(g) >= 3]
+    if len(groups) < 2:
+        return None
+    normal = all(len(g) < 5000 and stats.shapiro(g)[1] >= 0.05 for g in groups)
+    if normal:
+        stat, p = stats.f_oneway(*groups)
+        test = 'ANOVA'
+    else:
+        stat, p = stats.kruskal(*groups)
+        test = 'Kruskal-Wallis'
+    return {'test': test, 'stat': round(float(stat), 2), 'p_value': round(float(p), 4),
+            'n': int(sum(len(g) for g in groups))}
+
+
+def auto_analyze(surveys: dict, mode: str = 'phakts', min_surveys: int = 2) -> list:
+    """Analyse automatique complète : détecte les indicateurs communs puis
+    calcule, pour chacun, la comparaison descriptive (déjà fournie par
+    compare_categorical_by_survey / compare_continuous_by_survey) ET un
+    test statistique d'écart entre enquêtes — l'utilisateur n'a besoin de
+    choisir aucune variable au préalable."""
+    indicators = detect_common_indicators(surveys, mode=mode, min_surveys=min_surveys)
+    if not indicators:
+        return []
+    merged = merge_surveys(surveys, mode=mode)
+
+    out = []
+    for ind in indicators:
+        radical = ind['radical']
+        if radical not in merged.columns:
+            continue
+        try:
+            if ind['xkey'] in ('B', 'C', 'X_one', 'X_multi'):
+                r = compare_categorical_by_survey(merged, radical)
+                r['test'] = _categorical_cross_survey_test(merged, radical)
+                r['kind'] = 'categorical'
+            else:  # 'period', 'I'
+                r = compare_continuous_by_survey(merged, radical)
+                r['test'] = _continuous_cross_survey_test(merged, radical)
+                r['kind'] = 'continuous'
+        except Exception as e:
+            r = {'variable': radical, 'error': str(e), 'kind': ind['xkey']}
+        r.update({k: v for k, v in ind.items() if k not in r})
+        out.append(r)
+    return out

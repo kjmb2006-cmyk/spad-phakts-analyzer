@@ -116,6 +116,8 @@ def create_projet(nom, reference_file_storage, champ_unite, kobo_uid=None, kobo_
         'n_unites': n_unites,
         'created_at': datetime.datetime.now().strftime('%d/%m/%Y %H:%M'),
         'computed_at': None,
+        'has_xlsform': False,
+        'analyse_computed_at': None,
     }
     items = _load_index()
     items.append(entry)
@@ -228,6 +230,155 @@ def save_result(projet_id, rows, groups):
 
 def load_result(projet_id):
     path = _cache_path(projet_id)
+    if not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Analyse épidémiologique générique (XLSForm → dictionnaire → statistiques)
+#
+# Étend un projet (déjà défini par son fichier de référence code/cible/
+# groupe ci-dessus) avec un XLSForm optionnel : dictionnaire de variables
+# auto-généré (modules/xlsform_dictionary.py), édité par l'utilisateur,
+# puis analysé (modules/enquete_analyse.py) — fonctionne pour n'importe
+# quel questionnaire, pas seulement les formulaires SPAD.
+# ─────────────────────────────────────────────────────────────────────────
+
+def _xlsform_path(projet_id):
+    return os.path.join(PROJETS_DIR, projet_id, 'xlsform.xlsx')
+
+
+def _dictionnaire_path(projet_id):
+    return os.path.join(PROJETS_DIR, projet_id, 'dictionnaire.csv')
+
+
+def _rapport_path(projet_id):
+    return os.path.join(PROJETS_DIR, projet_id, 'rapport_analyse.docx')
+
+
+def _analyse_resume_path(projet_id):
+    return os.path.join(PROJETS_DIR, projet_id, 'analyse_resume.json')
+
+
+def rapport_path(projet_id):
+    """Chemin du rapport Word généré — None si pas encore d'analyse."""
+    p = _rapport_path(projet_id)
+    return p if os.path.exists(p) else None
+
+
+def attach_xlsform(projet_id, file_storage):
+    """Enregistre le XLSForm et génère le dictionnaire de variables initial
+    (suggestions éditables — voir modules/xlsform_dictionary.py)."""
+    from modules.xlsform_dictionary import parse_xlsform
+    projet_dir = os.path.join(PROJETS_DIR, projet_id)
+    os.makedirs(projet_dir, exist_ok=True)
+    xls_path = _xlsform_path(projet_id)
+    file_storage.save(xls_path)
+
+    try:
+        dic = parse_xlsform(xls_path)
+    except Exception as e:
+        try:
+            os.remove(xls_path)
+        except OSError:
+            pass
+        raise ValueError(f"Impossible de lire le XLSForm (feuilles 'survey'/'choices' attendues) : {e}")
+
+    dic.to_csv(_dictionnaire_path(projet_id), index=False, encoding='utf-8-sig')
+
+    items = _load_index()
+    for p in items:
+        if p['id'] == projet_id:
+            p['has_xlsform'] = True
+    _save_index(items)
+    return len(dic)
+
+
+def load_dictionnaire(projet_id):
+    path = _dictionnaire_path(projet_id)
+    if not os.path.exists(path):
+        return None
+    return pd.read_csv(path, keep_default_na=False, na_values=['']).fillna('')
+
+
+def save_dictionnaire(projet_id, df):
+    df.to_csv(_dictionnaire_path(projet_id), index=False, encoding='utf-8-sig')
+
+
+def run_analysis(projet_id, data_df):
+    """Exécute l'analyse complète (statistiques univariées, scores
+    composites, croisement, stratification, qualité des données, rapport
+    Word) à partir du dictionnaire validé et des données Kobo/ODK réelles.
+    Réutilise la complétude par groupe déjà calculée (load_result) plutôt
+    que de la recalculer."""
+    from modules import enquete_analyse as ea
+
+    p = get_projet(projet_id)
+    dic = load_dictionnaire(projet_id)
+    if dic is None:
+        raise ValueError("Aucun dictionnaire — attachez d'abord un XLSForm.")
+
+    dic, manquantes, extra_cols = ea.match_columns(dic, data_df)
+    univ = ea.univariate_table(dic, data_df)
+    scores, detail_domaines, items_ignores = ea.compute_composite_scores(dic, data_df)
+    corr, corr_tests = ea.croisement_scores(scores)
+    strat_df = ea.stratified_analysis(dic, data_df, scores)
+    qual_df, couverture = ea.data_quality_table(dic, data_df, manquantes, extra_cols)
+
+    resultat = load_result(projet_id)
+    groupe_completude = resultat['groupes'] if resultat else None
+
+    figures = ea.make_figures(scores, corr, strat_df, groupe_completude)
+    try:
+        docx_bytes = ea.build_report(
+            p['nom'], len(data_df), univ, scores, detail_domaines, items_ignores,
+            corr, corr_tests, strat_df, qual_df, couverture, figures, groupe_completude,
+        )
+    finally:
+        for fp in figures.values():
+            try:
+                os.remove(fp)
+            except OSError:
+                pass
+
+    with open(_rapport_path(projet_id), 'wb') as f:
+        f.write(docx_bytes)
+
+    resume = {
+        'n_soumissions': len(data_df),
+        'n_variables_dictionnaire': len(dic),
+        'n_non_trouvees': len(manquantes),
+        'variables_non_trouvees': list(manquantes['nom']),
+        'n_colonnes_hors_dictionnaire': len(extra_cols),
+        'scores': {
+            domaine: {
+                'n': int(scores[f'Score_{domaine}'].notna().sum()),
+                'moyenne': round(float(scores[f'Score_{domaine}'].mean()), 1),
+                'mediane': round(float(scores[f'Score_{domaine}'].median()), 1),
+                'items': items,
+            }
+            for domaine, items in detail_domaines.items()
+            if f'Score_{domaine}' in scores.columns and scores[f'Score_{domaine}'].notna().any()
+        },
+        'n_anomalies_completion': len(couverture.get('anomalies_completion', [])),
+        'n_variables_stratification': int(strat_df['stratification'].nunique()) if not strat_df.empty else 0,
+    }
+    with open(_analyse_resume_path(projet_id), 'w', encoding='utf-8') as f:
+        json.dump(resume, f, ensure_ascii=False)
+
+    items = _load_index()
+    for pi in items:
+        if pi['id'] == projet_id:
+            pi['analyse_computed_at'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    _save_index(items)
+
+    return resume
+
+
+def load_analyse_resume(projet_id):
+    path = _analyse_resume_path(projet_id)
     if not os.path.exists(path):
         return None
     with open(path, 'r', encoding='utf-8') as f:

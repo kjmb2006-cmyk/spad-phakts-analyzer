@@ -11,6 +11,39 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+def select_viable_variables(df: pd.DataFrame, candidates: list, min_rows: int = 10,
+                             min_vars: int = 2, numeric: bool = True) -> list:
+    """Choisit un sous-ensemble de `candidates` utilisable pour une ACP/ACM
+    sans intervention de l'utilisateur : PCA/MCA font un dropna() conjoint
+    sur toutes les variables sélectionnées, donc combiner des variables
+    mutuellement exclusives par logique de saut (ex. « âge calculé » vs
+    « âge saisi », remplies l'une XOR l'autre selon une réponse en amont)
+    peut faire tomber le nombre de lignes conjointement renseignées à zéro,
+    même si chaque variable prise séparément est bien remplie.
+
+    Ajoute les variables une à une, des plus complètes aux moins complètes,
+    en écartant celles qui feraient chuter le nombre de lignes exploitables
+    sous `min_rows` — un choix par défaut robuste plutôt qu'un simple "tout
+    sélectionner" qui échoue silencieusement sur ce genre de formulaire."""
+    candidates = [v for v in candidates if v in df.columns]
+    if len(candidates) < min_vars:
+        return candidates
+
+    def _n_complete(vars_):
+        sub = df[vars_]
+        if numeric:
+            sub = sub.apply(pd.to_numeric, errors='coerce')
+        return sub.dropna().shape[0]
+
+    ordered = sorted(candidates, key=lambda v: df[v].notna().sum(), reverse=True)
+    chosen = [ordered[0]]
+    for v in ordered[1:]:
+        trial = chosen + [v]
+        if _n_complete(trial) >= min_rows:
+            chosen = trial
+    return chosen if len(chosen) >= min_vars else ordered[:min_vars]
+
+
 def _prepare_numeric_df(df: pd.DataFrame, variables: list) -> pd.DataFrame:
     sub = df[variables].copy()
     for var in variables:

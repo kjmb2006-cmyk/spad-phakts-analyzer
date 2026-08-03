@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import "_completude_macros.html" as m %}
+{% block title %}{{ etab.nom }} — SPAD Analyzer{% endblock %}
+{% block page_title %}Établissement — {{ etab.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('completude_district_detail', district_code=etab.district_code) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>District
+      </a>
+      <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">Vue nationale</a>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Complétude de l'établissement</span>
+  {{ m.forms_cards(etab.forms, form_codes, form_labels) }}
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <span class="section-label d-block mb-2"><i class="bi bi-person me-1"></i>Enquêteur assigné</span>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          {% if enqueteur %}
+          <h6 class="fw-semibold mb-3">
+            {{ enqueteur.nom }}
+            <span class="text-muted small fw-normal">({{ enqueteur_code }})</span>
+          </h6>
+          <div class="row g-2">
+            {% for code, cell in enqueteur.forms.items() %}
+            <div class="col-6">
+              <div class="small text-muted">{{ code }}</div>
+              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}">
+                {{ cell.recu }} / {{ cell.cible if cell.cible is not none else '—' }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="text-muted small mt-2 mb-0">
+            <i class="bi bi-info-circle me-1"></i>Scores agrégés sur les 2 établissements suivis par cet enquêteur.
+          </p>
+          {% else %}
+          <p class="text-muted small mb-0">Aucun enquêteur identifié pour cet établissement.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>Superviseur du district</span>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          {% if superviseur %}
+          <h6 class="fw-semibold mb-3">{{ superviseur[1].nom }}</h6>
+          <div class="row g-2">
+            {% for code, cell in superviseur[1].forms.items() %}
+            <div class="col-4">
+              <div class="small text-muted">{{ code }}</div>
+              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}">
+                {{ cell.recu }} / {{ cell.cible if cell.cible is not none else '—' }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small mb-0">Aucun superviseur identifié pour ce district.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies sur cet établissement</span>
+  {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
+
+</div>
+{% endblock %}

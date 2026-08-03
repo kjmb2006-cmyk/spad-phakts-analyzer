@@ -14,6 +14,18 @@
     </div>
   </div>
 
+  {% if suivi_avertissements %}
+  <div class="alert alert-warning border-0 d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+    <div>
+      <strong>Vérifiez ces associations — le type sélectionné semble incohérent :</strong>
+      <ul class="mb-0 mt-1">
+        {% for a in suivi_avertissements %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ═══ Formulaires suivis ═══ -->
   <div class="d-flex align-items-center justify-content-between mb-3">
     <span class="section-label"><i class="bi bi-grid-1x2 me-1"></i>Formulaires suivis</span>
@@ -59,17 +71,20 @@
                 {% if not a.deployed %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1">non déployé</span>{% endif %}
               </td>
               <td class="text-center small">{{ a.submission_count }}</td>
+              {% set guess = guessed_types.get(a.uid) %}
               <td>
                 <select class="form-select form-select-sm form-type-select" {% if a.uid in tracked_uids %}disabled{% endif %}>
-                  <option value="">— Libre (cible manuelle) —</option>
+                  <option value="" {% if not guess %}selected{% endif %}>— Libre (cible manuelle) —</option>
                   {% for code in form_codes %}
-                  <option value="{{ code }}">{{ code }} — {{ form_labels[code] }}</option>
+                  <option value="{{ code }}" {% if guess == code %}selected{% endif %}>{{ code }} — {{ form_labels[code] }}</option>
                   {% endfor %}
                 </select>
+                {% if guess %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>détecté depuis le nom</div>{% endif %}
               </td>
               <td class="text-center">
                 <input type="number" min="1" class="form-control form-control-sm target-input"
-                       placeholder="ex. 1800" {% if a.uid in tracked_uids %}disabled{% endif %}>
+                       placeholder="{{ 'détectée automatiquement' if guess else 'ex. 1800' }}"
+                       {% if a.uid in tracked_uids or guess %}disabled{% endif %}>
               </td>
               <td class="text-center">
                 {% if a.uid in tracked_uids %}

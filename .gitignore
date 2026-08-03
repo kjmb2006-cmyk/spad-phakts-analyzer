@@ -51,3 +51,6 @@ analyzer/data/projets/
 analyzer/data/completude_historique.jsonl
 # Noms réels enquêteurs/superviseurs — données personnelles, jamais commitées (dépôt public)
 analyzer/data/reference/*.local.json
+
+# Livrables d'analyse ponctuels (microdonnées d'enquête réelles — jamais sur le dépôt public)
+/output/

@@ -43,15 +43,20 @@ nat = rd.national_targets(ref)
 print()
 print("Cibles nationales calculées :", nat)
 
+n_etab_avec_deces = sum(1 for e in ref['etablissements'].values() if e['sig_deces_maternels'] > 0)
+
 assert nat['F5'] == 1800
 assert nat['F7'] == 1800
 assert nat['F8'] == 120
 assert nat['F01'] == 12
-assert nat['F02'] == 120
+# F02 = nombre d'établissements ayant ≥1 décès maternel SIG (pas tout
+# l'échantillon de 120) — dérivé de tirage_etablissements.xlsx, pas figé.
+assert nat['F02'] == n_etab_avec_deces, (nat['F02'], n_etab_avec_deces)
 assert 260 <= nat['F6'] <= 280, nat['F6']   # ~271, tolérance vs le chiffre observé (273)
 assert 180 <= nat['F07'] <= 195, nat['F07']  # ~187, tolérance vs le chiffre observé (188)
-print("OK — cibles nationales conformes aux totaux observés (F5/F7/F8/F01/F02 exacts,"
-      " F6/F07 à ±10 du chiffre observé — écart documenté dans reference_data.py)")
+print("OK — cibles nationales conformes aux totaux observés (F5/F7/F8/F01 exacts,"
+      " F02 = établissements avec décès SIG, F6/F07 à ±10 du chiffre observé"
+      " — écart documenté dans reference_data.py)")
 
 # target_for : cohérence individuelle
 some_etab = next(e for e in ref['etablissements'].values() if e['type'] == 'EPH')
@@ -60,8 +65,41 @@ some_csrd = next(e for e in ref['etablissements'].values() if e['type'] == 'CSR-
 assert rd.target_for(ref, 'F6', etablissement_code=some_csrd['code']) == 1
 assert rd.target_for(ref, 'F5') == 15
 assert rd.target_for(ref, 'F8') == 1
-assert rd.target_for(ref, 'F02') == 1
-print("OK — target_for() cohérent par type d'établissement et par formulaire")
+
+# F02 : 1 uniquement pour un établissement avec ≥1 décès SIG, 0 sinon
+etab_avec_deces = next(e for e in ref['etablissements'].values() if e['sig_deces_maternels'] > 0)
+etab_sans_deces = next(e for e in ref['etablissements'].values() if e['sig_deces_maternels'] == 0)
+assert rd.target_for(ref, 'F02', etablissement_code=etab_avec_deces['code']) == 1
+assert rd.target_for(ref, 'F02', etablissement_code=etab_sans_deces['code']) == 0
+print("OK — target_for() cohérent par type d'établissement et par formulaire"
+      " (F02 conditionné à la présence d'un décès SIG)")
+
+# Garde-fou de cohérence F02 ↔ F07 : les deux cibles dérivent du même champ
+# sig_deces_maternels par établissement. Un district doit avoir une cible F02
+# (établissements à notifier) si et seulement s'il a une cible F07 (décès à
+# réviser) — sinon les deux volets RDM racontent des histoires différentes
+# pour le même district. Verrouille l'invariant contre toute régression
+# future (ex. mise à jour de tirage_etablissements.xlsx qui désaligne les deux).
+from collections import defaultdict
+etab_avec_deces_par_district = defaultdict(int)
+f07_par_district = defaultdict(int)
+for e in ref['etablissements'].values():
+    f07_par_district[e['district_code']] += e['sig_deces_maternels']
+    if e['sig_deces_maternels'] > 0:
+        etab_avec_deces_par_district[e['district_code']] += 1
+
+for d in ref['districts']:
+    n_etab_f02 = etab_avec_deces_par_district.get(d, 0)
+    cible_f07 = f07_par_district.get(d, 0)
+    assert (n_etab_f02 > 0) == (cible_f07 > 0), (
+        f"F02/F07 désalignés sur le district {d} : "
+        f"{n_etab_f02} établissement(s) avec décès mais cible F07 = {cible_f07}"
+    )
+assert sum(etab_avec_deces_par_district.values()) == nat['F02']
+assert sum(f07_par_district.values()) == nat['F07']
+print("OK — F02 (établissements à notifier) et F07 (décès à réviser) restent"
+      f" alignés par district ({sum(1 for d in ref['districts'] if etab_avec_deces_par_district.get(d, 0) > 0)}"
+      " district(s) concernés sur 12)")
 
 print()
 print("=" * 70)

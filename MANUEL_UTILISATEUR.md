@@ -48,7 +48,7 @@ Elle réunit deux modules complémentaires dans une seule application :
   (tris à plat, tableaux croisés dynamiques, analyses multivariées, comparaisons
   multi-enquêtes, cartographie, rapports PDF/Word automatiques).
 
-PHAKTS (*Public Health Assessment & Knowledge Taxonomy & Grammar Rules*) est
+PHAKTS (*Public Health Assessment & Knowledge Taxonomy Spelling & Grammar Rules*) est
 une **grammaire formelle** qui standardise la codification des questions
 d'enquête en santé publique. Le **DPF — Dictionnaire des Propriétés
 Fonctionnelles** centralise toutes les codifications validées.
@@ -746,4 +746,4 @@ Pour toute question, anomalie ou suggestion d'amélioration :
 Tous droits réservés.*
 
 *PHAKTS · STUDIO · v2026 · EQUIPE · SPAD*
-*Public Health Assessment & Knowledge Taxonomy & Grammar*
+*Public Health Assessment & Knowledge Taxonomy Spelling & Grammar*

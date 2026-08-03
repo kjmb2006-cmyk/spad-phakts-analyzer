@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Dictionnaire — {{ p.nom }} — SPAD Analyzer{% endblock %}
+{% block page_title %}Dictionnaire de variables — {{ p.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="alert alert-primary border-0 d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-info-circle fs-4"></i>
+    <div>
+      <strong>Dictionnaire auto-généré à partir du XLSForm — révisez avant l'analyse.</strong>
+      Le <strong>rôle</strong> et le <strong>traitement statistique</strong> sont pré-remplis (détection
+      des suffixes PHAKTS si présents, sinon grille générique par type XLSForm). Le
+      <strong>domaine</strong>, l'inclusion dans un <strong>score composite</strong> et les
+      <strong>valeurs favorables</strong> sont à votre charge — aucune détection automatique du sens des
+      questions n'est tentée : donnez le même nom de domaine (ex. « Connaissances ») à toutes les
+      variables qui doivent se combiner dans le même score.
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">{{ lignes|length }} variable(s)</span>
+    <a href="{{ url_for('projets_detail', projet_id=p.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Retour au projet
+    </a>
+  </div>
+
+  <form method="POST" action="{{ url_for('projets_dictionnaire_save', projet_id=p.id) }}">
+    <datalist id="domainesExistants">
+      {% for d in domaines_existants %}<option value="{{ d }}">{% endfor %}
+    </datalist>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:75vh;overflow-y:auto">
+          <table class="table table-sm align-middle mb-0" style="font-size:.8rem">
+            <thead style="position:sticky;top:0;background:#fff;z-index:1">
+              <tr>
+                <th style="min-width:220px">Variable</th>
+                <th style="min-width:90px">Type</th>
+                <th style="min-width:130px">Rôle</th>
+                <th style="min-width:140px">Domaine (score)</th>
+                <th class="text-center" style="width:60px">Inclure</th>
+                <th style="min-width:110px">Sens</th>
+                <th style="min-width:160px">Valeurs favorables</th>
+                <th style="min-width:260px">Traitement statistique recommandé</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in lignes %}
+              <tr class="{{ 'table-warning' if l.note_qualite else '' }}">
+                <td>
+                  <div class="fw-semibold" style="font-family:monospace">{{ l.nom }}</div>
+                  <div class="text-muted" style="font-size:.72rem">{{ l.section }}{% if l.label %} — {{ l.label|truncate(60) }}{% endif %}</div>
+                  {% if l.note_qualite %}
+                  <div class="text-danger" style="font-size:.7rem"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ l.note_qualite }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  <div>{{ l.type_xlsform }}</div>
+                  {% if l.suffixe_phakts %}<span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.65rem">__{{ l.suffixe_phakts }}</span>{% endif %}
+                </td>
+                <td>
+                  <select name="role_{{ l.nom }}" class="form-select form-select-sm">
+                    <option value="indicateur" {% if l.role == 'indicateur' %}selected{% endif %}>Indicateur</option>
+                    <option value="stratification" {% if l.role == 'stratification' %}selected{% endif %}>Stratification</option>
+                    <option value="exclu" {% if l.role == 'exclu' %}selected{% endif %}>Exclu</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="text" name="domaine_{{ l.nom }}" value="{{ l.domaine }}"
+                         list="domainesExistants" class="form-control form-control-sm"
+                         placeholder="ex. Connaissances">
+                </td>
+                <td class="text-center">
+                  <input type="checkbox" name="inclure_{{ l.nom }}" class="form-check-input"
+                         {% if l.inclure_score_composite in [true, 'True', 'true', True] %}checked{% endif %}>
+                </td>
+                <td>
+                  <select name="sens_{{ l.nom }}" class="form-select form-select-sm">
+                    <option value="" {% if not l.sens_item %}selected{% endif %}>—</option>
+                    <option value="positif" {% if l.sens_item == 'positif' %}selected{% endif %}>Positif</option>
+                    <option value="negatif" {% if l.sens_item == 'negatif' %}selected{% endif %}>Négatif</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="text" name="favorables_{{ l.nom }}" value="{{ l.valeurs_favorables }}"
+                         class="form-control form-control-sm" placeholder="ex. oui"
+                         title="Valeurs séparées par des virgules (codes choices, pas les libellés)">
+                  {% if l.liste_choices %}<div class="text-muted" style="font-size:.68rem">liste : {{ l.liste_choices }}</div>{% endif %}
+                </td>
+                <td class="text-muted" style="font-size:.72rem">{{ l.traitement_statistique_recommande }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-save me-1"></i>Enregistrer le dictionnaire
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

@@ -12,8 +12,9 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     common_variables, phakts_radical,
                                     is_phakts_coded,
                                     compare_categorical_by_survey,
-                                    compare_continuous_by_survey)
-from modules.multivariate import run_pca, run_mca, run_clustering, run_ca
+                                    compare_continuous_by_survey,
+                                    auto_analyze)
+from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
                               auto_comment_crosstab, auto_comment_binary_group)
@@ -43,6 +44,7 @@ from modules import reference_data as ref_data
 from modules import completeness as cp
 from modules import projets as proj
 from modules import tendance
+from modules import completude_report
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -208,6 +210,18 @@ def index():
     meta = session.get('data_meta', {})
     sheets = session.get('sheet_names', [])
     return render_template('index.html', has_data=has_data, meta=meta, sheets=sheets)
+
+
+# ─── ANALYSE DE DONNÉES (point d'entrée unique : Kobo ou fichier local) ───────
+
+@app.route('/analyse-donnees')
+def analyse_donnees():
+    has_data = bool(session.get('data_path') and os.path.exists(session.get('data_path', '')))
+    return render_template(
+        'analyse_donnees.html',
+        kobo_connected=bool(session.get('kobo_token')),
+        has_data=has_data, meta=session.get('data_meta', {}),
+    )
 
 
 # ─── UPLOAD ───────────────────────────────────────────────────────────────────
@@ -964,6 +978,15 @@ def descriptive():
             selected_cat = saved.get('cat', [])
             selected_num = saved.get('num', [])
             selected_bin_groups = saved.get('bin', [])
+        else:
+            # Première visite (pas encore de sélection enregistrée) : calcule
+            # automatiquement sur toutes les variables plutôt que de laisser
+            # une page vide en attente d'une action manuelle — les stats
+            # descriptives par variable ne demandent aucun jugement quant au
+            # choix des variables, contrairement à un croisement ciblé.
+            selected_cat = cat_vars
+            selected_num = num_vars
+            selected_bin_groups = [g['parent'] for g in bin_groups]
 
     # Recalcule à partir des sélections (qu'elles viennent du POST ou de la session)
     for var in selected_cat:
@@ -1240,9 +1263,11 @@ def _ms_build_xlsx(mv_result: dict, mv_method: str) -> bytes:
 def multi_survey():
     """Analyse multi-enquête avec alignement DPF/PHAKTS — comparaisons multiples persistées."""
     surveys_meta = session.get('multi_surveys', []) or []
+    auto_mode = session.get('ms_auto_mode', False)
     mode = request.form.get('align_mode') or session.get('ms_mode', 'phakts')
     compared_vars = list(session.get('ms_compared_vars', []) or [])
     results = []
+    auto_results = []
     coverage_html = None
     merged_meta = None
     common_vars = []
@@ -1331,6 +1356,10 @@ def multi_survey():
         elif action == 'change_mode':
             session['ms_mode'] = mode
 
+        elif action == 'toggle_auto':
+            auto_mode = request.form.get('auto_mode') == 'on'
+            session['ms_auto_mode'] = auto_mode
+
         elif action == 'kobo_refresh_ms':
             token = session.get('kobo_token')
             instance = session.get('kobo_instance')
@@ -1402,7 +1431,7 @@ def multi_survey():
         except Exception:
             common_vars = []
 
-        if len(surveys) >= 2 and compared_vars:
+        if len(surveys) >= 2:
             try:
                 merged = merge_surveys(surveys, mode=mode)
                 merged_meta = {
@@ -1410,10 +1439,23 @@ def multi_survey():
                     'n_vars': int(merged.shape[1] - 1),
                     'n_surveys': len(surveys),
                 }
+            except Exception as e:
+                merged = None
+                flash(f"Erreur d'analyse : {e}", 'danger')
+
+            if auto_mode and merged is not None:
+                # Interopérabilité : indicateurs communs détectés automatiquement
+                # via le xType PHAKTS porté par le nom de chaque colonne (voir
+                # modules/multi_survey.py::auto_analyze) — aucune sélection
+                # manuelle de variable nécessaire.
+                try:
+                    auto_results = auto_analyze(surveys, mode=mode)
+                except Exception as e:
+                    auto_results = []
+                    flash(f"Erreur d'analyse automatique : {e}", 'danger')
+            elif compared_vars and merged is not None:
                 for v in compared_vars:
                     results.append(_compute_ms_comparison(merged, v))
-            except Exception as e:
-                flash(f"Erreur d'analyse : {e}", 'danger')
 
     # Variables proposées (union + variables PHAKTS)
     candidate_vars = []
@@ -1472,6 +1514,8 @@ def multi_survey():
                             candidate_vars=candidate_vars,
                             compared_vars=compared_vars,
                             results=results,
+                            auto_mode=auto_mode,
+                            auto_results=auto_results,
                             merged_meta=merged_meta,
                             kobo_connected=bool(session.get('kobo_token')),
                             ms_kobo_assets=session.get('ms_kobo_assets', []),
@@ -1578,6 +1622,23 @@ def multivariate():
             n_clusters = saved.get('n_clusters', 3)
             ca_row = saved.get('ca_row')
             ca_col = saved.get('ca_col')
+        else:
+            # Première visite : ACP sur les variables numériques/binaires par
+            # défaut — un premier coup d'œil structurel ne demande pas de
+            # choix méthodologique préalable (contrairement à l'AFC, qui croise
+            # 2 variables catégorielles précises et reste manuelle).
+            # select_viable_variables() écarte les variables qui, combinées,
+            # tomberaient à 0 ligne conjointement renseignée — cas fréquent
+            # avec des variables mutuellement exclusives par logique de saut
+            # (ex. « âge calculé » vs « âge saisi manuellement »), qui
+            # feraient sinon échouer l'ACP silencieusement sur un simple GET.
+            pca_vars = select_viable_variables(df, num_vars_all, min_rows=10) if len(num_vars_all) >= 2 else []
+            if len(pca_vars) >= 2:
+                method, selected = 'pca', pca_vars
+            else:
+                mca_vars = select_viable_variables(df, cat_vars, min_rows=10, numeric=False) if len(cat_vars) >= 2 else []
+                if len(mca_vars) >= 2:
+                    method, selected = 'mca', mca_vars
 
     # Filtre les variables qui n'existent plus dans le df actuel
     selected = [v for v in selected if v in df.columns]
@@ -1595,8 +1656,10 @@ def multivariate():
             elif request.method == 'POST':
                 flash('Sélectionnez au moins 2 variables.', 'warning')
         except Exception as e:
-            if request.method == 'POST':
-                flash(f'Erreur d\'analyse : {str(e)}', 'danger')
+            # Affiché même sur GET (pas seulement POST) : sinon l'analyse
+            # automatique au premier chargement peut échouer sans qu'aucun
+            # message n'explique pourquoi la page reste vide.
+            flash(f'Erreur d\'analyse : {str(e)}', 'danger')
 
     return render_template('multivariate.html',
                            cat_vars=cat_vars,
@@ -1892,7 +1955,33 @@ def suivi():
     instance = session.get('kobo_instance')
     assets_result = list_assets(token, instance=instance)
     assets = assets_result.get('assets', []) if assets_result.get('success') else []
-    tracked_uids = {t['uid'] for t in kobo_track.list_tracked()}
+    tracked = kobo_track.list_tracked()
+    tracked_uids = {t['uid'] for t in tracked}
+    guessed_types = {a['uid']: ref_data.guess_form_type(a['name']) for a in assets}
+
+    # Même logique d'alerte que « Complétude nationale » (validate_mapping) :
+    # un type manuellement choisi qui ne correspond pas au nom du formulaire,
+    # ou le même type SPAD assigné à 2 formulaires suivis différents, sont
+    # des erreurs de sélection qui passeraient sinon inaperçues.
+    suivi_avertissements = []
+    types_vus = {}
+    for t in tracked:
+        if not t.get('form_type'):
+            continue
+        types_vus.setdefault(t['form_type'], []).append(t['name'])
+        guess = ref_data.guess_form_type(t['name'])
+        if guess and guess != t['form_type']:
+            suivi_avertissements.append(
+                f"« {t['name']} » est suivi comme {t['form_type']}, mais son nom correspond "
+                f"plutôt à {guess} — vérifiez la sélection."
+            )
+    for code, noms in types_vus.items():
+        if len(noms) > 1:
+            suivi_avertissements.append(
+                f"{code} est assigné à {len(noms)} formulaires suivis différents "
+                f"({', '.join(noms)}) — un seul devrait normalement porter ce type."
+            )
+
     return render_template(
         'suivi.html',
         assets=assets,
@@ -1900,6 +1989,8 @@ def suivi():
         assets_error=None if assets_result.get('success') else assets_result.get('error'),
         form_codes=ref_data.FORM_CODES,
         form_labels=ref_data.FORM_LABELS,
+        guessed_types=guessed_types,
+        suivi_avertissements=suivi_avertissements,
     )
 
 
@@ -2050,6 +2141,7 @@ def completude():
     assets = assets_result.get('assets', []) if assets_result.get('success') else []
     mapping = session.get('spad_form_mapping', {})
     cached = _load_completude_cache()
+    mapping_erreurs, mapping_avertissements = ref_data.validate_mapping(mapping, assets)
     return render_template(
         'completude.html',
         assets=assets,
@@ -2059,6 +2151,8 @@ def completude():
         form_labels=ref_data.FORM_LABELS,
         result=cached['national'] if cached else None,
         computed_at=session.get('completude_computed_at'),
+        mapping_erreurs=mapping_erreurs,
+        mapping_avertissements=mapping_avertissements,
     )
 
 
@@ -2130,6 +2224,163 @@ def completude_superviseurs():
         'completude_table.html',
         title='Complétude par superviseur', echelon='superviseur', sous_titre_label='District',
         rows=cached['superviseur'], form_codes=list(cp.SUPERVISEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/enqueteurs/<enq_code>')
+def completude_enqueteur_detail(enq_code):
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    enq = cached['enqueteur'].get(enq_code)
+    if not enq:
+        flash('Enquêteur introuvable.', 'warning')
+        return redirect(url_for('completude_enqueteurs'))
+
+    etablissements = {c: e for c, e in cached['etablissement'].items() if e['enqueteur_code'] == enq_code}
+    etab_codes = set(etablissements)
+    zeros = [a for a in cached.get('anomalies_zero', []) if a.get('etablissement_code') in etab_codes]
+    excess = [a for a in cached.get('anomalies_excess', []) if a.get('etablissement_code') in etab_codes]
+
+    return render_template(
+        'completude_enqueteur_detail.html',
+        enq_code=enq_code, enq=enq, etablissements=etablissements,
+        form_codes=list(cp.ENQUETEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        anomalies_zero=zeros, anomalies_excess=excess,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/superviseurs/<sup_code>')
+def completude_superviseur_detail(sup_code):
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    sup = cached['superviseur'].get(sup_code)
+    if not sup:
+        flash('Superviseur introuvable.', 'warning')
+        return redirect(url_for('completude_superviseurs'))
+
+    district_code = sup['sous_titre']
+    district = cached['district'].get(district_code)
+    etablissements = {c: e for c, e in cached['etablissement'].items() if e['district_code'] == district_code}
+    zeros, excess = _anomalies_scope(cached, district_code=district_code)
+
+    return render_template(
+        'completude_superviseur_detail.html',
+        sup_code=sup_code, sup=sup, district_code=district_code, district=district,
+        etablissements=etablissements,
+        form_labels=ref_data.FORM_LABELS,
+        anomalies_zero=zeros, anomalies_excess=excess,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+def _anomalies_scope(cached, **scope):
+    """Filtre les anomalies (0 % / excédent) déjà calculées selon un ou
+    plusieurs codes (region_code / district_code / etablissement_code)."""
+    def _match(a):
+        return all(a.get(k) == v for k, v in scope.items())
+    zeros = [a for a in cached.get('anomalies_zero', []) if _match(a)]
+    excess = [a for a in cached.get('anomalies_excess', []) if _match(a)]
+    return zeros, excess
+
+
+@app.route('/completude/regions/<region_code>')
+def completude_region_detail(region_code):
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    region = cached['region'].get(region_code)
+    if not region:
+        flash('Région introuvable.', 'warning')
+        return redirect(url_for('completude_regions'))
+
+    districts = {c: d for c, d in cached['district'].items() if d['region_code'] == region_code}
+    zeros, excess = _anomalies_scope(cached, region_code=region_code)
+
+    return render_template(
+        'completude_region_detail.html',
+        region_code=region_code, region=region, districts=districts,
+        form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        anomalies_zero=zeros, anomalies_excess=excess,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/districts/<district_code>')
+def completude_district_detail(district_code):
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    district = cached['district'].get(district_code)
+    if not district:
+        flash('District introuvable.', 'warning')
+        return redirect(url_for('completude_districts'))
+
+    etablissements = {c: e for c, e in cached['etablissement'].items() if e['district_code'] == district_code}
+    enqueteurs = {c: e for c, e in cached['enqueteur'].items() if e['sous_titre'] == district_code}
+    superviseur = next(((c, s) for c, s in cached['superviseur'].items() if s['sous_titre'] == district_code), None)
+    zeros, excess = _anomalies_scope(cached, district_code=district_code)
+
+    return render_template(
+        'completude_district_detail.html',
+        district_code=district_code, district=district, etablissements=etablissements,
+        enqueteurs=enqueteurs, superviseur=superviseur,
+        form_codes=ref_data.FORM_CODES,
+        enqueteur_form_codes=list(cp.ENQUETEUR_FORMS), superviseur_form_codes=list(cp.SUPERVISEUR_FORMS),
+        form_labels=ref_data.FORM_LABELS,
+        anomalies_zero=zeros, anomalies_excess=excess,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/etablissements/<etablissement_code>')
+def completude_etablissement_detail(etablissement_code):
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    etab = cached['etablissement'].get(etablissement_code)
+    if not etab:
+        flash('Établissement introuvable.', 'warning')
+        return redirect(url_for('completude_districts'))
+
+    enqueteur = cached['enqueteur'].get(etab['enqueteur_code'])
+    superviseur = next(((c, s) for c, s in cached['superviseur'].items() if s['sous_titre'] == etab['district_code']), None)
+    zeros, excess = _anomalies_scope(cached, etablissement_code=etablissement_code)
+
+    return render_template(
+        'completude_etablissement_detail.html',
+        etablissement_code=etablissement_code, etab=etab,
+        enqueteur_code=etab['enqueteur_code'], enqueteur=enqueteur, superviseur=superviseur,
+        form_codes=list(cp.ETABLISSEMENT_FORMS), form_labels=ref_data.FORM_LABELS,
+        anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2226,6 +2477,26 @@ def completude_export_xlsx():
     )
 
 
+@app.route('/completude/export.docx')
+def completude_export_docx():
+    """Rapport de complétude au format Word — voir modules/completude_report.py
+    (structure inspirée d'un compte rendu de débriefing terrain fourni par
+    l'utilisateur : indicateurs clés, points d'alerte, complétude par
+    formulaire/district, actions suggérées à partir des anomalies détectées)."""
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    ref = ref_data.load()
+    docx_bytes = completude_report.build_docx(
+        cached, ref, computed_at=session.get('completude_computed_at'))
+    buf = io.BytesIO(docx_bytes)
+    return send_file(
+        buf, as_attachment=True, download_name=_export_filename('docx'),
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+
+
 # ─── Projets d'enquête génériques (Kobo/ODK — hors référentiel SPAD) ──────────
 #
 # Généralise le suivi de complétude (reçu/cible/taux/statut) à n'importe
@@ -2303,6 +2574,8 @@ def projets_detail(projet_id):
         p=p, assets=assets, kobo_connected=bool(token),
         unites=result['unites'] if result else None,
         groupes=result['groupes'] if result else None,
+        analyse_resume=proj.load_analyse_resume(projet_id),
+        rapport_disponible=bool(proj.rapport_path(projet_id)),
     )
 
 
@@ -2348,6 +2621,130 @@ def projets_calculer(projet_id):
     return redirect(url_for('projets_detail', projet_id=projet_id))
 
 
+# ─── Analyse épidémiologique générique (XLSForm → dictionnaire → rapport) ─────
+#
+# Étend un projet avec un XLSForm optionnel : dictionnaire de variables
+# auto-généré (suggestions éditables), puis statistiques univariées, scores
+# composites, stratification et rapport Word — pour n'importe quel
+# questionnaire, pas seulement les formulaires SPAD. Voir modules/
+# xlsform_dictionary.py et modules/enquete_analyse.py.
+
+@app.route('/projets/<projet_id>/xlsform', methods=['POST'])
+def projets_xlsform(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    if 'xlsform' not in request.files or request.files['xlsform'].filename == '':
+        flash("Fichier XLSForm manquant (feuilles 'survey' et 'choices' attendues).", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+    f = request.files['xlsform']
+    if not allowed_file(f.filename):
+        flash('Format non supporté (.xlsx / .xls attendu).', 'danger')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    try:
+        n = proj.attach_xlsform(projet_id, f)
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    flash(f"XLSForm chargé — dictionnaire généré ({n} variables). Révisez-le avant de lancer l'analyse.",
+          'success')
+    return redirect(url_for('projets_dictionnaire', projet_id=projet_id))
+
+
+@app.route('/projets/<projet_id>/dictionnaire')
+def projets_dictionnaire(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    dic = proj.load_dictionnaire(projet_id)
+    if dic is None:
+        flash("Aucun XLSForm attaché à ce projet.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+    return render_template(
+        'projet_dictionnaire.html', p=p,
+        lignes=dic.to_dict('records'),
+        domaines_existants=sorted({d for d in dic['domaine'] if d}),
+    )
+
+
+@app.route('/projets/<projet_id>/dictionnaire/save', methods=['POST'])
+def projets_dictionnaire_save(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    dic = proj.load_dictionnaire(projet_id)
+    if dic is None:
+        flash("Aucun XLSForm attaché à ce projet.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    for i in dic.index:
+        nom = dic.at[i, 'nom']
+        dic.at[i, 'role'] = request.form.get(f'role_{nom}', dic.at[i, 'role'])
+        dic.at[i, 'domaine'] = (request.form.get(f'domaine_{nom}') or '').strip()
+        dic.at[i, 'inclure_score_composite'] = request.form.get(f'inclure_{nom}') == 'on'
+        dic.at[i, 'sens_item'] = request.form.get(f'sens_{nom}', '')
+        dic.at[i, 'valeurs_favorables'] = (request.form.get(f'favorables_{nom}') or '').strip()
+
+    proj.save_dictionnaire(projet_id, dic)
+    flash('Dictionnaire enregistré.', 'success')
+    return redirect(url_for('projets_dictionnaire', projet_id=projet_id))
+
+
+@app.route('/projets/<projet_id>/analyser', methods=['POST'])
+def projets_analyser(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    if proj.load_dictionnaire(projet_id) is None:
+        flash("Attachez et validez un dictionnaire avant de lancer l'analyse.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        return redirect(url_for('kobo_connect'))
+    if not p.get('kobo_uid'):
+        flash("Associez d'abord un formulaire KoboToolbox à ce projet.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    res = kobo_load_data(token, p['kobo_uid'], instance=p.get('kobo_instance') or session.get('kobo_instance'))
+    if not res.get('success'):
+        flash(f"Erreur de chargement : {res.get('error')}", 'danger')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    try:
+        proj.run_analysis(projet_id, res['df'])
+    except Exception as e:
+        flash(f"Erreur pendant l'analyse : {e}", 'danger')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+
+    flash(f"Analyse terminée — {res['n_obs']} soumissions traitées. Rapport disponible au téléchargement.",
+          'success')
+    return redirect(url_for('projets_detail', projet_id=projet_id))
+
+
+@app.route('/projets/<projet_id>/rapport.docx')
+def projets_rapport_docx(projet_id):
+    p = proj.get_projet(projet_id)
+    if not p:
+        flash('Projet introuvable.', 'warning')
+        return redirect(url_for('projets_liste'))
+    path = proj.rapport_path(projet_id)
+    if not path:
+        flash("Aucun rapport disponible — lancez d'abord l'analyse.", 'warning')
+        return redirect(url_for('projets_detail', projet_id=projet_id))
+    fname = f"rapport_analyse_{p['nom'].replace(' ', '_')}.docx"
+    return send_file(
+        path, as_attachment=True, download_name=fname,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+
+
 @app.route('/projets/<projet_id>/supprimer', methods=['POST'])
 def projets_supprimer(projet_id):
     proj.delete_projet(projet_id)
@@ -2379,6 +2776,19 @@ def completude_calculer():
         flash("Associez au moins un formulaire avant de calculer.", 'warning')
         return redirect(url_for('completude'))
 
+    # Filet de sécurité : un même formulaire Kobo mappé sur 2 codes SPAD
+    # différents est toujours une erreur de sélection (jamais un cas
+    # légitime) — elle fausserait silencieusement les taux des deux
+    # formulaires concernés si on la laissait passer. Voir
+    # modules/reference_data.py::validate_mapping().
+    assets_result = list_assets(token, instance=instance)
+    assets = assets_result.get('assets', []) if assets_result.get('success') else []
+    mapping_erreurs, _ = ref_data.validate_mapping(mapping, assets)
+    if mapping_erreurs:
+        for e in mapping_erreurs:
+            flash(f"Correspondance incorrecte : {e}", 'danger')
+        return redirect(url_for('completude'))
+
     ref = ref_data.load()
     form_dataframes = {}
     errors = []
@@ -2398,6 +2808,7 @@ def completude_calculer():
         'national':       national,
         'district':       cp.district_table(ref, form_dataframes),
         'region':         cp.region_table(ref, form_dataframes),
+        'etablissement':  cp.etablissement_table(ref, form_dataframes),
         'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),

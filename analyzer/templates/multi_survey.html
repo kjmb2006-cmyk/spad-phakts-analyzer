@@ -460,13 +460,100 @@
       <h6 class="mb-0 fw-semibold">
         <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>3. Comparer des variables entre enquêtes
       </h6>
-      {% if compared_vars %}
-      <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-        {{ compared_vars|length }} variable(s) dans le panier
-      </span>
-      {% endif %}
+      <form method="POST" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="action" value="toggle_auto">
+        <input type="hidden" name="align_mode" value="{{ mode }}">
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="autoModeSwitch"
+                 name="auto_mode" {% if auto_mode %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label class="form-check-label small fw-semibold" for="autoModeSwitch">
+            <i class="bi bi-magic me-1"></i>Analyse automatique
+          </label>
+        </div>
+      </form>
     </div>
     <div class="card-body">
+      {% if auto_mode %}
+      <div class="alert alert-primary small d-flex align-items-start gap-2 mb-3">
+        <i class="bi bi-info-circle fs-5"></i>
+        <div>
+          <strong>Interopérabilité PHAKTS</strong> — les indicateurs communs à au moins 2 enquêtes
+          sont détectés automatiquement depuis le type porté par le nom de chaque variable (xType),
+          avec le traitement statistique et le test de comparaison adaptés. Aucune sélection manuelle
+          n'est nécessaire ; désactivez le commutateur ci-dessus pour revenir au choix variable par
+          variable.
+        </div>
+      </div>
+
+      {% if auto_results %}
+      <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
+        <div><i class="bi bi-collection me-1"></i><strong>{{ surveys_meta|length }}</strong> enquêtes</div>
+        <div><i class="bi bi-tag me-1"></i><strong>{{ auto_results|length }}</strong> indicateur(s) commun(s) détecté(s)</div>
+      </div>
+      <div class="accordion" id="msAutoAccordion">
+        {% for r in auto_results %}
+        <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+          <h2 class="accordion-header" id="autohdr-{{ loop.index0 }}">
+            <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                    type="button" data-bs-toggle="collapse"
+                    data-bs-target="#autocmp-{{ loop.index0 }}"
+                    aria-expanded="{{ 'true' if loop.first else 'false' }}">
+              <div class="d-flex w-100 align-items-center gap-2 flex-wrap">
+                <strong>{{ r.radical }}</strong>
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ r.suffix }}</span>
+                {% if r.kind == 'continuous' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle">continue</span>
+                {% elif r.kind == 'categorical' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">catégorielle</span>
+                {% endif %}
+                <span class="badge bg-light text-dark border">{{ r.n_surveys }}/{{ surveys_meta|length }} enquêtes</span>
+                {% if r.error %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">erreur</span>
+                {% elif r.test %}
+                <span class="badge {% if r.test.p_value < 0.05 %}bg-warning-subtle text-warning border border-warning-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %}">
+                  {{ r.test.test }} · p={{ r.test.p_value }}{% if r.test.p_value < 0.05 %} (écart significatif){% else %} (pas d'écart significatif){% endif %}
+                </span>
+                {% endif %}
+              </div>
+            </button>
+          </h2>
+          <div id="autocmp-{{ loop.index0 }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+               data-bs-parent="#msAutoAccordion">
+            <div class="accordion-body">
+              <p class="small text-muted mb-3"><i class="bi bi-clipboard-data me-1"></i>{{ r.traitement }}</p>
+              {% if r.error %}
+              <div class="alert alert-warning small mb-0">{{ r.error }}</div>
+              {% elif r.kind == 'categorical' %}
+              <div class="row g-3">
+                <div class="col-lg-6">
+                  <h6 class="small fw-semibold text-muted">Effectifs</h6>
+                  <div class="table-responsive">{{ r.count_html | safe }}</div>
+                </div>
+                <div class="col-lg-6">
+                  <h6 class="small fw-semibold text-muted">% colonne</h6>
+                  <div class="table-responsive">{{ r.pct_html | safe }}</div>
+                </div>
+              </div>
+              <div class="mt-3" id="msAutoChart_{{ loop.index0 }}"></div>
+              {% elif r.kind == 'continuous' %}
+              <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
+              <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
+              <div class="mt-3" id="msAutoChart_{{ loop.index0 }}"></div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% elif surveys_meta|length >= 2 %}
+      <div class="alert alert-warning small mb-0">
+        Aucun indicateur codifié PHAKTS commun à au moins 2 enquêtes n'a été détecté (mode
+        d'alignement « PHAKTS (radical) » requis — voir section 2 ci-dessus).
+      </div>
+      {% endif %}
+
+      {% else %}
       <form method="POST" class="row g-2 align-items-end">
         <input type="hidden" name="action" value="add_compare">
         <input type="hidden" name="align_mode" value="{{ mode }}">
@@ -581,6 +668,7 @@
         </div>
       </div>
       {% endif %}
+      {% endif %}
     </div>
   </div>
   {% endif %}
@@ -629,6 +717,22 @@ function toggleMvFields(method) {
   var charts = [
     {% for r in results %}{% if r.chart %}
     { id: 'msChart_{{ loop.index0 }}', fig: {{ r.chart | safe }} },
+    {% endif %}{% endfor %}
+  ];
+  charts.forEach(function(c){
+    try { Plotly.newPlot(c.id, c.fig.data, c.fig.layout, {responsive:true,displaylogo:false}); }
+    catch(e){ console.warn('plotly', c.id, e); }
+  });
+})();
+</script>
+{% endif %}
+
+{% if auto_results %}
+<script>
+(function(){
+  var charts = [
+    {% for r in auto_results %}{% if r.chart %}
+    { id: 'msAutoChart_{{ loop.index0 }}', fig: {{ r.chart | safe }} },
     {% endif %}{% endfor %}
   ];
   charts.forEach(function(c){

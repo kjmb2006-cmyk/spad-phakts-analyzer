@@ -1,0 +1,90 @@
+{% macro forms_cards(forms, form_codes, form_labels) %}
+<div class="row g-3 mb-4">
+  {% for code in form_codes %}
+  {% set r = forms.get(code, {'recu': 0, 'cible': None, 'taux': none, 'statut': 'inconnu'}) %}
+  <div class="col-md-6 col-lg-4">
+    <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+      <h6 class="mb-2 fw-semibold" style="font-size:.82rem">{{ code }} — {{ form_labels[code] }}</h6>
+      <div class="d-flex align-items-baseline gap-2 mb-1">
+        <span class="stat-value-v" style="font-size:1.4rem">{{ r.recu }}</span>
+        <span class="text-muted small">/ {{ r.cible if r.cible is not none else '—' }}</span>
+      </div>
+      <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero')) }}">
+        {% if r.statut == 'inconnu' %}Non calculé
+        {% elif r.statut == 'zero' %}0 %
+        {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+        {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+        {% elif r.statut == 'verifier' %}À vérifier · {{ r.taux }} %
+        {% else %}{{ r.statut }}
+        {% endif %}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro anomalies_section(zeros, excess) %}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-bottom py-2">
+        <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
+          <i class="bi bi-exclamation-circle-fill me-2 text-secondary"></i>À 0 % ({{ zeros|length }})
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        {% if not zeros %}
+        <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type ici.</p>
+        {% else %}
+        <div class="table-responsive" style="max-height:280px;overflow-y:auto">
+          <table class="table table-sm align-middle mb-0">
+            <tbody>
+              {% for a in zeros %}
+              <tr>
+                <td class="small">{{ a.unite }}</td>
+                <td class="small text-center">
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                </td>
+                <td class="text-center small text-muted">cible {{ a.cible }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-bottom py-2">
+        <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
+          <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>Excès — doublons potentiels ({{ excess|length }})
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        {% if not excess %}
+        <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type ici.</p>
+        {% else %}
+        <div class="table-responsive" style="max-height:280px;overflow-y:auto">
+          <table class="table table-sm align-middle mb-0">
+            <tbody>
+              {% for a in excess %}
+              <tr>
+                <td class="small">{{ a.unite }}</td>
+                <td class="small text-center">
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
+                </td>
+                <td class="text-center small">{{ a.recu }} / {{ a.cible }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

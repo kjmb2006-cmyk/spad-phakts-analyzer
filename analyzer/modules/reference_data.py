@@ -32,13 +32,18 @@ vérifiées ici par recoupement avec les totaux nationaux déjà observés :
   F7  (Vaccination Ménages)  : 15 par établissement, fixe   → total national 1800 (exact)
   F8  (Vaccination Étab.)    : 1 par établissement, fixe    → total national 120 (exact)
   F01 (RDM — District)       : 1 par district, fixe         → total national 12 (exact)
-  F02 (RDM — Établissement)  : 1 par établissement, fixe    → total national 120
-                                (le XLSForm F02 précise lui-même « une fiche
-                                par établissement » — vérifié après une
-                                première hypothèse erronée : ce n'est PAS le
-                                nombre de décès SIG, comme le confirme
-                                EPHR SAN-PEDRO — 43 décès SIG mais cible F02
-                                observée = 1 sur spadapp-zeta.vercel.app)
+  F02 (RDM — Établissement)  : 1 fiche par établissement ayant enregistré AU
+                                MOINS un décès maternel au SIG (pas 1 par
+                                décès — EPHR SAN-PEDRO a 43 décès SIG mais
+                                cible F02 = 1 pour cet établissement, comme
+                                observé sur spadapp-zeta.vercel.app), et PAS
+                                1 par établissement de l'échantillon : les
+                                établissements sans décès SIG n'ont rien à
+                                remplir → total national = nombre
+                                d'établissements avec sig_deces_maternels > 0
+                                (16 avec tirage_etablissements.xlsx en l'état
+                                — à recouper avec le DHIS2 si un écart
+                                subsiste, ex. 17 attendu sur le terrain)
   F07 (RDM — Grille)         : somme des décès maternels notifiés au SIG pour
                                 les établissements du district — c'est un
                                 plancher, le dépasser est normal → total
@@ -73,7 +78,73 @@ FORM_LABELS = {
     'F07': 'RDM — Grille de revue',
 }
 
+# Préfixe attendu en tête du nom Kobo, selon la convention de nommage
+# observée sur les formulaires SPAD réellement déployés (ex. « 5_PNLTA_SPAD_
+# Fiche_Femmes... » pour F5, « F01 - RDM SPAD - Fiche district » pour F01).
+# Sert uniquement à repérer une correspondance SPAD ↔ Kobo suspecte dans
+# validate_mapping() ci-dessous — pas une règle stricte du protocole.
+FORM_NAME_HINT = {
+    'F5': '5_', 'F6': '6_', 'F7': '7_', 'F8': '8_',
+    'F01': 'F01', 'F02': 'F02', 'F07': 'F07',
+}
+
 _cache = {}  # (org_unit_path, tirage_path) -> référentiel chargé
+
+
+def guess_form_type(name):
+    """Devine le code SPAD correspondant à un nom de formulaire Kobo, à
+    partir de la même convention de nommage que FORM_NAME_HINT (ex.
+    « 5_PNLTA_SPAD_Fiche_Femmes... » → F5). Utilisé pour pré-sélectionner
+    le type dans la page « Suivi multi-formulaires » plutôt que de partir
+    d'un menu vide entièrement à la main — source d'erreurs silencieuses
+    (voir validate_mapping). Renvoie None si aucun préfixe connu n'est
+    trouvé (formulaire non-SPAD, ou nommé différemment)."""
+    if not name:
+        return None
+    name_low = name.lower()
+    for code, hint in FORM_NAME_HINT.items():
+        if hint.lower() in name_low:
+            return code
+    return None
+
+
+def validate_mapping(mapping, assets):
+    """Détecte les correspondances SPAD ↔ Kobo suspectes avant qu'elles ne
+    faussent silencieusement les taux de complétude — un utilisateur peut
+    se tromper de formulaire dans un menu déroulant sans s'en apercevoir.
+
+    Renvoie (erreurs, avertissements) :
+      - erreurs : le même formulaire Kobo utilisé pour 2 codes SPAD
+        différents — jamais légitime (chaque formulaire SPAD doit
+        correspondre à un formulaire Kobo distinct), à corriger avant tout
+        calcul.
+      - avertissements : le nom du formulaire sélectionné ne contient pas
+        le préfixe attendu pour ce code (voir FORM_NAME_HINT) — heuristique
+        fondée sur la convention de nommage observée, pas une certitude
+        (un formulaire nommé différemment resterait valide) : signalé,
+        mais ne bloque pas le calcul."""
+    by_uid = {a['uid']: a.get('name', '') for a in assets}
+
+    vus = {}
+    for code, uid in mapping.items():
+        vus.setdefault(uid, []).append(code)
+    erreurs = [
+        f"{' et '.join(codes)} pointent vers le même formulaire Kobo "
+        f"(« {by_uid.get(uid, uid)} ») — corrigez avant de calculer."
+        for uid, codes in vus.items() if len(codes) > 1
+    ]
+
+    avertissements = []
+    for code, uid in mapping.items():
+        hint = FORM_NAME_HINT.get(code)
+        name = by_uid.get(uid, '')
+        if hint and name and hint.lower() not in name.lower():
+            avertissements.append(
+                f"{code} — {FORM_LABELS[code]} : le formulaire sélectionné "
+                f"(« {name} ») ne contient pas « {hint} » — vérifiez qu'il "
+                f"s'agit bien du bon formulaire."
+            )
+    return erreurs, avertissements
 
 
 def _norm_name(s):
@@ -259,7 +330,13 @@ def target_for(ref, form_code, etablissement_code=None, district_code=None):
     if form_code == 'F01':
         return 1  # par district
     if form_code == 'F02':
-        return 1  # par établissement — voir note méthodologique en tête de module
+        # 1 fiche attendue seulement pour les établissements ayant au moins
+        # un décès maternel notifié au SIG — voir note méthodologique en
+        # tête de module. Un établissement sans décès SIG n'a rien à remplir.
+        etab = ref['etablissements'].get(etablissement_code)
+        if etab is None:
+            return 1
+        return 1 if etab['sig_deces_maternels'] > 0 else 0
     if form_code == 'F6':
         etab = ref['etablissements'].get(etablissement_code)
         return etab['f6_target'] if etab else 1
@@ -277,12 +354,13 @@ def national_targets(ref):
     n_district = len(ref['districts'])
     sig_total = sum(e['sig_deces_maternels'] for e in ref['etablissements'].values())
     f6_total = sum(e['f6_target'] for e in ref['etablissements'].values())
+    n_etab_avec_deces = sum(1 for e in ref['etablissements'].values() if e['sig_deces_maternels'] > 0)
     return {
         'F5':  15 * n_etab,
         'F6':  f6_total,
         'F7':  15 * n_etab,
         'F8':  1 * n_etab,
         'F01': 1 * n_district,
-        'F02': 1 * n_etab,
+        'F02': n_etab_avec_deces,  # établissements avec ≥1 décès SIG, pas tout l'échantillon
         'F07': sig_total,  # plancher — dépasser cette valeur est normal
     }

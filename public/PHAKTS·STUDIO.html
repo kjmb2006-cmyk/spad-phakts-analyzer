@@ -751,7 +751,7 @@
     <div class="logo-icon">🩺</div>
     <div>
       <div class="logo-title">PHAKTS<span>·</span>STUDIO</div>
-      <div class="logo-sub">Public Health Assessment & Knowledge Taxonomy · KoboToolbox XLSForm Generator</div>
+      <div class="logo-sub">Public Health Assessment & Knowledge Taxonomy Spelling · KoboToolbox XLSForm Generator</div>
     </div>
   </div>
   <div class="header-right">
@@ -1505,7 +1505,7 @@
 <!-- ── FOOTER ── -->
 <footer>
   <span>Copyright © 2026 Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO) · PHAKTS · STUDIO · v2026 · EQUIPE SPAD · Dr Wognin V., Dr M’Bra V. D. P., Dr KORANDJI J. M. B., Mlle Dieng S., Mme Aman A. Sarah</span>
-  <span>Public Health Assessment & Knowledge Taxonomy & Grammar</span>
+  <span>Public Health Assessment & Knowledge Taxonomy Spelling & Grammar</span>
 </footer>
 
 <script>
@@ -2706,6 +2706,7 @@ function showStatus(msg, type = 'info') {
   const colors = {
     info: { bg: '#1e3a5f', border: '#38bdf8', color: '#7dd3fc', icon: 'ℹ' },
     success: { bg: '#1a3a2a', border: '#86efac', color: '#86efac', icon: '✓' },
+    warning: { bg: '#3a2a1a', border: '#fbbf24', color: '#fbbf24', icon: '⚠' },
     error: { bg: '#3a1a1a', border: '#f87171', color: '#f87171', icon: '✕' }
   };
   
@@ -3233,12 +3234,9 @@ function removeDpfRule(idx) {
   showStatus('Extension supprimée — grammaire mise à jour.', 'info');
 }
 
-async function downloadDPF() {
-  await ensureExcelJsReady();
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'PHAKTS STUDIO';
-
-  // ── Sheet 1: Types de Questions ──
+// ── Table de référence DPF (source unique — réutilisée par downloadDPF() et
+//    par la feuille "Dictionnaire PHAKTS" du reporting XLSForm) ──
+function getPhaktsDpfTables() {
   const typesData = [
     { code: '__B!boolean', description: 'Question booléenne → Oui | Non', statut: 'Confirmé' },
     { code: '__C!trilean', description: 'Triléen → Oui | Non | Autre (3 états 1/0/2)', statut: 'Confirmé — Règle 11 ext.' },
@@ -3270,6 +3268,38 @@ async function downloadDPF() {
     { code: '__2F', type: 'Réel — Monnaie/Montant (XOF…)', exemple: 'Cout_Consultation__2F!0<R<100000', statut: 'Confirmé — Règle 11 ext.' },
     { code: '__2I', type: 'Réel — Indice/Score composite', exemple: 'Score_DEA__2I', statut: 'Confirmé — Règle 11 ext.' },
   ];
+  const convData = [
+    { symbole: 'Snake_Case', role: 'Radicaux abstraits / g\u00e9n\u00e9riques', exemple: 'Collecte_Routine, Statut_Matrimonial' },
+    { symbole: '__', role: 'Double underscore \u2014 s\u00e9pare les parties', exemple: 'Radical__D\u00e9terminant__Affix' },
+    { symbole: '!', role: 'Introduit la contrainte', exemple: 'Age__1Y!0<N<120' },
+    { symbole: ', (virgule)', role: 'Choix exclusifs (select_one)', exemple: 'Sport__X![Football,Natation]' },
+    { symbole: '| (pipe)', role: 'Choix cumulables (select_multiple)', exemple: 'Sport__X![Football|Course|Natation]' },
+    { symbole: 'Liste_=[...]', role: 'Vocabulaire contr\u00f4l\u00e9 r\u00e9utilisable', exemple: 'Religion_=[Chr\u00e9tienne,Musulmane,Autre,0]' },
+    { symbole: '0', role: 'N\u00e9gation / option Autre / Aucun', exemple: '0 plac\u00e9 en fin de liste' },
+  ];
+  const skipData = [
+    { syntaxe: 'Lexia__B = Oui -> @Cible', signification: 'Si r\u00e9ponse = valeur \u2192 afficher cible', exemple: 'Grossesse__B = Oui -> @Age_Grossesse__1W' },
+    { syntaxe: 'Lexia__X != Val -> @Cible', signification: 'Si r\u00e9ponse \u2260 valeur \u2192 afficher cible', exemple: 'Fumer_Type__X != Cigarette -> @Autre_Produit__Z' },
+    { syntaxe: 'Lexia__B -> @Cible', signification: 'Si bool\u00e9en = Oui (implicite)', exemple: 'Fumer__B -> @Fumer_Type__X' },
+    { syntaxe: '!Lexia__B -> @Cible', signification: 'Si bool\u00e9en = Non (n\u00e9gation)', exemple: '!Allaitement__B -> @Fin' },
+  ];
+  const methodeData = [
+    { etape: '1', description: 'Partir de la question terrain', exemple: '\u00ab \u00cates-vous enceinte ? \u00bb' },
+    { etape: '2', description: 'Identifier le sens m\u00e9tier (radical abstrait)', exemple: 'Grossesse' },
+    { etape: '3', description: 'Choisir le type de r\u00e9ponse', exemple: '__B (bool\u00e9en)' },
+    { etape: '4', description: 'Ajouter p\u00e9riode / unit\u00e9 utile', exemple: '__1M (mois), __1Y (ann\u00e9es)' },
+    { etape: '5', description: 'Poser la contrainte de qualité', exemple: '!boolean, !0<N<24' },
+  ];
+  return { typesData, numData, convData, skipData, methodeData };
+}
+
+async function downloadDPF() {
+  await ensureExcelJsReady();
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'PHAKTS STUDIO';
+  const { typesData, numData, convData, skipData, methodeData } = getPhaktsDpfTables();
+
+  // ── Sheet 1: Types de Questions ──
   addObjectWorksheet(workbook, 'A_Types_Questions', typesData, [
     { header: 'Code', key: 'code', width: 25 },
     { header: 'Description', key: 'description', width: 50 },
@@ -3283,15 +3313,6 @@ async function downloadDPF() {
   ]);
 
   // ── Sheet 3: Conventions Syntaxiques ──
-  const convData = [
-    { symbole: 'Snake_Case', role: 'Radicaux abstraits / g\u00e9n\u00e9riques', exemple: 'Collecte_Routine, Statut_Matrimonial' },
-    { symbole: '__', role: 'Double underscore \u2014 s\u00e9pare les parties', exemple: 'Radical__D\u00e9terminant__Affix' },
-    { symbole: '!', role: 'Introduit la contrainte', exemple: 'Age__1Y!0<N<120' },
-    { symbole: ', (virgule)', role: 'Choix exclusifs (select_one)', exemple: 'Sport__X![Football,Natation]' },
-    { symbole: '| (pipe)', role: 'Choix cumulables (select_multiple)', exemple: 'Sport__X![Football|Course|Natation]' },
-    { symbole: 'Liste_=[...]', role: 'Vocabulaire contr\u00f4l\u00e9 r\u00e9utilisable', exemple: 'Religion_=[Chr\u00e9tienne,Musulmane,Autre,0]' },
-    { symbole: '0', role: 'N\u00e9gation / option Autre / Aucun', exemple: '0 plac\u00e9 en fin de liste' },
-  ];
   addObjectWorksheet(workbook, 'C_Conventions_Syntaxiques', convData, [
     { header: 'Symbole', key: 'symbole', width: 20 },
     { header: 'R\u00f4le', key: 'role', width: 45 },
@@ -3314,12 +3335,6 @@ async function downloadDPF() {
   }
 
   // ── Sheet 5: Skip Logic ──
-  const skipData = [
-    { syntaxe: 'Lexia__B = Oui -> @Cible', signification: 'Si r\u00e9ponse = valeur \u2192 afficher cible', exemple: 'Grossesse__B = Oui -> @Age_Grossesse__1W' },
-    { syntaxe: 'Lexia__X != Val -> @Cible', signification: 'Si r\u00e9ponse \u2260 valeur \u2192 afficher cible', exemple: 'Fumer_Type__X != Cigarette -> @Autre_Produit__Z' },
-    { syntaxe: 'Lexia__B -> @Cible', signification: 'Si bool\u00e9en = Oui (implicite)', exemple: 'Fumer__B -> @Fumer_Type__X' },
-    { syntaxe: '!Lexia__B -> @Cible', signification: 'Si bool\u00e9en = Non (n\u00e9gation)', exemple: '!Allaitement__B -> @Fin' },
-  ];
   addObjectWorksheet(workbook, 'H_Skip_Logic', skipData, [
     { header: 'Syntaxe', key: 'syntaxe', width: 35 },
     { header: 'Signification', key: 'signification', width: 45 },
@@ -3327,13 +3342,6 @@ async function downloadDPF() {
   ]);
 
   // ── Sheet 6: M\u00e9thode de Codage ──
-  const methodeData = [
-    { etape: '1', description: 'Partir de la question terrain', exemple: '\u00ab \u00cates-vous enceinte ? \u00bb' },
-    { etape: '2', description: 'Identifier le sens m\u00e9tier (radical abstrait)', exemple: 'Grossesse' },
-    { etape: '3', description: 'Choisir le type de r\u00e9ponse', exemple: '__B (bool\u00e9en)' },
-    { etape: '4', description: 'Ajouter p\u00e9riode / unit\u00e9 utile', exemple: '__1M (mois), __1Y (ann\u00e9es)' },
-    { etape: '5', description: 'Poser la contrainte de qualité', exemple: '!boolean, !0<N<24' },
-  ];
   addObjectWorksheet(workbook, 'G_Methode_Codage', methodeData, [
     { header: 'N\u00b0', key: 'etape', width: 8 },
     { header: '\u00c9tape', key: 'description', width: 45 },
@@ -3347,7 +3355,7 @@ async function downloadDPF() {
 }
 
 // ─── PHAKTS System Prompt ─────────────────────────────────────────────────────
-let SYSTEM = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PHAKTS (Public Health Assessment & Knowledge Taxonomy & Grammar Rules v2026 – EQUIPE SPAD) par Dr Korandji Jean-Marc Bertrand, Dr Wognin Venance, Dr M’Bra Vincent De Paul et Mlle Dieng Soraya, Mme Aman A. Sarah / WHO.
+let SYSTEM = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PHAKTS (Public Health Assessment & Knowledge Taxonomy Spelling & Grammar Rules v2026 – EQUIPE SPAD) par Dr Korandji Jean-Marc Bertrand, Dr Wognin Venance, Dr M’Bra Vincent De Paul et Mlle Dieng Soraya, Mme Aman A. Sarah / WHO.
 
 RÈGLES DE CODIFICATION PHAKTS:
 
@@ -5084,7 +5092,7 @@ function buildXLSForm() {
   const fid = normalizeUnicode(title.toLowerCase()).replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_');
   const settingsRow = { form_title: title, form_id: fid, version: new Date().toISOString().split('T')[0].replace(/-/g,''), default_language: 'French (fr)', style: 'pages' };
 
-  return { surveyRows, choicesRows, settingsRow };
+  return { surveyRows, choicesRows, settingsRow, fieldMetas };
 }
 
 // ─── Downloads ────────────────────────────────────────────────────────────────
@@ -5169,6 +5177,140 @@ async function downloadCoded() {
   }
 }
 
+// ── Reporting XLSForm — feuilles complémentaires ────────────────────────────
+// Au-delà des 3 feuillets XLSForm standard (survey/choices/settings), le
+// reporting PHAKTS embarque le Guide de l'enquêteur, le Dictionnaire PHAKTS,
+// la Référence PHAKTS et les métadonnées Admin — pour que la codification
+// reste toujours traçable et respectueuse de la grammaire, même hors-ligne.
+
+function guidanceForSurveyType(type) {
+  if (type === 'select_one yes_no') {
+    return "Lire la question telle quelle. Cocher Oui ou Non selon la réponse de l'enquêté(e), sans suggérer de réponse.";
+  }
+  if (/^select_one /.test(type)) {
+    return "Lire toutes les modalités de la liste à l'enquêté(e), puis cocher une seule réponse.";
+  }
+  if (/^select_multiple /.test(type)) {
+    return "Lire toutes les modalités de la liste à l'enquêté(e) et cocher toutes les réponses citées (choix multiple).";
+  }
+  if (type === 'integer') {
+    return 'Saisir un nombre entier uniquement. Respecter la plage de validité indiquée en contrainte.';
+  }
+  if (type === 'date') {
+    return 'Saisir la date au format JJ/MM/AAAA. Vérifier avec un document officiel si disponible.';
+  }
+  return "Saisir la réponse en texte libre, telle qu'exprimée par l'enquêté(e), sans reformuler.";
+}
+
+function buildGuideEnqueteurRows(surveyRows) {
+  return surveyRows.map((row, i) => ({
+    n: i + 1,
+    variable: row.name,
+    question: row['label::French (fr)'],
+    type: row.type,
+    consigne: guidanceForSurveyType(row.type),
+    renvoi: row.relevant ? `Poser uniquement si : ${row.relevant}` : 'Poser systématiquement (aucune condition de saut).'
+  }));
+}
+
+function buildDictionnairePhaktsRows() {
+  const { typesData, numData, convData, skipData, methodeData } = getPhaktsDpfTables();
+  const rows = [];
+  typesData.forEach(r => rows.push({ categorie: 'A. Types de questions', cle: r.code, description: r.description, exemple: '', statut: r.statut }));
+  numData.forEach(r => rows.push({ categorie: 'B. Types numériques', cle: r.code, description: r.type, exemple: r.exemple, statut: r.statut }));
+  convData.forEach(r => rows.push({ categorie: 'C. Conventions syntaxiques', cle: r.symbole, description: r.role, exemple: r.exemple, statut: '' }));
+  (dpfListes || []).forEach(l => {
+    if (l.identifiant) rows.push({ categorie: 'D. Listes prédéfinies', cle: l.identifiant, description: l.valeurs, exemple: '', statut: '' });
+  });
+  skipData.forEach(r => rows.push({ categorie: 'H. Skip logic', cle: r.syntaxe, description: r.signification, exemple: r.exemple, statut: '' }));
+  methodeData.forEach(r => rows.push({ categorie: 'G. Méthode de codage', cle: `Étape ${r.etape}`, description: r.description, exemple: r.exemple, statut: '' }));
+  return rows;
+}
+
+function addReferencePhaktsWorksheet(workbook) {
+  const ws = workbook.addWorksheet('Référence PHAKTS');
+  ws.columns = [{ header: 'Champ', key: 'a', width: 30 }, { header: 'Valeur', key: 'b', width: 95 }];
+  styleWorksheetHeader(ws);
+  const rows = [
+    ['Nom complet', 'Public Health Assessment & Knowledge Taxonomy Spelling & Grammar (PHAKTS)'],
+    ['Version de la grammaire', 'v2025.10.22-ext2'],
+    ['Outil', 'PHAKTS · STUDIO · v2026'],
+    ["Équipe SPAD", "Dr Wognin Venance · Dr M'Bra Vincent De Paul · Dr KORANDJI Jean-Marc Bertrand · Mlle Dieng Soraya · Mme Aman A. Sarah"],
+    ['Organisation', 'SPAD / OMS (WHO)'],
+    ['Licence', "MIT License — usage libre, modification autorisée avec mention de l'auteur."],
+    ['Citation académique', "KORANDJI, J.-M. B., WOGNIN, V., M'BRA, V. D. P., DIENG, S., AMAN, A. S. (2026). SPAD PHAKTS Analyzer — A Public Health Assessment & Knowledge Taxonomy Spelling & Grammar framework for survey codification and analysis. SPAD / WHO."],
+    ['Sources documentaires', 'PHAKTS_v2025.10.22-ext2_Consolide_VF.docx · PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx'],
+    ['Copyright', 'Copyright © 2026 Dr Jean-Marc Bertrand KORANDJI / SPAD (WHO). Tous droits réservés.']
+  ];
+  rows.forEach(r => ws.addRow(r));
+  return ws;
+}
+
+// ── Contrôle qualité PHAKTS ──────────────────────────────────────────────────
+// Vérifications directement dérivées de la feuille "Qualite_A_Corriger" du
+// Dictionnaire PHAKTS officiel (accents, collision L2/M2, ambiguïtés, années
+// mal positionnées, renvois de logique de saut vers une cible introuvable).
+function phaktsQualityWarnings(items) {
+  const warnings = [];
+  const codeParts = items.map(it => String(it.pf_question || '').split('!')[0]);
+  items.forEach((it, i) => {
+    const code = String(it.pf_question || '');
+    const codePart = codeParts[i];
+    if (/[àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/.test(codePart)) {
+      warnings.push({ n: i + 1, variable: codePart, anomalie: 'Caractères accentués dans le nom codifié', action: 'Translittérer (é→e, à→a, ç→c…) — Règle 1.3' });
+    }
+    if (/__L2\b/.test(code)) {
+      warnings.push({ n: i + 1, variable: codePart, anomalie: "Symbole 'L2' en collision avec le xType Longueur", action: "Renommer en 'M2' — Règle 18" });
+    }
+    if (code.includes('/')) {
+      warnings.push({ n: i + 1, variable: codePart, anomalie: 'Codifications candidates multiples juxtaposées avec «/»', action: "Séparer en colonnes 'Proposition A' / 'Proposition B' + 'Validé'" });
+    }
+    if (/^.+?(19|20)\d{2}/.test(codePart) && !/^(19|20)\d{2}/.test(codePart)) {
+      warnings.push({ n: i + 1, variable: codePart, anomalie: "Position de l'année incohérente (préfixe attendu, trouvé en infixe)", action: 'Uniformiser en préfixe <AAAA>__Expression — Règle 15' });
+    }
+    if (it.pf_skip) {
+      const targets = it.pf_skip.split(/\s*;\s*/).map(r => { const m = r.match(/@(\S+)/); return m ? m[1] : null; }).filter(Boolean);
+      targets.forEach(target => {
+        if (!codeParts.includes(target)) {
+          warnings.push({ n: i + 1, variable: codePart, anomalie: `Renvoi de logique de saut vers une cible introuvable (@${target})`, action: 'Vérifier que la variable cible existe, orthographe exacte — Règle 17' });
+        }
+      });
+    }
+  });
+  return warnings;
+}
+
+function addAdminWorksheet(workbook, { title, settingsRow, surveyRows, choicesRows, warnings }) {
+  const ws = workbook.addWorksheet('Admin');
+  ws.columns = [{ key: 'a', width: 32 }, { key: 'b', width: 55 }, { key: 'c', width: 45 }, { key: 'd', width: 60 }];
+  const distinctLists = new Set(choicesRows.map(c => c.list_name));
+  const headerRow = ws.addRow(['Paramètre', 'Valeur']);
+  headerRow.font = { bold: true };
+  [
+    ['Titre du formulaire', title],
+    ['Identifiant (form_id)', settingsRow.form_id],
+    ['Version', settingsRow.version],
+    ['Langue par défaut', settingsRow.default_language],
+    ['Style', settingsRow.style],
+    ['Nombre de questions', surveyRows.length],
+    ['Nombre de listes de choix', distinctLists.size],
+    ['Nombre total de modalités', choicesRows.length],
+    ['Grammaire PHAKTS', 'v2025.10.22-ext2'],
+    ['Généré par', 'PHAKTS · STUDIO · v2026 · EQUIPE SPAD'],
+    ['Date de génération', new Date().toLocaleString('fr-FR')]
+  ].forEach(r => ws.addRow(r));
+
+  ws.addRow([]);
+  const qaTitle = ws.addRow(['Contrôle qualité PHAKTS', warnings.length ? `${warnings.length} avertissement(s) détecté(s) — voir détail ci-dessous` : 'Aucune anomalie détectée sur cette codification.']);
+  qaTitle.font = { bold: true };
+  if (warnings.length) {
+    const qaHeader = ws.addRow(['N°', 'Variable', 'Anomalie détectée', 'Action recommandée']);
+    qaHeader.font = { bold: true };
+    warnings.forEach(w => ws.addRow([w.n, w.variable, w.anomalie, w.action]));
+  }
+  return ws;
+}
+
 async function downloadXLSForm() {
   if (!results.length) return alert('Aucun résultat à exporter.');
   await ensureExcelJsReady();
@@ -5205,9 +5347,36 @@ async function downloadXLSForm() {
     { header: 'style', key: 'style', width: 15 }
   ]);
 
+  addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
+    { header: 'N°', key: 'n', width: 6 },
+    { header: 'Variable', key: 'variable', width: 40 },
+    { header: 'Question', key: 'question', width: 55 },
+    { header: 'Type de réponse', key: 'type', width: 22 },
+    { header: "Consigne pour l'enquêteur", key: 'consigne', width: 65 },
+    { header: 'Renvoi conditionnel', key: 'renvoi', width: 45 }
+  ]);
+
+  addObjectWorksheet(workbook, 'Dictionnaire PHAKTS', buildDictionnairePhaktsRows(), [
+    { header: 'Catégorie', key: 'categorie', width: 26 },
+    { header: 'Code / Symbole', key: 'cle', width: 24 },
+    { header: 'Description', key: 'description', width: 55 },
+    { header: 'Exemple', key: 'exemple', width: 40 },
+    { header: 'Statut', key: 'statut', width: 24 }
+  ]);
+
+  addReferencePhaktsWorksheet(workbook);
+
+  const warnings = phaktsQualityWarnings(results);
+  addAdminWorksheet(workbook, { title, settingsRow, surveyRows, choicesRows, warnings });
+
   const saved = await saveWorkbook(workbook, `${title}_XLSForm_KoboToolbox.xlsx`);
   if (saved) {
-    showStatus('Téléchargement XLSForm Kobo prêt, même hors ligne.', 'success');
+    showStatus(
+      warnings.length
+        ? `Téléchargement XLSForm Kobo prêt — ⚠ ${warnings.length} avertissement(s) qualité PHAKTS (voir feuille Admin).`
+        : 'Téléchargement XLSForm Kobo prêt, même hors ligne.',
+      warnings.length ? 'warning' : 'success'
+    );
   }
 }
 

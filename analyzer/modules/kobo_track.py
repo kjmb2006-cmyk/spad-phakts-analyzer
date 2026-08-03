@@ -167,6 +167,6 @@ def is_tracked(uid):
 def clear_all():
     """Arrête tous les suivis en cours — utilisé à la déconnexion KoboToolbox."""
     with _lock:
-        uids = list(_threads.keys())
+        uids = list(set(_trackers.keys()) | set(_threads.keys()))
     for uid in uids:
         remove(uid)

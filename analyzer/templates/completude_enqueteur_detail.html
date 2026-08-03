@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% import "_completude_macros.html" as m %}
+{% block title %}{{ enq.nom }} — SPAD Analyzer{% endblock %}
+{% block page_title %}Enquêteur — {{ enq.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {{ enq_code }} · District {{ enq.sous_titre }} · {{ etablissements|length }} établissement(s) enquêté(s)
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Tous les enquêteurs
+    </a>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Formulaires renseignés (agrégé sur ses établissements)</span>
+  {{ m.forms_cards(enq.forms, form_codes, form_labels) }}
+
+  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements enquêtés — détail par formulaire</span>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="min-width:220px">Établissement</th>
+              {% for code in form_codes %}
+              <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
+              {% endfor %}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for code, e in etablissements.items() | sort(attribute='1.nom') %}
+            <tr>
+              <td class="fw-semibold small">
+                <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}">{{ e.nom }}</a>
+              </td>
+              {% for fc in form_codes %}
+              {% set cell = e.forms.get(fc) %}
+              <td class="text-center">
+                {% if not cell or cell.statut == 'inconnu' %}<span class="text-muted small">—</span>
+                {% else %}
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
+                  {{ cell.recu }} soum.{% if cell.taux is not none %} · {{ cell.taux }} %{% endif %}
+                </span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="text-end">
+                <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}" class="btn btn-sm btn-link py-0">
+                  Détail <i class="bi bi-arrow-right"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies sur ses établissements</span>
+  {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
+
+</div>
+{% endblock %}

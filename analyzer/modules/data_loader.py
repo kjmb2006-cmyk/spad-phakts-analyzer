@@ -6,7 +6,7 @@ import re
 _KOBO_META_COLS = {
     '_id', '_uuid', '_submission_time', '_validation_status', '_notes',
     '_status', '_submitted_by', '__version__', '_tags', 'meta/rootUuid',
-    '_index', '_parent_table_name', '_parent_index',
+    '_index', '_parent_table_name', '_parent_index', 'formhub/uuid',
     '_submission__id', '_submission__uuid', '_submission__submission_time',
     '_submission__validation_status', '_submission__notes',
     '_submission__status', '_submission__submitted_by',

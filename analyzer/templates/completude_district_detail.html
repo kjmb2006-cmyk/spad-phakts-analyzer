@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% import "_completude_macros.html" as m %}
+{% block title %}{{ district.nom }} — SPAD Analyzer{% endblock %}
+{% block page_title %}District — {{ district.nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {{ etablissements|length }} établissement(s) · {{ enqueteurs|length }} enquêteur(s)
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('completude_region_detail', region_code=district.region_code) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Région
+      </a>
+      <a href="{{ url_for('completude_districts') }}" class="btn btn-outline-primary btn-sm">
+        Tous les districts
+      </a>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Complétude du district</span>
+  {{ m.forms_cards(district.forms, form_codes, form_labels) }}
+
+  {% if superviseur %}
+  <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>Superviseur du district</span>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h6 class="fw-semibold mb-3">{{ superviseur[1].nom }}</h6>
+      <div class="row g-3">
+        {% for code in superviseur_form_codes %}
+        {% set r = superviseur[1].forms.get(code, {'recu': 0, 'cible': none, 'taux': none, 'statut': 'inconnu'}) %}
+        <div class="col-md-4">
+          <div class="small text-muted mb-1">{{ code }} — {{ form_labels[code] }}</div>
+          <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero')) }}">
+            {{ r.recu }} / {{ r.cible if r.cible is not none else '—' }}{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <span class="section-label d-block mb-2"><i class="bi bi-people me-1"></i>Enquêteurs du district</span>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="min-width:180px">Enquêteur</th>
+              {% for code in enqueteur_form_codes %}
+              <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for code, e in enqueteurs.items() | sort(attribute='1.nom') %}
+            <tr>
+              <td class="fw-semibold small">{{ e.nom }}</td>
+              {% for fc in enqueteur_form_codes %}
+              {% set cell = e.forms[fc] %}
+              <td class="text-center">
+                {% if cell.statut == 'inconnu' %}<span class="text-muted small">—</span>
+                {% else %}
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
+                  {% if cell.taux is not none %}{{ cell.taux }} %{% else %}{{ cell.recu }}{% endif %}
+                </span>
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements du district</span>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive" style="max-height:520px;overflow-y:auto">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0;background:#fff">
+            <tr>
+              <th style="min-width:220px">Établissement</th>
+              <th>Enquêteur</th>
+              {% set etab_form_codes = ['F5', 'F6', 'F7', 'F8', 'F02'] %}
+              {% for code in etab_form_codes %}
+              <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
+              {% endfor %}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for code, e in etablissements.items() | sort(attribute='1.nom') %}
+            <tr>
+              <td class="fw-semibold small">
+                <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}">{{ e.nom }}</a>
+              </td>
+              <td class="small text-muted">{{ enqueteurs.get(e.enqueteur_code, {}).nom or e.enqueteur_code }}</td>
+              {% for fc in etab_form_codes %}
+              {% set cell = e.forms.get(fc) %}
+              <td class="text-center">
+                {% if not cell or cell.statut == 'inconnu' %}<span class="text-muted small">—</span>
+                {% else %}
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
+                  {% if cell.taux is not none %}{{ cell.taux }} %{% else %}{{ cell.recu }}{% endif %}
+                </span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="text-end">
+                <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}" class="btn btn-sm btn-link py-0">
+                  Détail <i class="bi bi-arrow-right"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies dans ce district</span>
+  {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
+
+</div>
+{% endblock %}

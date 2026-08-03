@@ -207,6 +207,33 @@ def region_table(ref, form_dataframes):
     return table
 
 
+def etablissement_table(ref, form_dataframes):
+    """Table établissement × formulaire (F5/F6/F7/F8/F02 uniquement — les
+    formulaires au grain établissement). Utilisée pour le détail « par
+    district » (liste des établissements) et « par établissement »."""
+    table = {code: {'nom': e['nom_complet'], 'district_code': e['district_code'],
+                     'region_code': e['region_code'], 'enqueteur_code': e['enqueteur_code'],
+                     'forms': {}}
+              for code, e in ref['etablissements'].items()}
+
+    for form_code in ETABLISSEMENT_FORMS:
+        df = form_dataframes.get(form_code)
+        if df is None:
+            for code in table:
+                table[code]['forms'][form_code] = _empty_cell(
+                    rd.target_for(ref, form_code, etablissement_code=code))
+            continue
+        rows = etablissement_completeness(ref, form_code, df)
+        by_code = {r['etablissement_code']: r for r in rows}
+        for code in table:
+            r = by_code.get(code)
+            table[code]['forms'][form_code] = (
+                {'recu': r['recu'], 'cible': r['cible'], 'taux': r['taux'], 'statut': r['statut']}
+                if r else _empty_cell(rd.target_for(ref, form_code, etablissement_code=code))
+            )
+    return table
+
+
 ENQUETEUR_FORMS = ('F5', 'F6', 'F7', 'F8')
 SUPERVISEUR_FORMS = ('F01', 'F02', 'F07')
 
@@ -319,7 +346,9 @@ def all_anomalies_zero(ref, form_dataframes):
         for r in anomalies_zero(ref, code, df):
             out.append({
                 'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
-                'unite': _unit_label(r), 'district_code': r.get('district_code'),
+                'unite': _unit_label(r),
+                'etablissement_code': r.get('etablissement_code'),
+                'district_code': r.get('district_code'), 'region_code': r.get('region_code'),
                 'cible': r['cible'],
             })
     return out
@@ -339,7 +368,9 @@ def all_anomalies_excess(ref, form_dataframes, threshold=2.0):
         for r in anomalies_excess(ref, code, df, threshold=threshold):
             out.append({
                 'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
-                'unite': _unit_label(r), 'district_code': r.get('district_code'),
+                'unite': _unit_label(r),
+                'etablissement_code': r.get('etablissement_code'),
+                'district_code': r.get('district_code'), 'region_code': r.get('region_code'),
                 'recu': r['recu'], 'cible': r['cible'],
                 'ratio': round(r['recu'] / r['cible'], 2) if r['cible'] else None,
             })

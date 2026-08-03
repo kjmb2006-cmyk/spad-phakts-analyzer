@@ -24,14 +24,29 @@
               <th style="min-width:180px">{{ echelon | capitalize }}</th>
               {% if sous_titre_label %}<th style="min-width:120px">{{ sous_titre_label }}</th>{% endif %}
               {% for code in form_codes %}
-              <th class="text-center">{{ code }}</th>
+              <th class="text-center" style="min-width:130px" title="{{ code }} — {{ form_labels.get(code, '') }}">
+                <div>{{ form_labels.get(code, code) }}</div>
+                <div class="text-muted fw-normal" style="font-size:.68rem">{{ code }}</div>
+              </th>
               {% endfor %}
             </tr>
           </thead>
           <tbody>
             {% for code, row in rows.items() %}
             <tr>
-              <td class="fw-semibold small">{{ row.nom }}</td>
+              <td class="fw-semibold small">
+                {% if echelon == 'région' %}
+                <a href="{{ url_for('completude_region_detail', region_code=code) }}">{{ row.nom }}</a>
+                {% elif echelon == 'district' %}
+                <a href="{{ url_for('completude_district_detail', district_code=code) }}">{{ row.nom }}</a>
+                {% elif echelon == 'enquêteur' %}
+                <a href="{{ url_for('completude_enqueteur_detail', enq_code=code) }}">{{ row.nom }}</a>
+                {% elif echelon == 'superviseur' %}
+                <a href="{{ url_for('completude_superviseur_detail', sup_code=code) }}">{{ row.nom }}</a>
+                {% else %}
+                {{ row.nom }}
+                {% endif %}
+              </td>
               {% if sous_titre_label %}<td class="small text-muted">{{ row.sous_titre }}</td>{% endif %}
               {% for fc in form_codes %}
               {% set cell = row.forms[fc] %}

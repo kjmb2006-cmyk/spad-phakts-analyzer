@@ -52,7 +52,14 @@
       "Bash(cp public/service-worker.js /tmp/spad_asar_patch/public/)",
       "Bash(./node_modules/.bin/electron-builder --version)",
       "Bash(./analyzer/venv/bin/python -c ' *)",
-      "Bash(ls -la .github/workflows/ .gitignore BUILD_WINDOWS.md GITHUB_SETUP.md package.json)"
+      "Bash(ls -la .github/workflows/ .gitignore BUILD_WINDOWS.md GITHUB_SETUP.md package.json)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git tag *)",
+      "Bash(ls \"/var/folders/ym/rsnd35s558j7yj8g2btwp1640000gn/T/com.anthropic.claudefordesktop/zip_cache/5B221A04-313F-414C-BCE5-C81521C1386F-629-0000002864D0D2FA\" 2>/dev/null || echo \"Fichier non trouvé\")",
+      "Bash(ls \"/var/folders/ym/rsnd35s558j7yj8g2btwp1640000gn/T/com.anthropic.claudefordesktop/zip_cache/5B221A04-313F-414C-BCE5-C81521C1386F-629-0000002864D0D2FA/\")",
+      "Bash(python3 -)"
     ]
   }
 }

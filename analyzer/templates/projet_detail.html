@@ -60,6 +60,78 @@
     </div>
   </div>
 
+  <!-- ═══ Analyse épidémiologique (XLSForm → dictionnaire → rapport) ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard2-data me-2 text-primary"></i>Analyse épidémiologique</h6>
+    </div>
+    <div class="card-body">
+      {% if not p.get('has_xlsform') %}
+      <p class="text-muted small">
+        Attachez le XLSForm (feuilles <code>survey</code>/<code>choices</code>) de ce questionnaire pour
+        générer un dictionnaire de variables (type, traitement statistique recommandé) — fonctionne pour
+        n'importe quel formulaire, codifié PHAKTS ou non.
+      </p>
+      <form method="POST" action="{{ url_for('projets_xlsform', projet_id=p.id) }}"
+            enctype="multipart/form-data" class="row g-2 align-items-end">
+        <div class="col-md-8">
+          <input type="file" name="xlsform" class="form-control form-control-sm" accept=".xlsx,.xls" required>
+        </div>
+        <div class="col-md-4 d-grid">
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload me-1"></i>Charger le XLSForm
+          </button>
+        </div>
+      </form>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <a href="{{ url_for('projets_dictionnaire', projet_id=p.id) }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-table me-1"></i>Voir / modifier le dictionnaire
+        </a>
+        <form method="POST" action="{{ url_for('projets_analyser', projet_id=p.id) }}">
+          <button type="submit" class="btn btn-primary btn-sm" {% if not p.kobo_uid %}disabled{% endif %}>
+            <i class="bi bi-graph-up-arrow me-1"></i>Lancer l'analyse
+          </button>
+        </form>
+        {% if rapport_disponible %}
+        <a href="{{ url_for('projets_rapport_docx', projet_id=p.id) }}" class="btn btn-success btn-sm">
+          <i class="bi bi-file-earmark-word me-1"></i>Télécharger le rapport
+        </a>
+        {% endif %}
+      </div>
+
+      {% if analyse_resume %}
+      <div class="small text-muted mb-2">
+        <i class="bi bi-clock-history me-1"></i>Dernière analyse : {{ p.analyse_computed_at }} ·
+        {{ analyse_resume.n_soumissions }} soumissions
+        {% if analyse_resume.n_non_trouvees %} · {{ analyse_resume.n_non_trouvees }} variable(s) du
+        dictionnaire non trouvée(s) dans les données{% endif %}
+        {% if analyse_resume.n_anomalies_completion %} · <span class="text-danger">{{ analyse_resume.n_anomalies_completion }}
+        alerte(s) de complétion</span>{% endif %}
+      </div>
+      {% if analyse_resume.scores %}
+      <div class="row g-2">
+        {% for domaine, s in analyse_resume.scores.items() %}
+        <div class="col-md-3">
+          <div class="stat-card-v kpi-primary">
+            <h6 class="mb-1 fw-semibold" style="font-size:.8rem">{{ domaine }}</h6>
+            <span class="stat-value-v" style="font-size:1.3rem">{{ s.moyenne }} %</span>
+            <div class="text-muted small">N = {{ s.n }} · médiane {{ s.mediane }} %</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% elif p.get('has_xlsform') %}
+      <p class="text-muted small mb-0">
+        Révisez le dictionnaire puis cliquez sur « Lancer l'analyse » (nécessite un formulaire
+        KoboToolbox associé, voir ci-dessus).
+      </p>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
   {% if groupes %}
   <!-- ═══ Par groupe ═══ -->
   <div class="d-flex align-items-center justify-content-between mb-3">

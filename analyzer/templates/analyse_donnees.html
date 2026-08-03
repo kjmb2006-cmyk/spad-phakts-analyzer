@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Analyse de données — SPAD Analyzer{% endblock %}
+{% block page_title %}Analyse de données{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  {% if has_data %}
+  <!-- ═══ Données déjà chargées : accès direct aux analyses ═══ -->
+  <div class="alert alert-success border-0 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <i class="bi bi-database-fill-check fs-3"></i>
+      <div>
+        <strong>Données chargées</strong> —
+        {{ meta.n_obs }} observations · {{ meta.n_vars }} variables
+        {% if meta.n_categorielle is defined %} · {{ meta.n_categorielle }} catégorielles · {{ meta.n_continue }} continues{% endif %}
+      </div>
+    </div>
+    <a href="{{ url_for('data_preview') }}" class="btn btn-sm btn-outline-success">
+      <i class="bi bi-table me-1"></i>Aperçu des données
+    </a>
+  </div>
+
+  <span class="section-label d-block mb-3"><i class="bi bi-grid-1x2 me-1"></i>Analyses disponibles</span>
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('raw_data') }}" class="feature-card">
+        <div class="feature-icon" style="background:#f0e8fd;color:#6f42c1">
+          <i class="bi bi-database-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Analyse brute</h5>
+        <p class="text-muted small mb-2">Qualité des données, distributions, corrélations, aperçu automatique</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('descriptive') }}" class="feature-card">
+        <div class="feature-icon" style="background:#e8f4fd;color:#1a6fa8">
+          <i class="bi bi-clipboard-data-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Statistiques descriptives</h5>
+        <p class="text-muted small mb-2">Tris à plat, fréquences, moyennes, médianes, écarts-types</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('crosstabs') }}" class="feature-card">
+        <div class="feature-icon" style="background:#fef3e2;color:#e05c1a">
+          <i class="bi bi-grid-3x3-gap-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Analyse croisée dynamique</h5>
+        <p class="text-muted small mb-2">Khi-deux, V de Cramér, profils lignes/colonnes</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('multivariate') }}" class="feature-card">
+        <div class="feature-icon" style="background:#eaf5ea;color:#198754">
+          <i class="bi bi-diagram-3-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Analyses multivariées</h5>
+        <p class="text-muted small mb-2">ACP, ACM, AFC, Classification K-means</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('map_view') }}" class="feature-card">
+        <div class="feature-icon" style="background:#e8fdfb;color:#0dcaf0">
+          <i class="bi bi-map-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Carte géographique</h5>
+        <p class="text-muted small mb-2">Localisation des observations (si coordonnées GPS présentes)</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('report') }}" class="feature-card">
+        <div class="feature-icon" style="background:#fce8e8;color:#dc3545">
+          <i class="bi bi-file-earmark-pdf-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Rapport PDF</h5>
+        <p class="text-muted small mb-2">Rapport automatique complet avec graphiques</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Générer</div>
+      </a>
+    </div>
+  </div>
+
+  <p class="text-muted small mb-4">
+    <i class="bi bi-arrow-repeat me-1"></i>
+    Pour changer de source de données, importez un autre fichier ou choisissez un autre formulaire
+    ci-dessous.
+  </p>
+  {% endif %}
+
+  <!-- ═══ Choix de la source ═══ -->
+  <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-clipboard2-data fs-3"></i>
+    <div>
+      <strong>{{ 'Charger une autre source' if has_data else 'Choisissez la source de vos données' }}</strong>
+      — depuis KoboToolbox en direct, ou un fichier XLSX déjà sur votre ordinateur.
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4 d-flex flex-column">
+          <i class="bi bi-cloud-arrow-down-fill display-4 text-primary mb-3"></i>
+          <h5 class="fw-semibold">Depuis KoboToolbox</h5>
+          <p class="text-muted small flex-grow-1">
+            Connectez-vous à votre compte KoboToolbox et choisissez un formulaire — les soumissions
+            sont chargées directement, sans export manuel.
+          </p>
+          {% if kobo_connected %}
+          <a href="{{ url_for('kobo_assets') }}" class="btn btn-primary">
+            <i class="bi bi-collection-fill me-1"></i>Choisir un formulaire
+          </a>
+          {% else %}
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#koboModal">
+            <i class="bi bi-link-45deg me-1"></i>Se connecter à KoboToolbox
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4 d-flex flex-column">
+          <i class="bi bi-file-earmark-excel-fill display-4 text-success mb-3"></i>
+          <h5 class="fw-semibold">Fichier local (XLSX)</h5>
+          <p class="text-muted small flex-grow-1">
+            Importez un fichier Excel déjà présent sur cet ordinateur (export Kobo, ODK, ou tout
+            autre tableur de données d'enquête).
+          </p>
+          <a href="{{ url_for('upload') }}" class="btn btn-outline-success">
+            <i class="bi bi-upload me-1"></i>Importer un fichier
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-muted small mt-4">
+    <i class="bi bi-info-circle me-1"></i>
+    Pour analyser la complétude de collecte de plusieurs formulaires (par région/district/
+    enquêteur/superviseur), voir <a href="{{ url_for('completude') }}">Complétude nationale</a>
+    ou <a href="{{ url_for('projets_liste') }}">Autres enquêtes (projets)</a>.
+  </p>
+
+</div>
+{% endblock %}
