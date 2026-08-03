@@ -102,16 +102,16 @@ assert len(d.inline_shapes) >= 4, (
 print(f"OK — graphiques intégrés ({len(d.inline_shapes)} image(s) dans le document)")
 
 # Le tableau des formulaires doit lister les 7 formulaires officiels, même
-# ceux non mappés (statut 'Non calculé'), avec les nouvelles colonnes
-# Écart et Anomalies (lecture suivi-évaluation).
+# ceux non mappés (statut 'Non calculé'), avec les colonnes Écart, Anomalies
+# et Cible réelle atteinte (lecture suivi-évaluation).
 form_table = d.tables[1]
 header = [c.text for c in form_table.rows[0].cells]
-assert header == ['Formulaire', 'Cible', 'Reçu', 'Écart', 'Taux', 'Statut', 'Anomalies'], header
+assert header == ['Formulaire', 'Cible', 'Reçu', 'Écart', 'Taux', 'Statut', 'Anomalies', 'Cible réelle atteinte'], header
 form_col0 = [row.cells[0].text for row in form_table.rows[1:]]
 assert len(form_col0) == 7
 assert any('F6' in c for c in form_col0) and any('Non calculé' in row.cells[5].text
                                                     for row in form_table.rows[1:] if 'F6' in row.cells[0].text)
-print("OK — les 7 formulaires officiels apparaissent, avec les colonnes Écart/Anomalies")
+print("OK — les 7 formulaires officiels apparaissent, avec les colonnes Écart/Anomalies/Cible réelle atteinte")
 
 f5_row = next(row for row in form_table.rows[1:] if row.cells[0].text.startswith('F5'))
 assert f5_row.cells[3].text == '−720', f5_row.cells[3].text  # écart = 1800 - 1080

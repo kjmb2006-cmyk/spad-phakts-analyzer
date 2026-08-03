@@ -95,6 +95,26 @@ excess_f5 = cp.anomalies_excess(ref, 'F5', df_f5)
 assert len(excess_f5) == 1 and excess_f5[0]['etablissement_code'] == etabs[3]
 print(f"OK — anomalies : {len(zero_f5)} établissement(s) à 0, {len(excess_f5)} en excès (≥200%)")
 
+# --- Cible réelle atteinte par district (tableaux de bord) --------------------
+district_table_fake = {
+    'D1': {'forms': {'F5': {'taux': 100.0}}},
+    'D2': {'forms': {'F5': {'taux': 145.0}}},   # au-dessus de 100 -> compte aussi
+    'D3': {'forms': {'F5': {'taux': 99.9}}},    # juste sous la cible -> ne compte pas
+    'D4': {'forms': {'F5': {'taux': None}}},    # non calculé -> exclu du dénominateur
+    'D5': {'forms': {}},                        # formulaire absent -> exclu aussi
+}
+dr = cp.district_reel(district_table_fake, 'F5')
+assert (dr['atteints'], dr['total'], dr['pct']) == (2, 3, 66.7), dr
+assert dr['css'] == 'en-cours', dr  # 66.7 % : entre 50 et 100 -> orange
+print("OK — district_reel() : districts ≥100 % comptés, non-calculés exclus, code couleur correct")
+
+district_table_all_ok = {'D1': {'forms': {'F5': {'taux': 100.0}}}, 'D2': {'forms': {'F5': {'taux': 120.0}}}}
+assert cp.district_reel(district_table_all_ok, 'F5')['css'] == 'cible'  # 100 % -> vert
+district_table_low = {'D1': {'forms': {'F5': {'taux': 10.0}}}, 'D2': {'forms': {'F5': {'taux': 0.0}}}}
+assert cp.district_reel(district_table_low, 'F5')['css'] == 'verifier'  # 0 % -> rouge
+assert cp.district_reel({'D1': {'forms': {}}}, 'F5') is None  # aucune donnée -> rien à afficher
+print("OK — district_reel() : seuils de couleur (vert 100 %, orange ≥50 %, rouge sinon) et cas vide")
+
 print()
 print("=" * 70)
 print("TOUS LES TESTS DE COMPLÉTUDE SONT PASSÉS")

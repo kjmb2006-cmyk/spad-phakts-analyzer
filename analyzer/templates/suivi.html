@@ -167,6 +167,10 @@
               Analyser <i class="bi bi-arrow-right ms-1"></i>
             </a>
           </div>
+          ${t.district_reel ? `
+          <div class="mt-2" title="Proportion de districts ayant individuellement atteint ou dépassé 100 % (${t.district_reel.atteints}/${t.district_reel.total}) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.">
+            <span class="status-pill status-pill--${t.district_reel.css}">Cible réelle atteinte · ${t.district_reel.pct} %</span>
+          </div>` : ''}
           <div class="small text-muted mt-2">${lastSync}</div>
           ${errorLine}
         </div>

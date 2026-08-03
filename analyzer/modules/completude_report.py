@@ -286,10 +286,13 @@ def _form_counts_chart_image(national, form_codes):
     return _fig_to_img(fig.to_json(), width=680, height=340)
 
 
-def _form_rate_analysis_text(national, form_codes, anomalies_par_formulaire):
+def _form_rate_analysis_text(national, form_codes, anomalies_par_formulaire, district_table=None):
     """Analyse en prose du graphique des TAUX par formulaire — regroupe les
     formulaires par statut plutôt que de les énumérer un par un, pour une
-    lecture synthétique cohérente avec ce que montre le graphique."""
+    lecture synthétique cohérente avec ce que montre le graphique. Ajoute,
+    quand la table par district est disponible, un rappel de la « Cible
+    réelle atteinte » : un taux national ≥100 % peut cacher des districts
+    encore en retard, compensés par d'autres très en avance."""
     atteints, en_cours, zero, verifier = [], [], [], []
     for code in form_codes:
         r = national.get(code, {})
@@ -321,6 +324,27 @@ def _form_rate_analysis_text(national, form_codes, anomalies_par_formulaire):
         )
     if not phrases:
         return "Aucun formulaire mappé ne permet de calcul de taux à ce jour."
+
+    if district_table:
+        partiels, complets = [], []
+        for code in form_codes:
+            dr = cp.district_reel(district_table, code)
+            if not dr:
+                continue
+            (complets if dr['pct'] >= 100 else partiels).append(
+                f"{code} ({dr['atteints']}/{dr['total']} districts, {dr['pct']} %)"
+            )
+        if partiels:
+            phrases.append(
+                f"Cible réelle atteinte (proportion de districts individuellement ≥100 %, pas "
+                f"seulement en moyenne nationale) : {', '.join(partiels)} n'y sont pas encore "
+                f"partout" + (f", contrairement à {', '.join(complets)} (100 % des districts)." if complets else ".")
+            )
+        elif complets:
+            phrases.append(
+                "Cible réelle atteinte : tous les formulaires avec une cible réelle calculée "
+                "l'ont atteinte dans l'ensemble de leurs districts."
+            )
     return ' '.join(phrases)
 
 
@@ -508,14 +532,21 @@ def build_docx(cached, ref, computed_at=None):
         else:
             ecart = '—'
         n_anom = anomalies_par_formulaire.get(code, 0)
+        dr = cp.district_reel(district_table, code) if district_table else None
+        cible_reelle = f"{dr['pct']} % ({dr['atteints']}/{dr['total']})" if dr else '—'
         rows.append([
             f"{code} — {rd.FORM_LABELS[code]}",
             cible if cible is not None else '—',
             recu if statut != 'inconnu' else '—',
             ecart, taux, STATUT_LABEL.get(statut, statut),
             str(n_anom) if n_anom else '—',
+            cible_reelle,
         ])
-    _add_table(doc, ['Formulaire', 'Cible', 'Reçu', 'Écart', 'Taux', 'Statut', 'Anomalies'], rows)
+    _add_table(
+        doc,
+        ['Formulaire', 'Cible', 'Reçu', 'Écart', 'Taux', 'Statut', 'Anomalies', 'Cible réelle atteinte'],
+        rows,
+    )
     doc.add_paragraph()
 
     def _add_chart_with_analysis(chart_path, caption, analysis_text, width=6.2):
@@ -549,7 +580,7 @@ def build_docx(cached, ref, computed_at=None):
     _add_chart_with_analysis(
         _summary_chart_image(national, rd.FORM_CODES),
         'Taux de complétude par formulaire',
-        _form_rate_analysis_text(national, rd.FORM_CODES, anomalies_par_formulaire),
+        _form_rate_analysis_text(national, rd.FORM_CODES, anomalies_par_formulaire, district_table),
     )
     _add_chart_with_analysis(
         _form_counts_chart_image(national, rd.FORM_CODES),

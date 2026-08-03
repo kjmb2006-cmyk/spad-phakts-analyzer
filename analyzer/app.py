@@ -107,39 +107,71 @@ def favicon():
     return Response(svg, mimetype='image/svg+xml')
 
 
-# ─── Authentification (mot de passe partagé) ──────────────────────────────────
+# ─── Authentification (mot de passe partagé, deux rôles) ──────────────────────
 #
 # En local (poste de l'utilisateur), l'accès est déjà restreint par le système
 # d'exploitation : seule la personne devant la machine peut atteindre 127.0.0.1.
 # Dès que l'app est hébergée sur une URL publique (ex. Render), ce n'est plus
-# vrai — d'où ce verrou, activé uniquement si ANALYZER_PASSWORD est défini
-# (donc sans impact sur l'usage desktop local existant tant que la variable
-# n'est pas positionnée).
+# vrai — d'où ce verrou, activé uniquement si au moins un des deux mots de
+# passe est défini (donc sans impact sur l'usage desktop local existant tant
+# qu'aucune des deux variables n'est positionnée).
+#
+# Deux rôles, un seul champ de mot de passe (pas de sélecteur à l'écran de
+# connexion) : celui qui correspond détermine le rôle.
+#   - ANALYZER_PASSWORD        -> rôle 'data'   : accès complet, comme aujourd'hui.
+#   - ANALYZER_PASSWORD_INVITE -> rôle 'invite' : lecture seule, restreint au
+#     tableau de bord Complétude nationale / par district & établissement /
+#     performances superviseurs / performances enquêteurs — voir
+#     INVITE_ALLOWED_ENDPOINTS ci-dessous. Pas d'export, pas de recalcul, pas
+#     d'accès à la connexion KoboToolbox ni aux autres modules d'analyse.
 ANALYZER_PASSWORD = os.environ.get('ANALYZER_PASSWORD', '').strip()
+ANALYZER_PASSWORD_INVITE = os.environ.get('ANALYZER_PASSWORD_INVITE', '').strip()
+
+# Endpoints accessibles au rôle 'invite'. Volontairement une liste blanche
+# explicite (plutôt qu'une liste noire) : toute nouvelle route ajoutée plus
+# tard reste bloquée pour ce rôle par défaut, jusqu'à décision explicite de
+# l'ouvrir.
+INVITE_ALLOWED_ENDPOINTS = {
+    'login', 'logout', 'static', 'favicon',
+    'completude',
+    'completude_districts', 'completude_district_detail', 'completude_etablissement_detail',
+    'completude_superviseurs', 'completude_superviseur_detail',
+    'completude_enqueteurs', 'completude_enqueteur_detail',
+}
 
 
 @app.before_request
 def require_login():
-    if not ANALYZER_PASSWORD:
-        return  # pas de mot de passe configuré : gate désactivée (usage desktop local)
+    if not ANALYZER_PASSWORD and not ANALYZER_PASSWORD_INVITE:
+        return  # aucun mot de passe configuré : gate désactivée (usage desktop local)
     if request.endpoint in ('login', 'static', 'favicon'):
         return
     if request.path.startswith('/static/'):
         return
     if not session.get('authenticated'):
         return redirect(url_for('login', next=request.path))
+    if session.get('role') == 'invite' and request.endpoint not in INVITE_ALLOWED_ENDPOINTS:
+        flash("Cette page n'est pas accessible avec un accès Invité.", 'warning')
+        return redirect(url_for('completude'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if not ANALYZER_PASSWORD:
+    if not ANALYZER_PASSWORD and not ANALYZER_PASSWORD_INVITE:
         return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
-        if request.form.get('password', '') == ANALYZER_PASSWORD:
+        entered = request.form.get('password', '')
+        if ANALYZER_PASSWORD and entered == ANALYZER_PASSWORD:
             session['authenticated'] = True
+            session['role'] = 'data'
             session.permanent = True
             return redirect(request.args.get('next') or url_for('index'))
+        if ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
+            session['authenticated'] = True
+            session['role'] = 'invite'
+            session.permanent = True
+            return redirect(url_for('completude'))
         error = 'Mot de passe incorrect.'
     return render_template('login.html', error=error)
 
@@ -147,6 +179,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('authenticated', None)
+    session.pop('role', None)
     return redirect(url_for('login'))
 
 
@@ -939,12 +972,6 @@ def dashboard():
         return redirect(url_for('upload'))
     meta = session.get('data_meta', {})
     return render_template('dashboard.html', meta=meta)
-
-
-@app.route('/settings')
-def settings():
-    """Page de paramètres."""
-    return render_template('settings.html')
 
 
 # ─── DESCRIPTIVE ──────────────────────────────────────────────────────────────
@@ -2047,9 +2074,25 @@ def suivi_target():
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 
+def _enrich_tracked_district_reel(tracked):
+    """Ajoute la cible réelle par district (voir cp.district_reel) aux
+    formulaires suivis reconnus comme un code SPAD officiel (form_type) —
+    réutilise le dernier calcul de « Complétude nationale » en cache s'il
+    couvre ce formulaire. Reste None pour les formulaires Kobo non-SPAD :
+    kobo_track.py ne connaît volontairement aucun référentiel régions/
+    districts pour eux (sondage léger, voir modules/kobo_track.py)."""
+    cached = _load_completude_cache()
+    district_table = cached.get('district') if cached else None
+    for t in tracked:
+        t['district_reel'] = None
+        if district_table and t.get('form_type'):
+            t['district_reel'] = cp.district_reel(district_table, t['form_type'])
+    return tracked
+
+
 @app.route('/suivi/status')
 def suivi_status():
-    return jsonify({"tracked": kobo_track.list_tracked()})
+    return jsonify({"tracked": _enrich_tracked_district_reel(kobo_track.list_tracked())})
 
 
 @app.route('/suivi/analyser/<uid>')
@@ -2132,24 +2175,33 @@ def _load_completude_cache():
 
 @app.route('/completude')
 def completude():
+    # Le token Kobo n'est nécessaire que pour l'écran de correspondance
+    # (associer les formulaires SPAD aux formulaires Kobo réels) — pas pour
+    # afficher un résultat déjà calculé. Un rôle 'invite' n'a jamais de
+    # session Kobo : il doit quand même pouvoir consulter le dernier calcul.
     token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox pour calculer la complétude.", 'warning')
-        return redirect(url_for('kobo_connect'))
-    instance = session.get('kobo_instance')
-    assets_result = list_assets(token, instance=instance)
-    assets = assets_result.get('assets', []) if assets_result.get('success') else []
+    if token:
+        instance = session.get('kobo_instance')
+        assets_result = list_assets(token, instance=instance)
+        assets = assets_result.get('assets', []) if assets_result.get('success') else []
+        assets_error = None if assets_result.get('success') else assets_result.get('error')
+    else:
+        assets, assets_error = [], None
     mapping = session.get('spad_form_mapping', {})
     cached = _load_completude_cache()
     mapping_erreurs, mapping_avertissements = ref_data.validate_mapping(mapping, assets)
+    district_reel = None
+    if cached and cached.get('district'):
+        district_reel = {code: cp.district_reel(cached['district'], code) for code in ref_data.FORM_CODES}
     return render_template(
         'completude.html',
         assets=assets,
-        assets_error=None if assets_result.get('success') else assets_result.get('error'),
+        assets_error=assets_error,
         mapping=mapping,
         form_codes=ref_data.FORM_CODES,
         form_labels=ref_data.FORM_LABELS,
         result=cached['national'] if cached else None,
+        district_reel=district_reel,
         computed_at=session.get('completude_computed_at'),
         mapping_erreurs=mapping_erreurs,
         mapping_avertissements=mapping_avertissements,
@@ -2176,10 +2228,8 @@ def completude_regions():
 
 @app.route('/completude/districts')
 def completude_districts():
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — aucun besoin d'une session
+    # Kobo active (accessible au rôle 'invite', qui n'en a jamais).
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2194,10 +2244,7 @@ def completude_districts():
 
 @app.route('/completude/enqueteurs')
 def completude_enqueteurs():
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2212,10 +2259,7 @@ def completude_enqueteurs():
 
 @app.route('/completude/superviseurs')
 def completude_superviseurs():
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2230,10 +2274,7 @@ def completude_superviseurs():
 
 @app.route('/completude/enqueteurs/<enq_code>')
 def completude_enqueteur_detail(enq_code):
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2259,10 +2300,7 @@ def completude_enqueteur_detail(enq_code):
 
 @app.route('/completude/superviseurs/<sup_code>')
 def completude_superviseur_detail(sup_code):
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2326,10 +2364,7 @@ def completude_region_detail(region_code):
 
 @app.route('/completude/districts/<district_code>')
 def completude_district_detail(district_code):
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
@@ -2358,10 +2393,7 @@ def completude_district_detail(district_code):
 
 @app.route('/completude/etablissements/<etablissement_code>')
 def completude_etablissement_detail(etablissement_code):
-    token = session.get('kobo_token')
-    if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
-        return redirect(url_for('kobo_connect'))
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')

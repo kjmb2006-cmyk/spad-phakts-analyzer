@@ -112,6 +112,33 @@ def form_completeness(ref, form_code, df):
     raise ValueError(f"Formulaire inconnu : {form_code}")
 
 
+def district_reel(district_table, form_code):
+    """« Cible réelle atteinte » d'un formulaire : proportion de DISTRICTS
+    ayant individuellement atteint ou dépassé 100 %, sur le nombre de
+    districts pour lesquels un taux est calculé — par opposition à la cible
+    agrégée (somme reçu / somme cible au niveau national), qui peut afficher
+    100 % alors que la collecte reste très inégale d'un district à l'autre
+    (quelques districts très en avance compensant plusieurs très en retard).
+
+    Renvoie un dict {atteints, total, pct, css} prêt à afficher (code couleur
+    d'alerte façon status-pill : vert si tous les districts y sont, orange à
+    partir de la moitié, rouge en dessous), ou None si aucun district n'a de
+    taux calculé pour ce formulaire (rien à afficher plutôt qu'un 0 % trompeur)."""
+    total, atteints = 0, 0
+    for d in district_table.values():
+        taux = d['forms'].get(form_code, {}).get('taux')
+        if taux is None:
+            continue
+        total += 1
+        if taux >= 100:
+            atteints += 1
+    if not total:
+        return None
+    pct = round(100 * atteints / total, 1)
+    css = 'cible' if pct >= 100 else ('en-cours' if pct >= 50 else 'verifier')
+    return {'atteints': atteints, 'total': total, 'pct': pct, 'css': css}
+
+
 def national_summary(ref, form_dataframes):
     """Vue nationale agrégée. form_dataframes : {code_formulaire: DataFrame|None}."""
     nat_targets = rd.national_targets(ref)

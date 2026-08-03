@@ -37,6 +37,7 @@
   </div>
   {% endif %}
 
+  {% if session.get('role') != 'invite' %}
   <!-- ═══ Correspondance formulaires ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -86,14 +87,17 @@
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
   <!-- ═══ Résultats ═══ -->
   {% if result %}
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="section-label"><i class="bi bi-bar-chart-line me-1"></i>Complétude par formulaire</span>
+    {% if session.get('role') != 'invite' %}
     <a href="{{ url_for('completude_export_docx') }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-file-earmark-word me-1"></i>Télécharger le rapport (Word)
     </a>
+    {% endif %}
   </div>
   <div class="row g-3 mb-4">
     {% for code in form_codes %}
@@ -122,6 +126,12 @@
           {% else %}{{ r.statut }}
           {% endif %}
         </span>
+        {% set dr = district_reel.get(code) if district_reel else none %}
+        {% if dr %}
+        <div class="mt-2" title="Proportion de districts ayant individuellement atteint ou dépassé 100 % pour ce formulaire ({{ dr.atteints }}/{{ dr.total }}) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.">
+          <span class="status-pill status-pill--{{ dr.css }}">Cible réelle atteinte · {{ dr.pct }} %</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

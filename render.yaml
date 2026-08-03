@@ -23,3 +23,9 @@ services:
         generateValue: true
       - key: ANALYZER_PASSWORD
         sync: false
+      # Optionnel — accès Invité en lecture seule (Complétude nationale / par
+      # district & établissement / performances superviseurs & enquêteurs
+      # uniquement, pas d'export ni de connexion KoboToolbox). Laisser vide
+      # dans le dashboard Render si vous ne voulez pas de ce second accès.
+      - key: ANALYZER_PASSWORD_INVITE
+        sync: false

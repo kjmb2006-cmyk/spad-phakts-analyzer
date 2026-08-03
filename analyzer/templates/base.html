@@ -29,6 +29,26 @@
   </div>
 
   <nav class="sidebar-nav">
+    {% if session.get('role') == 'invite' %}
+    <div class="nav-section-label">Tableau de bord (accès Invité)</div>
+    <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
+    </a>
+    <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}">
+      <i class="bi bi-pin-map"></i> Complétude par district / établissement
+    </a>
+    <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}">
+      <i class="bi bi-person-badge"></i> Performances superviseurs
+    </a>
+    <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}">
+      <i class="bi bi-person-walking"></i> Performances enquêteurs
+    </a>
+
+    <div class="nav-section-label mt-3">Session</div>
+    <a href="{{ url_for('logout') }}" class="nav-item">
+      <i class="bi bi-box-arrow-right"></i> Se déconnecter
+    </a>
+    {% else %}
     <div class="nav-section-label">Navigation</div>
     <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
       <i class="bi bi-house-fill"></i> Tableau de bord
@@ -120,6 +140,7 @@
     <a href="{{ url_for('logout') }}" class="nav-item">
       <i class="bi bi-box-arrow-right"></i> Se déconnecter
     </a>
+    {% endif %}
     {% endif %}
   </nav>
 
