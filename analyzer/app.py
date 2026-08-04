@@ -45,6 +45,7 @@ from modules import completeness as cp
 from modules import projets as proj
 from modules import tendance
 from modules import completude_report
+from modules import form_mapping
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -2173,21 +2174,30 @@ def _load_completude_cache():
         return None
 
 
+def _kobo_credentials():
+    """Jeton/instance Kobo à utiliser pour la Complétude nationale : la session
+    de l'utilisateur connecté a priorité, sinon le jeton serveur
+    (KOBO_API_TOKEN, KOBO_INSTANCE) — pour que ce tableau reste à jour sans
+    qu'aucun rôle (Data ou Invité) n'ait à se connecter à KoboToolbox."""
+    token = session.get('kobo_token') or (os.environ.get('KOBO_API_TOKEN') or '').strip() or None
+    instance = session.get('kobo_instance') or (os.environ.get('KOBO_INSTANCE') or '').strip() or None
+    return token, instance
+
+
 @app.route('/completude')
 def completude():
     # Le token Kobo n'est nécessaire que pour l'écran de correspondance
     # (associer les formulaires SPAD aux formulaires Kobo réels) — pas pour
     # afficher un résultat déjà calculé. Un rôle 'invite' n'a jamais de
     # session Kobo : il doit quand même pouvoir consulter le dernier calcul.
-    token = session.get('kobo_token')
+    token, instance = _kobo_credentials()
     if token:
-        instance = session.get('kobo_instance')
         assets_result = list_assets(token, instance=instance)
         assets = assets_result.get('assets', []) if assets_result.get('success') else []
         assets_error = None if assets_result.get('success') else assets_result.get('error')
     else:
         assets, assets_error = [], None
-    mapping = session.get('spad_form_mapping', {})
+    mapping = form_mapping.load()
     cached = _load_completude_cache()
     mapping_erreurs, mapping_avertissements = ref_data.validate_mapping(mapping, assets)
     district_reel = None
@@ -2791,16 +2801,15 @@ def completude_mapper():
         uid = (request.form.get(f'uid_{code}') or '').strip()
         if uid:
             mapping[code] = uid
-    session['spad_form_mapping'] = mapping
+    form_mapping.save(mapping)
     flash(f"Correspondance enregistrée pour {len(mapping)} formulaire(s) sur {len(ref_data.FORM_CODES)}.", 'success')
     return redirect(url_for('completude'))
 
 
 @app.route('/completude/calculer', methods=['POST'])
 def completude_calculer():
-    token = session.get('kobo_token')
-    instance = session.get('kobo_instance')
-    mapping = session.get('spad_form_mapping', {})
+    token, instance = _kobo_credentials()
+    mapping = form_mapping.load()
     if not token:
         flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
         return redirect(url_for('completude'))
