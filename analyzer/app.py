@@ -156,6 +156,30 @@ def require_login():
         return redirect(url_for('completude'))
 
 
+@app.before_request
+def auto_kobo_connect():
+    """Si un jeton KoboToolbox serveur est configuré (KOBO_API_TOKEN) et que
+    l'utilisateur Data courant n'a pas encore de connexion Kobo en session,
+    connecte automatiquement — pour que personne n'ait à saisir de token pour
+    parcourir/charger un formulaire Kobo (cliquer « KoboToolbox » affiche
+    directement la liste des formulaires). Un utilisateur peut toujours se
+    connecter avec son propre token via /kobo/connect pour utiliser un autre
+    compte Kobo que celui configuré sur le serveur.
+    Portée : rôle 'data' uniquement — le rôle 'invite' n'accède à aucune page
+    qui en a besoin (voir INVITE_ALLOWED_ENDPOINTS)."""
+    if session.get('role') != 'data' or session.get('kobo_token'):
+        return
+    server_token = (os.environ.get('KOBO_API_TOKEN') or '').strip()
+    if not server_token:
+        return
+    server_instance = (os.environ.get('KOBO_INSTANCE') or '').strip() or None
+    result = validate_token(server_token, custom_instance=server_instance)
+    if result.get('valid'):
+        session['kobo_token']    = server_token
+        session['kobo_username'] = result.get('username', '')
+        session['kobo_instance'] = result.get('instance', '')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if not ANALYZER_PASSWORD and not ANALYZER_PASSWORD_INVITE:
