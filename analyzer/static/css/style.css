@@ -112,6 +112,7 @@ body {
   letter-spacing: -.01em;
 }
 .sidebar-brand i { color: var(--teal); font-size: 1.2rem; }
+.sidebar-brand-logo { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
 
 .sidebar-nav {
   flex: 1;

@@ -96,16 +96,9 @@ def internal_error(e):
 
 @app.route('/favicon.ico')
 def favicon():
-    """Retourne un favicon SVG inline — évite l'erreur 404 dans le navigateur."""
-    svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-        '<rect width="32" height="32" rx="6" fill="#1A5276"/>'
-        '<text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" '
-        'font-size="18" font-weight="bold" fill="#17A589" '
-        'font-family="Arial,sans-serif">S</text>'
-        '</svg>'
-    )
-    return Response(svg, mimetype='image/svg+xml')
+    """Redirige vers le vrai logo SPAD (static/img/spad_favicon.png) — certains
+    navigateurs demandent /favicon.ico même quand un <link rel="icon"> existe."""
+    return redirect(url_for('static', filename='img/spad_favicon.png'))
 
 
 # ─── Authentification (mot de passe partagé, deux rôles) ──────────────────────

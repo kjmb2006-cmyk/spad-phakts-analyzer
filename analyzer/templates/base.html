@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/spad_favicon.png') }}">
 </head>
 <body>
 
@@ -24,7 +25,7 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <i class="bi bi-bar-chart-line-fill me-2"></i>
+    <img src="{{ url_for('static', filename='img/spad_logo.png') }}" alt="SPAD" class="sidebar-brand-logo">
     <span>SPAD Analyzer</span>
   </div>
 
