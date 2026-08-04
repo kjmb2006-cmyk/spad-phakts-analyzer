@@ -187,12 +187,17 @@ def login():
     error = None
     if request.method == 'POST':
         entered = request.form.get('password', '')
-        if ANALYZER_PASSWORD and entered == ANALYZER_PASSWORD:
+        access  = request.form.get('access', '')
+        # Chaque formulaire de connexion (Data / Invité) ne valide plus que
+        # son propre mot de passe — avant, saisir le mot de passe Invité dans
+        # le champ Data (ou l'inverse) donnait quand même accès, ce qui ne
+        # correspondait pas à ce que l'interface donnait à voir.
+        if access == 'data' and ANALYZER_PASSWORD and entered == ANALYZER_PASSWORD:
             session['authenticated'] = True
             session['role'] = 'data'
             session.permanent = True
             return redirect(request.args.get('next') or url_for('index'))
-        if ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
+        if access == 'invite' and ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
             session['authenticated'] = True
             session['role'] = 'invite'
             session.permanent = True

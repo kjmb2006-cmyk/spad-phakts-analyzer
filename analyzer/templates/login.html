@@ -17,11 +17,11 @@
       background: linear-gradient(135deg, var(--navy) 0%, #2E4A8A 100%);
       min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
-      margin: 0;
+      margin: 0; padding: 24px;
     }
     .login-card {
-      background: #fff; border-radius: 16px; padding: 40px 36px;
-      width: 100%; max-width: 380px;
+      background: #fff; border-radius: 18px; padding: 36px 34px;
+      width: 100%; max-width: 420px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
     }
     .login-logo {
@@ -30,60 +30,92 @@
       font-size: 24px; color: #fff; margin-bottom: 18px;
     }
     .login-card h1 { font-size: 1.25rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-    .login-card p.subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 24px; }
+    .login-card p.subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 26px; }
+
+    .access-block {
+      border-radius: 14px; padding: 20px 20px 18px; border: 1.5px solid transparent;
+    }
+    .access-block + .access-block { margin-top: 14px; }
+    .access-block--data    { background: #EAF5F1; border-color: #BFE6D9; }
+    .access-block--invite  { background: #F4F6F9; border-color: #E1E6ED; }
+
+    .access-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .access-icon {
+      width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff;
+    }
+    .access-block--data   .access-icon { background: var(--teal); }
+    .access-block--invite .access-icon { background: var(--navy); }
+    .access-block-title { font-size: .88rem; font-weight: 700; color: var(--navy); line-height: 1.2; }
+    .access-block-desc  { font-size: .72rem; color: var(--muted); line-height: 1.3; margin-top: 1px; }
+
+    .access-block .form-control {
+      border-radius: 8px; border: 1.5px solid #D5D8DC; font-size: .88rem;
+      padding: 9px 12px;
+    }
+    .access-block .form-control:focus {
+      box-shadow: none;
+    }
+    .access-block--data   .form-control:focus { border-color: var(--teal); }
+    .access-block--invite .form-control:focus { border-color: var(--navy); }
+
     .btn-login {
       background: var(--teal); color: #fff; font-weight: 600; border-radius: 8px;
-      width: 100%; padding: 10px 0; border: none;
+      width: 100%; padding: 9px 0; border: none; font-size: .88rem;
     }
     .btn-login:hover { background: #148f77; color: #fff; }
     .btn-login-invite {
-      background: #fff; color: var(--navy); font-weight: 600; border-radius: 8px;
-      width: 100%; padding: 10px 0; border: 1px solid var(--navy);
+      background: var(--navy); color: #fff; font-weight: 600; border-radius: 8px;
+      width: 100%; padding: 9px 0; border: none; font-size: .88rem;
     }
-    .btn-login-invite:hover { background: #F0F4F8; color: var(--navy); }
-    .form-label { font-size: .82rem; font-weight: 600; color: var(--text); }
-    .access-block-label {
-      font-size: .72rem; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;
-    }
-    .access-divider {
-      display: flex; align-items: center; gap: 12px; margin: 24px 0;
-      color: var(--muted); font-size: .75rem; text-transform: uppercase;
-    }
-    .access-divider::before, .access-divider::after {
-      content: ''; flex: 1; height: 1px; background: #E2E8F0;
-    }
+    .btn-login-invite:hover { background: #164863; color: #fff; }
   </style>
 </head>
 <body>
   <div class="login-card">
     <div class="login-logo"><i class="bi bi-bar-chart-line-fill"></i></div>
     <h1>SPAD Analyzer</h1>
-    <p class="subtitle">Accès réservé à l'équipe SPAD — saisissez le mot de passe correspondant à votre accès.</p>
+    <p class="subtitle">Accès réservé à l'équipe SPAD — choisissez votre accès et saisissez le mot de passe correspondant.</p>
 
     {% if error %}
     <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
     {% endif %}
 
-    <div class="access-block-label"><i class="bi bi-unlock me-1"></i>Accès complet — Data</div>
-    <form method="post" class="mb-0">
-      <div class="mb-3">
-        <label class="form-label" for="password-data">Mot de passe</label>
-        <input type="password" class="form-control" id="password-data" name="password" autofocus>
+    <div class="access-block access-block--data">
+      <div class="access-block-head">
+        <div class="access-icon"><i class="bi bi-unlock-fill"></i></div>
+        <div>
+          <div class="access-block-title">Accès complet — Data</div>
+          <div class="access-block-desc">Import, analyses, exports, connexion KoboToolbox</div>
+        </div>
       </div>
-      <button type="submit" class="btn btn-login"><i class="bi bi-unlock-fill me-1"></i>Se connecter</button>
-    </form>
+      <form method="post">
+        <input type="hidden" name="access" value="data">
+        <div class="mb-2">
+          <input type="password" class="form-control" id="password-data" name="password"
+                 placeholder="Mot de passe Data" autofocus>
+        </div>
+        <button type="submit" class="btn btn-login"><i class="bi bi-unlock-fill me-1"></i>Se connecter</button>
+      </form>
+    </div>
 
-    <div class="access-divider">ou</div>
-
-    <div class="access-block-label"><i class="bi bi-eye me-1"></i>Accès Invité — lecture seule</div>
-    <form method="post" class="mb-0">
-      <div class="mb-3">
-        <label class="form-label" for="password-invite">Mot de passe</label>
-        <input type="password" class="form-control" id="password-invite" name="password">
+    <div class="access-block access-block--invite">
+      <div class="access-block-head">
+        <div class="access-icon"><i class="bi bi-eye-fill"></i></div>
+        <div>
+          <div class="access-block-title">Accès Invité — lecture seule</div>
+          <div class="access-block-desc">Complétude nationale uniquement, sans export</div>
+        </div>
       </div>
-      <button type="submit" class="btn btn-login-invite"><i class="bi bi-eye-fill me-1"></i>Se connecter</button>
-    </form>
+      <form method="post">
+        <input type="hidden" name="access" value="invite">
+        <div class="mb-2">
+          <input type="password" class="form-control" id="password-invite" name="password"
+                 placeholder="Mot de passe Invité">
+        </div>
+        <button type="submit" class="btn btn-login-invite"><i class="bi bi-eye-fill me-1"></i>Se connecter</button>
+      </form>
+    </div>
   </div>
 </body>
 </html>

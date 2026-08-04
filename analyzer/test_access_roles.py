@@ -11,6 +11,12 @@ historique de l'app). Les deux rôles partagent le même champ de mot de passe
 
 Doit impérativement définir ANALYZER_PASSWORD / ANALYZER_PASSWORD_INVITE
 AVANT d'importer app (lus une seule fois, au chargement du module).
+
+Depuis l'écran de connexion à deux champs distincts (Data / Invité), chaque
+formulaire poste aussi un champ caché 'access' ('data' ou 'invite') : le
+mot de passe saisi doit correspondre à CE champ précisément, sinon refusé
+— même s'il correspond à l'autre rôle (évite la confusion : avant, saisir
+le mot de passe Invité dans le champ Data donnait quand même accès).
 """
 import os
 os.environ['ANALYZER_PASSWORD'] = 'secret-data'
@@ -32,14 +38,21 @@ assert r.status_code == 302 and '/login' in r.headers['Location'], r.headers.get
 print("OK — sans connexion, redirection vers /login")
 
 # --- Mauvais mot de passe ----------------------------------------------------
-r = client.post('/login', data={'password': 'faux'})
+r = client.post('/login', data={'password': 'faux', 'access': 'data'})
 assert r.status_code == 200 and 'incorrect' in r.get_data(as_text=True).lower()
 print("OK — mot de passe incorrect refusé avec message d'erreur")
+
+# --- Mot de passe croisé : chaque champ n'accepte que son propre rôle -------
+r = client.post('/login', data={'password': 'secret-invite', 'access': 'data'})
+assert r.status_code == 200 and 'incorrect' in r.get_data(as_text=True).lower()
+r = client.post('/login', data={'password': 'secret-data', 'access': 'invite'})
+assert r.status_code == 200 and 'incorrect' in r.get_data(as_text=True).lower()
+print("OK — mot de passe Invité sur le champ Data (et inversement) refusé")
 
 # --- Rôle Data : accès complet (comportement historique) --------------------
 with client.session_transaction() as sess:
     sess.clear()
-r = client.post('/login', data={'password': 'secret-data'}, follow_redirects=False)
+r = client.post('/login', data={'password': 'secret-data', 'access': 'data'}, follow_redirects=False)
 assert r.status_code == 302
 with client.session_transaction() as sess:
     assert sess.get('role') == 'data', sess.get('role')
@@ -54,7 +67,7 @@ client.get('/logout')
 # --- Rôle Invité : whitelist stricte -----------------------------------------
 with client.session_transaction() as sess:
     sess.clear()
-r = client.post('/login', data={'password': 'secret-invite'}, follow_redirects=False)
+r = client.post('/login', data={'password': 'secret-invite', 'access': 'invite'}, follow_redirects=False)
 assert r.status_code == 302 and r.headers['Location'].endswith('/completude'), r.headers.get('Location')
 with client.session_transaction() as sess:
     assert sess.get('role') == 'invite', sess.get('role')
