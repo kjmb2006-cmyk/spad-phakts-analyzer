@@ -57,6 +57,9 @@
     <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}">
       <i class="bi bi-clipboard2-data"></i> Analyse de données
     </a>
+    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}">
+      <i class="bi bi-activity"></i> Suivi de collecte
+    </a>
     <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}">
       <i class="bi bi-upload"></i> Importer les données
     </a>
@@ -133,6 +136,19 @@
        class="nav-item text-danger"
        onclick="return confirm('Effacer les données chargées ?')">
       <i class="bi bi-trash3-fill"></i> Effacer les données
+    </a>
+    {% endif %}
+
+    {% if session.get('role') == 'admin' %}
+    <div class="nav-section-label mt-3">Administration</div>
+    <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint in ['admin_users'] %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> Comptes Data
+    </a>
+    <a href="{{ url_for('admin_activity') }}" class="nav-item {% if request.endpoint == 'admin_activity' %}active{% endif %}">
+      <i class="bi bi-clock-history"></i> Journal d'activité
+    </a>
+    <a href="{{ url_for('admin_forms') }}" class="nav-item {% if request.endpoint == 'admin_forms' %}active{% endif %}">
+      <i class="bi bi-collection"></i> Registre des formulaires
     </a>
     {% endif %}
 

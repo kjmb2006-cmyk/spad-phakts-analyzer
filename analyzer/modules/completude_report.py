@@ -681,7 +681,7 @@ def build_docx(cached, ref, computed_at=None):
 
     # ── 5. Complétude par superviseur ────────────────────────────────────
     superviseur_table = cached.get('superviseur', {})
-    sup_form_codes = [c for c in cp.SUPERVISEUR_FORMS if c in form_codes]
+    sup_form_codes = [c for c in cp.superviseur_forms() if c in form_codes]
     if superviseur_table and sup_form_codes:
         h = doc.add_heading(f'5. Complétude par superviseur ({len(superviseur_table)})', level=1)
         h.runs[0].font.color.rgb = PRIMARY
@@ -703,7 +703,7 @@ def build_docx(cached, ref, computed_at=None):
 
     # ── 6. Complétude par enquêteur ──────────────────────────────────────
     enqueteur_table = cached.get('enqueteur', {})
-    enq_form_codes = [c for c in cp.ENQUETEUR_FORMS if c in form_codes]
+    enq_form_codes = [c for c in cp.enqueteur_forms() if c in form_codes]
     if enqueteur_table and enq_form_codes:
         h = doc.add_heading(f'6. Complétude par enquêteur ({len(enqueteur_table)})', level=1)
         h.runs[0].font.color.rgb = PRIMARY

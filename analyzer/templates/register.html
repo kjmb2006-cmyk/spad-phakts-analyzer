@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Créer un compte — SPAD Analyzer</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/spad_favicon.png') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy: #1A5276; --teal: #17A589; --muted: #718096; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--navy) 0%, #2E4A8A 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0; padding: 24px;
+    }
+    .register-card {
+      background: #fff; border-radius: 18px; padding: 36px 34px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .register-logo { width: 64px; height: 64px; margin-bottom: 18px; }
+    .register-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .register-card h1 { font-size: 1.25rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .register-card p.subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 22px; }
+    .form-control { border-radius: 8px; border: 1.5px solid #D5D8DC; font-size: .88rem; padding: 9px 12px; }
+    .form-control:focus { box-shadow: none; border-color: var(--teal); }
+    .btn-register {
+      background: var(--teal); color: #fff; font-weight: 600; border-radius: 8px;
+      width: 100%; padding: 9px 0; border: none; font-size: .88rem;
+    }
+    .btn-register:hover { background: #148f77; color: #fff; }
+    .back-link { font-size: .78rem; text-align: center; margin-top: 14px; }
+    .back-link a { color: var(--navy); font-weight: 600; text-decoration: none; }
+    .back-link a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="register-card">
+    <div class="register-logo"><img src="{{ url_for('static', filename='img/spad_logo.png') }}" alt="SPAD"></div>
+    <h1>Créer un compte Data</h1>
+    <p class="subtitle">Votre compte restera en attente jusqu'à validation par un administrateur.</p>
+
+    {% if success %}
+    <div class="alert alert-success py-2 small" role="alert">
+      Compte créé avec succès — il est <strong>en attente de validation</strong> par un administrateur.
+      Vous pourrez vous connecter dès qu'il aura été autorisé.
+    </div>
+    <div class="back-link"><a href="{{ url_for('login') }}"><i class="bi bi-arrow-left me-1"></i>Retour à la connexion</a></div>
+    {% else %}
+    {% if error %}
+    <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+      <div class="mb-2">
+        <label class="form-label small fw-semibold" for="username">Identifiant</label>
+        <input type="text" class="form-control" id="username" name="username" required autofocus
+               autocomplete="username" placeholder="ex. j.dupont">
+        <div class="form-text" style="font-size:.7rem">3 à 32 caractères : lettres, chiffres, . _ -</div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold" for="password">Mot de passe</label>
+        <input type="password" class="form-control" id="password" name="password" required
+               autocomplete="new-password" minlength="8">
+        <div class="form-text" style="font-size:.7rem">8 caractères minimum</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" for="confirm">Confirmer le mot de passe</label>
+        <input type="password" class="form-control" id="confirm" name="confirm" required
+               autocomplete="new-password" minlength="8">
+      </div>
+      <button type="submit" class="btn btn-register"><i class="bi bi-person-plus-fill me-1"></i>Créer le compte</button>
+    </form>
+    <div class="back-link"><a href="{{ url_for('login') }}"><i class="bi bi-arrow-left me-1"></i>J'ai déjà un compte</a></div>
+    {% endif %}
+  </div>
+</body>
+</html>

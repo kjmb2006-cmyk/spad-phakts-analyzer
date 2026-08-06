@@ -15,9 +15,10 @@ une panne.
 
 - `render.yaml` (racine du dépôt) — décrit le service à Render automatiquement
 - `analyzer/requirements.txt` — inclut déjà `gunicorn` (serveur de production)
-- Mot de passe d'accès (`ANALYZER_PASSWORD`) — protège l'application une fois
-  publique ; sans lui, tout le monde avec l'URL pourrait importer/consulter
-  des données
+- Mot de passe Administrateur (`ANALYZER_PASSWORD_ADMIN`) — protège l'application
+  une fois publique ; sans lui, tout le monde avec l'URL pourrait importer/consulter
+  des données. L'administrateur autorise ensuite chaque compte Data individuellement
+  (voir « Comptes Data » ci-dessous) — il n'y a plus de mot de passe Data partagé.
 - Clé de session (`SECRET_KEY`) — générée automatiquement par Render à la
   création du service (option `generateValue` dans `render.yaml`)
 
@@ -37,17 +38,34 @@ une panne.
    détecte automatiquement `render.yaml` et propose de créer le service
    `spad-analyzer`.
 
-4. **Définir le mot de passe** : Render vous demandera la valeur de
-   `ANALYZER_PASSWORD` (marquée `sync: false`, donc non stockée dans le
-   dépôt) — choisissez un mot de passe que vous partagerez avec l'équipe
-   SPAD amenée à utiliser l'outil.
+4. **Définir le mot de passe Administrateur** : Render vous demandera la valeur
+   de `ANALYZER_PASSWORD_ADMIN` (marquée `sync: false`, donc non stockée dans le
+   dépôt) — choisissez un mot de passe que vous seul (ou les quelques personnes
+   habilitées à administrer l'outil) connaîtrez.
 
 5. **Déployer** : cliquez sur **Apply** / **Create Web Service**. Le premier
    build prend 3 à 5 minutes (installation de pandas, scikit-learn, etc.).
 
 6. **Récupérer l'URL** : une fois le déploiement terminé, Render affiche une
-   URL du type `https://spad-analyzer.onrender.com`. C'est celle-ci que vous
-   partagez avec l'équipe, accompagnée du mot de passe défini à l'étape 4.
+   URL du type `https://spad-analyzer.onrender.com`. Connectez-vous avec le
+   mot de passe Administrateur défini à l'étape 4.
+
+## Comptes Data (équipe SPAD)
+
+Il n'y a plus de mot de passe Data partagé : chaque membre de l'équipe crée
+son propre compte.
+
+1. Chaque utilisateur va sur `<votre URL>/register`, choisit un identifiant
+   et un mot de passe — le compte reste **en attente**.
+2. Vous (l'administrateur) allez dans **Comptes Data** (menu de gauche une
+   fois connecté en Administrateur) et cliquez **Autoriser** en face de son
+   nom.
+3. Il peut alors se connecter normalement (onglet « Accès complet — Data »
+   à l'écran de connexion).
+
+Le menu **Journal d'activité** liste, pour chaque compte Data, les pages
+visitées et actions effectuées (horodatées) — pour savoir qui a modifié la
+correspondance de formulaires ou lancé un calcul.
 
 ## Optionnel : afficher les noms réels des enquêteurs/superviseurs en ligne
 
@@ -57,7 +75,7 @@ noms réels **uniquement sur votre poste local** (fichier
 dépôt GitHub public ne contient que les codes, ex. `D01ENQ1`). La version
 déployée sur Render affiche donc les codes tant que rien de plus n'est fait.
 
-Pour que la version en ligne (protégée par le mot de passe `ANALYZER_PASSWORD`)
+Pour que la version en ligne (protégée par le mot de passe Administrateur)
 affiche elle aussi les vrais noms, sans jamais les mettre sur GitHub, utilisez
 un **Secret File** Render :
 

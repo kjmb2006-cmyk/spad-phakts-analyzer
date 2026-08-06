@@ -9,8 +9,9 @@
     <i class="bi bi-clipboard2-pulse fs-3"></i>
     <div>
       <strong>Vue de complétude nationale.</strong>
-      Associez chacun des 7 formulaires SPAD à votre formulaire KoboToolbox réel, puis calculez
-      les taux de complétude par rapport au référentiel (120 établissements, 12 districts).
+      Associez chaque formulaire SPAD actif (voir <a href="{{ url_for('admin_forms') }}">registre des formulaires</a>
+      si vous êtes administrateur) à son formulaire KoboToolbox réel suivi dans Suivi multi-formulaires, puis
+      calculez les taux de complétude par rapport au référentiel (120 établissements, 12 districts).
     </div>
   </div>
 
@@ -50,7 +51,10 @@
       {% if assets_error %}
       <div class="alert alert-danger small mb-0">{{ assets_error }}</div>
       {% elif not assets %}
-      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      <p class="text-muted small mb-0">
+        Aucun formulaire suivi pour l'instant — ajoutez-en d'abord depuis
+        <a href="{{ url_for('suivi') }}">Suivi multi-formulaires</a>, ils deviendront alors sélectionnables ici.
+      </p>
       {% else %}
       <!-- Formulaire de calcul déclaré séparément (pas imbriqué — le HTML
            n'autorise pas les <form> imbriqués) ; le bouton "Calculer" s'y

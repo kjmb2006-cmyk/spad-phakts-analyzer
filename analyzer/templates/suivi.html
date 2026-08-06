@@ -80,6 +80,7 @@
                   {% endfor %}
                 </select>
                 {% if guess %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>détecté depuis le nom</div>{% endif %}
+                <div class="ai-rationale text-muted" style="font-size:.68rem"></div>
               </td>
               <td class="text-center">
                 <input type="number" min="1" class="form-control form-control-sm target-input"
@@ -92,9 +93,16 @@
                   <i class="bi bi-check-lg me-1"></i>Suivi
                 </span>
                 {% else %}
-                <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
-                  <i class="bi bi-plus-lg me-1"></i>Suivre
-                </button>
+                <div class="d-flex gap-1 justify-content-center">
+                  {% if ai_available %}
+                  <button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l'IA">
+                    <i class="bi bi-stars"></i>
+                  </button>
+                  {% endif %}
+                  <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
+                    <i class="bi bi-plus-lg me-1"></i>Suivre
+                  </button>
+                </div>
                 {% endif %}
               </td>
             </tr>
@@ -259,6 +267,57 @@
 
   document.querySelectorAll('.btn-track-add').forEach(btn => {
     btn.addEventListener('click', () => addTracked(btn.closest('tr')));
+  });
+
+  // Suggestion IA — pré-remplit Type/Cible, ne coche/n'enregistre jamais
+  // rien automatiquement : l'utilisateur garde la main pour corriger avant
+  // de cliquer « Suivre ».
+  function suggestWithAI(btn) {
+    const row = btn.closest('tr');
+    const name = row.dataset.name;
+    const select = row.querySelector('.form-type-select');
+    const targetInput = row.querySelector('.target-input');
+    const rationaleEl = row.querySelector('.ai-rationale');
+    const icon = btn.querySelector('i');
+    icon.className = 'spinner-border spinner-border-sm';
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('name', name);
+    fetch('/suivi/ai_suggest', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.available) {
+          rationaleEl.textContent = res.error || "Suggestion IA indisponible pour l'instant.";
+          return;
+        }
+        if (res.error) {
+          rationaleEl.textContent = res.error;
+          return;
+        }
+        if (res.code) {
+          select.value = res.code;
+          select.dispatchEvent(new Event('change'));
+        } else {
+          select.value = '';
+          select.dispatchEvent(new Event('change'));
+          if (res.target) targetInput.value = res.target;
+        }
+        let note = res.rationale || '';
+        if (res.is_new && res.suggested_label) {
+          note = `Nouveau formulaire suggéré : « ${res.suggested_label} ». ${note}`;
+        }
+        rationaleEl.innerHTML = `<i class="bi bi-stars me-1"></i>${note}`;
+      })
+      .catch(() => { rationaleEl.textContent = "Suggestion IA indisponible pour l'instant."; })
+      .finally(() => {
+        icon.className = 'bi bi-stars';
+        btn.disabled = false;
+      });
+  }
+
+  document.querySelectorAll('.btn-ai-suggest').forEach(btn => {
+    btn.addEventListener('click', () => suggestWithAI(btn));
   });
 
   refreshStatus();

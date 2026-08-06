@@ -68,50 +68,60 @@ print("=" * 70)
 print("TESTS UNITAIRES PASSÉS — vérification des routes Flask")
 print("=" * 70)
 
-from modules import kobo_connector  # noqa: E402
-
-
-def fake_list_assets(token, instance=None, custom_instance=None):
-    return {"success": True, "assets": ASSETS, "total": len(ASSETS), "instance": "https://kf.kobotoolbox.org"}
-
-
-kobo_connector.list_assets = fake_list_assets
+from modules import form_mapping  # noqa: E402
+from modules import kobo_track  # noqa: E402
 
 from app import app  # noqa: E402
 
 app.config['TESTING'] = True
 client = app.test_client()
-with client.session_transaction() as sess:
-    sess['kobo_token'] = 'fake-token'
-    sess['kobo_instance'] = 'https://kf.kobotoolbox.org'
-    sess['spad_form_mapping'] = mapping_bug
 
-# La page de mapping doit afficher l'erreur ET l'avertissement
-r = client.get('/completude')
-assert r.status_code == 200
-html = r.get_data(as_text=True)
-assert 'Correspondance incorrecte' in html
-assert 'pointent vers le même formulaire Kobo' in html
-assert 'Vérifiez ces correspondances' in html
-print("OK — /completude affiche l'erreur bloquante et les avertissements")
+# Le menu de correspondance de /completude liste désormais les formulaires
+# déjà ajoutés dans Suivi multi-formulaires (kobo_track.list_tracked()),
+# pas un appel direct à l'API Kobo — on peuple kobo_track avec les mêmes
+# formulaires que ASSETS plutôt que de simuler list_assets().
+_test_uids = [a['uid'] for a in ASSETS]
+for a in ASSETS:
+    kobo_track._trackers[a['uid']] = kobo_track._new_entry(a['uid'], a['name'], None, 'inst')
 
-# Le calcul doit être bloqué (redirection, pas de cache créé)
-r = client.post('/completude/calculer', follow_redirects=True)
-assert r.status_code == 200
-html = r.get_data(as_text=True)
-assert 'Correspondance incorrecte' in html
-with client.session_transaction() as sess:
-    assert sess.get('completude_path') is None, "le calcul n'aurait pas dû s'exécuter"
-print("OK — /completude/calculer bloqué tant que le doublon n'est pas corrigé")
+# La correspondance SPAD <-> Kobo est persistée côté serveur (voir
+# modules/form_mapping.py, pas la session) — on sauvegarde/restaure la
+# vraie config d'un déploiement réel plutôt que de l'écraser durablement.
+_original_mapping = form_mapping.load()
+try:
+    form_mapping.save(mapping_bug)
 
-# Une fois corrigé, le calcul doit à nouveau être permis (pas plus loin
-# testé ici — juste que la validation elle-même ne bloque plus)
-with client.session_transaction() as sess:
-    sess['spad_form_mapping'] = mapping_ok
-r = client.get('/completude')
-html = r.get_data(as_text=True)
-assert 'Correspondance incorrecte' not in html and 'Vérifiez ces correspondances' not in html
-print("OK — plus aucune alerte une fois la correspondance corrigée")
+    # La page de mapping doit afficher l'erreur ET l'avertissement
+    r = client.get('/completude')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'Correspondance incorrecte' in html
+    assert 'pointent vers le même formulaire Kobo' in html
+    assert 'Vérifiez ces correspondances' in html
+    print("OK — /completude affiche l'erreur bloquante et les avertissements")
+
+    # Le calcul doit être bloqué (redirection, pas de cache créé)
+    with client.session_transaction() as sess:
+        sess.pop('completude_path', None)
+    r = client.post('/completude/calculer', follow_redirects=True)
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'Correspondance incorrecte' in html
+    with client.session_transaction() as sess:
+        assert sess.get('completude_path') is None, "le calcul n'aurait pas dû s'exécuter"
+    print("OK — /completude/calculer bloqué tant que le doublon n'est pas corrigé")
+
+    # Une fois corrigé, le calcul doit à nouveau être permis (pas plus loin
+    # testé ici — juste que la validation elle-même ne bloque plus)
+    form_mapping.save(mapping_ok)
+    r = client.get('/completude')
+    html = r.get_data(as_text=True)
+    assert 'Correspondance incorrecte' not in html and 'Vérifiez ces correspondances' not in html
+    print("OK — plus aucune alerte une fois la correspondance corrigée")
+finally:
+    form_mapping.save(_original_mapping)
+    for uid in _test_uids:
+        kobo_track.remove(uid)
 
 print()
 print("=" * 70)

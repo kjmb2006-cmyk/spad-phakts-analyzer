@@ -36,6 +36,7 @@
       border-radius: 14px; padding: 20px 20px 18px; border: 1.5px solid transparent;
     }
     .access-block + .access-block { margin-top: 14px; }
+    .access-block--admin   { background: #FBF0EC; border-color: #F0CFC2; }
     .access-block--data    { background: #EAF5F1; border-color: #BFE6D9; }
     .access-block--invite  { background: #F4F6F9; border-color: #E1E6ED; }
 
@@ -44,6 +45,7 @@
       width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff;
     }
+    .access-block--admin  .access-icon { background: #C0392B; }
     .access-block--data   .access-icon { background: var(--teal); }
     .access-block--invite .access-icon { background: var(--navy); }
     .access-block-title { font-size: .88rem; font-weight: 700; color: var(--navy); line-height: 1.2; }
@@ -56,9 +58,15 @@
     .access-block .form-control:focus {
       box-shadow: none;
     }
+    .access-block--admin  .form-control:focus { border-color: #C0392B; }
     .access-block--data   .form-control:focus { border-color: var(--teal); }
     .access-block--invite .form-control:focus { border-color: var(--navy); }
 
+    .btn-login-admin {
+      background: #C0392B; color: #fff; font-weight: 600; border-radius: 8px;
+      width: 100%; padding: 9px 0; border: none; font-size: .88rem;
+    }
+    .btn-login-admin:hover { background: #a5301f; color: #fff; }
     .btn-login {
       background: var(--teal); color: #fff; font-weight: 600; border-radius: 8px;
       width: 100%; padding: 9px 0; border: none; font-size: .88rem;
@@ -69,6 +77,9 @@
       width: 100%; padding: 9px 0; border: none; font-size: .88rem;
     }
     .btn-login-invite:hover { background: #164863; color: #fff; }
+    .register-link { font-size: .76rem; text-align: center; margin-top: 8px; }
+    .register-link a { color: var(--navy); font-weight: 600; text-decoration: none; }
+    .register-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -81,6 +92,24 @@
     <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
     {% endif %}
 
+    <div class="access-block access-block--admin">
+      <div class="access-block-head">
+        <div class="access-icon"><i class="bi bi-shield-lock-fill"></i></div>
+        <div>
+          <div class="access-block-title">Administrateur</div>
+          <div class="access-block-desc">Gestion des comptes Data, journal d'activité</div>
+        </div>
+      </div>
+      <form method="post">
+        <input type="hidden" name="access" value="admin">
+        <div class="mb-2">
+          <input type="password" class="form-control" id="password-admin" name="password"
+                 placeholder="Mot de passe Administrateur">
+        </div>
+        <button type="submit" class="btn btn-login-admin"><i class="bi bi-shield-lock-fill me-1"></i>Se connecter</button>
+      </form>
+    </div>
+
     <div class="access-block access-block--data">
       <div class="access-block-head">
         <div class="access-icon"><i class="bi bi-unlock-fill"></i></div>
@@ -92,11 +121,16 @@
       <form method="post">
         <input type="hidden" name="access" value="data">
         <div class="mb-2">
+          <input type="text" class="form-control" id="username-data" name="username"
+                 placeholder="Identifiant" autofocus autocomplete="username">
+        </div>
+        <div class="mb-2">
           <input type="password" class="form-control" id="password-data" name="password"
-                 placeholder="Mot de passe Data" autofocus>
+                 placeholder="Mot de passe" autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-login"><i class="bi bi-unlock-fill me-1"></i>Se connecter</button>
       </form>
+      <div class="register-link">Pas encore de compte ? <a href="{{ url_for('register') }}">Créer un compte Data</a></div>
     </div>
 
     <div class="access-block access-block--invite">

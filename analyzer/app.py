@@ -46,6 +46,11 @@ from modules import projets as proj
 from modules import tendance
 from modules import completude_report
 from modules import form_mapping
+from modules import accounts
+from modules import activity_log
+from modules import forms_registry
+from modules import ai_form_assist
+from modules.collecte_monitor import load_state, save_state, append_sync_event, build_dashboard_metrics, build_collecte_views
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -59,12 +64,13 @@ def inject_current_year():
     return {'current_year': datetime.datetime.now().year}
 
 
-if os.environ.get('ANALYZER_PASSWORD') and not os.environ.get('SECRET_KEY'):
+if (os.environ.get('ANALYZER_PASSWORD_ADMIN') or os.environ.get('ANALYZER_PASSWORD_INVITE')) \
+        and not os.environ.get('SECRET_KEY'):
     print(
-        "\n⚠️  ANALYZER_PASSWORD est défini mais SECRET_KEY ne l'est pas — "
-        "les sessions utilisent la clé par défaut du code source (non secrète). "
-        "Définissez SECRET_KEY (valeur aléatoire) dans les variables d'environnement "
-        "avant toute mise en production.\n"
+        "\n⚠️  ANALYZER_PASSWORD_ADMIN/ANALYZER_PASSWORD_INVITE défini(s) mais SECRET_KEY "
+        "ne l'est pas — les sessions utilisent la clé par défaut du code source (non "
+        "secrète). Définissez SECRET_KEY (valeur aléatoire) dans les variables "
+        "d'environnement avant toute mise en production.\n"
     )
 
 
@@ -101,24 +107,31 @@ def favicon():
     return redirect(url_for('static', filename='img/spad_favicon.png'))
 
 
-# ─── Authentification (mot de passe partagé, deux rôles) ──────────────────────
+# ─── Authentification (3 rôles) ────────────────────────────────────────────────
 #
 # En local (poste de l'utilisateur), l'accès est déjà restreint par le système
 # d'exploitation : seule la personne devant la machine peut atteindre 127.0.0.1.
 # Dès que l'app est hébergée sur une URL publique (ex. Render), ce n'est plus
-# vrai — d'où ce verrou, activé uniquement si au moins un des deux mots de
-# passe est défini (donc sans impact sur l'usage desktop local existant tant
+# vrai — d'où ce verrou, activé uniquement si un mot de passe Admin ou Invité
+# est défini (donc sans impact sur l'usage desktop local existant tant
 # qu'aucune des deux variables n'est positionnée).
 #
-# Deux rôles, un seul champ de mot de passe (pas de sélecteur à l'écran de
-# connexion) : celui qui correspond détermine le rôle.
-#   - ANALYZER_PASSWORD        -> rôle 'data'   : accès complet, comme aujourd'hui.
+#   - ANALYZER_PASSWORD_ADMIN  -> rôle 'admin'  : accès complet + gestion des
+#     comptes Data (autoriser/bloquer) et consultation du journal d'activité.
+#     Mot de passe partagé (un seul admin, ou peu), comme avant.
+#   - Compte individuel (identifiant + mot de passe, voir modules/accounts.py)
+#     -> rôle 'data' : accès complet, comme avant — mais chaque utilisateur a
+#     désormais son propre compte plutôt qu'un mot de passe partagé, pour que
+#     ses actions soient attribuables (voir modules/activity_log.py). Créé
+#     par auto-inscription (/register), inactif tant qu'un admin ne l'a pas
+#     approuvé. ANCIEN ANALYZER_PASSWORD (mot de passe Data partagé) retiré —
+#     les comptes existants doivent migrer vers un compte individuel.
 #   - ANALYZER_PASSWORD_INVITE -> rôle 'invite' : lecture seule, restreint au
 #     tableau de bord Complétude nationale / par district & établissement /
 #     performances superviseurs / performances enquêteurs — voir
 #     INVITE_ALLOWED_ENDPOINTS ci-dessous. Pas d'export, pas de recalcul, pas
 #     d'accès à la connexion KoboToolbox ni aux autres modules d'analyse.
-ANALYZER_PASSWORD = os.environ.get('ANALYZER_PASSWORD', '').strip()
+ANALYZER_PASSWORD_ADMIN = os.environ.get('ANALYZER_PASSWORD_ADMIN', '').strip()
 ANALYZER_PASSWORD_INVITE = os.environ.get('ANALYZER_PASSWORD_INVITE', '').strip()
 
 # Endpoints accessibles au rôle 'invite'. Volontairement une liste blanche
@@ -133,20 +146,40 @@ INVITE_ALLOWED_ENDPOINTS = {
     'completude_enqueteurs', 'completude_enqueteur_detail',
 }
 
+# Endpoints réservés au rôle 'admin' — bloqués pour 'data' et 'invite'.
+ADMIN_ONLY_ENDPOINTS = {
+    'admin_users', 'admin_user_approve', 'admin_user_block', 'admin_activity',
+    'admin_forms', 'admin_form_activate', 'admin_form_deactivate', 'admin_form_add',
+}
+
 
 @app.before_request
 def require_login():
-    if not ANALYZER_PASSWORD and not ANALYZER_PASSWORD_INVITE:
+    if not ANALYZER_PASSWORD_ADMIN and not ANALYZER_PASSWORD_INVITE:
         return  # aucun mot de passe configuré : gate désactivée (usage desktop local)
-    if request.endpoint in ('login', 'static', 'favicon'):
+    if request.endpoint in ('login', 'register', 'static', 'favicon'):
         return
     if request.path.startswith('/static/'):
         return
     if not session.get('authenticated'):
         return redirect(url_for('login', next=request.path))
-    if session.get('role') == 'invite' and request.endpoint not in INVITE_ALLOWED_ENDPOINTS:
+    role = session.get('role')
+    if role != 'admin' and request.endpoint in ADMIN_ONLY_ENDPOINTS:
+        flash("Cette page est réservée à l'administrateur.", 'warning')
+        return redirect(url_for('completude') if role == 'invite' else url_for('index'))
+    if role == 'invite' and request.endpoint not in INVITE_ALLOWED_ENDPOINTS:
         flash("Cette page n'est pas accessible avec un accès Invité.", 'warning')
         return redirect(url_for('completude'))
+
+
+@app.after_request
+def log_data_activity(response):
+    """Journalise chaque action d'un utilisateur 'data' — voir
+    modules/activity_log.py. Jamais 'invite' (lecture seule, rien à
+    auditer) ni 'admin'. Best-effort : ne bloque jamais la réponse réelle."""
+    if session.get('role') == 'data' and request.endpoint not in (None, 'static', 'favicon'):
+        activity_log.record(session.get('username', '?'), 'data', request.method, request.path)
+    return response
 
 
 @app.before_request
@@ -158,9 +191,9 @@ def auto_kobo_connect():
     directement la liste des formulaires). Un utilisateur peut toujours se
     connecter avec son propre token via /kobo/connect pour utiliser un autre
     compte Kobo que celui configuré sur le serveur.
-    Portée : rôle 'data' uniquement — le rôle 'invite' n'accède à aucune page
-    qui en a besoin (voir INVITE_ALLOWED_ENDPOINTS)."""
-    if session.get('role') != 'data' or session.get('kobo_token'):
+    Portée : rôles 'data' et 'admin' — le rôle 'invite' n'accède à aucune
+    page qui en a besoin (voir INVITE_ALLOWED_ENDPOINTS)."""
+    if session.get('role') not in ('data', 'admin') or session.get('kobo_token'):
         return
     server_token = (os.environ.get('KOBO_API_TOKEN') or '').strip()
     if not server_token:
@@ -171,39 +204,172 @@ def auto_kobo_connect():
         session['kobo_token']    = server_token
         session['kobo_username'] = result.get('username', '')
         session['kobo_instance'] = result.get('instance', '')
+        kobo_track.resume(server_token, result.get('instance'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if not ANALYZER_PASSWORD and not ANALYZER_PASSWORD_INVITE:
+    if not ANALYZER_PASSWORD_ADMIN and not ANALYZER_PASSWORD_INVITE:
         return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
         entered = request.form.get('password', '')
         access  = request.form.get('access', '')
-        # Chaque formulaire de connexion (Data / Invité) ne valide plus que
-        # son propre mot de passe — avant, saisir le mot de passe Invité dans
-        # le champ Data (ou l'inverse) donnait quand même accès, ce qui ne
-        # correspondait pas à ce que l'interface donnait à voir.
-        if access == 'data' and ANALYZER_PASSWORD and entered == ANALYZER_PASSWORD:
+        # Chaque onglet de connexion (Admin / Data / Invité) ne valide que
+        # son propre mécanisme — pas de mélange entre les mots de passe
+        # partagés (Admin, Invité) et les comptes individuels (Data).
+        if access == 'admin' and ANALYZER_PASSWORD_ADMIN and entered == ANALYZER_PASSWORD_ADMIN:
             session['authenticated'] = True
-            session['role'] = 'data'
+            session['role'] = 'admin'
             session.permanent = True
             return redirect(request.args.get('next') or url_for('index'))
-        if access == 'invite' and ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
+        elif access == 'data':
+            status, real_username = accounts.verify_login(request.form.get('username', ''), entered)
+            if status == accounts.STATUS_APPROVED:
+                session['authenticated'] = True
+                session['role'] = 'data'
+                session['username'] = real_username
+                session.permanent = True
+                return redirect(request.args.get('next') or url_for('index'))
+            elif status == accounts.STATUS_PENDING:
+                error = "Ce compte est en attente de validation par un administrateur."
+            elif status == accounts.STATUS_BLOCKED:
+                error = "Ce compte a été bloqué. Contactez un administrateur."
+            else:
+                error = 'Identifiant ou mot de passe incorrect.'
+        elif access == 'invite' and ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
             session['authenticated'] = True
             session['role'] = 'invite'
             session.permanent = True
             return redirect(url_for('completude'))
-        error = 'Mot de passe incorrect.'
+        if not error:
+            error = 'Mot de passe incorrect.'
     return render_template('login.html', error=error)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Auto-inscription d'un compte Data — reste en attente jusqu'à
+    validation par un administrateur (voir /admin/users)."""
+    if not ANALYZER_PASSWORD_ADMIN and not ANALYZER_PASSWORD_INVITE:
+        return redirect(url_for('index'))
+    error = None
+    success = False
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        if password != confirm:
+            error = "Les deux mots de passe ne correspondent pas."
+        else:
+            ok, err = accounts.create_pending(username, password)
+            if ok:
+                success = True
+            else:
+                error = err
+    return render_template('register.html', error=error, success=success)
 
 
 @app.route('/logout')
 def logout():
     session.pop('authenticated', None)
     session.pop('role', None)
+    session.pop('username', None)
     return redirect(url_for('login'))
+
+
+# ─── Administration (rôle 'admin' uniquement) ──────────────────────────────────
+
+@app.route('/admin/users')
+def admin_users():
+    return render_template('admin_users.html', users=accounts.list_users())
+
+
+@app.route('/admin/users/<username>/approve', methods=['POST'])
+def admin_user_approve(username):
+    if accounts.set_status(username, accounts.STATUS_APPROVED):
+        flash(f"Compte « {username} » autorisé.", 'success')
+    else:
+        flash('Compte introuvable.', 'danger')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/users/<username>/block', methods=['POST'])
+def admin_user_block(username):
+    if accounts.set_status(username, accounts.STATUS_BLOCKED):
+        flash(f"Compte « {username} » bloqué.", 'warning')
+    else:
+        flash('Compte introuvable.', 'danger')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/activity')
+def admin_activity():
+    return render_template('admin_activity.html', events=activity_log.list_events())
+
+
+@app.route('/admin/forms')
+def admin_forms():
+    """Registre des formulaires suivis (modules/forms_registry.py) — activer/
+    désactiver les 7 formulaires SPAD historiques, en ajouter d'autres."""
+    return render_template(
+        'admin_forms.html',
+        forms=forms_registry.all_forms(),
+        rule_types=forms_registry.RULE_TYPES,
+        rule_type_labels=forms_registry.RULE_TYPE_LABELS,
+    )
+
+
+@app.route('/admin/forms/<code>/activate', methods=['POST'])
+def admin_form_activate(code):
+    if forms_registry.set_active(code, True):
+        flash(f"Formulaire « {code} » activé.", 'success')
+    else:
+        flash('Formulaire introuvable.', 'danger')
+    return redirect(url_for('admin_forms'))
+
+
+@app.route('/admin/forms/<code>/deactivate', methods=['POST'])
+def admin_form_deactivate(code):
+    if forms_registry.set_active(code, False):
+        flash(f"Formulaire « {code} » désactivé — il n'apparaîtra plus dans Suivi ni Complétude.", 'warning')
+    else:
+        flash('Formulaire introuvable.', 'danger')
+    return redirect(url_for('admin_forms'))
+
+
+@app.route('/admin/forms/add', methods=['POST'])
+def admin_form_add():
+    rtype = request.form.get('rule_type', '')
+    params = {}
+    if rtype in ('fixed_per_etablissement', 'fixed_per_district'):
+        try:
+            params = {'n': int(request.form.get('rule_n', ''))}
+        except ValueError:
+            flash('La valeur numérique de la règle de cible est invalide.', 'danger')
+            return redirect(url_for('admin_forms'))
+    elif rtype in ('etab_field_positive', 'floor_sum_district_field'):
+        field = (request.form.get('rule_field') or '').strip()
+        if not field:
+            flash('Le nom du champ du référentiel est obligatoire pour ce type de règle.', 'danger')
+            return redirect(url_for('admin_forms'))
+        params = {'field': field}
+
+    ok, err = forms_registry.add_form(
+        code=request.form.get('code', ''),
+        label=request.form.get('label', ''),
+        name_hint=request.form.get('name_hint', ''),
+        grain=request.form.get('grain', ''),
+        actor=request.form.get('actor', ''),
+        etab_field=request.form.get('etab_field', ''),
+        district_field=request.form.get('district_field', ''),
+        target_rule={'type': rtype, 'params': params},
+    )
+    if ok:
+        flash(f"Formulaire ajouté au registre.", 'success')
+    else:
+        flash(err, 'danger')
+    return redirect(url_for('admin_forms'))
 
 
 def allowed_file(filename):
@@ -215,6 +381,220 @@ def get_dataframe(sheet_key='data_path'):
     if path and os.path.exists(path):
         return pd.read_excel(path)
     return None
+
+
+def _collecte_state_path():
+    state_path = session.get('collecte_state_path')
+    if state_path:
+        return state_path
+    path = os.path.join(app.config['UPLOAD_FOLDER'], 'collecte_state.json')
+    session['collecte_state_path'] = path
+    return path
+
+
+def _save_dataframe_to_session(df, name):
+    fname = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+    session['data_path'] = save_path
+    session['data_meta'] = summarize_dataframe(df)
+    session['data_meta']['source'] = 'KoboToolbox'
+    session['data_meta']['name'] = name
+    session['original_filename'] = f"{name}.xlsx"
+    session.pop('child_path', None)
+    return save_path
+
+
+@app.route('/collecte/dashboard')
+def collecte_dashboard():
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    current_count = None
+    meta = session.get('data_meta') or {}
+    if meta.get('n_obs') is not None:
+        current_count = int(meta['n_obs'])
+    metrics = build_dashboard_metrics(state, current_count=current_count)
+    sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
+    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status)
+    return render_template(
+        'collecte_dashboard.html',
+        received=metrics['received'],
+        cible=metrics['cible'],
+        taux=metrics['taux'],
+        active_alerts=metrics['active_alerts'],
+        evolution=metrics['evolution'],
+        zones=metrics['zones'],
+        kobo_connected=bool(session.get('kobo_token')),
+        kobo_user=session.get('kobo_username', 'KoboToolbox'),
+        last_sync=state.get('last_sync_at') or 'Aucune synchronisation',
+        history=metrics['history'],
+        daily_rate=metrics.get('daily_rate', 0),
+        daily_target=metrics.get('daily_target', 0),
+        sync_status=views['sync_status'],
+        stratified_summary=views['stratified_summary'],
+        interpretation=views['interpretation'],
+    )
+
+
+@app.route('/collecte/sync')
+def collecte_sync():
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    history = []
+    for item in state.get('history', []):
+        history.append({
+            'date': item.get('timestamp') or state.get('last_sync_at') or 'Non disponible',
+            'form': item.get('form_name') or state.get('last_form_name') or 'Kobo',
+            'count': item.get('count', 0),
+            'status': item.get('status', 'inconnu').capitalize(),
+            'badge_class': 'bg-success' if item.get('status') == 'réussi' else 'bg-warning',
+        })
+    assets = []
+    selected_uid = session.get('kobo_uid')
+    token = session.get('kobo_token')
+    if token:
+        assets_result = list_assets(token, instance=session.get('kobo_instance'))
+        if assets_result.get('success'):
+            assets = assets_result.get('assets', [])
+            if not selected_uid and assets:
+                selected_uid = assets[0].get('uid')
+    return render_template(
+        'collecte_sync.html',
+        kobo_connected=bool(session.get('kobo_token')),
+        kobo_user=session.get('kobo_username', 'KoboToolbox'),
+        kobo_instance=session.get('kobo_instance') or 'KoboToolbox',
+        sync_history=history,
+        last_sync_status=state.get('last_sync_status', 'inconnu'),
+        last_sync_count=state.get('last_sync_count', 0),
+        assets=assets,
+        selected_uid=selected_uid,
+        target=state.get('target', 0),
+        auto_interval=300,
+        sync_status=kobo_sync.status() if hasattr(kobo_sync, 'status') else {},
+    )
+
+
+@app.route('/collecte/sync/run', methods=['POST'])
+def collecte_sync_run():
+    token = session.get('kobo_token')
+    uid = (request.form.get('uid') or session.get('kobo_uid') or '').strip()
+    instance = session.get('kobo_instance')
+    name = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    if not token or not uid:
+        flash('Connectez-vous d’abord à KoboToolbox pour synchroniser les données.', 'warning')
+        return redirect(url_for('collecte_sync'))
+    target_raw = (request.form.get('target') or '').strip()
+    target = int(target_raw) if target_raw else None
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    result = kobo_load_data(token, uid, instance=instance)
+    if not result.get('success'):
+        state = append_sync_event(state, state_path, form_name=name, count=state.get('last_sync_count', 0), status='erreur', target=target or state.get('target'))
+        flash(f"Synchronisation échouée : {result.get('error', 'Erreur inconnue')}", 'danger')
+        return redirect(url_for('collecte_sync'))
+    df = result['df']
+    asset_info = get_asset_info(token, uid, instance=instance)
+    name = asset_info.get('name') or session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    _save_dataframe_to_session(df, name)
+    session['kobo_uid'] = uid
+    session['kobo_asset_name'] = name
+    state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=target or state.get('target'))
+    session['collecte_state_path'] = state_path
+    flash(f"Synchronisation réussie — {result.get('n_obs')} soumissions chargées depuis {name}.", 'success')
+    return redirect(url_for('collecte_sync'))
+
+
+@app.route('/collecte/sync/auto', methods=['POST'])
+def collecte_sync_auto():
+    token = session.get('kobo_token')
+    uid = session.get('kobo_uid')
+    instance = session.get('kobo_instance')
+    name = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    if not token or not uid:
+        flash('Connectez-vous d’abord à KoboToolbox pour activer la synchronisation automatique.', 'warning')
+        return redirect(url_for('collecte_sync'))
+    interval = int(request.form.get('interval_seconds', '300') or 300)
+    baseline = int((session.get('data_meta') or {}).get('n_obs', 0) or 0)
+    kobo_sync.start(token, uid, instance, name, interval, baseline)
+    flash('Synchronisation automatique démarrée.', 'success')
+    return redirect(url_for('collecte_sync'))
+
+
+@app.route('/collecte/refresh', methods=['POST'])
+def collecte_refresh():
+    token = session.get('kobo_token')
+    uid = session.get('kobo_uid')
+    instance = session.get('kobo_instance')
+    if not token or not uid:
+        flash('Aucun formulaire Kobo actif. Connectez-vous d’abord.', 'warning')
+        return redirect(url_for('collecte_sync'))
+
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    result = kobo_load_data(token, uid, instance=instance)
+    if not result.get('success'):
+        state = append_sync_event(state, state_path, form_name=session.get('kobo_asset_name', 'Formulaire KoboToolbox'), count=state.get('last_sync_count', 0), status='erreur', target=state.get('target'))
+        flash(f"Rafraîchissement échoué : {result.get('error', 'Erreur inconnue')}", 'danger')
+        return redirect(url_for('collecte_dashboard'))
+
+    df = result['df']
+    asset_info = get_asset_info(token, uid, instance=instance)
+    name = asset_info.get('name') or session.get('kobo_asset_name', 'Formulaire KoboToolbox')
+    _save_dataframe_to_session(df, name)
+    session['kobo_uid'] = uid
+    session['kobo_asset_name'] = name
+    state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=state.get('target'))
+    flash(f"Données rafraîchies — {result.get('n_obs')} soumissions disponibles.", 'success')
+    return redirect(url_for('collecte_dashboard'))
+
+
+@app.route('/collecte/geographique')
+def collecte_geographique():
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    current_count = None
+    meta = session.get('data_meta') or {}
+    if meta.get('n_obs') is not None:
+        current_count = int(meta['n_obs'])
+    sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
+    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status)
+    return render_template('collecte_geographique.html', geo_items=views['geo_items'], sync_status=views['sync_status'])
+
+
+@app.route('/collecte/equipes')
+def collecte_equipes():
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    current_count = None
+    meta = session.get('data_meta') or {}
+    if meta.get('n_obs') is not None:
+        current_count = int(meta['n_obs'])
+    sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
+    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status)
+    return render_template('collecte_equipes.html', teams=views['teams'], sync_status=views['sync_status'])
+
+
+@app.route('/collecte/alertes')
+def collecte_alertes():
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    current_count = None
+    meta = session.get('data_meta') or {}
+    if meta.get('n_obs') is not None:
+        current_count = int(meta['n_obs'])
+    sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
+    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status)
+    return render_template('collecte_alertes.html', alerts=views['alerts'], sync_status=views['sync_status'])
+
+
+@app.route('/collecte/qualite')
+def collecte_qualite():
+    meta = session.get('data_meta') or {}
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
+    views = build_collecte_views(state, current_count=meta.get('n_obs'), data_meta=meta, sync_status=sync_status)
+    return render_template('collecte_qualite.html', quality_items=views['quality_items'], sync_status=views['sync_status'])
 
 
 def detect_binary_groups(df: pd.DataFrame) -> list[dict]:
@@ -1853,6 +2233,7 @@ def kobo_connect():
             session['kobo_token']    = token
             session['kobo_username'] = result.get('username', '')
             session['kobo_instance'] = result.get('instance', '')
+            kobo_track.resume(token, result.get('instance'))
             flash(
                 f"Connecté en tant que <strong>{result.get('username','—')}</strong> "
                 f"— Instance : <strong>{result.get('instance_label','KoboToolbox')}</strong>.",
@@ -2041,6 +2422,7 @@ def suivi():
         form_labels=ref_data.FORM_LABELS,
         guessed_types=guessed_types,
         suivi_avertissements=suivi_avertissements,
+        ai_available=ai_form_assist.available(),
     )
 
 
@@ -2095,6 +2477,19 @@ def suivi_target():
         return jsonify({"success": False, "error": "Formulaire non suivi."}), 400
     kobo_track.set_target(uid, target=target, form_type=form_type)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/ai_suggest', methods=['POST'])
+def suivi_ai_suggest():
+    """Propose un type de formulaire (registre existant ou nouveau) et une
+    cible via l'IA (modules/ai_form_assist.py) — pré-remplit uniquement les
+    champs du formulaire de suivi côté client, n'enregistre jamais rien lui-
+    même. Renvoie {'available': False} sans erreur si ANTHROPIC_API_KEY
+    n'est pas configurée (le bouton reste alors masqué côté template)."""
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return jsonify({'available': False, 'error': 'Nom de formulaire manquant.'}), 400
+    return jsonify(ai_form_assist.suggest_for_kobo_form(name))
 
 
 def _enrich_tracked_district_reel(tracked):
@@ -2208,17 +2603,15 @@ def _kobo_credentials():
 
 @app.route('/completude')
 def completude():
-    # Le token Kobo n'est nécessaire que pour l'écran de correspondance
-    # (associer les formulaires SPAD aux formulaires Kobo réels) — pas pour
-    # afficher un résultat déjà calculé. Un rôle 'invite' n'a jamais de
-    # session Kobo : il doit quand même pouvoir consulter le dernier calcul.
-    token, instance = _kobo_credentials()
-    if token:
-        assets_result = list_assets(token, instance=instance)
-        assets = assets_result.get('assets', []) if assets_result.get('success') else []
-        assets_error = None if assets_result.get('success') else assets_result.get('error')
-    else:
-        assets, assets_error = [], None
+    # Le menu de correspondance liste les formulaires déjà ajoutés dans
+    # « Suivi multi-formulaires » (kobo_track.list_tracked()) plutôt qu'un
+    # appel indépendant à l'API Kobo — la sélection reste cohérente entre
+    # les deux écrans, et accessible sans session Kobo (y compris au rôle
+    # 'invite', qui n'en a jamais). Ajoutez d'abord un formulaire dans
+    # Suivi pour qu'il devienne sélectionnable ici.
+    assets = [{'uid': t['uid'], 'name': t['name'], 'submission_count': t.get('count')}
+              for t in kobo_track.list_tracked()]
+    assets_error = None
     mapping = form_mapping.load()
     cached = _load_completude_cache()
     mapping_erreurs, mapping_avertissements = ref_data.validate_mapping(mapping, assets)
@@ -2284,7 +2677,7 @@ def completude_enqueteurs():
     return render_template(
         'completude_table.html',
         title='Complétude par enquêteur', echelon='enquêteur', sous_titre_label='District',
-        rows=cached['enqueteur'], form_codes=list(cp.ENQUETEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        rows=cached['enqueteur'], form_codes=list(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2299,7 +2692,7 @@ def completude_superviseurs():
     return render_template(
         'completude_table.html',
         title='Complétude par superviseur', echelon='superviseur', sous_titre_label='District',
-        rows=cached['superviseur'], form_codes=list(cp.SUPERVISEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        rows=cached['superviseur'], form_codes=list(cp.superviseur_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2324,7 +2717,7 @@ def completude_enqueteur_detail(enq_code):
     return render_template(
         'completude_enqueteur_detail.html',
         enq_code=enq_code, enq=enq, etablissements=etablissements,
-        form_codes=list(cp.ENQUETEUR_FORMS), form_labels=ref_data.FORM_LABELS,
+        form_codes=list(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -2347,10 +2740,16 @@ def completude_superviseur_detail(sup_code):
     etablissements = {c: e for c, e in cached['etablissement'].items() if e['district_code'] == district_code}
     zeros, excess = _anomalies_scope(cached, district_code=district_code)
 
+    superviseur_forms = cp.superviseur_forms()
     return render_template(
         'completude_superviseur_detail.html',
         sup_code=sup_code, sup=sup, district_code=district_code, district=district,
         etablissements=etablissements,
+        superviseur_form_codes=list(superviseur_forms),
+        # Parmi les formulaires du volet RDM, ceux au grain établissement
+        # (motif F02) — la table « détail établissement » ci-dessous s'y
+        # adapte plutôt que de supposer qu'il n'y en a toujours qu'un (F02).
+        superviseur_etab_form_codes=[c for c in superviseur_forms if c in cp.etablissement_forms()],
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
@@ -2416,7 +2815,8 @@ def completude_district_detail(district_code):
         district_code=district_code, district=district, etablissements=etablissements,
         enqueteurs=enqueteurs, superviseur=superviseur,
         form_codes=ref_data.FORM_CODES,
-        enqueteur_form_codes=list(cp.ENQUETEUR_FORMS), superviseur_form_codes=list(cp.SUPERVISEUR_FORMS),
+        etablissement_form_codes=list(cp.etablissement_forms()),
+        enqueteur_form_codes=list(cp.enqueteur_forms()), superviseur_form_codes=list(cp.superviseur_forms()),
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
@@ -2443,7 +2843,7 @@ def completude_etablissement_detail(etablissement_code):
         'completude_etablissement_detail.html',
         etablissement_code=etablissement_code, etab=etab,
         enqueteur_code=etab['enqueteur_code'], enqueteur=enqueteur, superviseur=superviseur,
-        form_codes=list(cp.ETABLISSEMENT_FORMS), form_labels=ref_data.FORM_LABELS,
+        form_codes=list(cp.etablissement_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -2818,13 +3218,25 @@ def projets_supprimer(projet_id):
 
 @app.route('/completude/mapper', methods=['POST'])
 def completude_mapper():
-    mapping = {}
+    # On part du mapping existant (et non d'un dict vide) : cette route ne
+    # doit modifier que les codes réellement présents dans le formulaire
+    # soumis (les formulaires actifs au moment de l'affichage de la page).
+    # Un code temporairement désactivé dans le registre (donc absent de
+    # ref_data.FORM_CODES à cet instant) ne doit jamais perdre son
+    # association déjà enregistrée simplement parce que ce bouton a été
+    # cliqué — sinon désactiver puis réactiver un formulaire effacerait sa
+    # correspondance Kobo sans qu'aucun utilisateur ne l'ait demandé.
+    mapping = form_mapping.load()
+    n_soumis = 0
     for code in ref_data.FORM_CODES:
         uid = (request.form.get(f'uid_{code}') or '').strip()
         if uid:
             mapping[code] = uid
+            n_soumis += 1
+        else:
+            mapping.pop(code, None)
     form_mapping.save(mapping)
-    flash(f"Correspondance enregistrée pour {len(mapping)} formulaire(s) sur {len(ref_data.FORM_CODES)}.", 'success')
+    flash(f"Correspondance enregistrée pour {n_soumis} formulaire(s) sur {len(ref_data.FORM_CODES)}.", 'success')
     return redirect(url_for('completude'))
 
 

@@ -13,20 +13,39 @@ Kobo exporte parfois les champs regroupés (`begin_group`) avec un préfixe
 puisqu'aucune soumission réelle n'a encore été observée pour trancher.
 """
 from modules import reference_data as rd
+from modules import forms_registry
 
-FORM_FIELDS = {
-    'F5':  {'etablissement': 'Etablissement_Sanitaire__X', 'district': 'District_Sanitaire__X'},
-    'F6':  {'etablissement': 'Etablissement_Sanitaire__X', 'district': 'District_Sanitaire__X'},
-    'F7':  {'etablissement': 'Etablissement_Sanitaire__X', 'district': 'District_Sanitaire__X'},
-    'F8':  {'etablissement': 'Etablissement_Sanitaire__X', 'district': 'District_Sanitaire__X'},
-    'F01': {'etablissement': None,                          'district': 'F01_01a__X'},
-    'F02': {'etablissement': 'F02_01__E',                   'district': 'F02_00_district__X'},
-    'F07': {'etablissement': 'RDM_NOT03__X',                'district': 'RDM_NOT02__X'},
-}
 
-# Formulaires dont la cible/le décompte se fait au niveau établissement vs. district
-ETABLISSEMENT_FORMS = ('F5', 'F6', 'F7', 'F8', 'F02')
-DISTRICT_FORMS = ('F01', 'F07')
+def form_fields(form_code):
+    """Noms des champs Kobo (établissement/district) pour ce formulaire —
+    dérivés du registre (modules/forms_registry.py, écran /admin/forms)
+    plutôt que d'un dict figé par formulaire."""
+    form = forms_registry.get(form_code)
+    if form is None:
+        return {'etablissement': None, 'district': None}
+    return {'etablissement': form.get('etab_field'), 'district': form.get('district_field')}
+
+
+def etablissement_forms():
+    """Codes des formulaires actifs dont la cible/le décompte se fait au
+    niveau établissement (motif historique F5/F6/F7/F8/F02)."""
+    return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False) if f['grain'] == 'etablissement')
+
+
+def district_forms():
+    """Codes des formulaires actifs dont la cible/le décompte se fait au
+    niveau district (motif historique F01/F07)."""
+    return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False) if f['grain'] == 'district')
+
+
+def enqueteur_forms():
+    """Codes des formulaires actifs remplis par les enquêteurs."""
+    return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False) if f['actor'] == 'enqueteur')
+
+
+def superviseur_forms():
+    """Codes des formulaires actifs remplis par les superviseurs (volet RDM)."""
+    return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False) if f['actor'] == 'superviseur')
 
 
 def find_column(df, field_name):
@@ -60,7 +79,7 @@ def status_for(recu, cible, is_floor=False):
 
 def etablissement_completeness(ref, form_code, df):
     """Reçu par établissement pour un formulaire donné (F5/F6/F7/F8/F02)."""
-    fields = FORM_FIELDS[form_code]
+    fields = form_fields(form_code)
     col = find_column(df, fields['etablissement'])
     counts = df[col].value_counts(dropna=True).to_dict() if col is not None else {}
 
@@ -83,14 +102,14 @@ def etablissement_completeness(ref, form_code, df):
 
 def district_completeness(ref, form_code, df):
     """Reçu par district pour un formulaire donné (F01/F07)."""
-    is_floor = (form_code == 'F07')
-    col = find_column(df, FORM_FIELDS[form_code]['district'])
+    is_floor = rd.is_floor(form_code)
+    col = find_column(df, form_fields(form_code)['district'])
     counts = df[col].value_counts(dropna=True).to_dict() if col is not None else {}
 
     rows = []
     for code, d in ref['districts'].items():
         recu = int(counts.get(code, 0))
-        cible = rd.target_for(ref, form_code, district_code=code) if is_floor else 1
+        cible = rd.target_for(ref, form_code, district_code=code)
         rows.append({
             'district_code': code,
             'district_nom':  d['nom'],
@@ -105,9 +124,9 @@ def district_completeness(ref, form_code, df):
 
 def form_completeness(ref, form_code, df):
     """Répartiteur : établissement ou district selon le formulaire."""
-    if form_code in ETABLISSEMENT_FORMS:
+    if form_code in etablissement_forms():
         return etablissement_completeness(ref, form_code, df)
-    if form_code in DISTRICT_FORMS:
+    if form_code in district_forms():
         return district_completeness(ref, form_code, df)
     raise ValueError(f"Formulaire inconnu : {form_code}")
 
@@ -156,7 +175,7 @@ def national_summary(ref, form_dataframes):
             'label': rd.FORM_LABELS[code],
             'recu': recu, 'cible': cible,
             'taux': round(100 * recu / cible, 1) if cible else None,
-            'statut': status_for(recu, cible, is_floor=(code == 'F07')),
+            'statut': status_for(recu, cible, is_floor=rd.is_floor(code)),
         }
     return summary
 
@@ -179,11 +198,11 @@ def district_table(ref, form_dataframes):
         df = form_dataframes.get(form_code)
         if df is None:
             for code, d in ref['districts'].items():
-                cible = rd.target_for(ref, form_code, district_code=code) if form_code in DISTRICT_FORMS else None
+                cible = rd.target_for(ref, form_code, district_code=code) if form_code in district_forms() else None
                 table[code]['forms'][form_code] = _empty_cell(cible)
             continue
 
-        if form_code in ETABLISSEMENT_FORMS:
+        if form_code in etablissement_forms():
             rows = etablissement_completeness(ref, form_code, df)
             agg = {}
             for r in rows:
@@ -224,12 +243,12 @@ def region_table(ref, form_dataframes):
             cible = sum((dtable[d]['forms'][form_code]['cible'] or 0) for d in districts_in_region)
             df = form_dataframes.get(form_code)
             if df is None:
-                table[region_code]['forms'][form_code] = _empty_cell(cible if form_code in DISTRICT_FORMS else None)
+                table[region_code]['forms'][form_code] = _empty_cell(cible if form_code in district_forms() else None)
             else:
                 table[region_code]['forms'][form_code] = {
                     'recu': recu, 'cible': cible,
                     'taux': round(100 * recu / cible, 1) if cible else None,
-                    'statut': status_for(recu, cible, is_floor=(form_code == 'F07')),
+                    'statut': status_for(recu, cible, is_floor=rd.is_floor(form_code)),
                 }
     return table
 
@@ -243,7 +262,7 @@ def etablissement_table(ref, form_dataframes):
                      'forms': {}}
               for code, e in ref['etablissements'].items()}
 
-    for form_code in ETABLISSEMENT_FORMS:
+    for form_code in etablissement_forms():
         df = form_dataframes.get(form_code)
         if df is None:
             for code in table:
@@ -261,10 +280,6 @@ def etablissement_table(ref, form_dataframes):
     return table
 
 
-ENQUETEUR_FORMS = ('F5', 'F6', 'F7', 'F8')
-SUPERVISEUR_FORMS = ('F01', 'F02', 'F07')
-
-
 def enqueteur_table(ref, form_dataframes):
     """Table enquêteur × formulaire (F5/F6/F7/F8 uniquement — les seuls
     formulaires remplis par les enquêteurs). Agrège les 2 établissements
@@ -277,7 +292,7 @@ def enqueteur_table(ref, form_dataframes):
     table = {code: {'nom': e['nom_complet'], 'sous_titre': e['district_code'], 'forms': {}}
               for code, e in ref['enqueteurs'].items()}
 
-    for form_code in ENQUETEUR_FORMS:
+    for form_code in enqueteur_forms():
         df = form_dataframes.get(form_code)
         if df is None:
             for code in table:
@@ -308,7 +323,7 @@ def superviseur_table(ref, form_dataframes):
         drow = dtable.get(d, {'forms': {}})
         table[code] = {
             'nom': s['nom_complet'], 'sous_titre': d,
-            'forms': {fc: drow['forms'].get(fc, _empty_cell()) for fc in SUPERVISEUR_FORMS},
+            'forms': {fc: drow['forms'].get(fc, _empty_cell()) for fc in superviseur_forms()},
         }
     return table
 
@@ -334,7 +349,7 @@ def export_rows(ref, form_dataframes):
         df = form_dataframes.get(code)
         if df is None:
             continue
-        if code in ETABLISSEMENT_FORMS:
+        if code in etablissement_forms():
             for r in etablissement_completeness(ref, code, df):
                 rows.append({
                     'region':        ref['regions'].get(r['region_code'], {}).get('nom', r['region_code']),
@@ -383,11 +398,11 @@ def all_anomalies_zero(ref, form_dataframes):
 
 def all_anomalies_excess(ref, form_dataframes, threshold=2.0):
     """Combine anomalies_excess() sur tous les formulaires effectivement mappés.
-    F07 exclu : sa cible est un plancher (somme des décès SIG) — la dépasser
-    est normal, pas une anomalie (voir modules/reference_data.py)."""
+    Les formulaires à cible plancher (motif F07 — somme des décès SIG) sont
+    exclus : la dépasser est normal, pas une anomalie (voir rd.is_floor())."""
     out = []
     for code in rd.FORM_CODES:
-        if code == 'F07':
+        if rd.is_floor(code):
             continue
         df = form_dataframes.get(code)
         if df is None:

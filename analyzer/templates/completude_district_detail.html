@@ -90,7 +90,7 @@
             <tr>
               <th style="min-width:220px">Établissement</th>
               <th>Enquêteur</th>
-              {% set etab_form_codes = ['F5', 'F6', 'F7', 'F8', 'F02'] %}
+              {% set etab_form_codes = etablissement_form_codes %}
               {% for code in etab_form_codes %}
               <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
               {% endfor %}

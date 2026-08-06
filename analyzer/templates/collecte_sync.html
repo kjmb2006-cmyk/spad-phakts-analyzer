@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Synchronisation Kobo — SPAD Analyzer{% endblock %}
+{% block page_title %}Synchronisation Kobo{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-bold mb-1">Synchronisation automatisée</h3>
+      <p class="text-muted mb-0">Connexion à KoboToolbox, import des nouvelles soumissions et suivi de l’historique.</p>
+    </div>
+    <a href="{{ url_for('collecte_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Retour au tableau de bord
+    </a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">État de la connexion</h5>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="badge {{ 'bg-success' if kobo_connected else 'bg-secondary' }}">{{ 'Connecté' if kobo_connected else 'Non connecté' }}</span>
+            <span class="small text-muted">{{ kobo_user }}</span>
+          </div>
+          <div class="small text-muted mb-2">Instance</div>
+          <div class="fw-semibold">{{ kobo_instance }}</div>
+          <div class="small text-muted mt-3">Dernier statut</div>
+          <div class="fw-semibold">{{ last_sync_status }} · {{ last_sync_count }} soumissions</div>
+          <div class="mt-3">
+            {% if kobo_connected %}
+            <a href="{{ url_for('kobo_disconnect') }}" class="btn btn-outline-danger btn-sm">Déconnecter</a>
+            {% else %}
+            <a href="{{ url_for('kobo_connect') }}" class="btn btn-primary btn-sm">Se connecter à Kobo</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Import automatique</h5>
+          <form method="post" action="{{ url_for('collecte_sync_run') }}" class="mt-3">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Formulaire suivi</label>
+                <select class="form-select" name="uid">
+                  {% for asset in assets %}
+                  <option value="{{ asset.uid }}" {{ 'selected' if asset.uid == selected_uid else '' }}>{{ asset.name }} ({{ asset.submission_count }} soumissions)</option>
+                  {% else %}
+                  <option value="">Aucun formulaire disponible</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Cible prévue</label>
+                <input type="number" class="form-control" name="target" placeholder="Ex. 1600" value="{{ target }}">
+              </div>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-primary w-100">Lancer la synchronisation</button>
+            </div>
+          </form>
+          <div class="alert alert-info py-2 mb-3">
+            <div class="fw-semibold">État de l’automatisation</div>
+            <div class="small">
+              {% if sync_status.active %}
+              Automatisation active · {{ sync_status.available_n_obs or 0 }} soumissions visibles · {% if sync_status.has_pending %}nouvelles données en attente{% else %}aucune mise à jour en attente{% endif %}
+              {% else %}
+              Aucune automatisation active pour le moment.
+              {% endif %}
+            </div>
+          </div>
+          <form method="post" action="{{ url_for('collecte_sync_auto') }}" class="mt-3">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Fréquence (secondes)</label>
+                <input type="number" class="form-control" name="interval_seconds" value="{{ auto_interval }}">
+              </div>
+              <div class="col-12 col-md-6">
+                <button class="btn btn-outline-secondary w-100">Activer l’automatisation</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">Historique des synchronisations</h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Formulaire</th>
+              <th>Soumissions</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in sync_history %}
+            <tr>
+              <td>{{ item.date }}</td>
+              <td>{{ item.form }}</td>
+              <td>{{ item.count }}</td>
+              <td><span class="badge {{ item.badge_class }}">{{ item.status }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted">Aucune synchronisation enregistrée pour le moment.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

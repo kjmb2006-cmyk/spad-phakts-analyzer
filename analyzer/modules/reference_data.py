@@ -59,6 +59,8 @@ import re
 import json
 import openpyxl
 
+from modules import forms_registry
+
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ANALYZER_DIR = os.path.dirname(_MODULE_DIR)
 DEFAULT_ORG_UNIT_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'org_unit.xlsx')
@@ -66,27 +68,21 @@ DEFAULT_TIRAGE_PATH   = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'tirage
 DEFAULT_LOCAL_NAMES_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'noms_personnel.local.json')
 RENDER_SECRET_NAMES_PATH = '/etc/secrets/noms_personnel.local.json'
 
-FORM_CODES = ['F5', 'F6', 'F7', 'F8', 'F01', 'F02', 'F07']
+# FORM_CODES / FORM_LABELS / FORM_NAME_HINT ne sont plus des constantes figées
+# — elles reflètent en direct le registre modifiable (modules/forms_registry.py,
+# écran /admin/forms) : formulaires SPAD historiques activables/désactivables,
+# et formulaires supplémentaires ajoutés sans toucher au code. __getattr__
+# (PEP 562) permet à `rd.FORM_CODES` etc. de continuer à se lire comme avant
+# partout dans le code, sans modifier chaque site d'appel.
+def __getattr__(name):
+    if name == 'FORM_CODES':
+        return forms_registry.active_codes()
+    if name == 'FORM_LABELS':
+        return forms_registry.labels()
+    if name == 'FORM_NAME_HINT':
+        return forms_registry.name_hints()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-FORM_LABELS = {
-    'F5':  'Tabac — Femmes enceintes/allaitantes',
-    'F6':  'Tabac — Personnel de santé (CAP)',
-    'F7':  'Vaccination — Ménages',
-    'F8':  'Vaccination — Établissement',
-    'F01': 'RDM — Fiche district',
-    'F02': 'RDM — Fiche établissement',
-    'F07': 'RDM — Grille de revue',
-}
-
-# Préfixe attendu en tête du nom Kobo, selon la convention de nommage
-# observée sur les formulaires SPAD réellement déployés (ex. « 5_PNLTA_SPAD_
-# Fiche_Femmes... » pour F5, « F01 - RDM SPAD - Fiche district » pour F01).
-# Sert uniquement à repérer une correspondance SPAD ↔ Kobo suspecte dans
-# validate_mapping() ci-dessous — pas une règle stricte du protocole.
-FORM_NAME_HINT = {
-    'F5': '5_', 'F6': '6_', 'F7': '7_', 'F8': '8_',
-    'F01': 'F01', 'F02': 'F02', 'F07': 'F07',
-}
 
 _cache = {}  # (org_unit_path, tirage_path) -> référentiel chargé
 
@@ -102,7 +98,7 @@ def guess_form_type(name):
     if not name:
         return None
     name_low = name.lower()
-    for code, hint in FORM_NAME_HINT.items():
+    for code, hint in forms_registry.name_hints().items():
         if hint.lower() in name_low:
             return code
     return None
@@ -134,13 +130,15 @@ def validate_mapping(mapping, assets):
         for uid, codes in vus.items() if len(codes) > 1
     ]
 
+    hints = forms_registry.name_hints()
+    labels = forms_registry.labels()
     avertissements = []
     for code, uid in mapping.items():
-        hint = FORM_NAME_HINT.get(code)
+        hint = hints.get(code)
         name = by_uid.get(uid, '')
         if hint and name and hint.lower() not in name.lower():
             avertissements.append(
-                f"{code} — {FORM_LABELS[code]} : le formulaire sélectionné "
+                f"{code} — {labels.get(code, code)} : le formulaire sélectionné "
                 f"(« {name} ») ne contient pas « {hint} » — vérifiez qu'il "
                 f"s'agit bien du bon formulaire."
             )
@@ -322,45 +320,28 @@ def clear_cache():
 
 
 def target_for(ref, form_code, etablissement_code=None, district_code=None):
-    """Cible attendue pour un formulaire donné, au niveau établissement ou district."""
-    if form_code in ('F5', 'F7'):
-        return 15
-    if form_code == 'F8':
-        return 1
-    if form_code == 'F01':
-        return 1  # par district
-    if form_code == 'F02':
-        # 1 fiche attendue seulement pour les établissements ayant au moins
-        # un décès maternel notifié au SIG — voir note méthodologique en
-        # tête de module. Un établissement sans décès SIG n'a rien à remplir.
-        etab = ref['etablissements'].get(etablissement_code)
-        if etab is None:
-            return 1
-        return 1 if etab['sig_deces_maternels'] > 0 else 0
-    if form_code == 'F6':
-        etab = ref['etablissements'].get(etablissement_code)
-        return etab['f6_target'] if etab else 1
-    if form_code == 'F07':
-        # somme des décès maternels SIG des établissements du district — plancher
-        total = sum(e['sig_deces_maternels'] for e in ref['etablissements'].values()
-                    if e['district_code'] == district_code)
-        return total
-    return None
+    """Cible attendue pour un formulaire donné, au niveau établissement ou
+    district — dérivée du registre des formulaires (modules/forms_registry.py)
+    plutôt que de règles codées en dur par formulaire. Renvoie None pour un
+    formulaire inconnu/désactivé du registre."""
+    form = forms_registry.get(form_code)
+    if form is None:
+        return None
+    if form['grain'] == 'district':
+        return forms_registry.target_for_district(form, ref, district_code)
+    return forms_registry.target_for_etablissement(form, ref, etablissement_code)
+
+
+def is_floor(form_code):
+    """Vrai si la cible de ce formulaire est un plancher (le dépasser est
+    normal, jamais une anomalie « à vérifier ») — motif F07 par défaut."""
+    form = forms_registry.get(form_code)
+    return bool(form and forms_registry.is_floor_rule(form))
 
 
 def national_targets(ref):
-    """Cibles nationales agrégées par formulaire — pour la vue nationale."""
-    n_etab = len(ref['etablissements'])
-    n_district = len(ref['districts'])
-    sig_total = sum(e['sig_deces_maternels'] for e in ref['etablissements'].values())
-    f6_total = sum(e['f6_target'] for e in ref['etablissements'].values())
-    n_etab_avec_deces = sum(1 for e in ref['etablissements'].values() if e['sig_deces_maternels'] > 0)
+    """Cibles nationales agrégées par formulaire actif — pour la vue nationale."""
     return {
-        'F5':  15 * n_etab,
-        'F6':  f6_total,
-        'F7':  15 * n_etab,
-        'F8':  1 * n_etab,
-        'F01': 1 * n_district,
-        'F02': n_etab_avec_deces,  # établissements avec ≥1 décès SIG, pas tout l'échantillon
-        'F07': sig_total,  # plancher — dépasser cette valeur est normal
+        f['code']: forms_registry.national_target(f, ref)
+        for f in forms_registry.all_forms(include_inactive=False)
     }

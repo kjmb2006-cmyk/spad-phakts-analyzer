@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Suivi de collecte — SPAD Analyzer{% endblock %}
+{% block page_title %}Suivi de collecte{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-bold mb-1">Tableau de bord de collecte</h3>
+      <p class="text-muted mb-0">Vue synthétique du suivi des soumissions, des alertes et de la qualité des données.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <form method="post" action="{{ url_for('collecte_refresh') }}">
+        <button class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir depuis Kobo
+        </button>
+      </form>
+      <a href="{{ url_for('collecte_sync') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-arrow-repeat me-1"></i>Synchroniser Kobo
+      </a>
+      <a href="{{ url_for('collecte_alertes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-bell me-1"></i>Alertes actives
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card-v kpi-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small">Soumissions reçues</div>
+              <div class="fs-3 fw-bold">{{ received }}</div>
+            </div>
+            <div class="rounded-circle bg-primary-subtle p-2 text-primary"><i class="bi bi-inboxes-fill"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card-v kpi-info">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small">Cible à atteindre</div>
+              <div class="fs-3 fw-bold">{{ cible }}</div>
+            </div>
+            <div class="rounded-circle bg-info-subtle p-2 text-info"><i class="bi bi-bullseye"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card-v kpi-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small">Taux de complétude</div>
+              <div class="fs-3 fw-bold">{{ taux }}%</div>
+            </div>
+            <div class="rounded-circle bg-success-subtle p-2 text-success"><i class="bi bi-graph-up"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card-v kpi-warning">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small">Alertes actives</div>
+              <div class="fs-3 fw-bold">{{ active_alerts }}</div>
+            </div>
+            <div class="rounded-circle bg-warning-subtle p-2 text-warning"><i class="bi bi-bell-fill"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="fw-bold mb-1">Évolution des soumissions</h5>
+              <p class="text-muted small mb-0">Suivi sur les 7 derniers jours</p>
+            </div>
+            <span class="badge bg-success-subtle text-success">À jour</span>
+          </div>
+          <div class="d-flex align-items-end gap-2" style="height:220px">
+            {% for value in evolution %}
+            <div class="flex-fill">
+              <div class="bg-gradient rounded-top" style="height: {{ value }}px; min-height: 12px; background: linear-gradient(180deg, #17A589 0%, #1A5276 100%);"></div>
+              <div class="text-center text-muted small mt-2">J{{ loop.index }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">État de la synchronisation</h5>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="badge {{ 'bg-success' if kobo_connected else 'bg-secondary' }}">{{ 'Connecté' if kobo_connected else 'Non connecté' }}</span>
+            <span class="text-muted small">{{ kobo_user }}</span>
+          </div>
+          <div class="small text-muted mb-2">Dernière synchronisation</div>
+          <div class="fw-semibold">{{ last_sync }}</div>
+          <div class="small text-muted mt-2">Dernier état : {{ 'réussi' if history and history[-1].status == 'réussi' else 'à vérifier' }}</div>
+          <div class="mt-3">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Progression vs cible</span>
+              <span>{{ taux }}%</span>
+            </div>
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar bg-primary" role="progressbar" style="width: {{ taux }}%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">Rythme journalier</h5>
+            <span class="badge bg-info-subtle text-info">Pilotage</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="border rounded p-3">
+                <div class="small text-muted">Soumissions/jour</div>
+                <div class="fs-4 fw-bold">{{ daily_rate }}</div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="border rounded p-3">
+                <div class="small text-muted">Cible journalière</div>
+                <div class="fs-4 fw-bold">{{ daily_target }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Activités récentes</h5>
+          <ul class="list-unstyled mb-0">
+            <li class="mb-3">
+              <div class="fw-semibold">Import Kobo</div>
+              <div class="small text-muted">{{ last_sync }}</div>
+            </li>
+            <li class="mb-3">
+              <div class="fw-semibold">Qualité des données</div>
+              <div class="small text-muted">2 variables à vérifier</div>
+            </li>
+            <li>
+              <div class="fw-semibold">Suivi terrain</div>
+              <div class="small text-muted">3 équipes à relancer</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h5 class="fw-bold mb-1">Tableaux stratifiés</h5>
+          <p class="text-muted small mb-0">Vue synthétique par stratification pour piloter les zones en difficulté.</p>
+        </div>
+        <span class="badge bg-primary-subtle text-primary">Pilotage</span>
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Strate</th>
+              <th>Reçu</th>
+              <th>Cible</th>
+              <th>Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in stratified_summary %}
+            <tr>
+              <td>{{ item.label }}</td>
+              <td>{{ item.received }}</td>
+              <td>{{ item.target }}</td>
+              <td>{{ item.rate }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="alert alert-light border mb-0">
+        <div class="fw-semibold">Interprétation simple</div>
+        <div class="small text-muted">Risque {{ interpretation.risk_level }} — {{ interpretation.recommendation }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">Zones en retard</h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Reçu</th>
+              <th>Cible</th>
+              <th>Taux</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for zone in zones %}
+            <tr>
+              <td>{{ zone.name }}</td>
+              <td>{{ zone.received }}</td>
+              <td>{{ zone.target }}</td>
+              <td>{{ zone.rate }}%</td>
+              <td><span class="badge {{ zone.badge_class }}">{{ zone.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

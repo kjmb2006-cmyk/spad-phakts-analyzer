@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Alertes de collecte — SPAD Analyzer{% endblock %}
+{% block page_title %}Alertes de collecte{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-bold mb-1">Alertes de suivi</h3>
+      <p class="text-muted mb-0">Détection des retards, anomalies et problèmes de qualité.</p>
+    </div>
+    <a href="{{ url_for('collecte_dashboard') }}" class="btn btn-outline-secondary btn-sm">Retour</a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Priorités d’action</h5>
+        <span class="badge bg-warning-subtle text-warning">À traiter</span>
+      </div>
+      <div class="alert alert-info py-2 mb-3">
+        Les alertes ci-dessous sont générées automatiquement à partir du rythme actuel de collecte et de l’état de synchronisation.
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Type</th>
+              <th>Niveau</th>
+              <th>Date</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alert in alerts %}
+            <tr>
+              <td>{{ alert.zone }}</td>
+              <td>{{ alert.type }}</td>
+              <td><span class="badge {{ alert.level_class }}">{{ alert.level }}</span></td>
+              <td>{{ alert.date }}</td>
+              <td><span class="badge {{ alert.status_class }}">{{ alert.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

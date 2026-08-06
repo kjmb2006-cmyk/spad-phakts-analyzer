@@ -21,10 +21,10 @@
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Formulaires renseignés — F01 (district), F02 (par établissement), F07 (grille de revue)</span>
-  {{ m.forms_cards(sup.forms, ['F01', 'F02', 'F07'], form_labels) }}
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Formulaires renseignés (volet RDM) — {{ superviseur_form_codes | join(', ') }}</span>
+  {{ m.forms_cards(sup.forms, superviseur_form_codes, form_labels) }}
 
-  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements du district — détail F02</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements du district — détail {{ superviseur_etab_form_codes | join(', ') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -32,7 +32,9 @@
           <thead>
             <tr>
               <th style="min-width:220px">Établissement</th>
-              <th class="text-center">F02 — {{ form_labels['F02'] }}</th>
+              {% for fc in superviseur_etab_form_codes %}
+              <th class="text-center">{{ fc }} — {{ form_labels.get(fc, fc) }}</th>
+              {% endfor %}
               <th></th>
             </tr>
           </thead>
@@ -42,8 +44,9 @@
               <td class="fw-semibold small">
                 <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}">{{ e.nom }}</a>
               </td>
+              {% for fc in superviseur_etab_form_codes %}
               <td class="text-center">
-                {% set cell = e.forms.get('F02') %}
+                {% set cell = e.forms.get(fc) %}
                 {% if not cell or cell.statut == 'inconnu' %}<span class="text-muted small">—</span>
                 {% else %}
                 <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
@@ -52,6 +55,7 @@
                 </span>
                 {% endif %}
               </td>
+              {% endfor %}
               <td class="text-end">
                 <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}" class="btn btn-sm btn-link py-0">
                   Détail <i class="bi bi-arrow-right"></i>

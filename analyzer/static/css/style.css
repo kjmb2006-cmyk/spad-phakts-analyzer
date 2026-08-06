@@ -236,7 +236,7 @@ body {
 .stat-card-v {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 20px;
   box-shadow: 0 1px 4px rgba(0,0,0,.05);
   transition: box-shadow .2s, transform .2s;
@@ -244,7 +244,7 @@ body {
   overflow: hidden;
 }
 .stat-card-v:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  box-shadow: 0 6px 18px rgba(0,0,0,.10);
   transform: translateY(-2px);
 }
 .stat-card-v::before {
@@ -258,6 +258,22 @@ body {
 .stat-card-v.kpi-success::before { background: #198754; }
 .stat-card-v.kpi-warning::before { background: #E67E22; }
 .stat-card-v.kpi-info::before    { background: #0dcaf0; }
+
+.card .badge {
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+.table thead th {
+  color: var(--navy);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.progress-bar {
+  border-radius: 999px;
+}
 
 .stat-icon-v {
   width: 44px; height: 44px;

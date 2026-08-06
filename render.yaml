@@ -21,7 +21,12 @@ services:
         value: 3.12.4
       - key: SECRET_KEY
         generateValue: true
-      - key: ANALYZER_PASSWORD
+      # Mot de passe Administrateur — accès complet + gestion des comptes Data
+      # (autoriser/bloquer) et journal d'activité (/admin/users, /admin/activity).
+      # ANALYZER_PASSWORD (ancien mot de passe Data partagé) est retiré : chaque
+      # utilisateur Data a désormais son propre compte, créé via /register puis
+      # autorisé par l'admin — voir modules/accounts.py.
+      - key: ANALYZER_PASSWORD_ADMIN
         sync: false
       # Optionnel — accès Invité en lecture seule (Complétude nationale / par
       # district & établissement / performances superviseurs & enquêteurs
