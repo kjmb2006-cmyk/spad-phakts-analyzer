@@ -2618,6 +2618,25 @@ def _kobo_credentials():
     return token, instance
 
 
+def _completude_scope(codes=None):
+    """Restreint une liste de codes SPAD à ceux réellement associés à un
+    formulaire KoboToolbox (form_mapping.py — alimenté automatiquement par
+    Suivi multi-formulaires, voir _sync_completude_mapping()).
+
+    ref_data.FORM_CODES liste tout ce que le registre CONNAÎT (des types
+    qu'on a un jour su calculer, actifs ou non) — mais un formulaire donné
+    peut disparaître de Kobo d'une période de collecte à l'autre sans que le
+    registre ne change. Complétude nationale (et ses sous-pages) ne doit
+    montrer que ce qui est concrètement suivi sur le terrain en ce moment,
+    pas un catalogue figé de 7 formulaires devenus obsolètes. Sans effet
+    régressif attendu : un code non mappé n'a de toute façon jamais eu de
+    donnée réelle à afficher (voir complude_mapper() pour la persistance de
+    la correspondance elle-même, jamais modifiée par cette fonction)."""
+    mapped = set(form_mapping.load().keys())
+    base = ref_data.FORM_CODES if codes is None else codes
+    return [c for c in base if c in mapped]
+
+
 @app.route('/completude')
 def completude():
     # Le menu de correspondance liste les formulaires déjà ajoutés dans
@@ -2632,15 +2651,16 @@ def completude():
     mapping = form_mapping.load()
     cached = _load_completude_cache()
     mapping_erreurs, mapping_avertissements = ref_data.validate_mapping(mapping, assets)
+    scoped_codes = _completude_scope()
     district_reel = None
     if cached and cached.get('district'):
-        district_reel = {code: cp.district_reel(cached['district'], code) for code in ref_data.FORM_CODES}
+        district_reel = {code: cp.district_reel(cached['district'], code) for code in scoped_codes}
     return render_template(
         'completude.html',
         assets=assets,
         assets_error=assets_error,
         mapping=mapping,
-        form_codes=ref_data.FORM_CODES,
+        form_codes=scoped_codes,
         form_labels=ref_data.FORM_LABELS,
         result=cached['national'] if cached else None,
         district_reel=district_reel,
@@ -2663,7 +2683,7 @@ def completude_regions():
     return render_template(
         'completude_table.html',
         title='Complétude par région', echelon='région',
-        rows=cached['region'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        rows=cached['region'], form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2679,7 +2699,7 @@ def completude_districts():
     return render_template(
         'completude_table.html',
         title='Complétude par district', echelon='district',
-        rows=cached['district'], form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        rows=cached['district'], form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2694,7 +2714,7 @@ def completude_enqueteurs():
     return render_template(
         'completude_table.html',
         title='Complétude par enquêteur', echelon='enquêteur', sous_titre_label='District',
-        rows=cached['enqueteur'], form_codes=list(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
+        rows=cached['enqueteur'], form_codes=_completude_scope(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2709,7 +2729,7 @@ def completude_superviseurs():
     return render_template(
         'completude_table.html',
         title='Complétude par superviseur', echelon='superviseur', sous_titre_label='District',
-        rows=cached['superviseur'], form_codes=list(cp.superviseur_forms()), form_labels=ref_data.FORM_LABELS,
+        rows=cached['superviseur'], form_codes=_completude_scope(cp.superviseur_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -2734,7 +2754,7 @@ def completude_enqueteur_detail(enq_code):
     return render_template(
         'completude_enqueteur_detail.html',
         enq_code=enq_code, enq=enq, etablissements=etablissements,
-        form_codes=list(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
+        form_codes=_completude_scope(cp.enqueteur_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -2757,7 +2777,7 @@ def completude_superviseur_detail(sup_code):
     etablissements = {c: e for c, e in cached['etablissement'].items() if e['district_code'] == district_code}
     zeros, excess = _anomalies_scope(cached, district_code=district_code)
 
-    superviseur_forms = cp.superviseur_forms()
+    superviseur_forms = _completude_scope(cp.superviseur_forms())
     return render_template(
         'completude_superviseur_detail.html',
         sup_code=sup_code, sup=sup, district_code=district_code, district=district,
@@ -2804,7 +2824,7 @@ def completude_region_detail(region_code):
     return render_template(
         'completude_region_detail.html',
         region_code=region_code, region=region, districts=districts,
-        form_codes=ref_data.FORM_CODES, form_labels=ref_data.FORM_LABELS,
+        form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -2831,9 +2851,9 @@ def completude_district_detail(district_code):
         'completude_district_detail.html',
         district_code=district_code, district=district, etablissements=etablissements,
         enqueteurs=enqueteurs, superviseur=superviseur,
-        form_codes=ref_data.FORM_CODES,
-        etablissement_form_codes=list(cp.etablissement_forms()),
-        enqueteur_form_codes=list(cp.enqueteur_forms()), superviseur_form_codes=list(cp.superviseur_forms()),
+        form_codes=_completude_scope(),
+        etablissement_form_codes=_completude_scope(cp.etablissement_forms()),
+        enqueteur_form_codes=_completude_scope(cp.enqueteur_forms()), superviseur_form_codes=_completude_scope(cp.superviseur_forms()),
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
@@ -2860,7 +2880,7 @@ def completude_etablissement_detail(etablissement_code):
         'completude_etablissement_detail.html',
         etablissement_code=etablissement_code, etab=etab,
         enqueteur_code=etab['enqueteur_code'], enqueteur=enqueteur, superviseur=superviseur,
-        form_codes=list(cp.etablissement_forms()), form_labels=ref_data.FORM_LABELS,
+        form_codes=_completude_scope(cp.etablissement_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -2903,7 +2923,7 @@ def completude_graphiques():
     return render_template(
         'completude_graphiques.html',
         district_table=cached.get('district', {}),
-        form_codes=ref_data.FORM_CODES,
+        form_codes=_completude_scope(),
         form_labels=ref_data.FORM_LABELS,
         statut_counts=statut_counts,
         historique=tendance.load_history(30),

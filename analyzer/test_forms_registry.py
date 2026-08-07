@@ -28,6 +28,7 @@ from app import app
 from modules import reference_data as rd
 from modules import forms_registry
 from modules import kobo_track
+from modules import form_mapping
 
 print("=" * 70)
 print("TEST — Registre de formulaires dynamique + intégration Suivi/Complétude")
@@ -93,18 +94,29 @@ assert r.status_code == 200 and 'F02' in r.get_data(as_text=True)
 print("OK — /admin/forms accessible au rôle admin, liste bien les formulaires du registre")
 
 # --- Un formulaire ajouté dans Suivi devient sélectionnable dans Complétude -
+# Depuis la synchronisation automatique Suivi → Complétude (voir
+# _sync_completude_mapping() dans app.py, appelée par /suivi/add et
+# /suivi/target), Complétude nationale ne montre plus QUE les codes
+# effectivement associés à un formulaire Kobo (form_mapping.py) — plus le
+# catalogue complet des codes actifs du registre. Ce test manipule
+# kobo_track directement (sans passer par la route), donc la synchronisation
+# automatique ne se déclenche pas ici : on l'imite explicitement avec
+# form_mapping.save() pour vérifier le même comportement observable.
 kobo_track._trackers['_test_uid'] = kobo_track._new_entry(
     '_test_uid', '_Formulaire_Suivi_Test_Integration', 100, 'inst', form_type='F5', target_source='detectee')
 kobo_track._trackers['_test_uid']['count'] = 7
+_original_mapping_fr = form_mapping.load()
 try:
+    form_mapping.save({**_original_mapping_fr, 'F5': '_test_uid'})
     r = client.get('/completude')
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert '_Formulaire_Suivi_Test_Integration' in html, \
-        "un formulaire suivi dans Suivi multi-formulaires doit apparaître dans le menu de correspondance de Complétude"
-    print("OK — un formulaire ajouté dans Suivi devient sélectionnable dans Complétude nationale")
+        "un formulaire suivi ET associé (via Suivi ou form_mapping) doit apparaître dans Complétude"
+    print("OK — un formulaire ajouté dans Suivi et associé devient visible dans Complétude nationale")
 finally:
     kobo_track.remove('_test_uid')
+    form_mapping.save(_original_mapping_fr)
 
 print()
 print("=" * 70)

@@ -55,6 +55,12 @@
         Aucun formulaire suivi pour l'instant — ajoutez-en d'abord depuis
         <a href="{{ url_for('suivi') }}">Suivi multi-formulaires</a>, ils deviendront alors sélectionnables ici.
       </p>
+      {% elif not form_codes %}
+      <p class="text-muted small mb-0">
+        {{ assets|length }} formulaire(s) suivi(s), mais aucun n'a encore de type SPAD assigné — attribuez-en un
+        depuis <a href="{{ url_for('suivi') }}">Suivi multi-formulaires</a> (détection automatique, suggestion IA,
+        ou choix manuel) : la correspondance ici se remplira automatiquement.
+      </p>
       {% else %}
       <!-- Formulaire de calcul déclaré séparément (pas imbriqué — le HTML
            n'autorise pas les <form> imbriqués) ; le bouton "Calculer" s'y
@@ -103,6 +109,9 @@
     </a>
     {% endif %}
   </div>
+  {% if not form_codes %}
+  <p class="text-muted small mb-4">Aucun formulaire suivi n'a de type SPAD assigné pour l'instant — voir la correspondance ci-dessus.</p>
+  {% endif %}
   <div class="row g-3 mb-4">
     {% for code in form_codes %}
     {% set r = result.get(code) if result else none %}
