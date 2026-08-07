@@ -2443,6 +2443,21 @@ def _parse_target_form(request_form):
     return target, form_type, None
 
 
+def _sync_completude_mapping(form_type, uid):
+    """Répercute automatiquement dans la correspondance de Complétude
+    nationale (form_mapping.py) le type assigné à un formulaire suivi —
+    qu'il vienne de la détection par préfixe, du bouton IA ou d'un choix
+    manuel. Évite l'étape séparée « aller réassocier à la main dans
+    Complétude » à chaque fois qu'un formulaire est ajouté ou retypé dans
+    Suivi ; sans effet si form_type est vide (type « Libre »)."""
+    if not form_type:
+        return
+    mapping = form_mapping.load()
+    if mapping.get(form_type) != uid:
+        mapping[form_type] = uid
+        form_mapping.save(mapping)
+
+
 @app.route('/suivi/add', methods=['POST'])
 def suivi_add():
     token = session.get('kobo_token')
@@ -2457,6 +2472,7 @@ def suivi_add():
     if err:
         return jsonify({"success": False, "error": err}), 400
     kobo_track.add(token, instance, uid, name, target=target, form_type=form_type)
+    _sync_completude_mapping(form_type, uid)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 
@@ -2476,6 +2492,7 @@ def suivi_target():
     if not kobo_track.is_tracked(uid):
         return jsonify({"success": False, "error": "Formulaire non suivi."}), 400
     kobo_track.set_target(uid, target=target, form_type=form_type)
+    _sync_completude_mapping(form_type, uid)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 
