@@ -478,7 +478,13 @@ def collecte_sync():
             'badge_class': 'bg-success' if item.get('status') == 'réussi' else 'bg-warning',
         })
     assets = []
-    selected_uid = session.get('kobo_uid')
+    # Le dernier formulaire réellement sélectionné pour la synchronisation
+    # (mis à jour à chaque tentative, réussie ou non) prime sur
+    # session['kobo_uid'] (le dataset actuellement chargé pour l'analyse,
+    # qui ne bouge qu'en cas de succès) — sinon le menu retombait sur
+    # l'ancien formulaire après un échec, comme si la sélection avait été
+    # ignorée.
+    selected_uid = session.get('collecte_sync_selected_uid') or session.get('kobo_uid')
     token = session.get('kobo_token')
     if token:
         assets_result = list_assets(token, instance=session.get('kobo_instance'))
@@ -507,10 +513,21 @@ def collecte_sync_run():
     token = session.get('kobo_token')
     uid = (request.form.get('uid') or session.get('kobo_uid') or '').strip()
     instance = session.get('kobo_instance')
-    name = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     if not token or not uid:
         flash('Connectez-vous d’abord à KoboToolbox pour synchroniser les données.', 'warning')
         return redirect(url_for('collecte_sync'))
+    # Mémorise ce qui a été réellement demandé (indépendamment du succès) —
+    # sans ça, le menu déroulant retombait sur l'ancien formulaire chargé
+    # (session['kobo_uid'], qui n'est mis à jour qu'en cas de succès) après
+    # un échec, donnant l'impression que la sélection avait été ignorée.
+    session['collecte_sync_selected_uid'] = uid
+    # Résout le vrai nom du formulaire CIBLÉ par cette tentative (via
+    # get_asset_info, qui fonctionne même pour un formulaire non déployé)
+    # avant de savoir si le chargement des données réussira — sans ça, un
+    # échec journalisait le nom de l'ANCIEN formulaire chargé
+    # (session['kobo_asset_name']) au lieu de celui réellement tenté.
+    asset_info = get_asset_info(token, uid, instance=instance)
+    name = asset_info.get('name') or session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     target_raw = (request.form.get('target') or '').strip()
     target = int(target_raw) if target_raw else None
     state_path = _collecte_state_path()
@@ -521,8 +538,6 @@ def collecte_sync_run():
         flash(f"Synchronisation échouée : {result.get('error', 'Erreur inconnue')}", 'danger')
         return redirect(url_for('collecte_sync'))
     df = result['df']
-    asset_info = get_asset_info(token, uid, instance=instance)
-    name = asset_info.get('name') or session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     _save_dataframe_to_session(df, name)
     session['kobo_uid'] = uid
     session['kobo_asset_name'] = name
