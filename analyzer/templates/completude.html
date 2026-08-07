@@ -105,8 +105,14 @@
   </div>
   <div class="row g-3 mb-4">
     {% for code in form_codes %}
-    {% set r = result[code] %}
+    {% set r = result.get(code) if result else none %}
     <div class="col-md-6 col-lg-4">
+      {% if not r %}
+      <div class="stat-card-v kpi-primary">
+        <h6 class="mb-1 fw-semibold" style="font-size:.85rem">{{ code }} — {{ form_labels.get(code, code) }}</h6>
+        <span class="text-muted small">Formulaire ajouté au registre après le dernier calcul — cliquez « Calculer la complétude » pour l'inclure.</span>
+      </div>
+      {% else %}
       <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">{{ code }} — {{ r.label }}</h6>
@@ -137,6 +143,7 @@
         </div>
         {% endif %}
       </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
