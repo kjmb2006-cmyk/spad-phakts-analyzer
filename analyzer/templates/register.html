@@ -59,7 +59,9 @@
       <div class="mb-2">
         <label class="form-label small fw-semibold" for="username">Identifiant</label>
         <input type="text" class="form-control" id="username" name="username" required autofocus
-               autocomplete="username" placeholder="ex. j.dupont">
+               autocomplete="username" placeholder="ex. j.dupont" value="{{ username or '' }}"
+               pattern="[a-zA-Z0-9_.\-]{3,32}"
+               title="3 à 32 caractères : lettres non accentuées, chiffres, point, tiret ou underscore — sans espace">
         <div class="form-text" style="font-size:.7rem">3 à 32 caractères : lettres, chiffres, . _ -</div>
       </div>
       <div class="mb-2">

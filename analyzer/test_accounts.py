@@ -42,6 +42,17 @@ r = client.get('/register')
 assert r.status_code == 200, r.status_code
 r = client.post('/register', data={'password': TEST_PASS, 'confirm': 'different'})
 assert 'correspondent' in r.get_data(as_text=True).lower()
+
+# Un identifiant refusé (ex. espace, non autorisé par accounts._USERNAME_RE)
+# doit rester affiché dans le champ — sans ça, l'utilisateur doit tout
+# retaper (identifiant + les deux mots de passe) à chaque tentative ratée,
+# ce qui rendait l'inscription pénible en pratique (retour terrain).
+r = client.post('/register', data={'username': 'j dupont', 'password': TEST_PASS, 'confirm': TEST_PASS})
+html = r.get_data(as_text=True)
+assert 'invalide' in html.lower()
+assert 'value="j dupont"' in html, "le champ identifiant doit garder la valeur saisie après une erreur"
+print("OK — le champ identifiant reste rempli après une erreur de validation (pas besoin de tout retaper)")
+
 r = client.post('/register', data={'username': TEST_USER, 'password': TEST_PASS, 'confirm': TEST_PASS})
 assert r.status_code == 200 and 'attente' in r.get_data(as_text=True).lower()
 print("OK — inscription publique crée un compte 'pending' (mots de passe différents rejetés)")

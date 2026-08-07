@@ -267,7 +267,7 @@ def register():
                 success = True
             else:
                 error = err
-    return render_template('register.html', error=error, success=success)
+    return render_template('register.html', error=error, success=success, username=username if request.method == 'POST' else '')
 
 
 @app.route('/logout')
