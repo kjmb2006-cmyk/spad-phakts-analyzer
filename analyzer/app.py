@@ -148,7 +148,7 @@ INVITE_ALLOWED_ENDPOINTS = {
 
 # Endpoints réservés au rôle 'admin' — bloqués pour 'data' et 'invite'.
 ADMIN_ONLY_ENDPOINTS = {
-    'admin_users', 'admin_user_approve', 'admin_user_block', 'admin_activity',
+    'admin_users', 'admin_user_approve', 'admin_user_block', 'admin_activity', 'admin_activity_reset',
     'admin_forms', 'admin_form_activate', 'admin_form_deactivate', 'admin_form_add',
 }
 
@@ -164,6 +164,15 @@ def require_login():
     if not session.get('authenticated'):
         return redirect(url_for('login', next=request.path))
     role = session.get('role')
+    if role == 'data' and not session.get('username'):
+        # Session 'data' sans identifiant — cookie antérieur aux comptes
+        # individuels (Phase A, ancien mot de passe Data partagé) ou
+        # corrompu. Continuer journaliserait toute action sous '?', ce qui
+        # va à l'encontre même de l'objectif du rôle Data (traçabilité :
+        # « toute modification doit être vue par l'administrateur »).
+        # Redemande une connexion plutôt que d'accepter une identité anonyme.
+        session.clear()
+        return redirect(url_for('login', next=request.path))
     if role != 'admin' and request.endpoint in ADMIN_ONLY_ENDPOINTS:
         flash("Cette page est réservée à l'administrateur.", 'warning')
         return redirect(url_for('completude') if role == 'invite' else url_for('index'))
@@ -172,13 +181,25 @@ def require_login():
         return redirect(url_for('completude'))
 
 
+
+# Sondage automatique en arrière-plan par le JS de la page (voir
+# suivi.html : setInterval(refreshStatus, 10000)) — pas une action de
+# l'utilisateur, ne rien y trouver de significatif à auditer. Sans cette
+# exclusion, laisser un onglet Suivi ouvert produit ~6 lignes/minute et noie
+# les vraies actions (changer une correspondance, lancer un calcul...) sous
+# du bruit, à l'encontre même de l'objectif du journal.
+_NOISY_POLL_ENDPOINTS = {'suivi_status'}
+
+
 @app.after_request
 def log_data_activity(response):
     """Journalise chaque action d'un utilisateur 'data' — voir
     modules/activity_log.py. Jamais 'invite' (lecture seule, rien à
     auditer) ni 'admin'. Best-effort : ne bloque jamais la réponse réelle."""
-    if session.get('role') == 'data' and request.endpoint not in (None, 'static', 'favicon'):
-        activity_log.record(session.get('username', '?'), 'data', request.method, request.path)
+    if (session.get('role') == 'data' and session.get('username')
+            and request.endpoint not in (None, 'static', 'favicon')
+            and request.endpoint not in _NOISY_POLL_ENDPOINTS):
+        activity_log.record(session['username'], 'data', request.method, request.path)
     return response
 
 
@@ -306,6 +327,13 @@ def admin_user_block(username):
 @app.route('/admin/activity')
 def admin_activity():
     return render_template('admin_activity.html', events=activity_log.list_events())
+
+
+@app.route('/admin/activity/reset', methods=['POST'])
+def admin_activity_reset():
+    activity_log.clear()
+    flash('Journal d\'activité réinitialisé.', 'success')
+    return redirect(url_for('admin_activity'))
 
 
 @app.route('/admin/forms')

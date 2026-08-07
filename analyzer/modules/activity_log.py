@@ -67,6 +67,17 @@ def list_events(limit=500, username=None):
     return events[:limit]
 
 
+def clear():
+    """Vide le journal — action volontaire de l'administrateur (ex. après
+    une pollution du journal par du bruit non significatif, voir la
+    correction dans app.py qui exclut désormais /suivi/status)."""
+    try:
+        if os.path.exists(LOG_PATH):
+            os.remove(LOG_PATH)
+    except Exception:
+        pass
+
+
 def _prune_if_needed():
     """Purge les événements les plus anciens si le fichier dépasse MAX_EVENTS
     lignes — appelé occasionnellement (pas à chaque écriture, trop coûteux)."""

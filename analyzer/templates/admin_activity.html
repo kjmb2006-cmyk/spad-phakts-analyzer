@@ -9,9 +9,19 @@
     <span class="text-muted small">
       {{ events|length }} événement{{ 's' if events|length > 1 else '' }} le{{ 's' if events|length > 1 else '' }} plus récent{{ 's' if events|length > 1 else '' }} — comptes Data uniquement
     </span>
-    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-people me-1"></i>Comptes Data
-    </a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-people me-1"></i>Comptes Data
+      </a>
+      {% if events %}
+      <form method="POST" action="{{ url_for('admin_activity_reset') }}" class="d-inline"
+            onsubmit="return confirm('Effacer tout le journal d\'activité ? Cette action est irréversible.')">
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-trash3 me-1"></i>Réinitialisation
+        </button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 
   <div class="card border-0 shadow-sm">
