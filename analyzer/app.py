@@ -2299,6 +2299,38 @@ def kobo_assets():
                            already=True)
 
 
+def _deactivated_form_code(uid, name):
+    """Code SPAD désactivé correspondant à ce formulaire Kobo, ou None si
+    rien n'empêche de le charger pour analyse. Demande explicite : un
+    formulaire désactivé dans le registre (Administration → Formulaires) ne
+    doit plus non plus être chargeable dans « Analyse de données ».
+
+    Deux façons de reconnaître le formulaire, dans l'ordre :
+    1. une correspondance déjà enregistrée (form_mapping.py — la plus
+       fiable, explicite) ;
+    2. à défaut, une déduction depuis le nom — mais forms_registry.
+       name_hints() ne renvoie que les formulaires ACTIFS (c'est le point :
+       Suivi ne doit pas deviner un type désactivé), donc on parcourt le
+       registre complet ici (include_inactive=True) pour pouvoir détecter
+       spécifiquement un nom qui correspond à un formulaire désactivé.
+    """
+    mapping = form_mapping.load()
+    code = next((c for c, u in mapping.items() if u == uid), None)
+    if not code:
+        name_low = (name or '').lower()
+        for f in forms_registry.all_forms(include_inactive=True):
+            hint = f.get('name_hint')
+            if hint and hint.lower() in name_low:
+                code = f['code']
+                break
+    if not code:
+        return None
+    form = forms_registry.get(code)
+    if form and not form.get('active', True):
+        return code
+    return None
+
+
 @app.route('/kobo/load', methods=['POST'])
 def kobo_load():
     """
@@ -2314,6 +2346,15 @@ def kobo_load():
         return redirect(url_for('kobo_connect'))
     if not uid:
         flash('UID de formulaire manquant.', 'danger')
+        return redirect(url_for('kobo_assets'))
+
+    blocked_code = _deactivated_form_code(uid, name)
+    if blocked_code:
+        flash(
+            f"« {name} » correspond au formulaire {blocked_code}, désactivé dans le registre "
+            "(Administration → Formulaires) — réactivez-le d'abord pour l'analyser.",
+            'warning'
+        )
         return redirect(url_for('kobo_assets'))
 
     kobo_sync.stop()  # un nouveau formulaire est chargé : le polling précédent ne s'applique plus
@@ -2356,6 +2397,15 @@ def kobo_refresh():
     if not token or not uid:
         flash('Aucun formulaire KoboToolbox actif en session.', 'warning')
         return redirect(url_for('kobo_connect'))
+
+    blocked_code = _deactivated_form_code(uid, name)
+    if blocked_code:
+        flash(
+            f"« {name} » correspond au formulaire {blocked_code}, désactivé dans le registre "
+            "(Administration → Formulaires) — réactivez-le d'abord pour continuer à l'analyser.",
+            'warning'
+        )
+        return redirect(url_for('data_preview'))
 
     result = kobo_load_data(token, uid)
     if not result['success']:
