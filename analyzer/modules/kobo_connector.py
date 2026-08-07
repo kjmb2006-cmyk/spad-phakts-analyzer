@@ -32,12 +32,27 @@ AUTH_ENDPOINTS = [
 TIMEOUT = 25
 
 
+def _normalize_instance(base):
+    """Ajoute le schéma manquant (ex. KOBO_INSTANCE=kf.kobotoolbox.org fourni
+    sans https:// dans l'environnement serveur) — sans ça, requests échoue
+    avec 'Invalid URL... No scheme supplied' au lieu d'une erreur claire.
+    validate_token()/_instances_to_try() le faisaient déjà pour l'instance
+    personnalisée saisie interactivement ; get_asset_info()/load_data()/
+    list_assets() ne le faisaient pas pour un instance= passé directement
+    (ex. depuis la variable d'environnement KOBO_INSTANCE, utilisée pour les
+    calculs automatisés sans session Kobo active)."""
+    if not base:
+        return base
+    base = base.rstrip('/')
+    if not base.startswith('http'):
+        base = 'https://' + base
+    return base
+
+
 def _instances_to_try(custom_instance=None):
     """Retourne la liste d'instances à tester, avec instance personnalisée en tête."""
     if custom_instance:
-        base = custom_instance.rstrip('/')
-        if not base.startswith('http'):
-            base = 'https://' + base
+        base = _normalize_instance(custom_instance)
         return [base] + [i for i in KOBO_INSTANCES if i != base]
     return KOBO_INSTANCES
 
@@ -210,7 +225,7 @@ def list_assets(token, instance=None, custom_instance=None):
     Liste tous les formulaires accessibles.
     Charge toutes les pages (pagination automatique).
     """
-    base = instance or detect_instance(token, custom_instance)
+    base = _normalize_instance(instance) or detect_instance(token, custom_instance)
     if not base:
         return {"success": False, "error": "Aucune instance accessible."}
 
@@ -259,7 +274,7 @@ def list_assets(token, instance=None, custom_instance=None):
 
 
 def get_asset_info(token, uid, instance=None):
-    base = instance or detect_instance(token)
+    base = _normalize_instance(instance) or detect_instance(token)
     if not base:
         return {"success": False, "error": "Instance introuvable."}
     try:
@@ -281,7 +296,7 @@ def get_asset_info(token, uid, instance=None):
 
 
 def load_data(token, uid, instance=None, limit=30000):
-    base = instance or detect_instance(token)
+    base = _normalize_instance(instance) or detect_instance(token)
     if not base:
         return {"success": False, "error": "Instance KoboToolbox introuvable."}
     url   = f"{base}/api/v2/assets/{uid}/data/?format=json&limit=3000"
@@ -329,7 +344,7 @@ def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=No
         return {"success": False, "error": f"Fichier introuvable : {xls_path}"}
 
     # Détecte l'instance correcte si pas fournie
-    base = instance
+    base = _normalize_instance(instance)
     if not base:
         det = _detect(token)
         base = det.get('instance') if det.get('valid') else None
