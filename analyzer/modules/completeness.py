@@ -302,7 +302,13 @@ def anomalies_excess(ref, form_code, df, threshold=2.0):
 def export_rows(ref, form_dataframes):
     """Grain établissement × formulaire (F5/F6/F7/F8/F02) et district ×
     formulaire (F01/F07) — une ligne par couple, pour l'export CSV/XLSX.
-    N'inclut que les formulaires effectivement mappés (comme les autres vues)."""
+    Reprend la même hiérarchie que le drill-down région → district →
+    établissement de l'interface : chaque ligne porte aussi le code de
+    l'établissement (vide au grain district) ainsi que l'enquêteur et le
+    superviseur responsables, pour permettre un filtre/pivot par acteur
+    directement dans le tableur. N'inclut que les formulaires effectivement
+    mappés (comme les autres vues)."""
+    sup_by_district = {s['district_code']: s for s in ref['superviseurs'].values()}
     rows = []
     for code in rd.FORM_CODES:
         df = form_dataframes.get(code)
@@ -310,20 +316,34 @@ def export_rows(ref, form_dataframes):
             continue
         if code in ETABLISSEMENT_FORMS:
             for r in etablissement_completeness(ref, code, df):
+                etab = ref['etablissements'].get(r['etablissement_code'], {})
+                enq = ref['enqueteurs'].get(etab.get('enqueteur_code'), {})
+                sup = sup_by_district.get(r['district_code'], {})
                 rows.append({
                     'region':        ref['regions'].get(r['region_code'], {}).get('nom', r['region_code']),
                     'district':      ref['districts'].get(r['district_code'], {}).get('nom', r['district_code']),
+                    'etablissement_code': r['etablissement_code'],
                     'unite':         r['etablissement_nom'],
+                    'enqueteur_code': etab.get('enqueteur_code', ''),
+                    'enqueteur_nom':  enq.get('nom_complet', ''),
+                    'superviseur_code': sup.get('code', ''),
+                    'superviseur_nom':  sup.get('nom_complet', ''),
                     'formulaire':    code,
                     'formulaire_label': rd.FORM_LABELS[code],
                     'cible': r['cible'], 'recu': r['recu'], 'taux': r['taux'], 'statut': r['statut'],
                 })
         else:
             for r in district_completeness(ref, code, df):
+                sup = sup_by_district.get(r['district_code'], {})
                 rows.append({
                     'region':        ref['regions'].get(r['region_code'], {}).get('nom', r['region_code']),
                     'district':      r['district_nom'],
+                    'etablissement_code': '',
                     'unite':         r['district_nom'],
+                    'enqueteur_code': '',
+                    'enqueteur_nom':  '',
+                    'superviseur_code': sup.get('code', ''),
+                    'superviseur_nom':  sup.get('nom_complet', ''),
                     'formulaire':    code,
                     'formulaire_label': rd.FORM_LABELS[code],
                     'cible': r['cible'], 'recu': r['recu'], 'taux': r['taux'], 'statut': r['statut'],

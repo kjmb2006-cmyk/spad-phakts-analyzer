@@ -3,6 +3,15 @@
 {% block page_title %}Anomalies et signalements{% endblock %}
 
 {% block content %}
+{% macro unite_link(a) -%}
+{%- if a.etablissement_code -%}
+<a href="{{ url_for('completude_etablissement_detail', etablissement_code=a.etablissement_code) }}">{{ a.unite }}</a>
+{%- elif a.district_code -%}
+<a href="{{ url_for('completude_district_detail', district_code=a.district_code) }}">{{ a.unite }}</a>
+{%- else -%}
+{{ a.unite }}
+{%- endif -%}
+{% endmacro %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
@@ -39,7 +48,7 @@
           <tbody>
             {% for a in zeros %}
             <tr>
-              <td class="small">{{ a.unite }}</td>
+              <td class="small">{{ unite_link(a) }}</td>
               <td class="small">
                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
                 {{ a.formulaire_label }}
@@ -83,7 +92,7 @@
           <tbody>
             {% for a in excess %}
             <tr>
-              <td class="small">{{ a.unite }}</td>
+              <td class="small">{{ unite_link(a) }}</td>
               <td class="small">
                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
                 {{ a.formulaire_label }}

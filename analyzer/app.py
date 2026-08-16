@@ -2299,10 +2299,12 @@ def completude_export_csv():
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(['région', 'district', 'établissement', 'formulaire', 'libellé formulaire',
-                      'cible', 'reçu', 'taux (%)', 'statut'])
+    writer.writerow(['région', 'district', 'établissement', 'code établissement', 'enquêteur', 'superviseur',
+                      'formulaire', 'libellé formulaire', 'cible', 'reçu', 'taux (%)', 'statut'])
     for r in rows:
-        writer.writerow([r['region'], r['district'], r['unite'], r['formulaire'], r['formulaire_label'],
+        writer.writerow([r['region'], r['district'], r['unite'], r.get('etablissement_code', ''),
+                          r.get('enqueteur_nom', ''), r.get('superviseur_nom', ''),
+                          r['formulaire'], r['formulaire_label'],
                           r['cible'], r['recu'], r['taux'] if r['taux'] is not None else '', r['statut']])
 
     resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
@@ -2318,9 +2320,11 @@ def completude_export_xlsx():
         return redirect(url_for('completude'))
     rows = cached.get('export', [])
 
-    df = pd.DataFrame(rows, columns=['region', 'district', 'unite', 'formulaire', 'formulaire_label',
+    df = pd.DataFrame(rows, columns=['region', 'district', 'unite', 'etablissement_code',
+                                      'enqueteur_nom', 'superviseur_nom', 'formulaire', 'formulaire_label',
                                       'cible', 'recu', 'taux', 'statut'])
-    df.columns = ['Région', 'District', 'Établissement', 'Formulaire', 'Libellé formulaire',
+    df.columns = ['Région', 'District', 'Établissement', 'Code établissement',
+                  'Enquêteur', 'Superviseur', 'Formulaire', 'Libellé formulaire',
                   'Cible', 'Reçu', 'Taux (%)', 'Statut']
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
