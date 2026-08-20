@@ -2,8 +2,9 @@
 SPAD Analyzer — Assistant d'Analyse IA (SPAD AI Copilot)
 
 Fournit une assistance d'analyse statistique et épidémiologique de pointe
-en utilisant les modèles de langage Claude (Anthropic), avec support de
-fournisseurs alternatifs (OpenAI, Gemini).
+en utilisant les modèles de langage Claude (Anthropic). Même convention que
+modules/ai_form_assist.py (Suivi multi-formulaires) : PHAKTS_MODEL en
+variable d'environnement, sinon le modèle Claude actuel du projet.
 """
 import os
 import json
@@ -11,20 +12,22 @@ import traceback
 import pandas as pd
 import numpy as np
 
-DEFAULT_MODEL = os.environ.get("PHAKTS_MODEL", "claude-3-7-sonnet-20250219")
+DEFAULT_MODEL = os.environ.get("PHAKTS_MODEL", "claude-sonnet-5")
 
 
-def get_api_key(session_key=None):
-    """Récupère la clé API depuis la session utilisateur ou les variables d'environnement."""
-    if session_key and str(session_key).strip():
-        return str(session_key).strip()
+def get_api_key():
+    """Récupère la clé API depuis les variables d'environnement du serveur —
+    jamais depuis la session utilisateur (voir modules/ai_form_assist.py,
+    même convention). Une clé API donne un accès direct et facturé à
+    l'API Anthropic ; la faire transiter par la session exposerait sa
+    valeur en clair dans le cookie de session (signé mais pas chiffré côté
+    Flask, sans backend de session serveur configuré ici)."""
     return (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY") or "").strip()
 
 
-def is_available(session_key=None):
-    """Vérifie si une clé API est configurée."""
-    key = get_api_key(session_key)
-    return bool(key)
+def is_available():
+    """Vrai si une clé API est configurée côté serveur."""
+    return bool(get_api_key())
 
 
 def build_data_context(df: pd.DataFrame = None, completude_data: dict = None, max_vars: int = 50) -> str:
@@ -101,16 +104,15 @@ def ask_ai(
     conversation_history: list = None,
     df: pd.DataFrame = None,
     completude_data: dict = None,
-    api_key: str = None,
     model: str = DEFAULT_MODEL,
     system_instruction: str = None
 ) -> dict:
     """Envoie une requête d'analyse à l'IA avec injection de contexte."""
-    key = get_api_key(api_key)
+    key = get_api_key()
     if not key:
         return {
             "success": False,
-            "error": "Clé API non configurée. Veuillez renseigner votre clé API Anthropic (Claude) dans les paramètres de l'assistant ou dans les variables d'environnement (ANTHROPIC_API_KEY).",
+            "error": "Clé API non configurée côté serveur. Contactez un administrateur pour configurer ANTHROPIC_API_KEY.",
             "needs_key": True
         }
     
@@ -140,7 +142,7 @@ def ask_ai(
         messages.append({"role": "user", "content": user_prompt})
         
         response = client.messages.create(
-            model=model if model else "claude-3-7-sonnet-20250219",
+            model=model if model else DEFAULT_MODEL,
             max_tokens=4000,
             system=system_prompt,
             messages=messages
@@ -180,8 +182,7 @@ def ask_ai(
 def generate_quick_analysis(
     analysis_type: str,
     df: pd.DataFrame = None,
-    completude_data: dict = None,
-    api_key: str = None
+    completude_data: dict = None
 ) -> dict:
     """Génère une analyse prédéfinie structurée."""
     prompts = {
@@ -191,6 +192,6 @@ def generate_quick_analysis(
         "recommendations": "Rédige des recommandations stratégiques et opérationnelles concrètes à l'attention des décideurs en santé publique et de la coordination du projet SPAD / OMS, basées sur ces données.",
         "completude_eval": "Analyse en détail l'avancement de la complétude nationale de collecte : quels formulaires ou districts sont en avance ou en retard ? Quelles priorités pour les équipes de terrain ?"
     }
-    
+
     prompt = prompts.get(analysis_type, prompts["summary"])
-    return ask_ai(user_prompt=prompt, df=df, completude_data=completude_data, api_key=api_key)
+    return ask_ai(user_prompt=prompt, df=df, completude_data=completude_data)

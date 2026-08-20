@@ -991,6 +991,14 @@ def export_var_types_xlsx():
 
 @app.route('/data/reset')
 def reset_data():
+    # Ne purge que les fichiers propres à CETTE session (data_path,
+    # child_path, completude_path) — jamais tout le dossier partagé
+    # UPLOAD_FOLDER. Avec plusieurs comptes Data actifs simultanément
+    # (voir modules/accounts.py), vider tous les completude_*.json du
+    # dossier effacerait aussi le calcul de complétude des AUTRES
+    # utilisateurs (et celui du script d'actualisation automatique,
+    # scripts/kobo_completude_refresh.py) — un « Effacer mes données »
+    # ne doit jamais avoir d'effet de bord sur une session tierce.
     for key in ['data_path', 'child_path', 'completude_path']:
         path = session.get(key)
         if path and os.path.exists(path):
@@ -998,29 +1006,27 @@ def reset_data():
                 os.remove(path)
             except Exception:
                 pass
-    try:
-        for f in os.listdir(app.config['UPLOAD_FOLDER']):
-            if f.startswith('completude_') and f.endswith('.json'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], f))
-                except Exception:
-                    pass
-    except Exception:
-        pass
     session.clear()
     flash('Données effacées.', 'info')
     return redirect(url_for('index'))
 
 
 # ─── ASSISTANT IA D'ANALYSE (SPAD AI COPILOT) ──────────────────────────────
+# La clé API Anthropic n'est jamais lue depuis ni écrite dans la session
+# utilisateur (voir modules/ai_assistant.py::get_api_key()) — même
+# convention que modules/ai_form_assist.py (Suivi multi-formulaires) :
+# uniquement ANTHROPIC_API_KEY côté serveur. Un cookie de session Flask
+# n'est ici que signé, pas chiffré (et aucun backend de session serveur
+# n'est configuré) : y stocker une clé API la laisserait lisible en clair
+# depuis le navigateur de l'utilisateur.
 @app.route('/ai-assistant')
 def ai_assistant_view():
     df = get_dataframe()
     has_data = df is not None
     meta = session.get('data_meta', {})
     cached = _load_completude_cache()
-    has_api_key = ai_assistant.is_available(session.get('anthropic_api_key'))
-    
+    has_api_key = ai_assistant.is_available()
+
     return render_template(
         'ai_assistant.html',
         has_data=has_data,
@@ -1035,20 +1041,18 @@ def api_ai_chat():
     payload = request.get_json() or {}
     message = payload.get('message', '').strip()
     history = payload.get('history', [])
-    
+
     if not message:
         return jsonify({'success': False, 'error': "Message vide."}), 400
-        
+
     df = get_dataframe()
     cached = _load_completude_cache()
-    api_key = session.get('anthropic_api_key')
-    
+
     res = ai_assistant.ask_ai(
         user_prompt=message,
         conversation_history=history,
         df=df,
         completude_data=cached,
-        api_key=api_key
     )
     return jsonify(res)
 
@@ -1057,33 +1061,16 @@ def api_ai_chat():
 def api_ai_quick_analysis():
     payload = request.get_json() or {}
     analysis_type = payload.get('type', 'summary')
-    
+
     df = get_dataframe()
     cached = _load_completude_cache()
-    api_key = session.get('anthropic_api_key')
-    
+
     res = ai_assistant.generate_quick_analysis(
         analysis_type=analysis_type,
         df=df,
         completude_data=cached,
-        api_key=api_key
     )
     return jsonify(res)
-
-
-@app.route('/api/ai/set-key', methods=['POST'])
-def api_ai_set_key():
-    payload = request.get_json() or {}
-    api_key = payload.get('api_key', '').strip()
-    
-    if not api_key:
-        return jsonify({'success': False, 'error': "Veuillez fournir une clé API valide."}), 400
-        
-    if not api_key.startswith('sk-'):
-        return jsonify({'success': False, 'error': "Format de clé API invalide (doit commencer par sk-)."}), 400
-        
-    session['anthropic_api_key'] = api_key
-    return jsonify({'success': True, 'message': "Clé API enregistrée avec succès pour cette session."})
 
 
 @app.route('/data/raw')
