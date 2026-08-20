@@ -18,6 +18,7 @@ from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, selec
 from modules.report_generator import generate_pdf_report, generate_word_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
                               auto_comment_crosstab, auto_comment_binary_group)
+from modules import ai_assistant
 from modules.raw_analysis import (systematic_analysis, descriptive_summary,
                                    data_quality_gauge, composition_chart,
                                    distributions_chart, overview_stats,
@@ -1009,6 +1010,80 @@ def reset_data():
     session.clear()
     flash('Données effacées.', 'info')
     return redirect(url_for('index'))
+
+
+# ─── ASSISTANT IA D'ANALYSE (SPAD AI COPILOT) ──────────────────────────────
+@app.route('/ai-assistant')
+def ai_assistant_view():
+    df = get_dataframe()
+    has_data = df is not None
+    meta = session.get('data_meta', {})
+    cached = _load_completude_cache()
+    has_api_key = ai_assistant.is_available(session.get('anthropic_api_key'))
+    
+    return render_template(
+        'ai_assistant.html',
+        has_data=has_data,
+        meta=meta,
+        has_api_key=has_api_key,
+        completude_cached=bool(cached),
+    )
+
+
+@app.route('/api/ai/chat', methods=['POST'])
+def api_ai_chat():
+    payload = request.get_json() or {}
+    message = payload.get('message', '').strip()
+    history = payload.get('history', [])
+    
+    if not message:
+        return jsonify({'success': False, 'error': "Message vide."}), 400
+        
+    df = get_dataframe()
+    cached = _load_completude_cache()
+    api_key = session.get('anthropic_api_key')
+    
+    res = ai_assistant.ask_ai(
+        user_prompt=message,
+        conversation_history=history,
+        df=df,
+        completude_data=cached,
+        api_key=api_key
+    )
+    return jsonify(res)
+
+
+@app.route('/api/ai/quick-analysis', methods=['POST'])
+def api_ai_quick_analysis():
+    payload = request.get_json() or {}
+    analysis_type = payload.get('type', 'summary')
+    
+    df = get_dataframe()
+    cached = _load_completude_cache()
+    api_key = session.get('anthropic_api_key')
+    
+    res = ai_assistant.generate_quick_analysis(
+        analysis_type=analysis_type,
+        df=df,
+        completude_data=cached,
+        api_key=api_key
+    )
+    return jsonify(res)
+
+
+@app.route('/api/ai/set-key', methods=['POST'])
+def api_ai_set_key():
+    payload = request.get_json() or {}
+    api_key = payload.get('api_key', '').strip()
+    
+    if not api_key:
+        return jsonify({'success': False, 'error': "Veuillez fournir une clé API valide."}), 400
+        
+    if not api_key.startswith('sk-'):
+        return jsonify({'success': False, 'error': "Format de clé API invalide (doit commencer par sk-)."}), 400
+        
+    session['anthropic_api_key'] = api_key
+    return jsonify({'success': True, 'message': "Clé API enregistrée avec succès pour cette session."})
 
 
 @app.route('/data/raw')

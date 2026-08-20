@@ -102,6 +102,9 @@
 
     <!-- 🔬 - ANALYSES -->
     <div class="nav-section-label mt-3">🔬 - ANALYSES</div>
+    <a href="{{ url_for('ai_assistant_view') }}" class="nav-item {% if request.endpoint == 'ai_assistant_view' %}active{% endif %}" style="background:linear-gradient(90deg,rgba(111,66,193,.12),transparent);border-left:3px solid #6f42c1;">
+      <i class="bi bi-robot text-primary"></i> <strong>Assistant IA (Copilot)</strong>
+    </a>
     {% if session.get('data_path') %}
     <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}">
       <i class="bi bi-table"></i> Aperçu des données
@@ -193,6 +196,11 @@
       </span>
       {% endif %}
       <span class="text-muted small text-truncate" style="max-width:280px;display:inline-block">{{ session.get('original_filename', '') }}</span>
+
+      <!-- ── Bouton Assistant IA (topbar) ── -->
+      <a href="{{ url_for('ai_assistant_view') }}" class="btn btn-sm text-white fw-semibold shadow-sm" style="background:linear-gradient(135deg,#1A5276,#6f42c1);border:none;border-radius:8px;padding:4px 12px;" title="Ouvrir SPAD AI Copilot">
+        <i class="bi bi-stars me-1"></i>Assistant IA
+      </a>
 
       <!-- ── Bouton KoboToolbox (topbar) ── -->
       {% if session.get('kobo_token') %}
