@@ -990,13 +990,22 @@ def export_var_types_xlsx():
 
 @app.route('/data/reset')
 def reset_data():
-    for key in ['data_path', 'child_path']:
+    for key in ['data_path', 'child_path', 'completude_path']:
         path = session.get(key)
         if path and os.path.exists(path):
             try:
                 os.remove(path)
             except Exception:
                 pass
+    try:
+        for f in os.listdir(app.config['UPLOAD_FOLDER']):
+            if f.startswith('completude_') and f.endswith('.json'):
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], f))
+                except Exception:
+                    pass
+    except Exception:
+        pass
     session.clear()
     flash('Données effacées.', 'info')
     return redirect(url_for('index'))
