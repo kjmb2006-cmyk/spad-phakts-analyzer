@@ -5,39 +5,51 @@
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
-  <!-- Hero -->
-  <div class="hero-card mb-4">
+  <!-- Hero Card -->
+  <div class="hero-card mb-4 shadow-sm" style="background: linear-gradient(135deg, #1A5276 0%, #2E4A8A 60%, #17A589 100%); border-radius: 16px; padding: 28px 32px; color: #fff;">
     <div class="row align-items-center">
-      <div class="col-md-8">
-        {% if has_data %}
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <span class="badge" style="background:rgba(23,165,137,.25);color:#4dd9b8;font-size:.72rem;letter-spacing:.06em;padding:4px 10px;border-radius:20px;">
-            <i class="bi bi-database-fill-check me-1"></i>Données chargées
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          {% if has_data %}
+          <span class="badge" style="background:rgba(23,165,137,.3);color:#66f0ce;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(23,165,137,.5);">
+            <i class="bi bi-database-fill-check me-1"></i>Données Excel chargées
           </span>
+          {% endif %}
+          {% if session.get('kobo_token') %}
+          <span class="badge" style="background:rgba(255,255,255,.2);color:#fff;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);">
+            <i class="bi bi-link-45deg me-1"></i>KoboToolbox Connecté
+          </span>
+          {% endif %}
         </div>
-        <h1 class="hero-title">Bienvenue dans SPAD Analyzer</h1>
-        <p class="hero-subtitle">{{ meta.n_obs }} observations · {{ meta.n_vars }} variables · {{ meta.n_categorielle }} catégorielles · {{ meta.n_continue }} continues</p>
-        {% else %}
-        <h1 class="hero-title">Bienvenue dans SPAD Analyzer</h1>
-        <p class="hero-subtitle">Plateforme d'analyse statistique pour les données d'enquête SPAD</p>
-        {% endif %}
-        <div class="d-flex gap-2 flex-wrap mt-3">
-          {% if not has_data %}
-          <a href="{{ url_for('upload') }}" class="btn btn-light btn-sm px-4 fw-600">
-            <i class="bi bi-upload me-2"></i>Importer un fichier Excel
-          </a>
+        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">SPAD Analyzer — Plateforme de Collecte & d'Analyse</h1>
+        <p class="hero-subtitle mb-3 opacity-90" style="font-size:.95rem;max-width:680px;">
+          {% if has_data %}
+          {{ meta.n_obs }} observations · {{ meta.n_vars }} variables · {{ meta.n_categorielle }} catégorielles · {{ meta.n_continue }} continues
           {% else %}
-          <a href="{{ url_for('descriptive') }}" class="btn btn-light btn-sm px-4 fw-600">
-            <i class="bi bi-clipboard-data me-2"></i>Lancer une analyse
+          Pilotez vos formulaires, suivez la complétude de la collecte en direct et exploitez vos données d'enquête avec des analyses statistiques avancées.
+          {% endif %}
+        </p>
+        <div class="d-flex gap-2 flex-wrap mt-2">
+          <a href="{{ url_for('upload') }}" class="btn btn-light btn-sm px-3 fw-semibold shadow-sm">
+            <i class="bi bi-file-earmark-arrow-up me-1 text-primary"></i>Importer un formulaire
           </a>
-          <a href="{{ url_for('data_preview') }}" class="btn btn-sm px-4 fw-600" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">
-            <i class="bi bi-table me-2"></i>Aperçu des données
+          <a href="{{ url_for('suivi') }}" class="btn btn-outline-light btn-sm px-3 fw-semibold">
+            <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+          </a>
+          {% if has_data %}
+          <a href="{{ url_for('data_preview') }}" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.35);">
+            <i class="bi bi-table me-1"></i>Aperçu des données
+          </a>
+          <a href="{{ url_for('descriptive') }}" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.35);">
+            <i class="bi bi-clipboard-data-fill me-1"></i>Analyses
           </a>
           {% endif %}
         </div>
       </div>
-      <div class="col-md-4 text-end d-none d-md-block" style="position:relative;z-index:1;">
-        <i class="bi bi-bar-chart-line" style="font-size:7rem;opacity:.12;color:#fff"></i>
+      <div class="col-lg-4 text-end d-none d-lg-block">
+        <div style="width:110px;height:110px;background:rgba(255,255,255,.1);border-radius:24px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);">
+          <i class="bi bi-activity" style="font-size:3.5rem;color:#fff;opacity:.9"></i>
+        </div>
       </div>
     </div>
   </div>
@@ -46,28 +58,28 @@
   <!-- KPI cards -->
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
-      <div class="stat-card-v kpi-primary">
+      <div class="stat-card-v kpi-primary shadow-sm">
         <div class="stat-icon-v bg-primary-subtle text-primary"><i class="bi bi-people-fill"></i></div>
         <div class="stat-value-v">{{ meta.n_obs }}</div>
         <div class="stat-label-v">Observations</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="stat-card-v kpi-success">
+      <div class="stat-card-v kpi-success shadow-sm">
         <div class="stat-icon-v bg-success-subtle text-success"><i class="bi bi-list-columns-reverse"></i></div>
         <div class="stat-value-v">{{ meta.n_vars }}</div>
         <div class="stat-label-v">Variables</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="stat-card-v kpi-warning">
+      <div class="stat-card-v kpi-warning shadow-sm">
         <div class="stat-icon-v bg-warning-subtle text-warning"><i class="bi bi-tag-fill"></i></div>
         <div class="stat-value-v">{{ meta.n_categorielle }}</div>
         <div class="stat-label-v">Catégorielles</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="stat-card-v kpi-info">
+      <div class="stat-card-v kpi-info shadow-sm">
         <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-123"></i></div>
         <div class="stat-value-v">{{ meta.n_continue }}</div>
         <div class="stat-label-v">Continues</div>
@@ -76,63 +88,214 @@
   </div>
   {% endif %}
 
-  <!-- Feature cards -->
-  <div class="mb-3">
-    <span class="section-label"><i class="bi bi-grid-1x2 me-1"></i>Modules d'analyse</span>
+  <!-- ══════════════════════════════════════════════════════
+       SECTION I : FORMULAIRES
+  ══════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-center justify-content-between mb-3 mt-4">
+    <span class="section-label fw-bold text-uppercase" style="font-size:.82rem;letter-spacing:.08em;color:#1A5276;">
+      📁 - FORMULAIRES
+    </span>
   </div>
-  <div class="row g-3">
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <a href="{{ url_for('upload') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="d-flex align-items-start gap-3">
+          <div class="feature-icon flex-shrink-0" style="background:#e8f4fd;color:#1a6fa8">
+            <i class="bi bi-file-earmark-arrow-up-fill fs-3"></i>
+          </div>
+          <div>
+            <h5 class="mb-1 text-dark fw-semibold">Formulaire importé de l'ordinateur</h5>
+            <p class="text-muted small mb-2">Chargez directement un fichier d'enquête Excel (.xlsx, .xls) exporté localement pour analyse immédiate.</p>
+            <span class="feature-arrow"><i class="bi bi-upload me-1"></i>Importer un fichier</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-6">
+      <a href="{{ url_for('kobo_assets') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="d-flex align-items-start gap-3">
+          <div class="feature-icon flex-shrink-0" style="background:#eaf5f1;color:#17a589">
+            <i class="bi bi-collection-fill fs-3"></i>
+          </div>
+          <div>
+            <h5 class="mb-1 text-dark fw-semibold">Mes formulaires (KoboToolbox)</h5>
+            <p class="text-muted small mb-2">Gérez vos projets KoboToolbox, synchronisez les soumissions et sélectionnez vos formulaires d'enquête.</p>
+            <span class="feature-arrow text-teal"><i class="bi bi-arrow-repeat me-1"></i>Accéder aux formulaires Kobo</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION II : SUIVI DE COLLECTE DE DONNÉES
+  ══════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-center justify-content-between mb-3 mt-4">
+    <span class="section-label fw-bold text-uppercase" style="font-size:.82rem;letter-spacing:.08em;color:#1A5276;">
+      📡 - SUIVI DE COLLECTE DE DONNÉES
+    </span>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <a href="{{ url_for('collecte_dashboard') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="feature-icon mb-3" style="background:#fef3e2;color:#e05c1a">
+          <i class="bi bi-activity fs-3"></i>
+        </div>
+        <h5 class="mb-1 text-dark fw-semibold">Suivi d'un formulaire</h5>
+        <p class="text-muted small mb-2">Tableau de bord dédié au suivi individuel d'un formulaire, alertes et synchronisation Kobo.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir le suivi</span>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('suivi') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="feature-icon mb-3" style="background:#e8f4fd;color:#0d6efd">
+          <i class="bi bi-broadcast fs-3"></i>
+        </div>
+        <h5 class="mb-1 text-dark fw-semibold">Suivi multi-formulaires</h5>
+        <p class="text-muted small mb-2">Inclusion et sélection des formulaires à suivre, indicateurs consolidés, régions, districts & enquêteurs.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Configurer le suivi multi</span>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('completude') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="feature-icon mb-3" style="background:#eaf5ea;color:#198754">
+          <i class="bi bi-clipboard2-pulse-fill fs-3"></i>
+        </div>
+        <h5 class="mb-1 text-dark fw-semibold">Complétude nationale</h5>
+        <p class="text-muted small mb-2">Taux d'avancement national SPAD, cibles atteintes par district et performances globales.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Consulter la complétude</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION III : ANALYSES
+  ══════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-center justify-content-between mb-3 mt-4">
+    <span class="section-label fw-bold text-uppercase" style="font-size:.82rem;letter-spacing:.08em;color:#1A5276;">
+      🔬 - ANALYSES
+    </span>
+  </div>
+  <div class="row g-3 mb-4">
     <div class="col-md-6 col-lg-3">
-      <a href="{{ url_for('descriptive') }}" class="feature-card {{ '' if has_data else 'disabled-card' }}">
+      <a href="{{ url_for('data_preview') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
+        <div class="feature-icon" style="background:#e0f2fe;color:#0369a1">
+          <i class="bi bi-table fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Aperçu des données</h5>
+        <p class="text-muted small mb-2">Exploration tabulaire, filtrage interactif et vérification des variables.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Aperçu</span>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <a href="{{ url_for('descriptive') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
         <div class="feature-icon" style="background:#e8f4fd;color:#1a6fa8">
           <i class="bi bi-clipboard-data-fill fs-3"></i>
         </div>
-        <h5 class="mt-3 mb-1">Statistiques descriptives</h5>
-        <p class="text-muted small mb-2">Tris à plat, fréquences, moyennes, médianes, écarts-types</p>
-        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Statistiques descriptives</h5>
+        <p class="text-muted small mb-2">Tris à plat, fréquences, moyennes, médianes, écarts-types et distributions.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Analyser</span>
       </a>
     </div>
     <div class="col-md-6 col-lg-3">
-      <a href="{{ url_for('crosstabs') }}" class="feature-card {{ '' if has_data else 'disabled-card' }}">
+      <a href="{{ url_for('crosstabs') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
         <div class="feature-icon" style="background:#fef3e2;color:#e05c1a">
           <i class="bi bi-grid-3x3-gap-fill fs-3"></i>
         </div>
-        <h5 class="mt-3 mb-1">Tableaux croisés</h5>
-        <p class="text-muted small mb-2">Khi-deux, V de Cramér, profils lignes/colonnes</p>
-        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Tableaux croisés</h5>
+        <p class="text-muted small mb-2">Tests de Khi-deux, V de Cramér, profils lignes/colonnes et résidus standardisés.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Croiser</span>
       </a>
     </div>
     <div class="col-md-6 col-lg-3">
-      <a href="{{ url_for('multivariate') }}" class="feature-card {{ '' if has_data else 'disabled-card' }}">
+      <a href="{{ url_for('multivariate') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
         <div class="feature-icon" style="background:#eaf5ea;color:#198754">
           <i class="bi bi-diagram-3-fill fs-3"></i>
         </div>
-        <h5 class="mt-3 mb-1">Analyses multivariées</h5>
-        <p class="text-muted small mb-2">ACP, ACM, AFC, Classification K-means</p>
-        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Analyses multivariées</h5>
+        <p class="text-muted small mb-2">ACP, ACM, AFC factorielles et classification automatique par K-Means.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Explorer</span>
       </a>
     </div>
-    <div class="col-md-6 col-lg-3">
-      <a href="{{ url_for('report') }}" class="feature-card {{ '' if has_data else 'disabled-card' }}">
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <a href="{{ url_for('raw_data') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
+        <div class="feature-icon" style="background:#f0e8fd;color:#6f42c1">
+          <i class="bi bi-database-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Analyse brute</h5>
+        <p class="text-muted small mb-2">Score de qualité des données, complétude des champs et détection d'anomalies.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</span>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('multi_survey') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm">
+        <div class="feature-icon" style="background:#fef9e7;color:#d4ac0d">
+          <i class="bi bi-collection-fill fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Analyse multi-enquête</h5>
+        <p class="text-muted small mb-2">Comparaison inter-enquêtes avec alignement sémantique PHAKTS.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Comparer</span>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('report') }}" class="feature-card d-block h-100 text-decoration-none shadow-sm {{ '' if has_data else 'disabled-card' }}">
         <div class="feature-icon" style="background:#fce8e8;color:#dc3545">
           <i class="bi bi-file-earmark-pdf-fill fs-3"></i>
         </div>
-        <h5 class="mt-3 mb-1">Rapport PDF</h5>
-        <p class="text-muted small mb-2">Rapport automatique complet avec graphiques</p>
-        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Générer</div>
+        <h5 class="mt-3 mb-1 text-dark fw-semibold">Rapport PDF</h5>
+        <p class="text-muted small mb-2">Génération automatique d'un rapport statistique complet avec graphiques intégrés.</p>
+        <span class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Générer</span>
       </a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION IV : PHAKTS STUDIO
+  ══════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-center justify-content-between mb-3 mt-4">
+    <span class="section-label fw-bold text-uppercase" style="font-size:.82rem;letter-spacing:.08em;color:#1A5276;">
+      🎨 - PHAKTS STUDIO
+    </span>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm p-3" style="border-radius:12px;background:#fbfcfe;border:1px solid #e1e8ed;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:48px;height:48px;background:#1A5276;color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;">
+              <i class="bi bi-folder2-open"></i>
+            </div>
+            <div>
+              <h5 class="mb-0 fw-semibold text-dark">Autres enquêtes & Projets personnalisés</h5>
+              <p class="text-muted small mb-0">Définissez vos propres référentiels et suivez la complétude de n'importe quel formulaire ODK/Kobo personnalisé.</p>
+            </div>
+          </div>
+          <a href="{{ url_for('projets_liste') }}" class="btn btn-outline-primary btn-sm px-4 fw-semibold">
+            <i class="bi bi-folder2-open me-1"></i>Accéder aux projets
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
   {% if not has_data %}
   <!-- Upload CTA -->
-  <div class="upload-cta mt-4">
-    <div class="text-center py-5">
-      <i class="bi bi-cloud-upload display-3 text-muted"></i>
-      <h4 class="mt-3 text-muted fw-600">Aucune donnée chargée</h4>
-      <p class="text-muted">Importez votre fichier Excel exporté depuis SPAD pour commencer l'analyse.</p>
-      <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg mt-2 px-5">
-        <i class="bi bi-upload me-2"></i>Importer les données
-      </a>
+  <div class="upload-cta mt-4 shadow-sm" style="background:#fff;border-radius:14px;border:2px dashed #CBD5E1;padding:36px;">
+    <div class="text-center py-3">
+      <i class="bi bi-cloud-arrow-up display-4 text-primary opacity-75"></i>
+      <h4 class="mt-3 text-dark fw-semibold">Prêt à analyser vos données SPAD ?</h4>
+      <p class="text-muted mb-3" style="max-width:500px;margin:0 auto;">Importez directement votre fichier Excel d'enquête ou connectez votre compte KoboToolbox pour charger vos données en temps réel.</p>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary px-4 fw-semibold">
+          <i class="bi bi-file-earmark-arrow-up me-2"></i>Importer un fichier Excel
+        </a>
+        <a href="{{ url_for('kobo_assets') }}" class="btn btn-outline-secondary px-4 fw-semibold">
+          <i class="bi bi-collection-fill me-2"></i>Sélectionner depuis Kobo
+        </a>
+      </div>
     </div>
   </div>
   {% endif %}

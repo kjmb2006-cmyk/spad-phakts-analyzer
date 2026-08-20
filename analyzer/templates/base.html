@@ -50,68 +50,67 @@
       <i class="bi bi-box-arrow-right"></i> Se déconnecter
     </a>
     {% else %}
-    <div class="nav-section-label">Navigation</div>
     <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
       <i class="bi bi-house-fill"></i> Tableau de bord
     </a>
-    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}">
-      <i class="bi bi-clipboard2-data"></i> Analyse de données
-    </a>
-    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}">
-      <i class="bi bi-activity"></i> Suivi de collecte
-    </a>
+
+    <!-- 📁 - FORMULAIRES -->
+    <div class="nav-section-label mt-3">📁 - FORMULAIRES</div>
     <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}">
-      <i class="bi bi-upload"></i> Importer les données
+      <i class="bi bi-file-earmark-arrow-up"></i> Formulaire importé de l'ordinateur
     </a>
-    <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}">
-      <i class="bi bi-collection-fill"></i> Analyse multi-enquête
-    </a>
-    <a href="{{ url_for('projets_liste') }}" class="nav-item {% if request.endpoint in ['projets_liste', 'projets_detail'] %}active{% endif %}">
-      <i class="bi bi-folder2-open"></i> Autres enquêtes (projets)
+    <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}">
+      <i class="bi bi-collection-fill"></i> Mes formulaires (KoboToolbox)
     </a>
 
-    {% if session.get('kobo_token') %}
-    <div class="nav-section-label mt-3">KoboToolbox</div>
-    <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}">
-      <i class="bi bi-collection-fill"></i> Mes formulaires
+    <!-- 📡 - SUIVI DE COLLECTE DE DONNÉES -->
+    <div class="nav-section-label mt-3">📡 - SUIVI DE COLLECTE DE DONNÉES</div>
+    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}">
+      <i class="bi bi-activity"></i> Suivi d'un formulaire
     </a>
-    {% if session.get('kobo_uid') %}
-    <a href="{{ url_for('kobo_refresh') }}" class="nav-item">
-      <i class="bi bi-arrow-clockwise"></i> Rafraîchir les données
-    </a>
-    {% endif %}
     <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}">
       <i class="bi bi-broadcast"></i> Suivi multi-formulaires
     </a>
     <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
       <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
     </a>
+    {% if session.get('kobo_token') %}
     <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-map"></i> — par région
+      <i class="bi bi-map"></i> — Complétude par région
     </a>
-    <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint == 'completude_districts' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-pin-map"></i> — par district
+    <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-pin-map"></i> — Complétude par district
     </a>
-    <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint == 'completude_enqueteurs' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-person-walking"></i> — par enquêteur
+    <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-person-badge"></i> — Performances superviseurs
     </a>
-    <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint == 'completude_superviseurs' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-person-badge"></i> — par superviseur
+    <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-person-walking"></i> — Performances enquêteurs
     </a>
     <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-exclamation-triangle"></i> — anomalies
+      <i class="bi bi-exclamation-triangle"></i> — Anomalies et signalements
     </a>
     <a href="{{ url_for('completude_graphiques') }}" class="nav-item {% if request.endpoint == 'completude_graphiques' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-graph-up"></i> — graphiques
+      <i class="bi bi-graph-up"></i> — Graphiques et analyses
+    </a>
+    {% if session.get('kobo_uid') %}
+    <a href="{{ url_for('kobo_refresh') }}" class="nav-item" style="padding-left:28px">
+      <i class="bi bi-arrow-clockwise"></i> — Rafraîchir les données
     </a>
     {% endif %}
+    {% endif %}
 
+    <!-- 🔬 - ANALYSES -->
+    <div class="nav-section-label mt-3">🔬 - ANALYSES</div>
     {% if session.get('data_path') %}
     <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}">
       <i class="bi bi-table"></i> Aperçu des données
     </a>
-
-    <div class="nav-section-label mt-3">Analyses</div>
+    {% endif %}
+    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}">
+      <i class="bi bi-clipboard2-data"></i> Hub Analyse de données
+    </a>
+    {% if session.get('data_path') %}
     <a href="{{ url_for('raw_data') }}" class="nav-item {% if request.endpoint == 'raw_data' %}active{% endif %}">
       <i class="bi bi-database-fill"></i> Analyse brute
     </a>
@@ -127,7 +126,18 @@
     <a href="{{ url_for('map_view') }}" class="nav-item {% if request.endpoint == 'map_view' %}active{% endif %}">
       <i class="bi bi-map-fill"></i> Carte géographique
     </a>
+    {% endif %}
+    <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}">
+      <i class="bi bi-collection-fill"></i> Analyse multi-enquête
+    </a>
 
+    <!-- 🎨 - PHAKTS STUDIO -->
+    <div class="nav-section-label mt-3">🎨 - PHAKTS STUDIO</div>
+    <a href="{{ url_for('projets_liste') }}" class="nav-item {% if request.endpoint in ['projets_liste', 'projets_detail'] %}active{% endif %}">
+      <i class="bi bi-folder2-open"></i> Autres enquêtes (projets)
+    </a>
+
+    {% if session.get('data_path') %}
     <div class="nav-section-label mt-3">Export</div>
     <a href="{{ url_for('report') }}" class="nav-item {% if request.endpoint == 'report' %}active{% endif %}">
       <i class="bi bi-file-earmark-pdf-fill"></i> Rapport PDF

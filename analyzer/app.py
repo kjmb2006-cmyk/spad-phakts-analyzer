@@ -3019,7 +3019,7 @@ def completude_graphiques():
         form_codes=_completude_scope(),
         form_labels=ref_data.FORM_LABELS,
         statut_counts=statut_counts,
-        historique=tendance.load_history(30),
+        historique=tendance.load_history(10),
         computed_at=session.get('completude_computed_at'),
     )
 

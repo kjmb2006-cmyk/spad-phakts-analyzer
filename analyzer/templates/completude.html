@@ -5,6 +5,38 @@
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
+  <!-- Sous-navigation Complétude nationale -->
+  <div class="card border-0 shadow-sm mb-3" style="background:#fff;border-radius:12px;">
+    <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <div class="d-flex flex-wrap gap-1 align-items-center">
+        <a href="{{ url_for('completude') }}" class="btn btn-sm btn-primary fw-semibold">
+          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ Complétude nationale
+        </a>
+        <a href="{{ url_for('completude_regions') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-map me-1"></i>🗺️ Régions
+        </a>
+        <a href="{{ url_for('completude_districts') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pin-map me-1"></i>📍 Districts
+        </a>
+        <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-person-badge me-1"></i>👔 Superviseurs
+        </a>
+        <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-person-walking me-1"></i>🚶 Enquêteurs
+        </a>
+        <a href="{{ url_for('completude_anomalies') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ Anomalies
+        </a>
+        <a href="{{ url_for('completude_graphiques') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-graph-up me-1"></i>📈 Graphiques (10j)
+        </a>
+      </div>
+      <a href="{{ url_for('suivi') }}" class="btn btn-sm btn-outline-primary fw-semibold">
+        <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+      </a>
+    </div>
+  </div>
+
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-clipboard2-pulse fs-3"></i>
     <div>
