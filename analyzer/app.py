@@ -535,19 +535,34 @@ def collecte_sync_run():
     asset_info = get_asset_info(token, uid, instance=instance)
     name = asset_info.get('name') or session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     target_raw = (request.form.get('target') or '').strip()
-    target = int(target_raw) if target_raw else None
+    manual_target = int(target_raw) if target_raw else None
     state_path = _collecte_state_path()
     state = load_state(state_path)
+    # La cible reste sinon « collante » d'un formulaire à l'autre : si vous
+    # tracquiez F5 (cible réelle 1800) puis passez à F01 (cible réelle 12)
+    # sans retaper « Cible prévue », l'ancienne valeur restait utilisée tel
+    # quel — donnant des taux absurdes (ex. 250 % avec la cible de F5
+    # laissée sur un autre formulaire). Priorité : cible saisie à la main >
+    # cible nationale réelle si ce formulaire est reconnu par son nom (même
+    # détection que Suivi multi-formulaires) > dernière cible connue (cas
+    # d'un formulaire hors registre, jamais suivi automatiquement).
+    target = manual_target
+    if target is None:
+        detected_code = ref_data.guess_form_type(name)
+        if detected_code:
+            target = ref_data.national_targets(ref_data.load()).get(detected_code)
+    if target is None:
+        target = state.get('target')
     result = kobo_load_data(token, uid, instance=instance)
     if not result.get('success'):
-        state = append_sync_event(state, state_path, form_name=name, count=state.get('last_sync_count', 0), status='erreur', target=target or state.get('target'))
+        state = append_sync_event(state, state_path, form_name=name, count=state.get('last_sync_count', 0), status='erreur', target=target)
         flash(f"Synchronisation échouée : {result.get('error', 'Erreur inconnue')}", 'danger')
         return redirect(url_for('collecte_sync'))
     df = result['df']
     _save_dataframe_to_session(df, name)
     session['kobo_uid'] = uid
     session['kobo_asset_name'] = name
-    state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=target or state.get('target'))
+    state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=target)
     session['collecte_state_path'] = state_path
     flash(f"Synchronisation réussie — {result.get('n_obs')} soumissions chargées depuis {name}.", 'success')
     return redirect(url_for('collecte_sync'))
