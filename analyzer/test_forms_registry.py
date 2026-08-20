@@ -35,9 +35,16 @@ print("TEST — Registre de formulaires dynamique + intégration Suivi/Complétu
 print("=" * 70)
 
 # --- Régression : le registre reproduit les cibles historiques exactes -----
+# Vérifie une INCLUSION (pas une égalité stricte) : sur un déploiement réel,
+# le registre grandit légitimement au fil de la collecte (ex. un formulaire
+# personnalisé ajouté depuis Administration → Formulaires) — le but ici est
+# de garantir que les 7 formulaires historiques restent corrects, pas que le
+# registre s'arrête à eux.
 ref = rd.load()
 nat = rd.national_targets(ref)
-assert nat == {'F5': 1800, 'F6': 271, 'F7': 1800, 'F8': 120, 'F01': 12, 'F02': 16, 'F07': 187}, nat
+attendu = {'F5': 1800, 'F6': 271, 'F7': 1800, 'F8': 120, 'F01': 12, 'F02': 16, 'F07': 187}
+for code, cible in attendu.items():
+    assert nat.get(code) == cible, f"{code} : attendu {cible}, obtenu {nat.get(code)} — {nat}"
 print("OK — cibles nationales identiques aux 7 formulaires historiques (aucune régression)")
 
 # --- Désactivation / réactivation -------------------------------------------
