@@ -442,9 +442,13 @@ def collecte_dashboard():
     meta = session.get('data_meta') or {}
     if meta.get('n_obs') is not None:
         current_count = int(meta['n_obs'])
-    metrics = build_dashboard_metrics(state, current_count=current_count)
+    # df transmis pour une répartition géographique RÉELLE (district/région/
+    # établissement effectivement présents dans les données chargées) —
+    # voir modules/collecte_monitor.py::real_geo_breakdown().
+    df = get_dataframe()
+    metrics = build_dashboard_metrics(state, current_count=current_count, df=df)
     sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
-    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status)
+    views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status, df=df)
     return render_template(
         'collecte_dashboard.html',
         received=metrics['received'],
@@ -453,6 +457,7 @@ def collecte_dashboard():
         active_alerts=metrics['active_alerts'],
         evolution=metrics['evolution'],
         zones=metrics['zones'],
+        geo_column=metrics['geo_column'],
         kobo_connected=bool(session.get('kobo_token')),
         kobo_user=session.get('kobo_username', 'KoboToolbox'),
         last_sync=state.get('last_sync_at') or 'Aucune synchronisation',

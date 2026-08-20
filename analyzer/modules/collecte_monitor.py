@@ -3,6 +3,93 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Ordre de priorité pour détecter la colonne géographique RÉELLE d'un
+# formulaire Kobo arbitraire (ce module suit UN formulaire quelconque en
+# cours d'analyse — pas forcément un des formulaires du registre SPAD, donc
+# aucun nom de colonne fixe n'est garanti). Correspondance insensible à la
+# casse sur un mot-clé contenu dans le nom de colonne — reflète la
+# convention SPAD réelle observée (ex. "ENTETE_STANDARD/District_Sanitaire__X").
+_GEO_FIELD_KEYWORDS = [
+    ['district_sanitaire', 'district'],
+    ['region_sanitaire', 'région_sanitaire', 'region', 'région'],
+    ['etablissement_sanitaire', 'établissement_sanitaire', 'etablissement', 'établissement'],
+    ['zone', 'commune', 'localite', 'localité'],
+]
+
+
+def detect_geo_column(df):
+    """Renvoie le nom de la meilleure colonne géographique du formulaire
+    chargé (district > région > établissement > zone/commune), ou None si
+    aucune n'est détectée — mieux vaut ne rien afficher qu'inventer des
+    zones fictives."""
+    if df is None or getattr(df, 'empty', True):
+        return None
+    cols_lower = {col: str(col).lower() for col in df.columns}
+    for keywords in _GEO_FIELD_KEYWORDS:
+        for col, low in cols_lower.items():
+            if any(k in low for k in keywords):
+                return col
+    return None
+
+
+def real_geo_breakdown(df, target: int = 0):
+    """Répartition RÉELLE des soumissions par unité géographique détectée
+    dans le formulaire chargé (district, à défaut région, à défaut
+    établissement) — remplace les anciennes « Zone 1/2/3 » qui étaient
+    entièrement fictives (comptages calculés par arithmétique arbitraire à
+    partir du seul total, sans jamais lire les données réelles).
+
+    La cible par unité est une répartition ÉGALE de la cible globale entre
+    les unités effectivement présentes dans les données : ce module suit un
+    formulaire Kobo quelconque, sans les règles de cible par établissement
+    du registre SPAD (voir modules/completeness.py pour ce cas précis, avec
+    un vrai référentiel établissement/district). C'est une approximation
+    assumée, pas une cible officielle.
+
+    Renvoie (items, colonne_utilisée) — items est une liste vide si aucune
+    colonne géographique n'a été trouvée, ou si le formulaire n'a aucune
+    soumission avec une valeur renseignée dans cette colonne."""
+    col = detect_geo_column(df)
+    if not col:
+        return [], None
+
+    values = df[col].dropna().astype(str).str.strip()
+    values = values[values != '']
+    if values.empty:
+        return [], col
+
+    grouped = values.value_counts()
+    n = len(grouped)
+    target = int(target or 0)
+    target_per_unit = target / n if (target and n) else 0
+
+    items = []
+    for name, received in grouped.items():
+        received = int(received)
+        if target_per_unit:
+            rate = round(100 * received / target_per_unit, 1)
+        else:
+            rate = None
+        if rate is None:
+            status, badge = 'Reçu', 'bg-secondary'
+        elif rate >= 100:
+            status, badge = 'Cible atteinte', 'bg-success'
+        elif rate >= 50:
+            status, badge = 'En cours', 'bg-info'
+        else:
+            status, badge = 'À risque', 'bg-warning'
+        items.append({
+            'name': str(name),
+            'received': received,
+            'target': round(target_per_unit) if target_per_unit else 0,
+            'rate': rate if rate is not None else 0.0,
+            'status': status,
+            'badge_class': badge,
+        })
+
+    items.sort(key=lambda it: it['rate'])
+    return items, col
+
 DEFAULT_STATE = {
     'target': 0,
     'history': [],
@@ -68,7 +155,7 @@ def append_sync_event(state: Dict[str, Any], path: Path | str | None = None, for
     return payload
 
 
-def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = None) -> Dict[str, Any]:
+def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = None, df=None) -> Dict[str, Any]:
     received = int(current_count if current_count is not None else state.get('last_sync_count', 0))
     target = int(state.get('target', 0) or 0)
     taux = round(100 * received / target, 1) if target else 0.0
@@ -76,11 +163,12 @@ def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = N
     evolution = [int(item.get('count', 0)) for item in history[-7:]]
     if not evolution:
         evolution = [0]
-    zones = [
-        {'name': 'Zone 1', 'received': max(0, received - 20), 'target': target or 200, 'rate': round(100 * max(0, received - 20) / (target or 200), 1), 'status': 'À risque', 'badge_class': 'bg-warning'},
-        {'name': 'Zone 2', 'received': min(received, max(0, target // 2)), 'target': target or 200, 'rate': round(100 * min(received, max(0, target // 2)) / (target or 200), 1), 'status': 'En cours', 'badge_class': 'bg-info'},
-        {'name': 'Zone 3', 'received': min(received, target), 'target': target or 200, 'rate': round(100 * min(received, target) / (target or 200), 1), 'status': 'Cible atteinte' if target and min(received, target) >= target else 'En cours', 'badge_class': 'bg-success' if target and min(received, target) >= target else 'bg-info'},
-    ]
+    # Répartition géographique RÉELLE (district/région/établissement détecté
+    # dans les données chargées) — jamais de zones fictives. Liste vide si
+    # aucune donnée n'est chargée ou qu'aucune colonne géographique n'est
+    # détectée ; le gabarit l'affiche alors clairement plutôt que d'inventer
+    # un contenu.
+    zones, geo_column = real_geo_breakdown(df, target)
     daily_rate = max(0, received // max(1, len(history) or 1)) if history else 0
     return {
         'received': received,
@@ -89,14 +177,15 @@ def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = N
         'active_alerts': 1 if taux < 90 else 0,
         'evolution': evolution,
         'zones': zones,
+        'geo_column': geo_column,
         'history': history,
         'daily_rate': daily_rate,
         'daily_target': max(1, target // max(1, len(history) or 1)) if target else 0,
     }
 
 
-def build_collecte_views(state: Dict[str, Any], current_count: int | None = None, data_meta: Dict[str, Any] | None = None, sync_status: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    metrics = build_dashboard_metrics(state, current_count=current_count)
+def build_collecte_views(state: Dict[str, Any], current_count: int | None = None, data_meta: Dict[str, Any] | None = None, sync_status: Dict[str, Any] | None = None, df=None) -> Dict[str, Any]:
+    metrics = build_dashboard_metrics(state, current_count=current_count, df=df)
     last_status = state.get('last_sync_status') or 'inconnu'
     last_sync_at = state.get('last_sync_at') or 'Jamais'
     form_name = state.get('last_form_name') or 'Kobo'
@@ -105,10 +194,8 @@ def build_collecte_views(state: Dict[str, Any], current_count: int | None = None
         {'name': 'Équipe terrain 1', 'submissions': metrics['received'], 'last_activity': last_sync_at, 'status': 'Actif' if last_status == 'réussi' else 'À relancer', 'badge_class': 'bg-success' if last_status == 'réussi' else 'bg-warning'},
         {'name': 'Équipe terrain 2', 'submissions': max(0, metrics['received'] - 30), 'last_activity': 'Hier', 'status': 'À relancer', 'badge_class': 'bg-warning'},
     ]
-    zones = [
-        {'name': 'Zone 1', 'received': max(0, metrics['received'] - 20), 'target': max(1, metrics['cible'] or 200), 'rate': round(100 * max(0, metrics['received'] - 20) / max(1, metrics['cible'] or 200), 1), 'status': 'À risque', 'badge_class': 'bg-warning'},
-        {'name': 'Zone 2', 'received': min(metrics['received'], max(0, metrics['cible'] // 2)), 'target': max(1, metrics['cible'] or 200), 'rate': round(100 * min(metrics['received'], max(0, metrics['cible'] // 2)) / max(1, metrics['cible'] or 200), 1), 'status': 'En cours', 'badge_class': 'bg-info'},
-    ]
+    zones = metrics['zones']
+    geo_column = metrics['geo_column']
 
     sync_payload = {
         'active': False,
@@ -134,9 +221,12 @@ def build_collecte_views(state: Dict[str, Any], current_count: int | None = None
         deficit = target - metrics['received']
         alerts.append({'zone': 'Rythme', 'type': f'Rythme faible — {deficit} soumissions manquantes', 'level': 'Alerte', 'level_class': 'bg-warning', 'date': last_sync_at, 'status': 'À traiter', 'status_class': 'bg-warning'})
 
+    # Même répartition géographique réelle que « zones » — juste projetée
+    # sur les colonnes attendues par le tableau « Tableaux stratifiés »
+    # (label/received/target/rate, sans statut ni badge).
     stratified_summary = [
-        {'label': 'Zone 1', 'received': max(0, metrics['received'] - 20), 'target': max(1, metrics['cible'] or 200), 'rate': round(100 * max(0, metrics['received'] - 20) / max(1, metrics['cible'] or 200), 1)},
-        {'label': 'Zone 2', 'received': min(metrics['received'], max(0, metrics['cible'] // 2)), 'target': max(1, metrics['cible'] or 200), 'rate': round(100 * min(metrics['received'], max(0, metrics['cible'] // 2)) / max(1, metrics['cible'] or 200), 1)},
+        {'label': z['name'], 'received': z['received'], 'target': z['target'], 'rate': z['rate']}
+        for z in zones
     ]
 
     if metrics['taux'] >= 95:
@@ -164,6 +254,7 @@ def build_collecte_views(state: Dict[str, Any], current_count: int | None = None
     return {
         'metrics': metrics,
         'geo_items': zones,
+        'geo_column': geo_column,
         'teams': teams,
         'alerts': alerts,
         'quality_items': quality_items,

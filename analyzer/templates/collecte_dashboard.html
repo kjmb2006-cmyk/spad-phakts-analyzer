@@ -179,7 +179,13 @@
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
           <h5 class="fw-bold mb-1">Tableaux stratifiés</h5>
-          <p class="text-muted small mb-0">Vue synthétique par stratification pour piloter les zones en difficulté.</p>
+          <p class="text-muted small mb-0">
+            {% if geo_column %}
+            Répartition réelle par « {{ geo_column }} » — cible répartie également entre les {{ stratified_summary|length }} unités présentes dans les données (pas une règle officielle par établissement, voir Complétude nationale pour ça).
+            {% else %}
+            Vue synthétique par stratification pour piloter les zones en difficulté.
+            {% endif %}
+          </p>
         </div>
         <span class="badge bg-primary-subtle text-primary">Pilotage</span>
       </div>
@@ -201,6 +207,16 @@
               <td>{{ item.target }}</td>
               <td>{{ item.rate }}%</td>
             </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-muted text-center py-3">
+                {% if not geo_column %}
+                Aucune colonne géographique (district, région, établissement…) détectée dans le formulaire chargé.
+                {% else %}
+                Aucune soumission avec une valeur renseignée dans « {{ geo_column }} » pour l'instant.
+                {% endif %}
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -219,7 +235,7 @@
         <table class="table table-sm align-middle">
           <thead>
             <tr>
-              <th>Zone</th>
+              <th>{{ geo_column and 'Zone (' + geo_column + ')' or 'Zone' }}</th>
               <th>Reçu</th>
               <th>Cible</th>
               <th>Taux</th>
@@ -234,6 +250,16 @@
               <td>{{ zone.target }}</td>
               <td>{{ zone.rate }}%</td>
               <td><span class="badge {{ zone.badge_class }}">{{ zone.status }}</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-muted text-center py-3">
+                {% if not geo_column %}
+                Aucune colonne géographique détectée — chargez d'abord un formulaire dans « Formulaire importé de l'ordinateur » ou « Mes formulaires (KoboToolbox) ».
+                {% else %}
+                Aucune donnée géographique exploitable pour l'instant.
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
