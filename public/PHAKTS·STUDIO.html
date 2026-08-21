@@ -2244,6 +2244,20 @@ async function resolveSpadUrl() {
       if (ports && ports.spadUrl) { _spadUrl = ports.spadUrl; return _spadUrl; }
     }
   } catch (_) {}
+  // Déploiement web où SPAD et PHAKTS Studio sont sur des hôtes distincts
+  // (ex. studio.spad-analyzer... vs spad-analyzer... — deux sous-domaines,
+  // pas juste deux ports du même hôte comme en local) : le serveur Node
+  // expose alors SPAD_URL via /api/config (voir api/server.js).
+  try {
+    const base = getApiBase();
+    if (base) {
+      const resp = await fetch(base + '/api/config');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.spadUrl) { _spadUrl = data.spadUrl; return _spadUrl; }
+      }
+    }
+  } catch (_) {}
   // file:// : pas d'URL valide possible → on renvoie null pour bloquer le chargement
   if (location.protocol === 'file:') return null;
   // hostname vide (cas exotique) → fallback localhost
@@ -6049,13 +6063,16 @@ async function qcodifParseCSV(file) {
 
   const headers = parseRow(lines[0]);
   const colLib  = qcodifDetectCol(headers, ['libellé','libelle','question','label','intitulé','intitule']);
-  const colCode = qcodifDetectCol(headers, ['code phakts','pf_question','code','codification','phakts']);
+  const colCode = qcodifDetectCol(headers, ['code phakts','pf/question','pf_question','code','codification','phakts']);
   const colMod  = qcodifDetectCol(headers, ['modalités','modalites','pf_modalites','choix','choices','options','modalite']);
   const colSkip = qcodifDetectCol(headers, ['skip','pf_skip','saut','relevance','relevant','condition']);
 
   if (colCode === -1) {
-    qcodifSetStatus('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '), 'error');
-    return;
+    // Erreur levée (pas juste un statut affiché puis un `return`) pour que
+    // ce message précis ne soit pas écrasé par le message générique
+    // "Aucune donnée trouvée" de qcodifHandleFile(), qui ne peut pas
+    // distinguer "colonne manquante" de "fichier réellement vide".
+    throw new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
   }
 
   for (let i = 1; i < lines.length; i++) {
@@ -6086,13 +6103,16 @@ async function qcodifParseXLSX(file) {
   });
 
   const colLib  = qcodifDetectCol(headers, ['libellé','libelle','question','label','intitulé','intitule']);
-  const colCode = qcodifDetectCol(headers, ['code phakts','pf_question','code','codification','phakts']);
+  const colCode = qcodifDetectCol(headers, ['code phakts','pf/question','pf_question','code','codification','phakts']);
   const colMod  = qcodifDetectCol(headers, ['modalités','modalites','pf_modalites','choix','choices','options','modalite']);
   const colSkip = qcodifDetectCol(headers, ['skip','pf_skip','saut','relevance','relevant','condition']);
 
   if (colCode === -1) {
-    qcodifSetStatus('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '), 'error');
-    return;
+    // Erreur levée (pas juste un statut affiché puis un `return`) pour que
+    // ce message précis ne soit pas écrasé par le message générique
+    // "Aucune donnée trouvée" de qcodifHandleFile(), qui ne peut pas
+    // distinguer "colonne manquante" de "fichier réellement vide".
+    throw new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
   }
 
   ws.eachRow({ includeEmpty: false }, (row, rowNum) => {

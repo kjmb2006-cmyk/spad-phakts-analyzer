@@ -297,6 +297,13 @@ const HOST = process.env.HOST || "127.0.0.1";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:" + PORT).split(",").map((s) => s.trim());
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const API_TOKEN = process.env.API_TOKEN || ""; // Bearer token pour protéger l'API
+// URL publique de SPAD Analyzer, quand PHAKTS Studio et SPAD tournent sur
+// des hôtes distincts (ex. déploiement web : studio.spad-analyzer... vs
+// spad-analyzer... — deux sous-domaines, pas juste deux ports du même
+// hôte). Sans ça, le frontend ne peut deviner l'URL de SPAD que via
+// Electron IPC ou l'heuristique locale ":5050" (voir resolveSpadUrl()
+// dans PHAKTS·STUDIO.html), qui ne s'applique qu'en usage bureau/local.
+const SPAD_URL = process.env.SPAD_URL || "";
 
 if (!API_KEY) {
   console.error("\n❌ ANTHROPIC_API_KEY manquante dans le fichier .env\n");
@@ -423,7 +430,7 @@ app.get("/api/config", (req, res) => {
       return res.status(403).json({ error: "Origine non autorisée." });
     }
   }
-  res.json({ token: API_TOKEN || "" });
+  res.json({ token: API_TOKEN || "", spadUrl: SPAD_URL || undefined });
 });
 
 // ── Servir le frontend HTML ───────────────────────────────────────────────────

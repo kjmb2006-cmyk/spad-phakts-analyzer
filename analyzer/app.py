@@ -3847,11 +3847,20 @@ def kobo_diagnostic():
 # Permet à PHAKTS de pousser son XLSForm directement dans SPAD pour
 # prévisualisation de la structure (sans passer par un upload manuel).
 
+# Origines web supplémentaires (hors 127.0.0.1/localhost) autorisées à
+# appeler ces endpoints en cross-origin avec cookies — ex. le sous-domaine
+# PHAKTS Studio en déploiement VPS (studio.spad-analyzer... appelant
+# spad-analyzer...), qui n'est ni du 127.0.0.1 ni du localhost.
+_CORS_EXTRA_ORIGINS = {o.strip() for o in os.environ.get('CORS_EXTRA_ORIGINS', '').split(',') if o.strip()}
+
+
 @app.after_request
 def _add_cors_for_local(resp):
-    """Autorise les appels iframe-to-other-port en mode embarqué Electron."""
+    """Autorise les appels iframe-to-other-port en mode embarqué Electron,
+    et les origines listées dans CORS_EXTRA_ORIGINS (déploiement web)."""
     origin = request.headers.get('Origin', '')
-    if origin.startswith('http://127.0.0.1:') or origin.startswith('http://localhost:'):
+    if (origin.startswith('http://127.0.0.1:') or origin.startswith('http://localhost:')
+            or origin in _CORS_EXTRA_ORIGINS):
         resp.headers['Access-Control-Allow-Origin'] = origin
         resp.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
         resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
