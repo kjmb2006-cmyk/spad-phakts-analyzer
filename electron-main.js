@@ -5,7 +5,7 @@
 //    • Flask  (Python)     → SPAD statistical analysis
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, shell, dialog, ipcMain, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const net = require("net");
@@ -315,7 +315,15 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("before-quit", () => { stopFlaskServer(); });
+app.on("before-quit", () => {
+  // Chromium n'écrit pas forcément localStorage sur disque immédiatement à
+  // chaque écriture (DPF, référentiel Admin, résultats en cours…) — un
+  // quit peu après une modification peut la perdre si on ne force pas le
+  // flush ici. Cas réel rapporté : import du Référentiel Administratif
+  // (volet L) disparu après avoir quitté puis relancé l'app.
+  try { session.defaultSession.flushStorageData(); } catch (_) {}
+  stopFlaskServer();
+});
 app.on("window-all-closed", () => {
   // On macOS keep Flask alive — the app stays in the Dock and the user
   // may reopen the window via activate; killing Flask here causes

@@ -4978,15 +4978,23 @@ window.addEventListener('DOMContentLoaded', () => {
     const savedToken = localStorage.getItem('phakts_api_token');
     if (savedToken) document.getElementById('apiTokenInput').value = savedToken;
   } catch (_) {}
-  // Auto-fetch token from server config
-  autoFetchToken();
-  checkApiStatus();
-  loadLearnedExamples();
-  syncLearnedFromServer();
-  loadPersistedResults();
-  initDpfListes();
-  initDpfRules();
-  initAdminRef();
+  // Chaque étape est isolée — si l'une d'elles lève une exception, ça ne
+  // doit jamais empêcher les suivantes de s'exécuter (ex. observé : une
+  // erreur plus tôt dans cette chaîne bloquait initAdminRef(), le dernier
+  // appel, laissant le Référentiel Administratif vide sans aucun indice).
+  const _initSteps = [
+    ['autoFetchToken', autoFetchToken],
+    ['checkApiStatus', checkApiStatus],
+    ['loadLearnedExamples', loadLearnedExamples],
+    ['syncLearnedFromServer', syncLearnedFromServer],
+    ['loadPersistedResults', loadPersistedResults],
+    ['initDpfListes', initDpfListes],
+    ['initDpfRules', initDpfRules],
+    ['initAdminRef', initAdminRef],
+  ];
+  for (const [name, fn] of _initSteps) {
+    try { fn(); } catch (e) { console.error(`[init:${name}]`, e); }
+  }
 });
 
 // ─── Cmd+Shift+R → réinitialiser résultats ───────────────────────────────────
