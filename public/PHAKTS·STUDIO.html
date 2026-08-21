@@ -968,10 +968,6 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           XLSForm (KoboToolbox)
         </button>
-        <button class="btn-purple" onclick="sendXLSFormToSpad()" title="Envoyer le XLSForm vers l'onglet Analyse SPAD">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
-          📊 Envoyer vers SPAD
-        </button>
         <button class="btn-purple" onclick="deployXLSFormToKobo()" id="btnDeployKobo" title="Codifier → XLSForm → Déployer directement dans KoboToolbox, en une seule étape">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
           🚀 Déployer sur Kobo
@@ -5447,41 +5443,8 @@ async function buildXLSFormBuffer() {
   return { buffer, title };
 }
 
-async function sendXLSFormToSpad() {
-  if (!results.length) { alert('Aucun résultat à envoyer.'); return; }
-  try {
-    showStatus('Préparation du XLSForm…', 'info');
-    const { buffer, title } = await buildXLSFormBuffer();
-    const spadUrl = await resolveSpadUrl();
-
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const fd = new FormData();
-    fd.append('file', blob, `${title}_XLSForm.xlsx`);
-
-    const r = await fetch(`${spadUrl}/api/xlsform-import`, {
-      method: 'POST',
-      body: fd,
-      credentials: 'include'   // share Flask session cookie across the iframe
-    });
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`SPAD ${r.status} : ${txt.slice(0, 200)}`);
-    }
-    const data = await r.json();
-
-    showStatus(`✅ XLSForm envoyé à SPAD : ${data.questions} questions, ${data.choices} modalités.`, 'success');
-
-    // Plus d'onglet "Analyse SPAD" intégré (retiré) — ouvre l'aperçu dans
-    // le navigateur du système à la place.
-    window.open(`${spadUrl}/xlsform/preview`, '_blank', 'noopener');
-  } catch (e) {
-    console.error('[send-to-spad]', e);
-    showStatus('❌ Échec de l\'envoi vers SPAD : ' + e.message, 'error');
-  }
-}
-
 // Codifier → XLSForm → déployer directement dans KoboToolbox, en un clic —
-// enchaîne le même import que sendXLSFormToSpad() puis appelle
+// importe le XLSForm généré côté SPAD puis appelle
 // /api/kobo/deploy-xlsform (voir analyzer/app.py::kobo_deploy_xlsform(),
 // qui déploie réellement via l'API Kobo : /imports/ puis /deployment/).
 async function deployXLSFormToKobo() {
@@ -5529,10 +5492,8 @@ async function deployXLSFormToKobo() {
 
     showStatus(`✅ « ${esc(title)} » codifié, converti en XLSForm et déployé dans KoboToolbox.`, 'success');
 
-    // Montre la confirmation de déploiement sur l'aperçu SPAD (même écran
-    // que « Envoyer vers SPAD », qui affiche désormais le formulaire comme
-    // déployé) — ouvert dans le navigateur du système, plus d'onglet
-    // "Analyse SPAD" intégré (retiré).
+    // Montre la confirmation de déploiement sur l'aperçu SPAD — ouvert dans
+    // le navigateur du système, plus d'onglet "Analyse SPAD" intégré (retiré).
     window.open(`${spadUrl}/xlsform/preview`, '_blank', 'noopener');
   } catch (e) {
     console.error('[deploy-to-kobo]', e);
@@ -6016,6 +5977,25 @@ function qcodifDetectCol(headers, keywords) {
   return -1;
 }
 
+/**
+ * Message d'erreur pour une colonne « Code PHAKTS » introuvable — reconnaît
+ * spécifiquement la forme d'un XLSForm KoboToolbox brut (feuille « survey »,
+ * colonnes type/name/label) pour guider l'utilisateur vers le bon fichier,
+ * plutôt qu'un message générique qui ne dit pas quoi faire ensuite.
+ */
+function qcodifMissingCodeColError(headers) {
+  const h = headers.map(s => String(s || '').toLowerCase().trim());
+  const looksLikeXLSForm = h.includes('type') && h.includes('name') && h.includes('label');
+  if (looksLikeXLSForm) {
+    return new Error(
+      'Ce fichier ressemble à un XLSForm KoboToolbox brut (feuille « survey », colonnes type/name/label), ' +
+      'pas à un questionnaire codifié PHAKTS. Utilisez plutôt le fichier généré par le bouton ' +
+      '« 📗 XLSX Codifié (PHAKTS) » (onglet Résultats) — colonnes Libellé / PF-Question / PF-Modalités / Skip Logic.'
+    );
+  }
+  return new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
+}
+
 /* Parse un fichier XLSX ou CSV et peuple qcodifItems */
 async function qcodifHandleFile(file) {
   if (!file) return;
@@ -6075,7 +6055,7 @@ async function qcodifParseCSV(file) {
     // ce message précis ne soit pas écrasé par le message générique
     // "Aucune donnée trouvée" de qcodifHandleFile(), qui ne peut pas
     // distinguer "colonne manquante" de "fichier réellement vide".
-    throw new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
+    throw qcodifMissingCodeColError(headers);
   }
 
   for (let i = 1; i < lines.length; i++) {
@@ -6115,7 +6095,7 @@ async function qcodifParseXLSX(file) {
     // ce message précis ne soit pas écrasé par le message générique
     // "Aucune donnée trouvée" de qcodifHandleFile(), qui ne peut pas
     // distinguer "colonne manquante" de "fichier réellement vide".
-    throw new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
+    throw qcodifMissingCodeColError(headers);
   }
 
   ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
