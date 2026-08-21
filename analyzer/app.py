@@ -3949,6 +3949,69 @@ def kobo_deploy_xlsform():
     return jsonify(res), status
 
 
+@app.route('/api/kobo/import-and-deploy-xlsform', methods=['POST', 'OPTIONS'])
+def kobo_import_and_deploy_xlsform():
+    """Importe ET déploie le XLSForm en une seule requête.
+
+    Remplace l'enchaînement import (/api/xlsform-import) puis déploiement
+    (/api/kobo/deploy-xlsform) utilisé par PHAKTS Studio : ce dernier
+    dépendait de session['xlsform_path'], fixé par le PREMIER appel, pour
+    être encore présent lors du SECOND — deux requêtes cross-origin
+    séparées (studio.spad-analyzer... → spad-analyzer...) séparées dans
+    le temps, ce qui s'est avéré fragile en pratique (cas réel observé :
+    le déploiement échouait avec "Aucun XLSForm à déployer" juste après
+    un import qui venait pourtant de réussir). En combinant les deux en
+    une seule requête atomique, il n'y a plus de valeur de session à
+    faire survivre d'un appel à l'autre pour cette étape.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+
+    token = session.get('kobo_token')
+    if not token:
+        return jsonify({'success': False, 'error': "Connectez-vous d'abord à KoboToolbox (onglet Mes formulaires).",
+                        'need_kobo_connect': True}), 401
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': "Aucun fichier 'file' dans la requête."}), 400
+    f = request.files['file']
+    if not f.filename:
+        return jsonify({'success': False, 'error': 'Nom de fichier vide.'}), 400
+
+    fname = secure_filename(f.filename) or 'phakts_xlsform.xlsx'
+    if not fname.lower().endswith('.xlsx'):
+        fname += '.xlsx'
+
+    target_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsforms')
+    os.makedirs(target_dir, exist_ok=True)
+    saved_path = os.path.join(target_dir, fname)
+    f.save(saved_path)
+
+    try:
+        pd.read_excel(saved_path, sheet_name='survey')
+        try:
+            settings = pd.read_excel(saved_path, sheet_name='settings')
+        except Exception:
+            settings = pd.DataFrame()
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'XLSForm invalide : {e}'}), 400
+
+    form_title = ''
+    if not settings.empty and 'form_title' in settings.columns:
+        form_title = str(settings.iloc[0].get('form_title', '') or '')
+    name = form_title or fname
+
+    # Même comportement qu'avant pour /xlsform/preview (aperçu post-déploiement).
+    session['xlsform_path'] = saved_path
+    session['xlsform_title'] = name
+
+    instance = session.get('kobo_instance')
+    custom = session.get('kobo_custom_instance')
+    res = deploy_xlsform(token, saved_path, name=name, instance=instance, custom_instance=custom)
+    status = 200 if res.get('success') else 502
+    return jsonify(res), status
+
+
 @app.route('/xlsform/preview')
 def xlsform_preview():
     """Affiche la structure du XLSForm importé depuis PHAKTS."""

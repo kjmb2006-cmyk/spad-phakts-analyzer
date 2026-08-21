@@ -5900,9 +5900,10 @@ async function buildXLSFormBuffer() {
 }
 
 // Codifier → XLSForm → déployer directement dans KoboToolbox, en un clic —
-// importe le XLSForm généré côté SPAD puis appelle
-// /api/kobo/deploy-xlsform (voir analyzer/app.py::kobo_deploy_xlsform(),
-// qui déploie réellement via l'API Kobo : /imports/ puis /deployment/).
+// appelle /api/kobo/import-and-deploy-xlsform (voir
+// analyzer/app.py::kobo_import_and_deploy_xlsform()), qui importe ET
+// déploie en une seule requête (via l'API Kobo : /imports/ puis
+// /deployment/) plutôt que deux appels cross-origin séparés.
 async function deployXLSFormToKobo() {
   if (!results.length) { alert('Aucun résultat à envoyer.'); return; }
   const btn = document.getElementById('btnDeployKobo');
@@ -5916,20 +5917,17 @@ async function deployXLSFormToKobo() {
     const fd = new FormData();
     fd.append('file', blob, `${title}_XLSForm.xlsx`);
 
-    const importRes = await fetch(`${spadUrl}/api/xlsform-import`, {
+    // Import + déploiement en UNE requête (plutôt que deux requêtes
+    // cross-origin séparées) — évite de dépendre d'un session['xlsform_path']
+    // fixé par un premier appel pour être encore là au second, ce qui s'est
+    // avéré fragile en pratique entre studio.spad-analyzer... et
+    // spad-analyzer... (cas réel : "Aucun XLSForm à déployer" juste après
+    // un import qui venait pourtant de réussir).
+    showStatus('Déploiement dans KoboToolbox…', 'info');
+    const deployRes = await fetch(`${spadUrl}/api/kobo/import-and-deploy-xlsform`, {
       method: 'POST',
       body: fd,
-      credentials: 'include'   // partage le cookie de session Flask avec l'iframe SPAD
-    });
-    if (!importRes.ok) {
-      const txt = await importRes.text();
-      throw new Error(`Import SPAD ${importRes.status} : ${txt.slice(0, 200)}`);
-    }
-
-    showStatus('Déploiement dans KoboToolbox…', 'info');
-    const deployRes = await fetch(`${spadUrl}/api/kobo/deploy-xlsform`, {
-      method: 'POST',
-      credentials: 'include'
+      credentials: 'include'   // partage le cookie de session Flask avec SPAD
     });
     const data = await deployRes.json().catch(() => ({}));
 
