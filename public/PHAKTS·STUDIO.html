@@ -1473,6 +1473,9 @@
 
       <!-- Boutons d'action -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 0;border-top:1px solid #1e3a5f">
+        <button class="btn-purple" style="padding:8px 18px;font-size:12px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc" id="btnQcodifVerify" onclick="verifyQcodifCodification()" title="Vérifie chaque codification importée contre la grammaire PHAKTS, corrige ce qui ne s'y conforme pas, puis charge le résultat dans Résultats">
+          🔍 Vérification de la codification
+        </button>
         <button class="btn-add" style="padding:8px 18px;font-size:12px" id="btnQcodifResults" onclick="qcodifLoadToResults()">
           ⊞ Charger dans Résultats
         </button>
@@ -6143,7 +6146,8 @@ function qcodifRenderPreview() {
   tbody.innerHTML = '';
   qcodifItems.forEach((item, i) => {
     const tr = document.createElement('tr');
-    tr.style.cssText = `border-bottom:1px solid #0f2040;${i % 2 === 0 ? '' : 'background:#040c1a'}`;
+    const correctedBorder = item._corrected ? 'border-left:3px solid #4ade80;' : '';
+    tr.style.cssText = `border-bottom:1px solid #0f2040;${correctedBorder}${i % 2 === 0 ? '' : 'background:#040c1a'}`;
 
     const modalChips = (item.pf_modalites || '')
       .split(/[,|]/).map(m => m.trim()).filter(Boolean).slice(0, 5)
@@ -6151,11 +6155,14 @@ function qcodifRenderPreview() {
       .join('');
     const moreChips = (item.pf_modalites || '').split(/[,|]/).filter(Boolean).length > 5
       ? `<span style="font-size:10px;color:var(--text3)">+${(item.pf_modalites||'').split(/[,|]/).filter(Boolean).length - 5}</span>` : '';
+    const correctedBadge = item._corrected
+      ? `<span title="Corrigée par la vérification de la grammaire PHAKTS" style="display:inline-block;margin-left:6px;padding:1px 6px;font-size:9px;font-weight:700;border-radius:3px;background:#0f2e1a;border:1px solid #4ade8055;color:#4ade80;vertical-align:middle">✓ CORRIGÉE</span>`
+      : '';
 
     tr.innerHTML = `
       <td style="padding:9px 12px;color:var(--text3);font-family:var(--mono);font-size:11px">${i + 1}</td>
       <td style="padding:9px 12px;color:var(--text);font-size:12px;max-width:280px">${_esc(item.libelle || '—')}</td>
-      <td style="padding:9px 12px;font-family:var(--mono);font-size:12px;font-weight:600;color:#38bdf8;word-break:break-all;min-width:180px;max-width:300px">${_esc(item.pf_question)}</td>
+      <td style="padding:9px 12px;font-family:var(--mono);font-size:12px;font-weight:600;color:#38bdf8;word-break:break-all;min-width:180px;max-width:300px">${_esc(item.pf_question)}${correctedBadge}</td>
       <td style="padding:9px 12px">${modalChips}${moreChips}</td>
       <td style="padding:9px 12px;font-family:var(--mono);font-size:10.5px;color:#fcd34d">${_esc(item.pf_skip || '')}</td>
     `;
@@ -6165,14 +6172,70 @@ function qcodifRenderPreview() {
   section.style.display = 'block';
 }
 
+/**
+ * Vérifie chaque codification importée contre la grammaire PHAKTS
+ * (mêmes règles que la codification hors-ligne : radical suspect reconstruit
+ * depuis le libellé, préfixes interrogatifs FR retirés, clé de liste __X
+ * recalée sur le radical, modalités brutes reformatées, saut de logique
+ * complété si absent — voir sanitizePhaktsItemClient()/cleanResults()) et
+ * corrige en place ce qui ne s'y conforme pas. Affiche ensuite ce qui a
+ * changé (surligné dans le tableau + décompte) avant de charger le résultat
+ * dans l'onglet Résultats.
+ */
+function verifyQcodifCodification() {
+  if (!qcodifItems.length) return;
+  const before = qcodifItems.map(it => ({
+    pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip,
+  }));
+  const corrected = cleanResults(qcodifItems.map(sanitizePhaktsItemClient));
+
+  let correctedCount = 0;
+  const changes = [];
+  qcodifItems = corrected.map((fixed, i) => {
+    const b = before[i];
+    const isChanged = fixed.pf_question !== b.pf_question
+      || fixed.pf_modalites !== b.pf_modalites
+      || fixed.pf_skip !== b.pf_skip;
+    if (isChanged) {
+      correctedCount++;
+      changes.push({ libelle: fixed.libelle, avant: b, apres: {
+        pf_question: fixed.pf_question, pf_modalites: fixed.pf_modalites, pf_skip: fixed.pf_skip,
+      }});
+    }
+    return { ...fixed, _corrected: isChanged };
+  });
+
+  qcodifRenderPreview();
+
+  if (correctedCount > 0) {
+    console.log('[qcodif-verify] Corrections appliquées (grammaire PHAKTS) :', changes);
+    const questionWord = correctedCount > 1 ? 'questions' : 'question';
+    const verbWord = correctedCount > 1 ? 'ne respectaient pas' : 'ne respectait pas';
+    const fixedWord = correctedCount > 1 ? 'ont été corrigées' : 'a été corrigée';
+    qcodifSetStatus(
+      `🔍 Vérification terminée — ${correctedCount} ${questionWord} sur ${qcodifItems.length} ${verbWord} la grammaire PHAKTS et ${fixedWord} (repérée${correctedCount > 1 ? 's' : ''} en vert ci-dessus, détail dans la console navigateur). Chargement dans Résultats…`,
+      'success'
+    );
+  } else {
+    qcodifSetStatus(
+      `✓ Vérification terminée — les ${qcodifItems.length} codification(s) importée(s) respectent déjà la grammaire PHAKTS. Chargement dans Résultats…`,
+      'success'
+    );
+  }
+  qcodifLoadToResults(true);
+}
+
 /* Charge les items dans l'onglet Résultats */
-function qcodifLoadToResults() {
+function qcodifLoadToResults(silent) {
   if (!qcodifItems.length) return;
   const cleaned = cleanResults(qcodifItems.map(sanitizePhaktsItemClient));
   results = cleaned;
   renderTable();
   persistResults();
-  showStatus(`✓ ${cleaned.length} question(s) chargée(s) dans Résultats`, 'success');
+  // silent: appelé depuis verifyQcodifCodification(), qui a déjà affiché un
+  // message plus précis (nombre de corrections) — ne pas l'écraser aussitôt
+  // par ce message générique.
+  if (!silent) showStatus(`✓ ${cleaned.length} question(s) chargée(s) dans Résultats`, 'success');
   switchTabById('results');
 }
 
