@@ -310,6 +310,13 @@ const app = express();
 app.use(helmet({
   contentSecurityPolicy: false, // désactivé car le frontend inline du JS
   crossOriginEmbedderPolicy: false,
+  // Par défaut Helmet met "no-referrer", ce qui supprime aussi le Referer
+  // envoyé par le frontend vers SA PROPRE API (fetch same-origin) — utilisé
+  // par /api/config pour vérifier que la requête vient bien d'une page
+  // chargée par ce serveur. "same-origin" envoie le Referer complet pour le
+  // même origine et rien du tout vers un site tiers : aussi protecteur que
+  // "no-referrer" pour la navigation externe, mais compatible avec ce contrôle.
+  referrerPolicy: { policy: "same-origin" },
 }));
 
 function getAccessibleUrls(port) {
@@ -391,7 +398,31 @@ if (API_TOKEN) {
 }
 
 // ── Config endpoint (fournit le token au frontend servi localement) ──────────
+// Cette route est volontairement exemptée du Bearer token ci-dessus car le
+// frontend en a besoin pour s'authentifier lui-même — mais rester ouverte à
+// QUICONQUE atteint le port (un simple `curl`, un autre processus local)
+// viderait le jeton de toute utilité : n'importe qui pourrait se le
+// procurer ici puis s'en servir partout ailleurs. On exige donc un en-tête
+// Origin/Referer correspondant à l'origine RÉELLE de ce serveur (protocole
+// + host + port vus par la requête elle-même) — un navigateur qui charge
+// réellement PHAKTS·STUDIO l'envoie automatiquement ; un script ou process
+// tiers ne l'a pas par défaut. Comparé à l'origine effective de la requête
+// plutôt qu'à ALLOWED_ORIGINS (qui sert à un usage différent : autoriser
+// d'AUTRES origines à appeler l'API en CORS, et peut légitimement pointer
+// vers un port différent de celui réellement utilisé). Pas une preuve
+// d'identité absolue, mais ça ferme l'accès « gratuit » qui rendait le
+// jeton sans objet.
 app.get("/api/config", (req, res) => {
+  if (API_TOKEN) {
+    const selfOrigin = `${req.protocol}://${req.get("host")}`;
+    let requestOrigin = req.headers.origin || null;
+    if (!requestOrigin && req.headers.referer) {
+      try { requestOrigin = new URL(req.headers.referer).origin; } catch (_) {}
+    }
+    if (!requestOrigin || requestOrigin !== selfOrigin) {
+      return res.status(403).json({ error: "Origine non autorisée." });
+    }
+  }
   res.json({ token: API_TOKEN || "" });
 });
 

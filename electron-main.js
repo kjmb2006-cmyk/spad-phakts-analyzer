@@ -187,6 +187,7 @@ function startFlaskServer() {
           PYTHONUNBUFFERED: "1",
           PYTHONIOENCODING: "utf-8",
           SPAD_USER_DATA_DIR: spadUserData,
+          PHAKTS_STUDIO_PORT: String(nodePort), // lien "🎨 PHAKTS STUDIO" dans base.html
         },
       });
 
@@ -264,7 +265,15 @@ ipcMain.handle("get-ports", () => ({
 // ── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   try {
-    // Launch both servers in parallel — they're independent
+    // Résout nodePort AVANT de lancer Flask : startFlaskServer() le lit pour
+    // PHAKTS_STUDIO_PORT (lien "🎨 PHAKTS STUDIO" côté Flask), et lancer les
+    // deux en parallèle sans ça risquait de figer nodePort à sa valeur par
+    // défaut (8080) si ce port était déjà occupé et que findFreePort() de
+    // Flask gagnait la course.
+    nodePort = await findFreePort(nodePort);
+
+    // Lance ensuite les deux serveurs en parallèle — indépendants au-delà
+    // du port déjà résolu ci-dessus.
     const [n, f] = await Promise.all([
       startNodeServer(),
       startFlaskServer(),

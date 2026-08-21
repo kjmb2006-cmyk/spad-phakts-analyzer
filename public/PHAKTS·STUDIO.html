@@ -789,13 +789,11 @@
 <!-- ── TABS ── -->
 <div class="tabs">
   <button class="tab active" onclick="switchTab('input', this)">▶ Codification</button>
-  <button class="tab" onclick="switchTab('editor', this)">✎ Éditeur</button>
   <button class="tab" onclick="switchTab('upload', this)">⬆ Uploads</button>
   <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ Résultats <span id="resultsCount" style="display:none"></span></button>
   <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 Questionnaire Codifié</button>
   <button class="tab" onclick="switchTab('agent', this)">🤖 Agent IA PHAKTS</button>
   <button class="tab" onclick="switchTab('grammar', this)">⊘ Dictionnaire des Propriétés Fonctionnelles</button>
-  <button class="tab" onclick="switchTab('analyse', this)" id="tabAnalyse">📊 Analyse SPAD</button>
 </div>
 
 <main>
@@ -973,6 +971,10 @@
         <button class="btn-purple" onclick="sendXLSFormToSpad()" title="Envoyer le XLSForm vers l'onglet Analyse SPAD">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
           📊 Envoyer vers SPAD
+        </button>
+        <button class="btn-purple" onclick="deployXLSFormToKobo()" id="btnDeployKobo" title="Codifier → XLSForm → Déployer directement dans KoboToolbox, en une seule étape">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          🚀 Déployer sur Kobo
         </button>
         <button class="btn-add" onclick="addManualRow()" title="Ajouter manuellement une codification">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2221,8 +2223,11 @@ function switchTab(name, btn) {
   if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} }
 }
 function switchTabById(name) {
+  // Onglets "Éditeur" et "Analyse SPAD" retirés de la barre — les index
+  // reflètent désormais l'ordre RÉEL des boutons .tab restants dans le DOM
+  // (voir la barre d'onglets plus haut dans ce fichier).
   const tabs = document.querySelectorAll('.tab');
-  const idxMap = { input: 0, editor: 1, upload: 2, results: 3, qcodif: 4, agent: 5, grammar: 6, analyse: 7 };
+  const idxMap = { input: 0, upload: 1, results: 2, qcodif: 3, agent: 4, grammar: 5 };
   const idx = idxMap[name] ?? 0;
   switchTab(name, tabs[idx]);
 }
@@ -2683,8 +2688,10 @@ function showLoading(v) {
 /**
  * Affiche un message de statut temporaire (info, success, error)
  */
+let _statusHideTimer = null;
 function showStatus(msg, type = 'info') {
   let el = document.getElementById('statusMessage');
+  if (_statusHideTimer) { clearTimeout(_statusHideTimer); _statusHideTimer = null; }
   if (!el) {
     el = document.createElement('div');
     el.id = 'statusMessage';
@@ -2718,7 +2725,7 @@ function showStatus(msg, type = 'info') {
   el.style.display = 'block';
   
   if (type !== 'error') {
-    setTimeout(() => el.style.display = 'none', 3000);
+    _statusHideTimer = setTimeout(() => { el.style.display = 'none'; _statusHideTimer = null; }, 3000);
   }
 }
 
@@ -2925,7 +2932,9 @@ async function syncLearnedFromServer() {
       loadLearnedExamples();
       console.log('[syncLearnedFromServer] +' + added + ' exemples importés du serveur');
     }
-  } catch (_) {}
+  } catch (e) {
+    console.warn('[syncLearnedFromServer] Hors-ligne ou erreur serveur:', e && e.message);
+  }
 }
 
 function loadLearnedExamples() {
@@ -3988,7 +3997,7 @@ async function codify() {
       } else if (res && data) {
         results = cleanResults((data.items || []).map(sanitizePhaktsItemClient));
         // Post-pass : compléter les Skip Logic manquantes par détection locale
-        try { inferSkipRulesInPlace(results); } catch (_) {}
+        try { inferSkipRulesInPlace(results); } catch (e) { console.warn('[codify] inferSkipRulesInPlace error:', e && e.message); }
       }
     } else {
       // Mode hors ligne : codification locale
@@ -4102,9 +4111,9 @@ function showApiError(payload, status) {
   if (code === 'rate_limit')    icon = '⏱';
   if (code === 'overloaded')    icon = '🚦';
 
-  let html = '<strong>' + icon + ' ' + main + '</strong>';
-  if (details) html += '<div style="margin-top:6px;font-size:.9em;opacity:.92">' + details + '</div>';
-  if (help)    html += '<div style="margin-top:8px"><a href="' + help + '" target="_blank" style="color:#67e8f9;text-decoration:underline">Ouvrir dans le navigateur →</a></div>';
+  let html = '<strong>' + icon + ' ' + esc(main) + '</strong>';
+  if (details) html += '<div style="margin-top:6px;font-size:.9em;opacity:.92">' + esc(details) + '</div>';
+  if (help)    html += '<div style="margin-top:8px"><a href="' + esc(help) + '" target="_blank" style="color:#67e8f9;text-decoration:underline">Ouvrir dans le navigateur →</a></div>';
 
   const box = document.getElementById('errorBox');
   if (box) {
@@ -4247,8 +4256,11 @@ function inferSkipRulesInPlace(items) {
       const condMatch = lib.match(/^\s*si\s+([A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_\-]*)[\s,]/i);
       if (condMatch) {
         const val = condMatch[1].trim();
-        // évite les cas oui/non/autre déjà gérés ET les mots-outils
-        if (!/^(oui|non|autre|la|le|les|un|une|des|de|du|elle|il|vous|tu|cette|ce|ces|cet)$/i.test(val)) {
+        // Écarte les mots-outils via la liste de mots vides FR déjà utilisée
+        // pour la codification hors-ligne (FR_STOPWORDS_CLIENT, plus bas
+        // dans ce fichier) plutôt qu'une courte liste ad hoc maintenue à la
+        // main ailleurs — elle couvre déjà oui/non/autre(s) et bien plus.
+        if (!FR_STOPWORDS_CLIENT.has(val.toLowerCase())) {
           const prev = findPrev(i, m => isSelect(m) || isBool(m));
           if (prev) {
             it.pf_skip = `${radical(prev.pf_question)} = ${val} -> @${radical(it.pf_question)}`;
@@ -5442,17 +5454,74 @@ async function sendXLSFormToSpad() {
 
     showStatus(`✅ XLSForm envoyé à SPAD : ${data.questions} questions, ${data.choices} modalités.`, 'success');
 
-    // Switch to the Analyse tab and load the preview page
-    const tab = document.getElementById('tabAnalyse');
-    if (tab) switchTab('analyse', tab);
-    const frame = document.getElementById('spadFrame');
-    if (frame) {
-      _spadLoaded = true;   // skip lazy-load (we set it ourselves)
-      frame.src = `${spadUrl}/xlsform/preview`;
-    }
+    // Plus d'onglet "Analyse SPAD" intégré (retiré) — ouvre l'aperçu dans
+    // le navigateur du système à la place.
+    window.open(`${spadUrl}/xlsform/preview`, '_blank', 'noopener');
   } catch (e) {
     console.error('[send-to-spad]', e);
     showStatus('❌ Échec de l\'envoi vers SPAD : ' + e.message, 'error');
+  }
+}
+
+// Codifier → XLSForm → déployer directement dans KoboToolbox, en un clic —
+// enchaîne le même import que sendXLSFormToSpad() puis appelle
+// /api/kobo/deploy-xlsform (voir analyzer/app.py::kobo_deploy_xlsform(),
+// qui déploie réellement via l'API Kobo : /imports/ puis /deployment/).
+async function deployXLSFormToKobo() {
+  if (!results.length) { alert('Aucun résultat à envoyer.'); return; }
+  const btn = document.getElementById('btnDeployKobo');
+  if (btn) btn.disabled = true;
+  try {
+    showStatus('Préparation du XLSForm…', 'info');
+    const { buffer, title } = await buildXLSFormBuffer();
+    const spadUrl = await resolveSpadUrl();
+
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const fd = new FormData();
+    fd.append('file', blob, `${title}_XLSForm.xlsx`);
+
+    const importRes = await fetch(`${spadUrl}/api/xlsform-import`, {
+      method: 'POST',
+      body: fd,
+      credentials: 'include'   // partage le cookie de session Flask avec l'iframe SPAD
+    });
+    if (!importRes.ok) {
+      const txt = await importRes.text();
+      throw new Error(`Import SPAD ${importRes.status} : ${txt.slice(0, 200)}`);
+    }
+
+    showStatus('Déploiement dans KoboToolbox…', 'info');
+    const deployRes = await fetch(`${spadUrl}/api/kobo/deploy-xlsform`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await deployRes.json().catch(() => ({}));
+
+    if (deployRes.status === 401 && data.need_kobo_connect) {
+      // Pas encore connecté à KoboToolbox — le XLSForm est bien importé
+      // côté SPAD (visible dans l'aperçu), il ne manque que la connexion
+      // pour finaliser le déploiement. On y amène l'utilisateur directement
+      // plutôt que de le laisser deviner où aller.
+      showStatus('⚠️ Connectez-vous d\'abord à KoboToolbox pour déployer directement — ouverture…', 'error');
+      window.open(`${spadUrl}/kobo/connect`, '_blank', 'noopener');
+      return;
+    }
+    if (!deployRes.ok || !data.success) {
+      throw new Error(data.error || `Échec du déploiement (${deployRes.status})`);
+    }
+
+    showStatus(`✅ « ${esc(title)} » codifié, converti en XLSForm et déployé dans KoboToolbox.`, 'success');
+
+    // Montre la confirmation de déploiement sur l'aperçu SPAD (même écran
+    // que « Envoyer vers SPAD », qui affiche désormais le formulaire comme
+    // déployé) — ouvert dans le navigateur du système, plus d'onglet
+    // "Analyse SPAD" intégré (retiré).
+    window.open(`${spadUrl}/xlsform/preview`, '_blank', 'noopener');
+  } catch (e) {
+    console.error('[deploy-to-kobo]', e);
+    showStatus('❌ Échec du déploiement sur Kobo : ' + esc(e.message), 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

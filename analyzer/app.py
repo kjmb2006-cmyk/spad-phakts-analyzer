@@ -65,6 +65,18 @@ def inject_current_year():
     return {'current_year': datetime.datetime.now().year}
 
 
+@app.context_processor
+def inject_phakts_studio_url():
+    """URL de PHAKTS Studio (app Node/Electron), injectée dans tous les
+    templates pour le lien « 🎨 PHAKTS STUDIO » de base.html — uniquement
+    disponible quand cette instance Flask tourne à l'intérieur de l'app
+    Electron (electron-main.js passe alors PHAKTS_STUDIO_PORT dans l'env
+    du process). Absent en déploiement web autonome (Render/VPS) : le lien
+    reste alors masqué plutôt que de pointer vers un serveur inexistant."""
+    port = os.environ.get('PHAKTS_STUDIO_PORT')
+    return {'phakts_studio_url': f'http://127.0.0.1:{port}' if port else None}
+
+
 if (os.environ.get('ANALYZER_PASSWORD_ADMIN') or os.environ.get('ANALYZER_PASSWORD_INVITE')) \
         and not os.environ.get('SECRET_KEY'):
     print(

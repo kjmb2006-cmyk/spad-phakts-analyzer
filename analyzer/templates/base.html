@@ -136,9 +136,15 @@
 
     <!-- 🎨 - PHAKTS STUDIO -->
     <div class="nav-section-label mt-3">🎨 - PHAKTS STUDIO</div>
-    <a href="{{ url_for('projets_liste') }}" class="nav-item {% if request.endpoint in ['projets_liste', 'projets_detail'] %}active{% endif %}">
-      <i class="bi bi-folder2-open"></i> Autres enquêtes (projets)
+    {% if phakts_studio_url %}
+    <a href="{{ phakts_studio_url }}" target="_blank" rel="noopener" class="nav-item">
+      <i class="bi bi-palette-fill"></i> PHAKTS Studio
     </a>
+    {% else %}
+    <span class="nav-item text-muted" style="cursor:default" title="Disponible uniquement dans l'application de bureau SPAD PHAKTS Analyzer (Electron)">
+      <i class="bi bi-palette-fill"></i> PHAKTS Studio
+    </span>
+    {% endif %}
 
     {% if session.get('data_path') %}
     <div class="nav-section-label mt-3">Export</div>
