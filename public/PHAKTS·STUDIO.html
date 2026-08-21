@@ -1128,11 +1128,11 @@
             <tr><td class="gc">__2L</td><td class="gd">Réel en mètres</td><td class="gm">Taille__2L!0&lt;R&lt;3</td></tr>
             <tr><td class="gc">__2S</td><td class="gd">Réel en secondes</td><td class="gm">Reflex_Time__2S</td></tr>
             <tr><td class="gc">__1Q</td><td class="gd">Entier en Trimestres (Q=Quarter) <em>Règle 20</em></td><td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td></tr>
-            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
-            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
-            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
-            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
-            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em></td><td class="gm">ID_Etablissement__E</td></tr>
+            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
+            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
+            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
+            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Score_Nutrition__2I</td></tr>
+            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">ID_Etablissement__E</td></tr>
             <tr><td class="gc">__G__X!DMS</td><td class="gd">Géolocalisation geopoint · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G__X!DMS</td></tr>
           </tbody>
         </table>
@@ -1292,14 +1292,20 @@
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">n&lt;=TYPE&lt;=n</td>
-              <td class="gd">Borne inclusive (crochet fermé [0,31])</td>
+              <td class="gd">Borne inclusive (crochet fermé [0,31]) <span style="color:#f59e0b;font-weight:600">[À valider]</span></td>
               <td class="gm">0&lt;=N&lt;=31</td>
             </tr>
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">date&lt;A&lt;date</td>
-              <td class="gd">Plage calendaire sur xType A (Date)</td>
+              <td class="gd">Plage calendaire sur xType A (Date) <span style="color:#f59e0b;font-weight:600">[À valider]</span></td>
               <td class="gm">2000/01/01&lt;A&lt;2026/12/31</td>
+            </tr>
+            <tr>
+              <td class="gc">1.3</td>
+              <td class="gc">translittération</td>
+              <td class="gd">Aucun caractère accentué dans un radical codifié — translittérer systématiquement</td>
+              <td class="gm">Coordonnées→Coordonnees, Détermine→Determine, Région→Region</td>
             </tr>
             <tr>
               <td class="gc">15</td>
@@ -1341,8 +1347,47 @@
         </table>
         <p style="font-size:10.5px;color:var(--text3);margin-top:10px;line-height:1.5">
           Source : <em>PHAKTS_v2025.10.22-ext2_Consolide_VF.docx</em> &amp; <em>PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx</em>
-          · Statut : <strong>Confirmé</strong> (règles 14–17, 20) · <strong>Formalisé</strong> (règles 16, 18, 19)
+          · Statut : <strong>Confirmé</strong> (règles 1.3, 14–17, 20) · <strong>Formalisé</strong> (règles 16, 18, 19)
+          · <span style="color:#f59e0b;font-weight:600">[À valider]</span> = usage réel constaté mais pas encore officiellement tranché (bornes inclusives, plage calendaire, xTypes P/V/F/I/E — section B)
         </p>
+      </div>
+
+      <!-- ═══ L. RÉFÉRENTIEL ADMINISTRATIF (Admin_ — Règle 16) ═══ -->
+      <div class="grammar-card" id="dpfCardAdmin" style="border:1px solid #38bdf844">
+        <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span>L. Référentiel Administratif (Admin_)</span>
+          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="adminRefCount">0</span> entrée(s)</span>
+          <span style="flex:1"></span>
+          <select id="adminRefFilter" onchange="renderAdminReferentiel()" style="padding:5px 8px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            <option value="">Toutes catégories</option>
+            <option value="Admin_Region_Sanitaire_">Régions</option>
+            <option value="Admin_District_Sanitaire_">Districts</option>
+            <option value="Admin_Etablissement_Sante_">Établissements</option>
+            <option value="Admin_Superviseur_">Superviseurs</option>
+            <option value="Admin_Enqueteur_">Enquêteurs</option>
+          </select>
+          <button class="btn-ghost" onclick="document.getElementById('adminRefFileInput').click()" style="padding:5px 10px;font-size:10.5px" title="Importer un fichier — REMPLACE tout le référentiel actuel">📁 Importer / Remplacer</button>
+          <input type="file" id="adminRefFileInput" accept=".xlsx,.csv" style="display:none" onchange="importAdminReferentiel(this.files[0]); this.value=''">
+          <button class="btn-icon btn-edit" onclick="addAdminRef()" title="Ajouter une entrée">＋</button>
+        </h3>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
+          Référentiel administratif partagé (Règle 16 — « Dictionnaire Genesis ») : régions, districts, établissements, superviseurs et enquêteurs — pour résoudre les listes <code>Admin_*</code> par référentiel externe (pulldata / select_one_external) plutôt que par des valeurs inventées en dur.
+          <strong>« 📁 Importer / Remplacer »</strong> attend le même format que <em>Admin_SPAD.xlsx</em> (colonnes list_name, name, label::Français (fr), code_id, region_code, district_code, enqueteur_code) et remplace tout le référentiel existant.
+          <strong>« ＋ »</strong> ajoute une seule entrée sans rien effacer.
+        </p>
+        <div style="overflow-x:auto">
+        <table class="grammar-table">
+          <thead><tr>
+            <th style="width:14%">Catégorie</th>
+            <th style="width:18%">Nom</th>
+            <th style="width:22%">Libellé</th>
+            <th style="width:10%">Code</th>
+            <th style="width:24%">Contexte (parent)</th>
+            <th style="width:12%;text-align:center">Actions</th>
+          </tr></thead>
+          <tbody id="adminRefBody"></tbody>
+        </table>
+        </div>
       </div>
 
       <!-- ═══ J. EXTENSIONS DE GRAMMAIRE (personnalisation) ═══ -->
@@ -2219,7 +2264,7 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name === 'analyse') ensureSpadLoaded();
   if (name === 'agent') ensureAgentInit();
-  if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} }
+  if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} try { renderAdminReferentiel(); } catch (_) {} }
 }
 function switchTabById(name) {
   // Onglets "Éditeur" et "Analyse SPAD" retirés de la barre — les index
@@ -3164,6 +3209,249 @@ function resetDpfListes() {
   showStatus('Listes DPF r\u00e9initialis\u00e9es \u2014 grammaire synchronis\u00e9e.', 'success');
 }
 
+// ─── L. Référentiel Administratif (Admin_ — Règle 16) — CRUD + import/export ─
+// Régions/districts/établissements/superviseurs/enquêteurs — même format que
+// Admin_SPAD.xlsx (list_name, name, label::Français (fr), code_id,
+// region_code, district_code, enqueteur_code), pour résoudre les listes
+// Admin_* par référentiel externe (pulldata) plutôt que des valeurs en dur.
+const ADMIN_REF_CATEGORIES = {
+  'Admin_Region_Sanitaire_': 'Région',
+  'Admin_District_Sanitaire_': 'District',
+  'Admin_Etablissement_Sante_': 'Établissement',
+  'Admin_Superviseur_': 'Superviseur',
+  'Admin_Enqueteur_': 'Enquêteur',
+};
+
+let adminRef = [];
+let adminRefEditingIdx = -1;
+
+function initAdminRef() {
+  try {
+    const saved = localStorage.getItem('phakts_admin_referentiel');
+    adminRef = saved ? JSON.parse(saved) : [];
+  } catch (_) { adminRef = []; }
+  renderAdminReferentiel();
+}
+
+function persistAdminRef() {
+  try { localStorage.setItem('phakts_admin_referentiel', JSON.stringify(adminRef)); } catch (_) {}
+}
+
+function adminRefContext(r) {
+  const parts = [];
+  if (r.region_code) parts.push('Région: ' + r.region_code);
+  if (r.district_code) parts.push('District: ' + r.district_code);
+  if (r.enqueteur_code) parts.push('Enquêteur: ' + r.enqueteur_code);
+  return parts.join(' · ') || '—';
+}
+
+function renderAdminReferentiel() {
+  const tbody = document.getElementById('adminRefBody');
+  const countEl = document.getElementById('adminRefCount');
+  if (!tbody) return;
+  if (countEl) countEl.textContent = adminRef.length;
+  const filter = (document.getElementById('adminRefFilter') || {}).value || '';
+  const filtered = filter ? adminRef.filter(r => r.list_name === filter) : adminRef;
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">Aucune entrée' +
+      (filter ? ' dans cette catégorie' : '') + ' — cliquez ＋ pour en ajouter, ou 📁 pour importer.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((r) => {
+    const i = adminRef.indexOf(r);
+    if (adminRefEditingIdx === i) {
+      const catOptions = Object.entries(ADMIN_REF_CATEGORIES)
+        .map(([k, v]) => `<option value="${k}" ${r.list_name === k ? 'selected' : ''}>${v}</option>`).join('');
+      return `<tr style="background:var(--bg2)">
+        <td><select id="adminRefCat_${i}" style="width:100%;padding:4px 6px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">${catOptions}</select></td>
+        <td><input id="adminRefName_${i}" value="${esc(r.name || '')}" placeholder="NOM_INTERNE" style="width:100%;padding:4px 6px;font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td><input id="adminRefLabel_${i}" value="${esc(r.label || '')}" placeholder="Libellé affiché" style="width:100%;padding:4px 6px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td><input id="adminRefCode_${i}" value="${esc(r.code_id || '')}" placeholder="Code" style="width:100%;padding:4px 6px;font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td>
+        <td>
+          <input id="adminRefRegion_${i}" value="${esc(r.region_code || '')}" placeholder="region_code parent" style="width:100%;padding:4px 6px;margin-bottom:3px;font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+          <input id="adminRefDistrict_${i}" value="${esc(r.district_code || '')}" placeholder="district_code parent" style="width:100%;padding:4px 6px;margin-bottom:3px;font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+          <input id="adminRefEnq_${i}" value="${esc(r.enqueteur_code || '')}" placeholder="enqueteur_code (établissement)" style="width:100%;padding:4px 6px;font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+        </td>
+        <td style="text-align:center;white-space:nowrap">
+          <button class="btn-icon btn-edit" onclick="saveAdminRef(${i})" title="Enregistrer">✓</button>
+          <button class="btn-icon btn-reset" onclick="cancelAdminRef(${i})" title="Annuler">✕</button>
+        </td></tr>`;
+    }
+    return `<tr>
+      <td class="gd">${esc(ADMIN_REF_CATEGORIES[r.list_name] || r.list_name || '—')}</td>
+      <td class="gc">${esc(r.name || '')}</td>
+      <td class="gd">${esc(r.label || '')}</td>
+      <td class="gc">${esc(r.code_id || '')}</td>
+      <td class="gm" style="font-size:10.5px">${esc(adminRefContext(r))}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-icon btn-edit" onclick="editAdminRef(${i})" title="Modifier">✎</button>
+        <button class="btn-icon btn-reset" onclick="deleteAdminRef(${i})" title="Supprimer">✕</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function addAdminRef() {
+  const filter = (document.getElementById('adminRefFilter') || {}).value || 'Admin_Region_Sanitaire_';
+  adminRef.push({ list_name: filter, name: '', label: '', code_id: '', region_code: '', district_code: '', enqueteur_code: '' });
+  adminRefEditingIdx = adminRef.length - 1;
+  renderAdminReferentiel();
+  const el = document.getElementById(`adminRefName_${adminRefEditingIdx}`);
+  if (el) el.focus();
+}
+
+function editAdminRef(idx) {
+  adminRefEditingIdx = idx;
+  renderAdminReferentiel();
+}
+
+function saveAdminRef(idx) {
+  const cat = document.getElementById(`adminRefCat_${idx}`)?.value || 'Admin_Region_Sanitaire_';
+  const name = (document.getElementById(`adminRefName_${idx}`)?.value || '').trim();
+  const label = (document.getElementById(`adminRefLabel_${idx}`)?.value || '').trim();
+  const code = (document.getElementById(`adminRefCode_${idx}`)?.value || '').trim();
+  const region = (document.getElementById(`adminRefRegion_${idx}`)?.value || '').trim();
+  const district = (document.getElementById(`adminRefDistrict_${idx}`)?.value || '').trim();
+  const enq = (document.getElementById(`adminRefEnq_${idx}`)?.value || '').trim();
+  if (!name) { showStatus('Le champ « Nom » est requis.', 'error'); return; }
+  adminRef[idx] = { list_name: cat, name, label, code_id: code, region_code: region, district_code: district, enqueteur_code: enq };
+  adminRefEditingIdx = -1;
+  persistAdminRef();
+  renderAdminReferentiel();
+  showStatus('Entrée du référentiel administratif enregistrée.', 'success');
+}
+
+function cancelAdminRef(idx) {
+  const r = adminRef[idx];
+  if (r && !r.name && !r.label) adminRef.splice(idx, 1);
+  adminRefEditingIdx = -1;
+  renderAdminReferentiel();
+}
+
+function deleteAdminRef(idx) {
+  const r = adminRef[idx];
+  if (!confirm('Supprimer « ' + (r.label || r.name || '(vide)') + ' » du référentiel administratif ?')) return;
+  adminRef.splice(idx, 1);
+  if (adminRefEditingIdx >= idx) adminRefEditingIdx = -1;
+  persistAdminRef();
+  renderAdminReferentiel();
+  showStatus('Entrée supprimée du référentiel administratif.', 'info');
+}
+
+function _adminRefColIdx(headers, keywords) {
+  // Correspondance EXACTE d'abord (sur toute la liste de mots-clés) avant
+  // repli sur une simple inclusion — sans ça, un mot-clé générique comme
+  // "name" matche par erreur l'en-tête "list_name" (qui CONTIENT "name"),
+  // faisant passer la catégorie pour le nom de chaque ligne. Cas réel
+  // rencontré sur Admin_SPAD.xlsx.
+  const h = headers.map(s => String(s || '').toLowerCase().trim());
+  for (const kw of keywords) {
+    const idx = h.findIndex(x => x === kw);
+    if (idx !== -1) return idx;
+  }
+  for (const kw of keywords) {
+    const idx = h.findIndex(x => x.includes(kw));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function _adminRefColumnMap(headers) {
+  return {
+    list_name: _adminRefColIdx(headers, ['list_name', 'liste', 'categorie']),
+    name: _adminRefColIdx(headers, ['name', 'nom']),
+    label: _adminRefColIdx(headers, ['label', 'libell']),
+    code_id: _adminRefColIdx(headers, ['code_id', 'code']),
+    region_code: _adminRefColIdx(headers, ['region_code', 'region']),
+    district_code: _adminRefColIdx(headers, ['district_code', 'district']),
+    enqueteur_code: _adminRefColIdx(headers, ['enqueteur_code', 'enqueteur']),
+  };
+}
+
+async function parseAdminRefXLSX(file) {
+  await ensureExcelJsReady();
+  const buffer = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.worksheets[0];
+  if (!ws) return [];
+  const headers = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => { headers[colNum - 1] = String(cell.value || ''); });
+  const cols = _adminRefColumnMap(headers);
+  const rows = [];
+  ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+    if (rowNum === 1) return;
+    const get = idx => idx !== -1 ? String(row.getCell(idx + 1).value || '').trim() : '';
+    const name = get(cols.name);
+    if (!name) return;
+    rows.push({
+      list_name: get(cols.list_name), name, label: get(cols.label),
+      code_id: get(cols.code_id), region_code: get(cols.region_code),
+      district_code: get(cols.district_code), enqueteur_code: get(cols.enqueteur_code),
+    });
+  });
+  return rows;
+}
+
+async function parseAdminRefCSV(file) {
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const sep = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const parseRow = line => {
+    const c = []; let cur = ''; let inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === sep && !inQ) { c.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    c.push(cur.trim());
+    return c;
+  };
+  const headers = parseRow(lines[0]);
+  const cols = _adminRefColumnMap(headers);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseRow(lines[i]);
+    const name = (cols.name !== -1 ? row[cols.name] : '') || '';
+    if (!name.trim()) continue;
+    rows.push({
+      list_name: cols.list_name !== -1 ? (row[cols.list_name] || '').trim() : '',
+      name: name.trim(),
+      label: cols.label !== -1 ? (row[cols.label] || '').trim() : '',
+      code_id: cols.code_id !== -1 ? (row[cols.code_id] || '').trim() : '',
+      region_code: cols.region_code !== -1 ? (row[cols.region_code] || '').trim() : '',
+      district_code: cols.district_code !== -1 ? (row[cols.district_code] || '').trim() : '',
+      enqueteur_code: cols.enqueteur_code !== -1 ? (row[cols.enqueteur_code] || '').trim() : '',
+    });
+  }
+  return rows;
+}
+
+/* Importe un fichier Admin_SPAD.xlsx-compatible — REMPLACE tout le référentiel */
+async function importAdminReferentiel(file) {
+  if (!file) return;
+  if (!confirm('Importer « ' + file.name + ' » va REMPLACER tout le référentiel administratif actuel (' + adminRef.length + ' entrée(s)). Continuer ?')) return;
+  try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    let rows;
+    if (ext === 'csv') rows = await parseAdminRefCSV(file);
+    else if (ext === 'xlsx' || ext === 'xls') rows = await parseAdminRefXLSX(file);
+    else { showStatus('Format non supporté. Utilisez .xlsx ou .csv', 'error'); return; }
+
+    if (!rows.length) { showStatus('Aucune donnée trouvée dans « ' + file.name + ' ».', 'error'); return; }
+    adminRef = rows;
+    adminRefEditingIdx = -1;
+    persistAdminRef();
+    renderAdminReferentiel();
+    showStatus('✓ ' + rows.length + ' entrée(s) importée(s) depuis « ' + file.name + ' » (référentiel remplacé).', 'success');
+  } catch (err) {
+    showStatus("Erreur d'import : " + err.message, 'error');
+    console.error('[admin-ref-import]', err);
+  }
+}
+
 // ─── DPF Extensions de Grammaire (Section J) — CRUD ─────────────────────────
 let dpfCustomRules = [];
 let dpfRulesEditingIdx = -1;
@@ -3353,6 +3641,23 @@ async function downloadDPF() {
       { header: 'Type / Code', key: 'code', width: 22 },
       { header: 'Description', key: 'description', width: 45 },
       { header: 'Exemple', key: 'exemple', width: 50 }
+    ]);
+  }
+
+  // ── Sheet L: Référentiel Administratif (dynamique) — même format que
+  //    Admin_SPAD.xlsx, pour pouvoir le réimporter tel quel ──
+  if (adminRef && adminRef.length > 0) {
+    addObjectWorksheet(workbook, 'L_Referentiel_Administratif', adminRef.map(r => ({
+      list_name: r.list_name, name: r.name, label: r.label, code_id: r.code_id,
+      region_code: r.region_code, district_code: r.district_code, enqueteur_code: r.enqueteur_code,
+    })), [
+      { header: 'list_name', key: 'list_name', width: 26 },
+      { header: 'name', key: 'name', width: 30 },
+      { header: 'label::Français (fr)', key: 'label', width: 40 },
+      { header: 'code_id', key: 'code_id', width: 12 },
+      { header: 'region_code', key: 'region_code', width: 22 },
+      { header: 'district_code', key: 'district_code', width: 22 },
+      { header: 'enqueteur_code', key: 'enqueteur_code', width: 16 }
     ]);
   }
 
@@ -4682,6 +4987,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadPersistedResults();
   initDpfListes();
   initDpfRules();
+  initAdminRef();
 });
 
 // ─── Cmd+Shift+R → réinitialiser résultats ───────────────────────────────────
@@ -5449,14 +5755,18 @@ async function downloadXLSForm() {
     { header: 'style', key: 'style', width: 15 }
   ]);
 
-  addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
-    { header: 'N°', key: 'n', width: 6 },
-    { header: 'Variable', key: 'variable', width: 40 },
-    { header: 'Question', key: 'question', width: 55 },
-    { header: 'Type de réponse', key: 'type', width: 22 },
-    { header: "Consigne pour l'enquêteur", key: 'consigne', width: 65 },
-    { header: 'Renvoi conditionnel', key: 'renvoi', width: 45 }
-  ]);
+  // Optionnel — jamais bloquant pour la génération du XLSForm : Annuler ne
+  // fait que sauter cette feuille, le fichier se génère quand même sans elle.
+  if (confirm("Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour générer le XLSForm sans lui)")) {
+    addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
+      { header: 'N°', key: 'n', width: 6 },
+      { header: 'Variable', key: 'variable', width: 40 },
+      { header: 'Question', key: 'question', width: 55 },
+      { header: 'Type de réponse', key: 'type', width: 22 },
+      { header: "Consigne pour l'enquêteur", key: 'consigne', width: 65 },
+      { header: 'Renvoi conditionnel', key: 'renvoi', width: 45 }
+    ]);
+  }
 
   addObjectWorksheet(workbook, 'Dictionnaire PHAKTS', buildDictionnairePhaktsRows(), [
     { header: 'Catégorie', key: 'categorie', width: 26 },
