@@ -1128,11 +1128,11 @@
             <tr><td class="gc">__2L</td><td class="gd">Réel en mètres</td><td class="gm">Taille__2L!0&lt;R&lt;3</td></tr>
             <tr><td class="gc">__2S</td><td class="gd">Réel en secondes</td><td class="gm">Reflex_Time__2S</td></tr>
             <tr><td class="gc">__1Q</td><td class="gd">Entier en Trimestres (Q=Quarter) <em>Règle 20</em></td><td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td></tr>
-            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
-            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
-            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
-            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">Score_Nutrition__2I</td></tr>
-            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em> <span style="color:#f59e0b;font-weight:600">[À valider]</span></td><td class="gm">ID_Etablissement__E</td></tr>
+            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
+            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
+            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
+            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
+            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em></td><td class="gm">ID_Etablissement__E</td></tr>
             <tr><td class="gc">__G__X!DMS</td><td class="gd">Géolocalisation geopoint · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G__X!DMS</td></tr>
           </tbody>
         </table>
@@ -1292,13 +1292,13 @@
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">n&lt;=TYPE&lt;=n</td>
-              <td class="gd">Borne inclusive (crochet fermé [0,31]) <span style="color:#f59e0b;font-weight:600">[À valider]</span></td>
+              <td class="gd">Borne inclusive (crochet fermé [0,31])</td>
               <td class="gm">0&lt;=N&lt;=31</td>
             </tr>
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">date&lt;A&lt;date</td>
-              <td class="gd">Plage calendaire sur xType A (Date) <span style="color:#f59e0b;font-weight:600">[À valider]</span></td>
+              <td class="gd">Plage calendaire sur xType A (Date)</td>
               <td class="gm">2000/01/01&lt;A&lt;2026/12/31</td>
             </tr>
             <tr>
@@ -1348,7 +1348,6 @@
         <p style="font-size:10.5px;color:var(--text3);margin-top:10px;line-height:1.5">
           Source : <em>PHAKTS_v2025.10.22-ext2_Consolide_VF.docx</em> &amp; <em>PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx</em>
           · Statut : <strong>Confirmé</strong> (règles 1.3, 14–17, 20) · <strong>Formalisé</strong> (règles 16, 18, 19)
-          · <span style="color:#f59e0b;font-weight:600">[À valider]</span> = usage réel constaté mais pas encore officiellement tranché (bornes inclusives, plage calendaire, xTypes P/V/F/I/E — section B)
         </p>
       </div>
 
@@ -5396,10 +5395,38 @@ function inferRelevantExpression(currentMeta, currentIndex, fieldMetas, regionFi
   return '';
 }
 
+/* Nom de liste Admin_* référencé par ce champ, s'il y en a un — cherché
+   dans la contrainte du code PHAKTS d'abord (usage attendu par la Règle
+   16 : pas de valeurs en dur dans les modalités), puis dans les modalités
+   par tolérance si quelqu'un l'y a quand même recopié. Cherche une
+   correspondance exacte avec l'une des 5 catégories connues
+   (ADMIN_REF_CATEGORIES) plutôt qu'une regex générique — plus robuste
+   qu'un motif fourre-tout sur "Admin_...".*/
+function adminListNameOf(meta) {
+  const cp = meta.constraintPart || '';
+  const mod = meta.item.pf_modalites || '';
+  for (const listName of Object.keys(ADMIN_REF_CATEGORIES)) {
+    if (cp.includes(listName) || mod.includes(listName)) return listName;
+  }
+  return null;
+}
+
+// Filtrage en cascade (choice_filter XLSForm) : un champ Admin_District_
+// n'est pertinent que pour la région déjà choisie, un champ Établissement/
+// Enquêteur/Superviseur que pour le district déjà choisi — à condition que
+// le champ parent existe plus tôt dans le questionnaire (findPreviousField).
+const ADMIN_CASCADE = {
+  'Admin_District_Sanitaire_':  { parentList: 'Admin_Region_Sanitaire_',   filterCol: 'region_code' },
+  'Admin_Etablissement_Sante_': { parentList: 'Admin_District_Sanitaire_', filterCol: 'district_code' },
+  'Admin_Enqueteur_':           { parentList: 'Admin_District_Sanitaire_', filterCol: 'district_code' },
+  'Admin_Superviseur_':         { parentList: 'Admin_District_Sanitaire_', filterCol: 'district_code' },
+};
+
 function buildXLSForm() {
   const surveyRows = [];
   const choicesMap = { yes_no: [{name:'oui',label:'Oui'},{name:'non',label:'Non'}] };
   const fieldMetas = results.map(buildSurveyFieldMeta);
+  const adminReferentiel = (typeof adminRef !== 'undefined' && Array.isArray(adminRef)) ? adminRef : [];
   // Détecte dynamiquement la question Région (tout listKey contenant "region")
   const regionField = fieldMetas.find(meta => {
     if (!meta.item.pf_question.includes('__X')) return false;
@@ -5424,34 +5451,63 @@ function buildXLSForm() {
     if (pf_question.includes('__B') || constraintPart === 'boolean') {
       type = 'select_one yes_no';
     } else if (pf_question.includes('__X') || pf_question.includes('__SRC')) {
-      const m = pf_modalites.match(/(\w+_)\s*=\s*\[([^\]]+)\]/);
-      if (m) {
-        const listKey = sanitizeName(m[1].replace(/_+$/,'').toLowerCase());
+      const adminListName = adminListNameOf(currentMeta);
+      if (adminListName) {
+        // Règle 16 : liste résolue depuis le référentiel administratif réel
+        // (volet L du Dictionnaire) — jamais des valeurs codées en dur.
+        const listKey = sanitizeName(adminListName.replace(/_+$/, '').toLowerCase());
         if (!choicesMap[listKey]) {
-          const rawList = m[2];
-          const separator = rawList.includes('|') ? '|' : ',';
-          const opts = rawList.split(separator).map(s=>s.trim()).filter(s=>s&&s!=='0');
-          const isDistrictList = /district/i.test(listKey);
-          choicesMap[listKey] = opts.map(o => {
-            const choice = { name: sanitizeName(o.toLowerCase()), label: o, region_code: '' };
-            if (isDistrictList && o.includes('-')) {
-              const dashIdx = o.indexOf('-');
-              choice.region_code = sanitizeName(o.substring(0, dashIdx).toLowerCase());
-              choice.name = sanitizeName(o.substring(dashIdx + 1).toLowerCase());
-              choice.label = o.substring(dashIdx + 1).replace(/_/g, ' ');
-            }
-            return choice;
-          });
+          choicesMap[listKey] = adminReferentiel
+            .filter(r => r.list_name === adminListName)
+            .map(r => ({
+              name: sanitizeName((r.name || '').toLowerCase()),
+              label: r.label || r.name || '',
+              // sanitizeName() retombe sur 'field' pour une chaîne vide (utile
+              // pour un nom de champ, jamais pour un code parent optionnel :
+              // une région n'a pas de district_code, un district n'a pas de
+              // region_code propre — ça doit rester vide, pas "field").
+              region_code: r.region_code ? sanitizeName(r.region_code.toLowerCase()) : '',
+              district_code: r.district_code ? sanitizeName(r.district_code.toLowerCase()) : '',
+            }));
         }
-        const rawList = m[2];
-        const usesComma = !rawList.includes('|');
-        const isOne = !pf_question.includes('__SRC') && (usesComma || constraintPart.includes('1*1'));
+        const isOne = !pf_question.includes('__SRC') && constraintPart.includes('1*1');
         type = (isOne ? 'select_one ' : 'select_multiple ') + listKey;
-        if (/district/i.test(listKey) && regionFieldName) {
-          choiceFilter = `region_code=\${${regionFieldName}}`;
+
+        const cascade = ADMIN_CASCADE[adminListName];
+        if (cascade) {
+          const parentMeta = findPreviousField(fieldMetas, index, m2 => adminListNameOf(m2) === cascade.parentList);
+          if (parentMeta) choiceFilter = `${cascade.filterCol}=\${${parentMeta.xlsName}}`;
         }
       } else {
-        type = 'select_one yes_no';
+        const m = pf_modalites.match(/(\w+_)\s*=\s*\[([^\]]+)\]/);
+        if (m) {
+          const listKey = sanitizeName(m[1].replace(/_+$/,'').toLowerCase());
+          if (!choicesMap[listKey]) {
+            const rawList = m[2];
+            const separator = rawList.includes('|') ? '|' : ',';
+            const opts = rawList.split(separator).map(s=>s.trim()).filter(s=>s&&s!=='0');
+            const isDistrictList = /district/i.test(listKey);
+            choicesMap[listKey] = opts.map(o => {
+              const choice = { name: sanitizeName(o.toLowerCase()), label: o, region_code: '' };
+              if (isDistrictList && o.includes('-')) {
+                const dashIdx = o.indexOf('-');
+                choice.region_code = sanitizeName(o.substring(0, dashIdx).toLowerCase());
+                choice.name = sanitizeName(o.substring(dashIdx + 1).toLowerCase());
+                choice.label = o.substring(dashIdx + 1).replace(/_/g, ' ');
+              }
+              return choice;
+            });
+          }
+          const rawList = m[2];
+          const usesComma = !rawList.includes('|');
+          const isOne = !pf_question.includes('__SRC') && (usesComma || constraintPart.includes('1*1'));
+          type = (isOne ? 'select_one ' : 'select_multiple ') + listKey;
+          if (/district/i.test(listKey) && regionFieldName) {
+            choiceFilter = `region_code=\${${regionFieldName}}`;
+          }
+        } else {
+          type = 'select_one yes_no';
+        }
       }
     } else if (/__1[YMWDH]/.test(pf_question)) {
       type = 'integer';
@@ -5492,7 +5548,10 @@ function buildXLSForm() {
   const choicesRows = [];
   for (const [ln, opts] of Object.entries(choicesMap)) {
     for (const o of opts) {
-      choicesRows.push({ list_name: ln, name: o.name, 'label::French (fr)': o.label, region_code: o.region_code || '' });
+      choicesRows.push({
+        list_name: ln, name: o.name, 'label::French (fr)': o.label,
+        region_code: o.region_code || '', district_code: o.district_code || '',
+      });
     }
   }
 
@@ -5744,7 +5803,8 @@ async function downloadXLSForm() {
     { header: 'list_name', key: 'list_name', width: 20 },
     { header: 'name', key: 'name', width: 25 },
     { header: 'label::French (fr)', key: 'label::French (fr)', width: 35 },
-    { header: 'region_code', key: 'region_code', width: 25 }
+    { header: 'region_code', key: 'region_code', width: 25 },
+    { header: 'district_code', key: 'district_code', width: 25 }
   ]);
 
   addObjectWorksheet(workbook, 'settings', [settingsRow], [
@@ -5816,7 +5876,8 @@ async function buildXLSFormBuffer() {
     { header: 'list_name', key: 'list_name', width: 20 },
     { header: 'name', key: 'name', width: 25 },
     { header: 'label::French (fr)', key: 'label::French (fr)', width: 35 },
-    { header: 'region_code', key: 'region_code', width: 25 }
+    { header: 'region_code', key: 'region_code', width: 25 },
+    { header: 'district_code', key: 'district_code', width: 25 }
   ]);
   addObjectWorksheet(workbook, 'settings', [settingsRow], [
     { header: 'form_title', key: 'form_title', width: 30 },
