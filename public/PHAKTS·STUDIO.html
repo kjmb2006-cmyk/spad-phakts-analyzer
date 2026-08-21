@@ -4057,12 +4057,25 @@ function _isSuspect(r) {
   if (/(_Trouvez?_|_Se_Trouve)/i.test(r)) return true;
   return false;
 }
+// Un code PHAKTS valide contient toujours un marqueur de type __B/__X/__1/
+// __2/__Z/__A/__SRC (Règles 5-6 de la grammaire). Partagé avec
+// codifyFromLibelleAndModalites() ci-dessous, qui gère le cas où ce
+// marqueur est totalement absent (sanitizePhaktsItemClient() ne peut alors
+// rien nettoyer — il n'y a rien à reconnaître).
+// (?![a-z]) après la lettre/chiffre de type : sans ça, un « __A » ou « __B »
+// purement fortuit à l'intérieur d'un radical (ex. « Arret__Accompagnement »
+// contient littéralement « __A ») se fait passer pour un vrai marqueur de
+// type — cas réel observé sur un fichier importé. Les minuscules qui
+// suivent un __1/__2 légitime sont exclues à dessein (une vraie unité de
+// période/mesure est toujours en MAJUSCULE : __1Y, __2K…), donc ce garde-
+// fou ne rejette aucun code valide.
+const PHAKTS_TYPE_RX = /^(.+?)(__(?:B|X|1|2|Z|A|SRC)(?![a-z]).*)$/;
+
 function sanitizePhaktsItemClient(item) {
   if (!item || !item.pf_question || typeof item.pf_question !== 'string') return item;
   let pf = item.pf_question;
   let modal = String(item.pf_modalites || '');
-  const TYPE_RX = /^(.+?)(__(?:B|X|1|2|Z|A|SRC).*)$/;
-  const m = pf.match(TYPE_RX);
+  const m = pf.match(PHAKTS_TYPE_RX);
   if (!m) return item;
   let radical = m[1];
   let rest = m[2];
@@ -4438,6 +4451,70 @@ function inferCode(libelle, normalized) {
   }
 
   return { libelle, pf_question: radical + '__Z!1*Expression', pf_modalites: 'Texte libre' };
+}
+
+/**
+ * Dérive un code PHAKTS complet (radical + __TYPE!contrainte) pour un item
+ * importé sans AUCUN marqueur de type (voir PHAKTS_TYPE_RX) — cas réel
+ * fréquent d'un questionnaire déjà rempli en Libellé/PF-Question/Modalités
+ * par quelqu'un qui a correctement décrit les modalités mais n'a jamais
+ * encodé le type en syntaxe PHAKTS (ex. "Nombre entier", "Oui | Non",
+ * "[Primaire | Secondaire | Supérieur]" en face d'un pf_question qui n'est
+ * qu'un nom de variable snake_case).
+ *
+ * Contrairement à inferCode() (utilisé en repli), s'appuie d'abord sur les
+ * MODALITÉS déjà saisies — un signal bien plus fiable que le seul libellé,
+ * puisque la personne qui a rempli le fichier a déjà fait ce travail
+ * d'analyse, juste sans connaître la syntaxe PHAKTS pour l'encoder.
+ */
+function codifyFromLibelleAndModalites(libelle, existingModalites) {
+  const normalized = normalizeText(libelle || '');
+  const radical = _extractRadical(libelle, 4) || 'Question';
+  const mod = String(existingModalites || '').trim();
+  const modLower = mod.toLowerCase();
+
+  // Oui / Non → booléen
+  if (/^\[?\s*oui\s*\|\s*non\s*\]?\*?$/.test(modLower)) {
+    return { pf_question: radical + '__B!boolean', pf_modalites: 'Oui | Non' };
+  }
+  // Nombre entier
+  if (modLower.includes('nombre entier')) {
+    return { pf_question: radical + '__1', pf_modalites: 'Nombre entier' };
+  }
+  // Texte / Texte libre
+  if (modLower === 'texte' || modLower === 'texte libre') {
+    return { pf_question: radical + '__Z!1*Expression', pf_modalites: 'Texte libre' };
+  }
+  // Réel
+  if (/^r[ée]el\b/.test(modLower)) {
+    return { pf_question: radical + '__2', pf_modalites: mod };
+  }
+  // Date (courte mention, pas une vraie liste de choix qui contiendrait "date")
+  if (/^date\b/.test(modLower) && mod.length < 20) {
+    return { pf_question: radical + '__A', pf_modalites: 'Date (YYYY/MM/DD)' };
+  }
+  // Liste à choix séparée par « | » → select_one
+  if (mod.includes('|')) {
+    const clean = mod
+      .replace(/\n[\s\S]*$/, '')      // coupe tout ce qui suit un retour à la ligne (ex. "Si autre, precisez")
+      .replace(/^\[|\]\*?$/g, '')     // retire les crochets encadrants
+      .replace(/\*$/, '')
+      .trim();
+    const options = clean.split('|').map(o => o.trim()).filter(Boolean);
+    if (options.length >= 2) {
+      const listName = radical + '_';
+      const optionTokens = options.map(o => o.replace(/\s+/g, '_'));
+      return {
+        pf_question: radical + '__X!1*1' + listName,
+        pf_modalites: listName + '=[' + optionTokens.join(',') + ']',
+      };
+    }
+  }
+
+  // Repli : moteur de codification hors-ligne existant (heuristiques sur le
+  // seul libellé) — pour les cas non couverts ci-dessus (GPS, listes
+  // numérotées "1=Marche ; 2=Taxi", modalités vides ou atypiques…).
+  return inferCode(libelle, normalized);
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
@@ -6153,21 +6230,35 @@ function qcodifRenderPreview() {
 }
 
 /**
- * Vérifie chaque codification importée contre la grammaire PHAKTS
- * (mêmes règles que la codification hors-ligne : radical suspect reconstruit
- * depuis le libellé, préfixes interrogatifs FR retirés, clé de liste __X
- * recalée sur le radical, modalités brutes reformatées, saut de logique
- * complété si absent — voir sanitizePhaktsItemClient()/cleanResults()) et
- * corrige en place ce qui ne s'y conforme pas. Affiche ensuite ce qui a
- * changé (surligné dans le tableau + décompte) avant de charger le résultat
- * dans l'onglet Résultats.
+ * Vérifie chaque codification importée contre la grammaire PHAKTS et corrige
+ * en place ce qui ne s'y conforme pas. Deux cas distincts :
+ *  - Le code porte déjà un marqueur de type (__B/__X/__1/__2/__Z/__A/__SRC)
+ *    mais avec des défauts (radical suspect, préfixe interrogatif FR, clé
+ *    de liste désynchronisée…) → sanitizePhaktsItemClient()/cleanResults(),
+ *    la voie "nettoyage" déjà en place.
+ *  - Le code n'a AUCUN marqueur de type du tout (cas réel très fréquent :
+ *    un questionnaire rempli en Libellé/PF-Question/Modalités où seul un
+ *    nom de variable snake_case figure en PF-Question, sans syntaxe PHAKTS)
+ *    → sanitizePhaktsItemClient() ne peut alors rien reconnaître et
+ *    renvoie l'item tel quel ; codifyFromLibelleAndModalites() dérive un
+ *    vrai code depuis le libellé ET les modalités déjà saisies, bien plus
+ *    fiables que le seul libellé.
+ * Affiche ensuite ce qui a changé (surligné dans le tableau + décompte)
+ * avant de charger le résultat dans l'onglet Résultats.
  */
 function verifyQcodifCodification() {
   if (!qcodifItems.length) return;
   const before = qcodifItems.map(it => ({
     pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip,
   }));
-  const corrected = cleanResults(qcodifItems.map(sanitizePhaktsItemClient));
+  const stage1 = qcodifItems.map(item => {
+    if (!PHAKTS_TYPE_RX.test(String(item.pf_question || ''))) {
+      const derived = codifyFromLibelleAndModalites(item.libelle, item.pf_modalites);
+      return { ...item, pf_question: derived.pf_question, pf_modalites: derived.pf_modalites };
+    }
+    return sanitizePhaktsItemClient(item);
+  });
+  const corrected = cleanResults(stage1);
 
   let correctedCount = 0;
   const changes = [];
