@@ -176,6 +176,14 @@ ADMIN_ONLY_ENDPOINTS = {
 def require_login():
     if not ANALYZER_PASSWORD_ADMIN and not ANALYZER_PASSWORD_INVITE:
         return  # aucun mot de passe configuré : gate désactivée (usage desktop local)
+    if request.method == 'OPTIONS':
+        # Un préflight CORS ne porte jamais de cookie (par design du
+        # navigateur) — le rediriger vers /login le ferait toujours
+        # échouer, même pour un utilisateur réellement connecté, puisque
+        # les navigateurs traitent une redirection en réponse à un
+        # préflight comme un échec CORS. La vraie requête (POST) qui suit
+        # porte, elle, le cookie et reste normalement vérifiée.
+        return
     if request.endpoint in ('login', 'register', 'static', 'favicon', 'internal_authcheck_admin'):
         return
     if request.path.startswith('/static/'):
