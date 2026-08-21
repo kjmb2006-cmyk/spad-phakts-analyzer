@@ -67,12 +67,18 @@ def inject_current_year():
 
 @app.context_processor
 def inject_phakts_studio_url():
-    """URL de PHAKTS Studio (app Node/Electron), injectée dans tous les
-    templates pour le lien « 🎨 PHAKTS STUDIO » de base.html — uniquement
-    disponible quand cette instance Flask tourne à l'intérieur de l'app
-    Electron (electron-main.js passe alors PHAKTS_STUDIO_PORT dans l'env
-    du process). Absent en déploiement web autonome (Render/VPS) : le lien
-    reste alors masqué plutôt que de pointer vers un serveur inexistant."""
+    """URL de PHAKTS Studio, injectée dans tous les templates pour le lien
+    « 🎨 PHAKTS STUDIO » de base.html. Deux sources possibles :
+      - PHAKTS_STUDIO_PUBLIC_URL : déploiement web (VPS) où PHAKTS Studio
+        tourne sur son propre sous-domaine, réservé au rôle admin (voir
+        internal_authcheck_admin() + nginx auth_request) ;
+      - PHAKTS_STUDIO_PORT : app Electron locale (electron-main.js passe
+        le port du process Node lancé en interne).
+    Absent des deux (ex. Render) : le lien reste masqué plutôt que de
+    pointer vers un serveur inexistant."""
+    public_url = os.environ.get('PHAKTS_STUDIO_PUBLIC_URL')
+    if public_url:
+        return {'phakts_studio_url': public_url}
     port = os.environ.get('PHAKTS_STUDIO_PORT')
     return {'phakts_studio_url': f'http://127.0.0.1:{port}' if port else None}
 
@@ -170,7 +176,7 @@ ADMIN_ONLY_ENDPOINTS = {
 def require_login():
     if not ANALYZER_PASSWORD_ADMIN and not ANALYZER_PASSWORD_INVITE:
         return  # aucun mot de passe configuré : gate désactivée (usage desktop local)
-    if request.endpoint in ('login', 'register', 'static', 'favicon'):
+    if request.endpoint in ('login', 'register', 'static', 'favicon', 'internal_authcheck_admin'):
         return
     if request.path.startswith('/static/'):
         return
@@ -239,6 +245,19 @@ def auto_kobo_connect():
         session['kobo_username'] = result.get('username', '')
         session['kobo_instance'] = result.get('instance', '')
         kobo_track.resume(server_token, result.get('instance'))
+
+
+@app.route('/internal/authcheck-admin')
+def internal_authcheck_admin():
+    """Endpoint de contrôle d'accès pour nginx `auth_request` — protège le
+    sous-domaine studio.spad-analyzer.afriklearn-consulting.com (PHAKTS
+    Studio) en le réservant au rôle admin. Corps vide volontairement :
+    seul le code HTTP compte pour auth_request, tout le reste serait du
+    bruit. Marqué `internal;` côté nginx — inaccessible directement depuis
+    l'extérieur, uniquement via la sous-requête nginx elle-même."""
+    if session.get('authenticated') and session.get('role') == 'admin':
+        return '', 200
+    return '', 401
 
 
 @app.route('/login', methods=['GET', 'POST'])

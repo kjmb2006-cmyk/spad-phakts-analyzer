@@ -16,6 +16,13 @@ class Config:
     # app.py) peuvent être falsifiées par quiconque connaît la valeur par défaut
     # codée ici, qui est visible dans le dépôt Git.
     SECRET_KEY = os.environ.get('SECRET_KEY', 'spad-analyzer-2024-secret')
+    # Non défini par défaut (cookie scopé au host exact, comportement Flask
+    # normal). À définir uniquement quand un sous-domaine doit partager la
+    # session (ex. studio.spad-analyzer.afriklearn-consulting.com a besoin
+    # du même cookie que spad-analyzer.afriklearn-consulting.com pour que
+    # le contrôle d'accès admin de PHAKTS Studio, via nginx auth_request,
+    # voie l'utilisateur déjà connecté).
+    SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN') or None
     UPLOAD_FOLDER = os.path.join(USER_DATA_DIR, 'uploads')
     REPORTS_FOLDER = os.path.join(USER_DATA_DIR, 'reports')
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
