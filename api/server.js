@@ -244,7 +244,11 @@ function sanitizePhaktsItem(item) {
   // 3. Détecte list_key = radical complet (ou variante) après __X!N*M
   // ex: "Quelle_Distance_Trouve__X!1*1Quelle_Distance_Trouve_"
   const listMatch = rest.match(/^(__X!\d+\*(?:\d+)?)([A-Za-z][A-Za-z0-9_]*?_)$/);
-  if (listMatch) {
+  // Ne jamais recalibrer une list_key du référentiel administratif partagé
+  // (Admin_Region_Sanitaire_, Admin_District_Sanitaire_, etc. — Règle 16) :
+  // ce ne sont pas des radicaux générés par le LLM mais des noms de liste
+  // fixes du Dictionnaire Genesis, souvent >18 caractères par construction.
+  if (listMatch && !listMatch[2].startsWith('Admin_')) {
     const oldListKey = listMatch[2].replace(/_$/, '');
     // Si la list_key est trop longue, ou égale (ou très proche) du radical →
     // la remplacer par un nom court basé sur le PREMIER segment du radical.
