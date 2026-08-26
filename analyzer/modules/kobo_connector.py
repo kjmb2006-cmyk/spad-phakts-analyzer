@@ -335,7 +335,7 @@ def load_data(token, uid, instance=None, limit=30000):
 
 def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=None):
     """
-    Importe un fichier XLSForm (.xlsx) dans KoboToolbox via POST /imports/.
+    Importe un fichier XLSForm (.xlsx) dans KoboToolbox via POST /api/v2/imports/.
     Retourne {'success': True, 'uid': ..., 'url': ..., 'instance': ...}
     ou {'success': False, 'error': ...}.
     """
@@ -360,9 +360,10 @@ def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=No
     if not base:
         return {"success": False, "error": "Aucune instance KoboToolbox valide pour ce token."}
 
-    # 1. Upload via /imports/
+    # 1. Upload via /api/v2/imports/ (KoboToolbox a retiré l'ancien endpoint
+    # sans préfixe /api/v2/ — désormais 410 Gone, cas réel constaté)
     headers = {"Authorization": f"Token {token}"}
-    upload_url = f"{base}/imports/"
+    upload_url = f"{base}/api/v2/imports/"
     try:
         with open(xls_path, 'rb') as f:
             files = {'file': (os.path.basename(xls_path), f,
@@ -386,7 +387,7 @@ def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=No
         return {"success": False, "error": f"Échec de l'upload : {e}"}
 
     # 2. Polling : attendre que l'import soit terminé
-    poll_url = f"{base}/imports/{import_uid}/"
+    poll_url = f"{base}/api/v2/imports/{import_uid}/"
     asset_uid = None
     deadline = time.time() + 60
     last_status = None
