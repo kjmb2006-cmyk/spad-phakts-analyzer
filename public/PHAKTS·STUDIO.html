@@ -2866,6 +2866,24 @@ function cleanResults(items) {
   const out = items.map(r => {
     let q = r.pf_question || '';
     let m = r.pf_modalites || '';
+
+    // Champ de référentiel administratif (Règle 16) — vérifié en priorité,
+    // avant toute autre règle ci-dessous. Centralisé ici (comme le post-pass
+    // Skip Logic plus bas) pour que TOUTES les sources en bénéficient, y
+    // compris la codification EN LIGNE (API Claude) : celle-ci n'a aucune
+    // connaissance du référentiel Admin_ et ne le produira jamais d'elle-
+    // même — cas réel observé où un champ "Nom de l'établissement
+    // sanitaire" codifié via l'API restait en texte libre malgré la
+    // détection déjà en place côté moteur hors-ligne (inferCode()) et
+    // vérification qcodif (codifyFromLibelleAndModalites()), puisque ni
+    // l'un ni l'autre n'est appelé sur ce chemin-là.
+    if (typeof detectAdminReferenceField === 'function') {
+      try {
+        const adminField = detectAdminReferenceField(r.libelle, normalizeText(r.libelle || ''));
+        if (adminField) { q = adminField.pf_question; m = adminField.pf_modalites; }
+      } catch (_) {}
+    }
+
     // Extract list values in parentheses at end: Code__X!1*1List_(A,B,C) or Code__X!1*1List_(A|B|C)
     const parenMatch = q.match(/^(.+?_)\(([^)]+)\)$/);
     if (parenMatch) {
