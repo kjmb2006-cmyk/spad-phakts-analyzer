@@ -4459,7 +4459,13 @@ function sanitizePhaktsItemClient(item) {
     .replace(/^_+|_+$/g, '');
   if (!radical) radical = oldRadical;
   const lm = rest.match(/^(__X!\d+\*(?:\d+)?)([A-Za-z][A-Za-z0-9_]*?_)$/);
-  if (lm) {
+  if (lm && !lm[2].startsWith('Admin_')) {
+    // Une liste "Admin_" (Règle 16) référence intentionnellement le
+    // référentiel administratif partagé — son nom ne doit jamais être
+    // recalé sur le radical local comme une liste normale, même s'il est
+    // plus long que 18 caractères (cas réel : "Admin_Region_Sanitaire"
+    // se faisait raccourcir en "Region_", perdant le préfixe "Admin_" qui
+    // permet la résolution contre le vrai référentiel — voir buildXLSForm()).
     const oldKey = lm[2].replace(/_$/, '');
     if (oldKey === oldRadical.replace(/_+$/, '') || oldKey === radical.replace(/_+$/, '') ||
         oldKey.length > 18 || /^Quelles?_|^Quels_|^Combien_/i.test(oldKey)) {
@@ -4744,9 +4750,48 @@ function inferModalites(code) {
   return '';
 }
 
+/**
+ * Détecte si un libellé identifie directement un champ du référentiel
+ * administratif (Règle 16 — région/district/établissement/enquêteur/
+ * superviseur) plutôt que de le laisser tomber en texte libre ou en liste
+ * inventée. Appelé en priorité par inferCode() ET par
+ * codifyFromLibelleAndModalites() (celle-ci teste sinon les modalités
+ * EXISTANTES en premier, ce qui court-circuiterait cette détection si une
+ * ligne mal codée porte déjà "Texte libre" — cas réel observé).
+ *
+ * Restreint à un libellé COURT (identifie directement le champ, ex.
+ * "District sanitaire", "Nom de l'établissement sanitaire ?") — une
+ * phrase plus longue qui mentionne juste le mot en passant (ex. "Le
+ * personnel de l'établissement a-t-il été formé ?") doit continuer à
+ * suivre la classification normale, pas être forcée en select_one Admin_.
+ */
+function detectAdminReferenceField(libelle, normalized) {
+  const rawWordCount = String(libelle || '').trim().split(/\s+/).filter(Boolean).length;
+  if (rawWordCount > 10) return null;
+  if (/\bdistrict\b/.test(normalized)) {
+    return { pf_question: 'District_Sanitaire__X!1*1Admin_District_Sanitaire_', pf_modalites: '' };
+  }
+  if (/\bregion\b/.test(normalized)) {
+    return { pf_question: 'Region_Sanitaire__X!1*1Admin_Region_Sanitaire_', pf_modalites: '' };
+  }
+  if (/\betablissement/.test(normalized)) {
+    return { pf_question: 'Etablissement_Sante__X!1*1Admin_Etablissement_Sante_', pf_modalites: '' };
+  }
+  if (/\benqueteur/.test(normalized)) {
+    return { pf_question: 'Enqueteur__X!1*1Admin_Enqueteur_', pf_modalites: '' };
+  }
+  if (/\bsuperviseur/.test(normalized)) {
+    return { pf_question: 'Superviseur__X!1*1Admin_Superviseur_', pf_modalites: '' };
+  }
+  return null;
+}
+
 function inferCode(libelle, normalized) {
   const words = normalized.split(' ').filter(w => w.length > 2 && !['les','des','est','par','une','que','qui','pas','vous','oui','non','sur','dans','pour','avec','votre','cette','quel','sont','ont','ete','elle','elles','ils','son','ses','ces','aux'].includes(w));
   const radical = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('_') || 'Question';
+
+  const adminField = detectAdminReferenceField(libelle, normalized);
+  if (adminField) return { libelle, ...adminField };
 
   // Detect type from question text
   if (/\b(oui|non)\b.*\?|est[\s-]ce que|avez[\s-]vous|disposez|etes[\s-]vous|savez[\s-]vous|pensez[\s-]vous|seriez[\s-]vous|a[\s-]t[\s-]on/i.test(libelle)) {
@@ -4838,6 +4883,13 @@ function codifyFromLibelleAndModalites(libelle, existingModalites) {
   const radical = _extractRadical(libelle, 4) || 'Question';
   const mod = String(existingModalites || '').trim();
   const modLower = mod.toLowerCase();
+
+  // Champ de référentiel administratif (Règle 16) — vérifié AVANT les
+  // modalités existantes : une ligne mal codée porte souvent "Texte
+  // libre" en modalités pour un champ Région/District/Établissement, ce
+  // qui court-circuiterait sinon cette détection avant qu'elle s'exécute.
+  const adminField = detectAdminReferenceField(libelle, normalized);
+  if (adminField) return adminField;
 
   // Oui / Non → booléen
   if (/^\[?\s*oui\s*\|\s*non\s*\]?\*?$/.test(modLower)) {
@@ -6750,6 +6802,16 @@ function verifyQcodifCodification() {
     pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip,
   }));
   const stage1 = qcodifItems.map(item => {
+    // Un champ Région/District/Établissement/Enquêteur/Superviseur doit
+    // TOUJOURS pointer vers le référentiel Admin_ (Règle 16), même si le
+    // code importé porte déjà un marqueur de type valide en apparence
+    // (ex. "Nom_Etablissement__Z!1*Expression" — texte libre alors que
+    // le libellé identifie clairement un champ Établissement) — vérifié
+    // avant toute autre logique, pas seulement en repli.
+    const adminField = detectAdminReferenceField(item.libelle, normalizeText(item.libelle || ''));
+    if (adminField) {
+      return { ...item, pf_question: adminField.pf_question, pf_modalites: adminField.pf_modalites };
+    }
     if (!PHAKTS_TYPE_RX.test(String(item.pf_question || ''))) {
       const derived = codifyFromLibelleAndModalites(item.libelle, item.pf_modalites);
       return { ...item, pf_question: derived.pf_question, pf_modalites: derived.pf_modalites };
