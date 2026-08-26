@@ -9,6 +9,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -83,43 +84,57 @@ function respondWithApiError(res, err, route = '') {
   const status = err.status;
   const msg = String(err.message || '');
   const lc = msg.toLowerCase();
-  console.error(`[${route}] Anthropic err ${status}: ${msg.slice(0, 200)}`);
+  const isGemini = LLM_PROVIDER === 'gemini';
+  const providerName = isGemini ? 'Gemini' : 'Anthropic';
+  console.error(`[${route}] ${providerName} err ${status}: ${msg.slice(0, 200)}`);
 
-  // Crédit insuffisant (400 invalid_request_error avec "credit balance")
-  if (lc.includes('credit balance') || lc.includes('billing') ||
-      lc.includes('insufficient') || lc.includes('payment')) {
+  // Quota gratuit épuisé (Gemini: 429 "quota"/"RESOURCE_EXHAUSTED") ou
+  // crédit épuisé (Anthropic: 400 "credit balance")
+  if (lc.includes('credit balance') || lc.includes('billing') || lc.includes('payment') ||
+      (isGemini && (lc.includes('quota') || lc.includes('resource_exhausted')))) {
     return res.status(402).json({
-      error: "Crédit Anthropic insuffisant pour générer la codification.",
+      error: isGemini
+        ? "Quota gratuit Gemini épuisé pour le moment."
+        : "Crédit Anthropic insuffisant pour générer la codification.",
       code: "low_balance",
-      help_url: "https://console.anthropic.com/settings/billing",
-      details: "Votre clé API n'a plus assez de crédits. Rechargez votre compte Anthropic ou utilisez une autre clé API valide.",
+      help_url: isGemini
+        ? "https://ai.google.dev/gemini-api/docs/rate-limits"
+        : "https://console.anthropic.com/settings/billing",
+      details: isGemini
+        ? "Le quota gratuit de votre clé GEMINI_API_KEY est atteint. Réessayez dans quelques minutes (quota renouvelé par minute/jour), ou passez à un plan payant Gemini."
+        : "Votre clé API n'a plus assez de crédits. Rechargez votre compte Anthropic ou utilisez une autre clé API valide.",
     });
   }
 
   // Clé invalide
   if (status === 401 || lc.includes('authentication') || lc.includes('invalid api key') ||
-      lc.includes('invalid x-api-key') || lc.includes('not found') && lc.includes('api key')) {
+      lc.includes('api_key_invalid') || lc.includes('invalid x-api-key') ||
+      (lc.includes('not found') && lc.includes('api key'))) {
     return res.status(401).json({
-      error: "Clé API Anthropic invalide ou révoquée.",
+      error: `Clé API ${providerName} invalide ou révoquée.`,
       code: "invalid_key",
-      help_url: "https://console.anthropic.com/settings/keys",
-      details: "La clé ANTHROPIC_API_KEY de votre fichier .env est rejetée par Anthropic. Vérifiez ou régénérez la clé.",
+      help_url: isGemini
+        ? "https://aistudio.google.com/app/apikey"
+        : "https://console.anthropic.com/settings/keys",
+      details: isGemini
+        ? "La clé GEMINI_API_KEY de votre fichier .env est rejetée par Google. Vérifiez ou régénérez la clé sur aistudio.google.com."
+        : "La clé ANTHROPIC_API_KEY de votre fichier .env est rejetée par Anthropic. Vérifiez ou régénérez la clé.",
     });
   }
 
-  // Quota / rate limit
+  // Quota / rate limit (hors quota gratuit déjà traité ci-dessus)
   if (status === 429 || lc.includes('rate limit') || lc.includes('too many requests')) {
     return res.status(429).json({
-      error: "Trop de requêtes en peu de temps (rate limit Anthropic).",
+      error: `Trop de requêtes en peu de temps (rate limit ${providerName}).`,
       code: "rate_limit",
       details: "Attendez 30 secondes puis réessayez.",
     });
   }
 
-  // Surcharge serveur Anthropic
-  if (status === 529 || status === 503 || lc.includes('overloaded')) {
+  // Surcharge serveur
+  if (status === 529 || status === 503 || lc.includes('overloaded') || lc.includes('unavailable')) {
     return res.status(503).json({
-      error: "Les serveurs Anthropic sont saturés.",
+      error: `Les serveurs ${providerName} sont saturés.`,
       code: "overloaded",
       details: "Réessayez dans quelques secondes.",
     });
@@ -128,12 +143,12 @@ function respondWithApiError(res, err, route = '') {
   // Modèle inconnu / erreur de paramètres
   if (status === 400) {
     return res.status(400).json({
-      error: "Paramètres invalides envoyés à Claude : " + msg.slice(0, 200),
+      error: `Paramètres invalides envoyés à ${providerName} : ` + msg.slice(0, 200),
       code: "bad_request",
     });
   }
 
-  return res.status(500).json({ error: "Erreur Anthropic : " + msg });
+  return res.status(500).json({ error: `Erreur ${providerName} : ` + msg });
 }
 
 // ── Smart radical builder : extrait un radical PHAKTS propre depuis le libellé ──
@@ -301,6 +316,14 @@ const HOST = process.env.HOST || "127.0.0.1";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:" + PORT).split(",").map((s) => s.trim());
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const API_TOKEN = process.env.API_TOKEN || ""; // Bearer token pour protéger l'API
+
+// ── Fournisseur du LLM de codification : "anthropic" (Claude, payant) ou
+// "gemini" (Google, gratuit — clé sur https://aistudio.google.com/app/apikey).
+// Détecté automatiquement selon la clé présente si LLM_PROVIDER n'est pas
+// défini explicitement dans .env.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const LLM_PROVIDER = (process.env.LLM_PROVIDER || (GEMINI_API_KEY ? "gemini" : "anthropic")).toLowerCase();
 // URL publique de SPAD Analyzer, quand PHAKTS Studio et SPAD tournent sur
 // des hôtes distincts (ex. déploiement web : studio.spad-analyzer... vs
 // spad-analyzer... — deux sous-domaines, pas juste deux ports du même
@@ -309,12 +332,65 @@ const API_TOKEN = process.env.API_TOKEN || ""; // Bearer token pour protéger l'
 // dans PHAKTS·STUDIO.html), qui ne s'applique qu'en usage bureau/local.
 const SPAD_URL = process.env.SPAD_URL || "";
 
-if (!API_KEY) {
+if (LLM_PROVIDER === "gemini" && !GEMINI_API_KEY) {
+  console.error("\n❌ GEMINI_API_KEY manquante dans le fichier .env (LLM_PROVIDER=gemini)\n");
+  process.exit(1);
+}
+if (LLM_PROVIDER === "anthropic" && !API_KEY) {
   console.error("\n❌ ANTHROPIC_API_KEY manquante dans le fichier .env\n");
   process.exit(1);
 }
 
-const client = new Anthropic({ apiKey: API_KEY });
+const client = API_KEY ? new Anthropic({ apiKey: API_KEY }) : null;
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+console.log(`[LLM] Fournisseur actif : ${LLM_PROVIDER}${LLM_PROVIDER === "gemini" ? " (" + GEMINI_MODEL + ")" : ""}`);
+
+/**
+ * Adaptateur provider-agnostique : même signature/forme de retour que
+ * `client.messages.create()` (Anthropic), que le backend actif soit
+ * Anthropic ou Gemini. Ça évite de dupliquer la logique de retry/parsing
+ * JSON dans chacun des 4 endpoints qui codifient via LLM.
+ * Retour : { content: [{type:'text', text}], stop_reason, usage:{input_tokens,output_tokens} }
+ */
+async function createLLMMessage({ model, max_tokens, system, messages, jsonMode }) {
+  if (LLM_PROVIDER === "gemini") {
+    const geminiModel = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: system,
+      generationConfig: {
+        maxOutputTokens: max_tokens,
+        ...(jsonMode ? { responseMimeType: "application/json" } : {}),
+      },
+    });
+    const history = messages.slice(0, -1).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+    const last = messages[messages.length - 1];
+    const chat = geminiModel.startChat({ history });
+    const result = await chat.sendMessage(last.content);
+    const response = result.response;
+    const text = response.text();
+    const usage = response.usageMetadata || {};
+    const finishReason = response.candidates?.[0]?.finishReason;
+    return {
+      content: [{ type: "text", text }],
+      stop_reason: finishReason === "MAX_TOKENS" ? "max_tokens" : "end_turn",
+      usage: {
+        input_tokens: usage.promptTokenCount,
+        output_tokens: usage.candidatesTokenCount,
+      },
+    };
+  }
+  return client.messages.create({ model, max_tokens, system, messages });
+}
+
+/** true si l'erreur correspond à une surcharge temporaire du LLM (retry conseillé) */
+function isOverloadError(err) {
+  const msg = String(err?.message || "").toLowerCase();
+  return err?.status === 529 || err?.status === 503 || msg.includes("overloaded") || msg.includes("unavailable");
+}
+
 const app = express();
 
 // ── Headers de sécurité ───────────────────────────────────────────────────────
@@ -764,10 +840,11 @@ app.post("/api/extract-and-codify", async (req, res) => {
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        message = await client.messages.create({
+        message = await createLLMMessage({
           model: PHAKTS_MODEL,
           max_tokens: PHAKTS_MAX_TOKENS,
           system: buildAugmentedPrompt(),
+          jsonMode: true,
           messages: [
             {
               role: "user",
@@ -777,9 +854,9 @@ app.post("/api/extract-and-codify", async (req, res) => {
         });
         break;
       } catch (retryErr) {
-        if (retryErr.status === 529 && attempt < maxRetries) {
+        if (isOverloadError(retryErr) && attempt < maxRetries) {
           const delay = attempt * 10000;
-          console.log(`[/api/extract-and-codify] Anthropic 529 – retry ${attempt}/${maxRetries} dans ${delay / 1000}s...`);
+          console.log(`[/api/extract-and-codify] ${LLM_PROVIDER} surchargé – retry ${attempt}/${maxRetries} dans ${delay / 1000}s...`);
           await new Promise((r) => setTimeout(r, delay));
         } else {
           throw retryErr;
@@ -883,10 +960,11 @@ app.post("/api/codify", async (req, res) => {
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        message = await client.messages.create({
+        message = await createLLMMessage({
           model: PHAKTS_MODEL,
           max_tokens: PHAKTS_MAX_TOKENS,
           system: buildAugmentedPrompt(),
+          jsonMode: true,
           messages: [
             {
               role: "user",
@@ -896,9 +974,9 @@ app.post("/api/codify", async (req, res) => {
         });
         break; // success
       } catch (retryErr) {
-        if (retryErr.status === 529 && attempt < maxRetries) {
+        if (isOverloadError(retryErr) && attempt < maxRetries) {
           const delay = attempt * 10000; // 10s, 20s, 30s
-          console.log(`[/api/codify] Anthropic 529 – retry ${attempt}/${maxRetries} dans ${delay / 1000}s...`);
+          console.log(`[/api/codify] ${LLM_PROVIDER} surchargé – retry ${attempt}/${maxRetries} dans ${delay / 1000}s...`);
           await new Promise((r) => setTimeout(r, delay));
         } else {
           throw retryErr;
@@ -1040,7 +1118,7 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        message = await client.messages.create({
+        message = await createLLMMessage({
           model: PHAKTS_MODEL,
           max_tokens: PHAKTS_MAX_TOKENS,
           system: agentSystem,
@@ -1048,7 +1126,7 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
         });
         break;
       } catch (retryErr) {
-        if (retryErr.status === 529 && attempt < maxRetries) {
+        if (isOverloadError(retryErr) && attempt < maxRetries) {
           await new Promise(r => setTimeout(r, attempt * 8000));
         } else {
           throw retryErr;
@@ -1170,10 +1248,11 @@ app.post("/api/codify-and-convert", async (req, res) => {
 
   try {
     // Step 1: Codify
-    const message = await client.messages.create({
+    const message = await createLLMMessage({
       model: PHAKTS_MODEL,
       max_tokens: PHAKTS_MAX_TOKENS,
       system: buildAugmentedPrompt(),
+      jsonMode: true,
       messages: [
         {
           role: "user",
