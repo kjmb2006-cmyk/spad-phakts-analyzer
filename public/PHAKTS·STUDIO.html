@@ -969,9 +969,9 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           XLSForm (KoboToolbox)
         </button>
-        <button class="btn-purple" onclick="deployXLSFormToKobo()" id="btnDeployKobo" title="Codifier → XLSForm → Déployer directement dans KoboToolbox, en une seule étape">
+        <button class="btn-purple" onclick="switchTabById('xlsform')" title="Voir le fichier XLSForm généré pour KoboToolbox avant de le télécharger ou de le déployer">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-          🚀 Déployer sur Kobo
+          🔄 Transformation XLSForm
         </button>
         <button class="btn-add" onclick="addManualRow()" title="Ajouter manuellement une codification">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1469,7 +1469,7 @@
         <button class="btn-green" onclick="downloadXLSForm()" style="padding:8px 18px;font-size:12px">
           ⬇ Télécharger XLSForm
         </button>
-        <button class="btn-purple" onclick="deployXLSFormToKobo()" style="padding:8px 18px;font-size:12px">
+        <button class="btn-purple" onclick="deployXLSFormToKobo()" id="btnDeployKobo" style="padding:8px 18px;font-size:12px">
           🚀 Déployer sur Kobo
         </button>
       </div>
@@ -6002,6 +6002,19 @@ async function buildXLSFormBuffer() {
     { header: 'default_language', key: 'default_language', width: 20 },
     { header: 'style', key: 'style', width: 15 }
   ]);
+
+  // Optionnel — jamais bloquant : Annuler saute juste cette feuille, le
+  // fichier (téléchargé ou déployé sur Kobo) se génère quand même sans elle.
+  if (confirm("Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour continuer sans lui)")) {
+    addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
+      { header: 'N°', key: 'n', width: 6 },
+      { header: 'Variable', key: 'variable', width: 40 },
+      { header: 'Question', key: 'question', width: 55 },
+      { header: 'Type de réponse', key: 'type', width: 22 },
+      { header: "Consigne pour l'enquêteur", key: 'consigne', width: 65 },
+      { header: 'Renvoi conditionnel', key: 'renvoi', width: 45 }
+    ]);
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
   return { buffer, title };
