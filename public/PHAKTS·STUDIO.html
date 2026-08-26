@@ -2919,6 +2919,21 @@ function cleanResults(items) {
 }
 
 // ─── Render table ─────────────────────────────────────────────────────────────
+// Pour un champ Admin_ (Région/District/Établissement/Enquêteur/Superviseur),
+// pf_modalites reste vide par conception : les valeurs viennent du Référentiel
+// Administratif (feuille "choices" du XLSForm), pas d'une liste [a,b,c] en dur.
+// Affiche un repère informatif à la place du vide, sans jamais toucher à la
+// valeur réelle de pf_modalites (utilisée telle quelle pour l'export XLSForm).
+function adminRefDisplayHint(pfQuestion) {
+  const m = String(pfQuestion || '').match(/(Admin_[A-Za-z0-9_]+_)$/);
+  if (!m) return null;
+  const listName = m[1];
+  const rows = (typeof adminRef !== 'undefined' && Array.isArray(adminRef))
+    ? adminRef.filter(r => r.list_name === listName)
+    : [];
+  return `→ Référentiel ${listName} (${rows.length} valeur${rows.length === 1 ? '' : 's'})`;
+}
+
 function renderTable() {
   const tbody = document.getElementById('resultsBody');
   tbody.innerHTML = '';
@@ -2943,7 +2958,7 @@ function renderTable() {
         <td class="td-num">${i+1}</td>
         <td><input class="edit-input" id="ei_lib" value="${esc(r.libelle)}"/></td>
         <td><input class="edit-input" id="ei_pf" value="${esc(r.pf_question)}"/></td>
-        <td><input class="edit-input" id="ei_mod" value="${esc(r.pf_modalites)}"/></td>
+        <td><input class="edit-input" id="ei_mod" value="${esc(r.pf_modalites)}" placeholder="${esc(adminRefDisplayHint(r.pf_question) || '')}"/></td>
         <td><input class="edit-input" id="ei_skip" value="${esc(r.pf_skip)}" placeholder="ex: Fumer__B = Oui -> @..."/></td>
         <td class="center">
           <span class="type-tag" style="background:${tag.bg};color:${tag.fg};border:1px solid ${tag.fg}44">${tag.label}</span>
@@ -2956,7 +2971,7 @@ function renderTable() {
         <td class="td-num">${i+1}</td>
         <td>${esc(r.libelle)}</td>
         <td class="td-code">${esc(r.pf_question)}</td>
-        <td class="td-modal">${esc(r.pf_modalites)}</td>
+        <td class="td-modal">${r.pf_modalites ? esc(r.pf_modalites) : (adminRefDisplayHint(r.pf_question) ? '<span style="opacity:.65;font-style:italic">' + esc(adminRefDisplayHint(r.pf_question)) + '</span>' : '')}</td>
         <td class="td-skip">${r.pf_skip ? '<span class="skip-tag" title="' + esc(r.pf_skip) + '">⤳ ' + esc(r.pf_skip) + '</span>' : ''}</td>
         <td class="center">
           <span class="type-tag" style="background:${tag.bg};color:${tag.fg};border:1px solid ${tag.fg}44">${tag.label}</span>
