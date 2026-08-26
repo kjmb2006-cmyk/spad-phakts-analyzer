@@ -791,6 +791,7 @@
   <button class="tab active" onclick="switchTab('input', this)">▶ Codification</button>
   <button class="tab" onclick="switchTab('upload', this)">⬆ Uploads</button>
   <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ Résultats <span id="resultsCount" style="display:none"></span></button>
+  <button class="tab" onclick="switchTab('xlsform', this)" id="tabXlsform">📄 Fichier XLSForm</button>
   <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 Questionnaire Codifié</button>
   <button class="tab" onclick="switchTab('agent', this)">🤖 Agent IA PHAKTS</button>
   <button class="tab" onclick="switchTab('grammar', this)">⊘ Dictionnaire des Propriétés Fonctionnelles</button>
@@ -1446,6 +1447,65 @@
         </table>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ════════════ FICHIER XLSFORM PANEL ════════════ -->
+  <div id="panelXlsform" style="display:none;padding:24px 28px;max-width:1200px;margin:0 auto">
+
+    <label class="section-label" style="margin-bottom:16px">
+      ▸ Fichier XLSForm
+      <span>Aperçu du format KoboToolbox généré à partir de vos résultats — vérifiez avant de télécharger ou de déployer directement</span>
+    </label>
+
+    <div id="xlsformEmptyState" style="display:none;text-align:center;padding:60px 20px;color:var(--text3);border:1px dashed var(--border);border-radius:12px">
+      Aucun résultat codifié pour le moment. Retournez à l'onglet <strong>⊞ Résultats</strong> pour générer des codifications.
+    </div>
+
+    <div id="xlsformPreviewSection">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <button class="btn-ghost" onclick="renderXlsformPreview()" style="padding:8px 16px;font-size:12px">↻ Actualiser l'aperçu</button>
+        <span style="flex:1"></span>
+        <button class="btn-green" onclick="downloadXLSForm()" style="padding:8px 18px;font-size:12px">
+          ⬇ Télécharger XLSForm
+        </button>
+        <button class="btn-purple" onclick="deployXLSFormToKobo()" style="padding:8px 18px;font-size:12px">
+          🚀 Déployer sur Kobo
+        </button>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:8px">📋 Feuille « survey » — <span id="xlsformSurveyCount">0</span> question(s)</div>
+      <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px;margin-bottom:24px">
+        <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+          <thead>
+            <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
+              <th style="padding:8px 10px;text-align:left;color:#7dd3fc;white-space:nowrap">#</th>
+              <th style="padding:8px 10px;text-align:left;color:#7dd3fc">type</th>
+              <th style="padding:8px 10px;text-align:left;color:#38bdf8">name</th>
+              <th style="padding:8px 10px;text-align:left;color:#93c5fd">label::French (fr)</th>
+              <th style="padding:8px 10px;text-align:left;color:#fbbf24">relevant</th>
+              <th style="padding:8px 10px;text-align:left;color:#f87171">constraint</th>
+            </tr>
+          </thead>
+          <tbody id="xlsformSurveyBody"></tbody>
+        </table>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;color:#86efac;margin-bottom:8px">📚 Feuille « choices » — <span id="xlsformChoicesCount">0</span> option(s)</div>
+      <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+          <thead>
+            <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
+              <th style="padding:8px 10px;text-align:left;color:#7dd3fc">list_name</th>
+              <th style="padding:8px 10px;text-align:left;color:#38bdf8">name</th>
+              <th style="padding:8px 10px;text-align:left;color:#93c5fd">label::French (fr)</th>
+              <th style="padding:8px 10px;text-align:left;color:#94a3b8">region_code</th>
+              <th style="padding:8px 10px;text-align:left;color:#94a3b8">district_code</th>
+            </tr>
+          </thead>
+          <tbody id="xlsformChoicesBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -2253,7 +2313,7 @@ function agentInsertSample(kind) {
 
 // ─── Tab Management ───────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  ['input','editor','upload','results','qcodif','agent','grammar','analyse'].forEach(p => {
+  ['input','editor','upload','results','xlsform','qcodif','agent','grammar','analyse'].forEach(p => {
     const el = document.getElementById('panel' + p.charAt(0).toUpperCase() + p.slice(1));
     if (el) el.style.display = 'none';
   });
@@ -2263,14 +2323,16 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name === 'analyse') ensureSpadLoaded();
   if (name === 'agent') ensureAgentInit();
+  if (name === 'xlsform') { try { renderXlsformPreview(); } catch (_) {} }
   if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} try { renderAdminReferentiel(); } catch (_) {} }
 }
 function switchTabById(name) {
-  // Onglets "Éditeur" et "Analyse SPAD" retirés de la barre — les index
-  // reflètent désormais l'ordre RÉEL des boutons .tab restants dans le DOM
-  // (voir la barre d'onglets plus haut dans ce fichier).
+  // Onglets "Éditeur" et "Analyse SPAD" retirés de la barre, "Fichier
+  // XLSForm" ajouté entre Résultats et Questionnaire Codifié — les index
+  // reflètent l'ordre RÉEL des boutons .tab dans le DOM (voir la barre
+  // d'onglets plus haut dans ce fichier).
   const tabs = document.querySelectorAll('.tab');
-  const idxMap = { input: 0, upload: 1, results: 2, qcodif: 3, agent: 4, grammar: 5 };
+  const idxMap = { input: 0, upload: 1, results: 2, xlsform: 3, qcodif: 4, agent: 5, grammar: 6 };
   const idx = idxMap[name] ?? 0;
   switchTab(name, tabs[idx]);
 }
@@ -5568,6 +5630,52 @@ function buildXLSForm() {
   const settingsRow = { form_title: title, form_id: fid, version: new Date().toISOString().split('T')[0].replace(/-/g,''), default_language: 'French (fr)', style: 'pages' };
 
   return { surveyRows, choicesRows, settingsRow, fieldMetas };
+}
+
+/**
+ * Onglet « Fichier XLSForm » — aperçu en lecture seule des feuilles survey/
+ * choices telles que buildXLSForm() les générerait, pour vérifier avant de
+ * télécharger ou déployer directement dans KoboToolbox.
+ */
+function renderXlsformPreview() {
+  const empty = document.getElementById('xlsformEmptyState');
+  const section = document.getElementById('xlsformPreviewSection');
+  if (!empty || !section) return;
+
+  if (!results.length) {
+    empty.style.display = 'block';
+    section.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  section.style.display = 'block';
+
+  const { surveyRows, choicesRows } = buildXLSForm();
+
+  const surveyBody = document.getElementById('xlsformSurveyBody');
+  document.getElementById('xlsformSurveyCount').textContent = surveyRows.length;
+  surveyBody.innerHTML = surveyRows.map((r, i) => `
+    <tr style="border-bottom:1px solid #0f2040;${i % 2 === 0 ? '' : 'background:#040c1a'}">
+      <td style="padding:7px 10px;color:var(--text3);font-family:var(--mono);font-size:11px">${i + 1}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:11px;color:#7dd3fc;white-space:nowrap">${_esc(r.type)}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:11px;font-weight:600;color:#38bdf8">${_esc(r.name)}</td>
+      <td style="padding:7px 10px;color:var(--text);font-size:12px">${_esc(r['label::French (fr)'])}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:10.5px;color:#fbbf24">${_esc(r.relevant || '')}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:10.5px;color:#f87171">${_esc(r.constraint || '')}</td>
+    </tr>
+  `).join('');
+
+  const choicesBody = document.getElementById('xlsformChoicesBody');
+  document.getElementById('xlsformChoicesCount').textContent = choicesRows.length;
+  choicesBody.innerHTML = choicesRows.map((r, i) => `
+    <tr style="border-bottom:1px solid #0f2040;${i % 2 === 0 ? '' : 'background:#040c1a'}">
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:11px;color:#7dd3fc;white-space:nowrap">${_esc(r.list_name)}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:11px;color:#38bdf8">${_esc(r.name)}</td>
+      <td style="padding:7px 10px;color:var(--text);font-size:12px">${_esc(r['label::French (fr)'])}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:10.5px;color:#94a3b8">${_esc(r.region_code || '')}</td>
+      <td style="padding:7px 10px;font-family:var(--mono);font-size:10.5px;color:#94a3b8">${_esc(r.district_code || '')}</td>
+    </tr>
+  `).join('');
 }
 
 // ─── Downloads ────────────────────────────────────────────────────────────────
