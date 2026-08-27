@@ -322,7 +322,7 @@ const API_TOKEN = process.env.API_TOKEN || ""; // Bearer token pour protéger l'
 // Détecté automatiquement selon la clé présente si LLM_PROVIDER n'est pas
 // défini explicitement dans .env.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 const LLM_PROVIDER = (process.env.LLM_PROVIDER || (GEMINI_API_KEY ? "gemini" : "anthropic")).toLowerCase();
 // URL publique de SPAD Analyzer, quand PHAKTS Studio et SPAD tournent sur
 // des hôtes distincts (ex. déploiement web : studio.spad-analyzer... vs
