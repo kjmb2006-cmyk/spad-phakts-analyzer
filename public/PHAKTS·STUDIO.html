@@ -5982,6 +5982,25 @@ function phaktsQualityWarnings(items) {
         }
       });
     }
+    // Liste Admin_ (Règle 16) référencée mais Référentiel Administratif vide
+    // ou sans ligne pour cette liste précise — la feuille "choices" recevra
+    // alors une liste déroulante SANS AUCUNE valeur (silencieux, sans erreur
+    // visible ailleurs : le champ apparaît dans "survey" avec le bon type
+    // select_one/select_multiple, mais n'a rien à proposer dans Kobo). Cas
+    // réel : Référentiel non importé dans ce navigateur/session.
+    const adminMatch = code.match(/(Admin_[A-Za-z0-9_]+_)$/);
+    if (adminMatch) {
+      const listName = adminMatch[1];
+      const hasRows = typeof adminRef !== 'undefined' && Array.isArray(adminRef)
+        && adminRef.some(r => r.list_name === listName);
+      if (!hasRows) {
+        warnings.push({
+          n: i + 1, variable: codePart,
+          anomalie: `Référentiel ${listName} vide ou non importé — la liste déroulante Kobo n'aura aucune valeur`,
+          action: "Dictionnaire → L. Référentiel Administratif → importer Admin_SPAD.xlsx dans CE navigateur, avant génération — Règle 16",
+        });
+      }
+    }
   });
   return warnings;
 }
