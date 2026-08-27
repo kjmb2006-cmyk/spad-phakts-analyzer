@@ -433,8 +433,11 @@ def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=No
             rd = requests.post(deploy_url, headers=headers, json=deploy_payload,
                                timeout=30, verify=False)
         deployed = rd.status_code in (200, 201)
-    except Exception:
+        if not deployed:
+            print(f"[kobo_connector] Déploiement échoué (HTTP {rd.status_code}) pour {asset_uid} : {rd.text[:300]}")
+    except Exception as e:
         deployed = False
+        print(f"[kobo_connector] Déploiement échoué (exception) pour {asset_uid} : {e}")
 
     return {
         "success": True,
