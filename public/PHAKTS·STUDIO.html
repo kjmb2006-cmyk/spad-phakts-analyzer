@@ -5177,7 +5177,15 @@ function sanitizeName(s) {
 }
 
 function buildXlsNameFromCode(codePart) {
-  const rawName = String(codePart || '').replace(/__/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+  // Retire le marqueur de TYPE PHAKTS (__B, __X, __Z, __A, __1[YMWDH]?, __SRC)
+  // — il ferme toujours codePart (tout ce qui précède le "!" de contrainte),
+  // donc l'ancrage $ suffit à ne cibler QUE lui, jamais un "__" à l'intérieur
+  // du radical lui-même. Un nom de colonne XLSForm comme "Region_Sanitaire_X"
+  // n'est pas un radical PHAKTS valide (le "_X" résiduel n'a aucun sens hors
+  // du code source) — le nom exporté vers KoboToolbox doit être le radical
+  // pur : "Region_Sanitaire".
+  const radical = String(codePart || '').replace(/__(?:SRC|[BXZA]|[12][YMWDH]?)$/, '');
+  const rawName = radical.replace(/__/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
   return /^[a-zA-Z]/.test(rawName) ? rawName.substring(0,63) : 'q_' + rawName.substring(0,61);
 }
 
@@ -5597,6 +5605,21 @@ function buildXLSForm() {
   const surveyRows = [];
   const choicesMap = { yes_no: [{name:'oui',label:'Oui'},{name:'non',label:'Non'}] };
   const fieldMetas = results.map(buildSurveyFieldMeta);
+  // Garantit l'unicité de xlsName : deux libellés distincts (ou le même
+  // libellé posé deux fois dans le questionnaire) peuvent produire le même
+  // radical une fois le marqueur de type retiré par buildXlsNameFromCode().
+  // KoboToolbox rejette un XLSForm avec des "name" dupliqués dans la feuille
+  // survey — avant, le suffixe __X/__B/... servait involontairement (et pas
+  // toujours) de désambiguïsation ; on la rend explicite et fiable ici.
+  {
+    const seenXlsNames = new Map();
+    fieldMetas.forEach(meta => {
+      const base = meta.xlsName;
+      const count = (seenXlsNames.get(base) || 0) + 1;
+      seenXlsNames.set(base, count);
+      if (count > 1) meta.xlsName = `${base}_${count}`;
+    });
+  }
   const adminReferentiel = (typeof adminRef !== 'undefined' && Array.isArray(adminRef)) ? adminRef : [];
   // Détecte dynamiquement la question Région (tout listKey contenant "region")
   const regionField = fieldMetas.find(meta => {
