@@ -2799,12 +2799,16 @@ def _load_completude_cache():
     comme pour le jeu de données analysé (session['data_path']), seul le
     CHEMIN du fichier de résultat est stocké en session, jamais son contenu.
 
-    Filet de sécurité : si le cookie de session ne référence pas (ou plus)
-    de fichier valide — observé en usage réel dans le contexte iframe de
-    l'app desktop Electron, cause exacte non confirmée — on retombe sur le
-    fichier completude_*.json le plus récent du dossier d'upload plutôt que
-    de perdre un calcul qui a pourtant réussi côté serveur. Une incohérence
-    multi-utilisateur n'est pas un risque ici (app mono-utilisateur locale).
+    Si la session ne référence pas (ou plus) de fichier valide, retourne None
+    — l'utilisateur voit alors « Aucun calcul disponible » plutôt qu'un
+    résultat recalculé par quelqu'un d'autre. Un ancien filet de sécurité
+    retombait ici sur le fichier completude_*.json le plus récent du dossier
+    d'upload, quelle que soit sa provenance ; retiré car l'app tourne
+    désormais en web multi-rôles (Data / Invité, voir _kobo_credentials())
+    et non plus en usage mono-utilisateur local comme prévu à l'origine —
+    ce repli faisait apparaître à un utilisateur le calcul (potentiellement
+    périmé) d'un autre, sans sélection de formulaires "Suivi" correspondante
+    ni indice visuel du décalage (cas réel signalé).
     """
     path = session.get('completude_path')
     if path and os.path.exists(path):
@@ -2813,22 +2817,7 @@ def _load_completude_cache():
                 return json.load(f)
         except Exception:
             pass
-
-    try:
-        candidates = [
-            os.path.join(app.config['UPLOAD_FOLDER'], f)
-            for f in os.listdir(app.config['UPLOAD_FOLDER'])
-            if f.startswith('completude_') and f.endswith('.json')
-        ]
-        if not candidates:
-            return None
-        latest = max(candidates, key=os.path.getmtime)
-        with open(latest, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        session['completude_path'] = latest  # resynchronise la session pour les prochaines requêtes
-        return data
-    except Exception:
-        return None
+    return None
 
 
 def _kobo_credentials():
