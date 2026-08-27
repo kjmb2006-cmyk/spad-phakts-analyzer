@@ -80,12 +80,26 @@
           return;
         }
 
-        status.className = 'mt-2 small alert alert-success py-2';
-        status.innerHTML =
-          '<strong>✅ Déployé !</strong> Le formulaire est disponible sur ' +
-          '<a href="' + data.url + '" target="_blank" class="alert-link">' + data.url + '</a>' +
-          (data.deployed ? ' (déjà actif, prêt à recevoir des soumissions)' : ' (à activer manuellement dans Kobo)');
-        btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Déployé';
+        if (data.deployed) {
+          status.className = 'mt-2 small alert alert-success py-2';
+          status.innerHTML =
+            '<strong>✅ Déployé !</strong> Le formulaire est disponible sur ' +
+            '<a href="' + data.url + '" target="_blank" class="alert-link">' + data.url + '</a>' +
+            ' (déjà actif, prêt à recevoir des soumissions)';
+          btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Déployé';
+          // Reste désactivé : l'activation a réellement réussi, pas besoin de réessayer.
+        } else {
+          // Importé dans Kobo, mais l'étape d'ACTIVATION a échoué (voir data.error /
+          // journaux serveur) — bouton réactivé pour permettre un nouvel essai, au
+          // lieu de rester bloqué sur "Déployé" alors que ce n'est pas le cas.
+          status.className = 'mt-2 small alert alert-warning py-2';
+          status.innerHTML =
+            '<strong>⚠️ Importé, mais pas encore actif.</strong> Le formulaire est sur ' +
+            '<a href="' + data.url + '" target="_blank" class="alert-link">' + data.url + '</a>' +
+            ' — activez-le manuellement dans Kobo, ou réessayez ci-contre.';
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Réessayer l\'activation';
+        }
       } catch (e) {
         status.className = 'mt-2 small alert alert-danger py-2';
         status.innerHTML = '<strong>❌ Erreur réseau :</strong> ' + e.message;
