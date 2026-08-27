@@ -2857,7 +2857,7 @@ function typeTag(code) {
   if (code.includes('__Z!1*Tel')) return {label:'Téléphone', bg:'#1a3040', fg:'#67e8f9'};
   if (code.includes('__Z')) return {label:'Texte', bg:'#3a2a1a', fg:'#fbbf24'};
   if (code.includes('__A')) return {label:'Date', bg:'#3a1a1a', fg:'#f87171'};
-  if (/__1[YMWDH]/.test(code)) return {label:'Entier', bg:'#1a2a3a', fg:'#67e8f9'};
+  if (/__1(?:[YMWDH])?(?=!|$)/.test(code)) return {label:'Entier', bg:'#1a2a3a', fg:'#67e8f9'};
   return {label:'Autre', bg:'#2a2a2a', fg:'#94a3b8'};
 }
 
@@ -4680,6 +4680,22 @@ function inferSkipRulesInPlace(items) {
       if (prev) {
         it.pf_skip = `${radical(prev.pf_question)} = Oui -> @${radical(it.pf_question)}`;
         matched = 'uniquement si';
+      }
+    }
+    // ── « Pourquoi n'avez-vous pas… » / « Pourquoi … ne … pas … » — question
+    // ouverte justifiant une non-réponse à la question BOOLÉENNE juste au-
+    // dessus. Restreint au voisin DIRECT (items[i-1]), pas une recherche
+    // arrière générale comme les autres motifs ci-dessus : au-delà d'une
+    // ligne d'écart, le lien entre le "pourquoi" et un booléen plus haut
+    // devient trop incertain pour être inféré sans risque de faux positif
+    // (cas réel : un "Pourquoi…" peut suivre une date ou un texte libre,
+    // sans rapport avec le booléen le plus proche appartenant en fait à
+    // une autre section du questionnaire).
+    else if (/^pourquoi\b/.test(n) && (/\bne\b/.test(n) || /\bn['’]/.test(n)) && /\bpas\b/.test(n)) {
+      const prev = items[i - 1];
+      if (prev && isBool(prev)) {
+        it.pf_skip = `${radical(prev.pf_question)} = Non -> @${radical(it.pf_question)}`;
+        matched = "pourquoi ... ne/n' ... pas (booléen précédent direct)";
       }
     }
     // ── « Si [VAL], … » — ex: « Si Cigarette, préciser le nombre »
