@@ -5176,6 +5176,18 @@ function sanitizeName(s) {
     .replace(/[^a-zA-Z0-9_]/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'').substring(0,63) || 'field';
 }
 
+// Nettoie un titre de formulaire pour un usage comme nom de fichier envoyé
+// à KoboToolbox — retire les caractères non-ASCII (accents, "·"…) qui
+// peuvent faire planter le parsing du header Content-Disposition côté
+// serveur Kobo (cas réel : KeyError('content-disposition'), y compris via
+// l'import MANUEL dans l'interface Kobo, avec un titre contenant "·").
+function sanitizeKoboName(name) {
+  if (!name) return name;
+  const ascii = String(name).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\x00-\x7F]/g, '');
+  const collapsed = ascii.replace(/\s+/g, ' ').trim();
+  return collapsed || 'Questionnaire';
+}
+
 function buildXlsNameFromCode(codePart) {
   // Conserve le radical + le marqueur de type PHAKTS tel quel, double
   // underscore inclus (ex. "Numero_Questionnaire__1", "Region_Sanitaire__X")
@@ -6099,7 +6111,7 @@ async function downloadXLSForm() {
   const warnings = phaktsQualityWarnings(results);
   addAdminWorksheet(workbook, { title, settingsRow, surveyRows, choicesRows, warnings });
 
-  const saved = await saveWorkbook(workbook, `${title}_XLSForm_KoboToolbox.xlsx`);
+  const saved = await saveWorkbook(workbook, `${sanitizeKoboName(title)}_XLSForm_KoboToolbox.xlsx`);
   if (saved) {
     showStatus(
       warnings.length
@@ -6178,7 +6190,7 @@ async function deployXLSFormToKobo() {
 
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const fd = new FormData();
-    fd.append('file', blob, `${title}_XLSForm.xlsx`);
+    fd.append('file', blob, `${sanitizeKoboName(title)}_XLSForm.xlsx`);
 
     // Import + déploiement en UNE requête (plutôt que deux requêtes
     // cross-origin séparées) — évite de dépendre d'un session['xlsform_path']

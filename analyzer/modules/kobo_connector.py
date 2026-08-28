@@ -333,6 +333,21 @@ def load_data(token, uid, instance=None, limit=30000):
 
 # ─── Déploiement d'un XLSForm ─────────────────────────────────────────────────
 
+def _sanitize_kobo_name(name):
+    """Nettoie le nom envoyé à KoboToolbox (champ "name" de l'import) des
+    caractères non-ASCII qui peuvent faire planter le parsing du header
+    Content-Disposition côté serveur Kobo. Cas réel : KeyError('content-
+    disposition') reproduit même via l'import MANUEL dans l'interface Kobo,
+    avec un titre contenant le caractère '·' (PHAKTS·STUDIO) — donc pas
+    spécifique à notre requête HTTP, mais à ce caractère dans le nom."""
+    if not name:
+        return name
+    import unicodedata
+    ascii_only = unicodedata.normalize('NFKD', str(name)).encode('ascii', 'ignore').decode('ascii')
+    ascii_only = ' '.join(ascii_only.split())
+    return ascii_only or 'Questionnaire'
+
+
 def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=None):
     """
     Importe un fichier XLSForm (.xlsx) dans KoboToolbox via POST /api/v2/imports/.
@@ -342,6 +357,7 @@ def deploy_xlsform(token, xls_path, name=None, instance=None, custom_instance=No
     import os, time
     if not os.path.exists(xls_path):
         return {"success": False, "error": f"Fichier introuvable : {xls_path}"}
+    name = _sanitize_kobo_name(name)
 
     # Détecte l'instance correcte si pas fournie
     base = _normalize_instance(instance)
