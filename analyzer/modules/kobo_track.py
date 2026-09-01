@@ -186,6 +186,16 @@ def _loop(token, uid, instance, interval, stop_event):
                     entry["error"] = res.get("error", "Erreur inconnue")
         if res.get("success"):
             _save_persisted()  # garde le dernier effectif connu à jour sur disque
+        elif res.get("error") == "Formulaire introuvable.":
+            # 404 DÉFINITIF de Kobo (get_asset_info le distingue déjà des
+            # erreurs réseau/token transitoires) : le formulaire a été
+            # supprimé côté Kobo, cet uid ne reviendra jamais. Retirer
+            # automatiquement du suivi plutôt que sonder indéfiniment un
+            # formulaire qui n'existe plus (cas réel signalé : supprimé
+            # dans la Bibliothèque Kobo, restait bloqué sur "non déployé"
+            # dans Suivi multi-formulaires sans jamais disparaître).
+            remove(uid)
+            break
         if stop_event.wait(interval):
             break
 
