@@ -459,8 +459,15 @@ def _collecte_state_path():
     même bug que _load_completude_cache() : une session neuve, qui n'a rien
     synchronisé elle-même, affichait l'historique/cible/dernier effectif
     laissés par la dernière personne à avoir synchronisé quoi que ce soit,
-    au lieu d'un état vide (cas réel signalé)."""
+    au lieu d'un état vide (cas réel signalé).
+
+    Migration : une session déjà établie AVANT ce correctif (SESSION_TYPE
+    = 'filesystem', donc la session survit à un déploiement) a encore
+    l'ancien chemin partagé enregistré — sans ça, elle continuerait à lire
+    l'état d'autrui indéfiniment malgré le correctif déployé."""
     state_path = session.get('collecte_state_path')
+    if state_path and os.path.basename(state_path) == 'collecte_state.json':
+        state_path = None
     if state_path:
         return state_path
     fname = f"collecte_state_{uuid.uuid4().hex[:8]}.json"
