@@ -134,6 +134,9 @@
                   <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
                     <i class="bi bi-plus-lg me-1"></i>Suivre
                   </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="Supprimer définitivement ce formulaire sur KoboToolbox">
+                    <i class="bi bi-trash3"></i>
+                  </button>
                 </div>
                 {% endif %}
               </td>
@@ -350,6 +353,41 @@
 
   document.querySelectorAll('.btn-ai-suggest').forEach(btn => {
     btn.addEventListener('click', () => suggestWithAI(btn));
+  });
+
+  // Supprime le formulaire côté KoboToolbox (pas seulement du suivi local) —
+  // pour les formulaires fantômes/sans nom issus d'imports échoués, que
+  // l'interface Kobo elle-même n'arrive parfois pas à supprimer.
+  function deleteAsset(btn) {
+    const row = btn.closest('tr');
+    const uid = row.dataset.uid;
+    const name = row.dataset.name || '(sans nom)';
+    if (!confirm(`Supprimer DÉFINITIVEMENT « ${name} » sur KoboToolbox ?\n\nCette action est irréversible et supprime le formulaire, pas seulement son suivi.`)) return;
+    btn.disabled = true;
+    const icon = btn.querySelector('i');
+    icon.className = 'spinner-border spinner-border-sm';
+    const fd = new FormData();
+    fd.append('uid', uid);
+    fetch('/suivi/delete_asset', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          row.remove();
+        } else {
+          alert('Échec de la suppression : ' + (res.error || 'erreur inconnue'));
+          btn.disabled = false;
+          icon.className = 'bi bi-trash3';
+        }
+      })
+      .catch(() => {
+        alert('Erreur réseau lors de la suppression.');
+        btn.disabled = false;
+        icon.className = 'bi bi-trash3';
+      });
+  }
+
+  document.querySelectorAll('.btn-delete-asset').forEach(btn => {
+    btn.addEventListener('click', () => deleteAsset(btn));
   });
 
   refreshStatus();

@@ -29,7 +29,7 @@ from modules.raw_analysis import (systematic_analysis, descriptive_summary,
 try:
     from modules.kobo_connector import (validate_token, list_assets,
                                          get_asset_info, load_data as kobo_load_data,
-                                         deploy_xlsform)
+                                         deploy_xlsform, delete_asset as kobo_delete_asset)
     KOBO_AVAILABLE = True
 except ImportError:
     KOBO_AVAILABLE = False
@@ -38,6 +38,7 @@ except ImportError:
     def get_asset_info(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def kobo_load_data(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def deploy_xlsform(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
+    def kobo_delete_asset(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
 
 from modules import kobo_sync
 from modules import kobo_track
@@ -2704,6 +2705,25 @@ def suivi_remove():
     uid = (request.form.get('uid') or '').strip()
     kobo_track.remove(uid)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+
+
+@app.route('/suivi/delete_asset', methods=['POST'])
+def suivi_delete_asset():
+    """Supprime DÉFINITIVEMENT le formulaire sur KoboToolbox (pas seulement
+    du suivi local) — pour les formulaires fantômes/sans nom issus d'imports
+    échoués, que l'interface Kobo elle-même n'arrive parfois pas à supprimer
+    (cas réel signalé)."""
+    token = session.get('kobo_token')
+    if not token:
+        return jsonify({"success": False, "error": "Non connecté à KoboToolbox."}), 401
+    uid = (request.form.get('uid') or '').strip()
+    if not uid:
+        return jsonify({"success": False, "error": "Formulaire manquant."}), 400
+    instance = session.get('kobo_instance')
+    res = kobo_delete_asset(token, uid, instance=instance)
+    if res.get("success"):
+        kobo_track.remove(uid)  # au cas où il aurait aussi été suivi
+    return jsonify(res), (200 if res.get("success") else 502)
 
 
 @app.route('/suivi/target', methods=['POST'])

@@ -66,6 +66,15 @@ def _get(url, token):
         return requests.get(url, headers=h, timeout=TIMEOUT, verify=False)
 
 
+def _delete(url, token):
+    """Requête DELETE avec fallback SSL désactivé (proxy ONU/WHO)."""
+    h = {"Authorization": f"Token {token}", "Accept": "application/json"}
+    try:
+        return requests.delete(url, headers=h, timeout=TIMEOUT, verify=True)
+    except requests.exceptions.SSLError:
+        return requests.delete(url, headers=h, timeout=TIMEOUT, verify=False)
+
+
 def _detect(token):
     """
     Détecte l'instance et l'endpoint valides.
@@ -247,7 +256,11 @@ def list_assets(token, instance=None, custom_instance=None):
                 # Inclure tous les types si le filtre ne donne rien
                 assets.append({
                     "uid":              a.get("uid", ""),
-                    "name":             a.get("name", "Sans nom"),
+                    # a.get("name", "Sans nom") ne retombe QUE si la clé est
+                    # absente, pas si Kobo renvoie une chaîne vide "" (cas
+                    # réel : formulaires fantômes issus d'imports échoués/
+                    # interrompus, restés sans nom dans la Bibliothèque Kobo).
+                    "name":             a.get("name") or "Sans nom",
                     "asset_type":       asset_type,
                     "submission_count": a.get("deployment__submission_count", 0),
                     "date_modified":    (a.get("date_modified", "") or "")[:10],
@@ -269,6 +282,27 @@ def list_assets(token, instance=None, custom_instance=None):
             "instance": base,
         }
 
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def delete_asset(token, uid, instance=None):
+    """Supprime définitivement un formulaire (asset) sur KoboToolbox via
+    DELETE /api/v2/assets/{uid}/. Cas réel : des formulaires fantômes sans
+    nom, issus d'imports échoués/interrompus, restaient dans la Bibliothèque
+    Kobo — permet de les supprimer depuis SPAD Analyzer plutôt que de
+    dépendre de l'interface Kobo (dont la suppression peut échouer
+    silencieusement sur un asset resté dans un état d'import intermédiaire)."""
+    base = _normalize_instance(instance) or detect_instance(token)
+    if not base:
+        return {"success": False, "error": "Instance introuvable."}
+    try:
+        r = _delete(f"{base}/api/v2/assets/{uid}/", token)
+        if r.status_code == 404:
+            return {"success": True, "already_gone": True}
+        if r.status_code not in (200, 202, 204):
+            return {"success": False, "error": f"Erreur HTTP {r.status_code} : {r.text[:200]}"}
+        return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
