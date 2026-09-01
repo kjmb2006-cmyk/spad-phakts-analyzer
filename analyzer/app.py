@@ -2682,6 +2682,19 @@ def _sync_completude_mapping(form_type, uid):
         form_mapping.save(mapping)
 
 
+def _prune_completude_mapping(uid):
+    """Contrepartie de _sync_completude_mapping() : quand un formulaire est
+    retiré du suivi (ou supprimé sur Kobo), retire aussi toute correspondance
+    SPAD qui pointait encore vers lui — sinon la correspondance reste
+    périmée indéfiniment (cas réel : "F5 et F7 pointent vers le même
+    formulaire" alors que ce formulaire n'était même plus dans Suivi,
+    bloquant le calcul de Complétude nationale)."""
+    mapping = form_mapping.load()
+    changed = {code: u for code, u in mapping.items() if u != uid}
+    if len(changed) != len(mapping):
+        form_mapping.save(changed)
+
+
 @app.route('/suivi/add', methods=['POST'])
 def suivi_add():
     token = session.get('kobo_token')
@@ -2704,6 +2717,7 @@ def suivi_add():
 def suivi_remove():
     uid = (request.form.get('uid') or '').strip()
     kobo_track.remove(uid)
+    _prune_completude_mapping(uid)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
 
 
@@ -2723,6 +2737,7 @@ def suivi_delete_asset():
     res = kobo_delete_asset(token, uid, instance=instance)
     if res.get("success"):
         kobo_track.remove(uid)  # au cas où il aurait aussi été suivi
+        _prune_completude_mapping(uid)
     return jsonify(res), (200 if res.get("success") else 502)
 
 
