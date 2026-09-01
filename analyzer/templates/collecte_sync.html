@@ -92,7 +92,16 @@
 
   <div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <h5 class="fw-bold mb-3">Historique des synchronisations</h5>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold mb-0">Historique des synchronisations</h5>
+        {% if sync_history %}
+        <form method="POST" action="{{ url_for('collecte_sync_reset') }}" onsubmit="return confirm('Vider tout l\'historique de synchronisation de cette page ?');">
+          <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash3 me-1"></i>Vider l'historique
+          </button>
+        </form>
+        {% endif %}
+      </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle">
           <thead>

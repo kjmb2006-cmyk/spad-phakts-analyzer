@@ -639,6 +639,16 @@ def collecte_sync_auto():
     return redirect(url_for('collecte_sync'))
 
 
+@app.route('/collecte/sync/reset', methods=['POST'])
+def collecte_sync_reset():
+    """Vide l'historique de "Suivi d'un formulaire" pour CETTE session
+    uniquement (fichier propre à la session, voir _collecte_state_path())."""
+    state_path = _collecte_state_path()
+    save_state(state_path, {})
+    flash('Historique de synchronisation vidé.', 'success')
+    return redirect(url_for('collecte_sync'))
+
+
 @app.route('/collecte/refresh', methods=['POST'])
 def collecte_refresh():
     token = session.get('kobo_token')
