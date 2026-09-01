@@ -47,6 +47,9 @@ analyzer/static/uploads/
 analyzer/static/reports/
 analyzer/data/learned.json
 data/learned.json
+# Référentiel Administratif — contient les noms réels des 60 enquêteurs et
+# 12 superviseurs (données personnelles), jamais commité (dépôt public)
+data/admin_referentiel.json
 analyzer/data/projets/
 analyzer/data/completude_historique.jsonl
 # Noms réels enquêteurs/superviseurs — données personnelles, jamais commitées (dépôt public)

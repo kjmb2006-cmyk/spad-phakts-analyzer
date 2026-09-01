@@ -3329,6 +3329,59 @@ function initAdminRef() {
 
 function persistAdminRef() {
   try { localStorage.setItem('phakts_admin_referentiel', JSON.stringify(adminRef)); } catch (_) {}
+  syncAdminRefToServer(adminRef);
+}
+
+/** Sauvegarde le référentiel sur le serveur — partagé entre tous les
+ * navigateurs/sessions, au lieu de rester propre au localStorage de
+ * l'origine courante. Best-effort : hors-ligne, on garde juste la copie
+ * locale (déjà sauvée par persistAdminRef juste avant l'appel). */
+async function syncAdminRefToServer(rows) {
+  const base = (document.getElementById('apiBaseInput') || {}).value;
+  if (!base) return;
+  try {
+    const resp = await apiFetch('/api/admin-referentiel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows }),
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      console.log('[syncAdminRef] Référentiel serveur mis à jour (' + data.count + ' lignes)');
+    } else {
+      console.warn('[syncAdminRef] Erreur serveur:', resp.status);
+    }
+  } catch (e) {
+    console.warn('[syncAdminRef] Hors-ligne, référentiel sauvé localement seulement:', e.message);
+  }
+}
+
+/** Au démarrage : le référentiel serveur fait autorité (une importation
+ * faite une fois, n'importe où, doit être visible partout). S'il est vide
+ * côté serveur mais qu'on a une copie locale (première synchro depuis un
+ * navigateur qui avait déjà importé), on la pousse pour l'établir comme
+ * référence serveur — sinon un navigateur "vide" écraserait silencieusement
+ * les données d'un autre au premier ajout/édition. */
+async function syncAdminRefFromServer() {
+  const base = (document.getElementById('apiBaseInput') || {}).value;
+  if (!base) return;
+  try {
+    const resp = await apiFetch('/api/admin-referentiel');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.rows && data.rows.length) {
+      adminRef = data.rows;
+      try { localStorage.setItem('phakts_admin_referentiel', JSON.stringify(adminRef)); } catch (_) {}
+      renderAdminReferentiel();
+      console.log('[syncAdminRefFromServer] ' + adminRef.length + ' lignes chargées depuis le serveur');
+    } else if (adminRef.length) {
+      // Serveur vide, copie locale existante (navigateur déjà utilisé avant
+      // l'ajout de cette synchro) — on l'établit comme référence serveur.
+      syncAdminRefToServer(adminRef);
+    }
+  } catch (e) {
+    console.warn('[syncAdminRefFromServer] Hors-ligne ou erreur serveur:', e && e.message);
+  }
 }
 
 function adminRefContext(r) {
@@ -5127,7 +5180,7 @@ async function editorCodify() {
 setTimeout(() => { if (!editorRows.length) editorAddRow(3); }, 100);
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   // Load saved API base — auto-detect if served from the API server
   try {
     const savedBase = localStorage.getItem('phakts_api_base');
@@ -5145,6 +5198,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // doit jamais empêcher les suivantes de s'exécuter (ex. observé : une
   // erreur plus tôt dans cette chaîne bloquait initAdminRef(), le dernier
   // appel, laissant le Référentiel Administratif vide sans aucun indice).
+  // Séquentiel (await) plutôt que "fire-and-forget" : autoFetchToken() doit
+  // avoir TERMINÉ d'écrire le token avant que syncLearnedFromServer() /
+  // syncAdminRefFromServer() n'appellent l'API avec — sinon la toute
+  // première synchro au chargement échoue silencieusement en 401 (course
+  // observée : un appel manuel juste après réussissait, donc pas un
+  // problème de logique mais de timing).
   const _initSteps = [
     ['autoFetchToken', autoFetchToken],
     ['checkApiStatus', checkApiStatus],
@@ -5154,9 +5213,10 @@ window.addEventListener('DOMContentLoaded', () => {
     ['initDpfListes', initDpfListes],
     ['initDpfRules', initDpfRules],
     ['initAdminRef', initAdminRef],
+    ['syncAdminRefFromServer', syncAdminRefFromServer],
   ];
   for (const [name, fn] of _initSteps) {
-    try { fn(); } catch (e) { console.error(`[init:${name}]`, e); }
+    try { await fn(); } catch (e) { console.error(`[init:${name}]`, e); }
   }
 });
 

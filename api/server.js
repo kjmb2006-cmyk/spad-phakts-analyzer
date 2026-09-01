@@ -58,6 +58,25 @@ function loadLearned() {
   return [];
 }
 
+// ── Référentiel Administratif (Règle 16 : Région/District/Établissement/
+// Superviseur/Enquêteur) — persisté côté serveur pour qu'un import fait UNE
+// fois (n'importe où) soit disponible pour tous les navigateurs/sessions,
+// au lieu de dépendre du localStorage propre à chaque origine (cas réel :
+// importé sur un port/domaine, absent — donc listes Kobo vides sans le
+// savoir — sur un autre).
+const ADMIN_REF_FILE = path.join(DATA_DIR, "admin_referentiel.json");
+
+function loadAdminRef() {
+  try {
+    if (fs.existsSync(ADMIN_REF_FILE)) return JSON.parse(fs.readFileSync(ADMIN_REF_FILE, "utf8"));
+  } catch (_) {}
+  return [];
+}
+
+function saveAdminRef(rows) {
+  fs.writeFileSync(ADMIN_REF_FILE, JSON.stringify(rows, null, 2), "utf8");
+}
+
 function saveLearned(arr) {
   fs.writeFileSync(LEARNED_FILE, JSON.stringify(arr, null, 2), "utf8");
 }
@@ -720,6 +739,45 @@ app.delete("/api/learned", (req, res) => {
   saveLearned([]);
   console.log("[/api/learned] Toutes les codifications mémorisées supprimées");
   return res.json({ message: "Codifications mémorisées supprimées.", count: 0 });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin-referentiel
+ * Référentiel Administratif partagé (Règle 16) : régions, districts,
+ * établissements, superviseurs, enquêteurs.
+ */
+app.get("/api/admin-referentiel", (req, res) => {
+  const rows = loadAdminRef();
+  res.json({ count: rows.length, rows });
+});
+
+/**
+ * POST /api/admin-referentiel
+ * Corps: { rows: [{list_name, name, label, code_id, region_code,
+ *                   district_code, enqueteur_code}] }
+ * REMPLACE le référentiel existant (comme l'import "Importer / Remplacer"
+ * côté client) — ce n'est pas un ajout incrémental comme /api/learn, le
+ * référentiel doit refléter exactement la dernière source importée.
+ */
+app.post("/api/admin-referentiel", (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows)) {
+    return res.status(400).json({ error: "Le champ 'rows' doit être un tableau." });
+  }
+  const cleaned = rows.map(r => ({
+    list_name: String(r.list_name || '').slice(0, 100),
+    name: String(r.name || '').slice(0, 100),
+    label: String(r.label || '').slice(0, 200),
+    code_id: String(r.code_id || '').slice(0, 100),
+    region_code: String(r.region_code || '').slice(0, 100),
+    district_code: String(r.district_code || '').slice(0, 100),
+    enqueteur_code: String(r.enqueteur_code || '').slice(0, 100),
+  }));
+  saveAdminRef(cleaned);
+  console.log(`[/api/admin-referentiel] Référentiel mis à jour (${cleaned.length} lignes)`);
+  return res.json({ count: cleaned.length, rows: cleaned });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
