@@ -453,10 +453,18 @@ def get_dataframe(sheet_key='data_path'):
 
 
 def _collecte_state_path():
+    """Chemin du fichier d'état de "Suivi d'un formulaire", propre à CETTE
+    session. Repli anciennement sur un nom de fichier fixe et partagé
+    (uploads/collecte_state.json) entre TOUTES les sessions/utilisateurs —
+    même bug que _load_completude_cache() : une session neuve, qui n'a rien
+    synchronisé elle-même, affichait l'historique/cible/dernier effectif
+    laissés par la dernière personne à avoir synchronisé quoi que ce soit,
+    au lieu d'un état vide (cas réel signalé)."""
     state_path = session.get('collecte_state_path')
     if state_path:
         return state_path
-    path = os.path.join(app.config['UPLOAD_FOLDER'], 'collecte_state.json')
+    fname = f"collecte_state_{uuid.uuid4().hex[:8]}.json"
+    path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
     session['collecte_state_path'] = path
     return path
 
