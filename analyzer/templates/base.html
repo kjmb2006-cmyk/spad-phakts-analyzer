@@ -56,12 +56,20 @@
 
     <!-- 📁 - FORMULAIRES -->
     <div class="nav-section-label mt-3">📁 - FORMULAIRES</div>
-    <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}">
-      <i class="bi bi-file-earmark-arrow-up"></i> Formulaire importé de l'ordinateur
-    </a>
-    <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-collection-fill"></i> — Mes formulaires (KoboToolbox)
-    </a>
+    {% set formulaires_sub_active = request.endpoint in ['kobo_assets', 'kobo_connect'] %}
+    <div class="d-flex align-items-center">
+      <a href="{{ url_for('upload') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'upload' %}active{% endif %}">
+        <i class="bi bi-file-earmark-arrow-up"></i> Formulaire importé de l'ordinateur
+      </a>
+      <button type="button" class="btn btn-sm text-white-50 border-0 px-2 nav-collapse-toggle {{ '' if formulaires_sub_active else 'collapsed' }}" data-bs-toggle="collapse" data-bs-target="#formulairesSubmenu" aria-expanded="{{ 'true' if formulaires_sub_active else 'false' }}" title="Afficher/masquer les sous-rubriques">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    </div>
+    <div class="collapse {{ 'show' if formulaires_sub_active else '' }}" id="formulairesSubmenu">
+      <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-collection-fill"></i> — Mes formulaires (KoboToolbox)
+      </a>
+    </div>
 
     <!-- 📡 - SUIVI DE COLLECTE DE DONNÉES -->
     <div class="nav-section-label mt-3">📡 - SUIVI DE COLLECTE DE DONNÉES</div>
