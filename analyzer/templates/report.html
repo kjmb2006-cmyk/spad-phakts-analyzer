@@ -36,15 +36,21 @@
               <div class="col-12">
                 <div class="d-flex gap-4">
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="report_format" value="pdf" id="format_pdf" checked>
+                    <input class="form-check-input" type="radio" name="report_format" value="pdf" id="format_pdf" {{ 'checked' if request.args.get('format', 'pdf') == 'pdf' else '' }}>
                     <label class="form-check-label fw-semibold" for="format_pdf">
                       <i class="bi bi-file-earmark-pdf-fill me-2 text-danger"></i>PDF
                     </label>
                   </div>
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="report_format" value="word" id="format_word">
+                    <input class="form-check-input" type="radio" name="report_format" value="word" id="format_word" {{ 'checked' if request.args.get('format') == 'word' else '' }}>
                     <label class="form-check-label fw-semibold" for="format_word">
                       <i class="bi bi-file-earmark-word-fill me-2 text-primary"></i>Word (.docx)
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="report_format" value="excel" id="format_excel" {{ 'checked' if request.args.get('format') == 'excel' else '' }}>
+                    <label class="form-check-label fw-semibold" for="format_excel">
+                      <i class="bi bi-file-earmark-excel-fill me-2 text-success"></i>Excel (.xlsx)
                     </label>
                   </div>
                 </div>
@@ -264,6 +270,10 @@ function updateFormat() {
     btn.className = 'btn btn-danger btn-lg w-100';
     icon.className = 'bi bi-file-earmark-pdf-fill me-2 text-danger';
     label.textContent = 'Générer et télécharger le PDF';
+  } else if (format === 'excel') {
+    btn.className = 'btn btn-success btn-lg w-100';
+    icon.className = 'bi bi-file-earmark-excel-fill me-2 text-success';
+    label.textContent = 'Générer et télécharger le Excel';
   } else {
     btn.className = 'btn btn-primary btn-lg w-100';
     icon.className = 'bi bi-file-earmark-word-fill me-2 text-primary';
@@ -281,7 +291,10 @@ function resetBtn() {
   document.getElementById('genIcon').classList.remove('d-none');
   document.getElementById('genBtn').disabled = false;
   const format = document.querySelector('input[name="report_format"]:checked').value;
-  document.getElementById('genLabel').textContent = format === 'pdf' ? 'Générer et télécharger le PDF' : 'Générer et télécharger le Word';
+  document.getElementById('genLabel').textContent =
+    format === 'pdf' ? 'Générer et télécharger le PDF' :
+    format === 'excel' ? 'Générer et télécharger le Excel' :
+    'Générer et télécharger le Word';
 }
 
 // Add event listeners for format change

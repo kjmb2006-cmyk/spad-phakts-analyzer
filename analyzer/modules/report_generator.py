@@ -1,4 +1,5 @@
 import os
+import re
 import io
 from datetime import datetime
 from io import StringIO
@@ -1086,6 +1087,424 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
         return buf
 
     # Clean up temp images
+    for p in tmp_imgs:
+        try:
+            os.remove(p)
+        except Exception:
+            pass
+
+    return None
+
+
+def generate_excel_report(df: pd.DataFrame, output_path: str = None,
+                           title: str = 'Rapport', author: str = 'Analyste',
+                           selected_analyses: list = None,
+                           cat_vars: list = None, num_vars: list = None,
+                           bin_groups: list = None,
+                           crosstabs_row=None,
+                           crosstabs_col=None,
+                           user_comments: dict = None,
+                           multi_survey_results: list = None,
+                           multi_survey_meta: dict = None):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    from openpyxl.drawing.image import Image as XLImage
+
+    tmp_imgs = []
+    bin_groups = bin_groups or []
+    user_comments = user_comments or {}
+    if selected_analyses is None:
+        selected_analyses = ['raw']
+    cat_vars = cat_vars or []
+    num_vars = num_vars or []
+    var_types = get_var_types(df)
+
+    HEADER_FILL  = PatternFill('solid', fgColor='1A3C5E')
+    HEADER_FONT  = Font(color='FFFFFF', bold=True, size=10)
+    TITLE_FONT   = Font(color='1A3C5E', bold=True, size=14)
+    SUBHEAD_FONT = Font(color='E05C1A', bold=True, size=11)
+    BODY_FONT    = Font(size=10)
+    ITALIC_FONT  = Font(size=10, italic=True)
+    BOLD_FONT    = Font(size=10, bold=True)
+
+    wb = Workbook()
+    ws0 = wb.active
+    ws0.title = 'Résumé'
+
+    def _sheet(name):
+        safe = re.sub(r'[\[\]\:\*\?/\\]', '', name)[:31] or 'Feuille'
+        base, i = safe, 1
+        while safe in wb.sheetnames:
+            i += 1
+            suffix = f'_{i}'
+            safe = base[:31 - len(suffix)] + suffix
+        return wb.create_sheet(safe)
+
+    def _write_title(ws, text, row=1):
+        ws.cell(row=row, column=1, value=text).font = TITLE_FONT
+        return row + 2
+
+    def _write_subheading(ws, text, row):
+        ws.cell(row=row, column=1, value=text).font = SUBHEAD_FONT
+        return row + 1
+
+    def _write_note(ws, text, row, italic=False):
+        ws.cell(row=row, column=1, value=text).font = ITALIC_FONT if italic else BODY_FONT
+        return row + 1
+
+    def _write_df(ws, df_in, row, max_rows=200):
+        d = df_in.head(max_rows)
+        for j, col in enumerate(d.columns, start=1):
+            cell = ws.cell(row=row, column=j, value=str(col))
+            cell.font = HEADER_FONT
+            cell.fill = HEADER_FILL
+            cell.alignment = Alignment(horizontal='center')
+        for i, vals in enumerate(d.values, start=1):
+            for j, v in enumerate(vals, start=1):
+                v_out = '' if (isinstance(v, float) and pd.isna(v)) else v
+                ws.cell(row=row + i, column=j, value=v_out).font = BODY_FONT
+        for j, col in enumerate(d.columns, start=1):
+            try:
+                sample = [len(str(v)) for v in d[col].head(50)]
+            except Exception:
+                sample = []
+            width = max(10, min(40, max([len(str(col))] + sample) + 2))
+            ws.column_dimensions[get_column_letter(j)].width = width
+        return row + len(d) + 2
+
+    def _write_image(ws, img_path, row, width_px=520):
+        if not img_path:
+            return row
+        try:
+            img = XLImage(img_path)
+            scale = width_px / float(img.width)
+            img.width = width_px
+            img.height = int(img.height * scale)
+            ws.add_image(img, f'A{row}')
+            rows_used = max(2, int(img.height / 15) + 1)
+            return row + rows_used
+        except Exception:
+            return row
+
+    # ── Résumé ────────────────────────────────────────────────────────────
+    row = _write_title(ws0, title)
+    row = _write_note(ws0, "Rapport d'analyse statistique — SPAD Analyzer", row)
+    row += 1
+    for k, v in [
+        ['Auteur', author],
+        ['Date', datetime.now().strftime('%d/%m/%Y à %H:%M')],
+        ['Observations', df.shape[0]],
+        ['Variables analysées', df.shape[1]],
+        ['Données manquantes', int(df.isnull().sum().sum())],
+    ]:
+        ws0.cell(row=row, column=1, value=k).font = BOLD_FONT
+        ws0.cell(row=row, column=2, value=v).font = BODY_FONT
+        row += 1
+    ws0.column_dimensions['A'].width = 28
+    ws0.column_dimensions['B'].width = 40
+
+    section = 1
+
+    # ── 1. Questions à choix multiples ──────────────────────────────────────
+    if 'binaire' in selected_analyses and bin_groups:
+        ws = _sheet('Choix multiples')
+        row = _write_title(ws, f'{section}. Questions à choix multiples')
+        for g in bin_groups:
+            row = _write_subheading(ws, g['parent'], row)
+            try:
+                r = analyse_binaire_groupe(df, g['vars'])
+                tbl_df = pd.read_html(StringIO(r['table_html']))[0]
+                row = _write_df(ws, tbl_df, row)
+                img = _fig_to_img(r['chart'], width=520, height=max(250, 35 * len(g['vars']) + 80))
+                if img:
+                    tmp_imgs.append(img)
+                    row = _write_image(ws, img, row)
+                auto = auto_comment_binary_group({'parent': g['parent'], **r})
+                user = user_comments.get(f'descriptive_bin:{g["parent"]}', '')
+                if auto:
+                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                if user:
+                    row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
+            except Exception as e:
+                row = _write_note(ws, f'Erreur : {e}', row)
+            row += 1
+        section += 1
+
+    # ── 2. Statistiques descriptives catégorielles ──────────────────────────
+    if 'descriptive' in selected_analyses and cat_vars:
+        ws = _sheet('Descriptif catégoriel')
+        row = _write_title(ws, f'{section}. Statistiques descriptives — Variables catégorielles')
+        for var in cat_vars:
+            if var not in df.columns:
+                continue
+            row = _write_subheading(ws, f'Tri à plat — {var}', row)
+            try:
+                r = tris_a_plat(df, var)
+                row = _write_note(ws, f'N valides = {r["n_valid"]} | Manquantes : {r["missing"]} ({r["missing_pct"]}%)', row)
+                tbl_df = pd.read_html(StringIO(r['table_html']))[0]
+                row = _write_df(ws, tbl_df, row)
+                img = _fig_to_img(r['chart_bar'], width=520, height=280)
+                if img:
+                    tmp_imgs.append(img)
+                    row = _write_image(ws, img, row)
+                auto = auto_comment_categorical(r)
+                user = user_comments.get(f'descriptive_cat:{var}', '')
+                if auto:
+                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                if user:
+                    row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
+            except Exception as e:
+                row = _write_note(ws, f'Erreur : {e}', row)
+            row += 1
+        section += 1
+
+    # ── 3. Statistiques descriptives continues ──────────────────────────────
+    if 'descriptive' in selected_analyses and num_vars:
+        ws = _sheet('Descriptif continues')
+        row = _write_title(ws, f'{section}. Statistiques descriptives — Variables continues')
+        for var in num_vars:
+            if var not in df.columns:
+                continue
+            row = _write_subheading(ws, f'Distribution — {var}', row)
+            try:
+                r = statistiques_continues(df, var)
+                tbl_df = pd.read_html(StringIO(r['table_html']))[0]
+                row = _write_df(ws, tbl_df, row)
+                img = _fig_to_img(r['chart_hist'], width=520, height=300)
+                if img:
+                    tmp_imgs.append(img)
+                    row = _write_image(ws, img, row)
+                auto = auto_comment_continuous(r)
+                user = user_comments.get(f'descriptive_num:{var}', '')
+                if auto:
+                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                if user:
+                    row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
+            except Exception as e:
+                row = _write_note(ws, f'Erreur : {e}', row)
+            row += 1
+        section += 1
+
+    # ── 4. Tableaux croisés ──────────────────────────────────────────────────
+    all_cat = cat_vars or [c for c, t in var_types.items() if t == 'categorielle']
+    if 'crosstabs' in selected_analyses and len(all_cat) >= 2:
+        ws = _sheet('Tableaux croisés')
+        row = _write_title(ws, f'{section}. Tableaux croisés')
+        row_var = crosstabs_row if crosstabs_row in all_cat else all_cat[0]
+        col_var = crosstabs_col if crosstabs_col in all_cat else (all_cat[1] if len(all_cat) > 1 else all_cat[0])
+        if row_var == col_var and len(all_cat) > 1:
+            col_var = all_cat[1] if all_cat[0] == row_var else all_cat[0]
+        try:
+            r = tableau_croise(df, row_var, col_var, 'row')
+            row = _write_note(ws, f'Variables : {row_var} × {col_var}', row)
+            row = _write_note(ws, (
+                f'χ² = {r["chi2"]} | p-value = {r["p_val"]} | '
+                f'V de Cramér = {r["cramers_v"]} — '
+                f'Liaison {r["assoc_label"]} ({r["sig_label"]})'), row)
+            ct = pd.crosstab(df[row_var].dropna().astype(str), df[col_var].dropna().astype(str))
+            row = _write_df(ws, ct.reset_index(), row)
+            img = _fig_to_img(r['chart_bar'], width=520, height=320)
+            if img:
+                tmp_imgs.append(img)
+                row = _write_image(ws, img, row)
+            auto = auto_comment_crosstab(r)
+            user = user_comments.get(f'crosstabs:{row_var}|{col_var}', '')
+            if auto:
+                row = _write_note(ws, f'Lecture automatique : {auto}', row)
+            if user:
+                row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
+        except Exception as e:
+            row = _write_note(ws, f'Erreur : {e}', row)
+        section += 1
+
+    # ── 5. Analyse brute ─────────────────────────────────────────────────────
+    if 'raw' in selected_analyses:
+        try:
+            sysa = systematic_analysis(df)
+            desc = descriptive_summary(df)
+            ov   = overview_stats(df)
+
+            # 5.1 Qualité & Profil
+            ws = _sheet('Brute-Qualité')
+            row = _write_title(ws, f'{section}.1 Qualité & Profil')
+            q_img = _fig_to_img(data_quality_gauge(sysa.get('quality', {})), width=420, height=240)
+            if q_img:
+                tmp_imgs.append(q_img)
+                row = _write_image(ws, q_img, row)
+            comp_img = _fig_to_img(composition_chart(sysa), width=420, height=240)
+            if comp_img:
+                tmp_imgs.append(comp_img)
+                row = _write_image(ws, comp_img, row)
+            prof = sysa.get('profile', {}) or {}
+            if prof:
+                prof_df = pd.DataFrame([
+                    ['Observations', prof.get('n_obs', '—')],
+                    ['Variables', prof.get('n_vars', '—')],
+                    ['Complètes', prof.get('complete_vars', '—')],
+                    ['Avec manquantes', prof.get('vars_with_missing', '—')],
+                    ['Continues', prof.get('n_continuous', '—')],
+                    ['Catégorielles', prof.get('n_categorical', '—')],
+                    ['Binaires', prof.get('n_binary', '—')],
+                ], columns=['Indicateur', 'Valeur'])
+                row = _write_df(ws, prof_df, row)
+
+            # 5.2 Variables continues
+            ws = _sheet('Brute-Continues')
+            row = _write_title(ws, f'{section}.2 Variables continues')
+            cont_list = desc.get('continuous', []) or []
+            if not cont_list:
+                row = _write_note(ws, 'Aucune variable continue détectée.', row)
+            for r in cont_list[:10]:
+                row = _write_subheading(ws, r['var'], row)
+                stats_df = pd.DataFrame(list(r['stats'].items()), columns=['Statistique', 'Valeur'])
+                row = _write_df(ws, stats_df, row)
+                h_img = _fig_to_img(r.get('chart_hist'), width=480, height=260)
+                if h_img:
+                    tmp_imgs.append(h_img); row = _write_image(ws, h_img, row)
+                b_img = _fig_to_img(r.get('chart_box'), width=480, height=260)
+                if b_img:
+                    tmp_imgs.append(b_img); row = _write_image(ws, b_img, row)
+
+            # 5.3 Catégorielles
+            ws = _sheet('Brute-Catégorielles')
+            row = _write_title(ws, f'{section}.3 Catégorielles')
+            cat_list = desc.get('categorical', []) or []
+            if not cat_list:
+                row = _write_note(ws, 'Aucune variable catégorielle détectée.', row)
+            for r in cat_list[:10]:
+                row = _write_subheading(ws, r['variable'], row)
+                row = _write_note(ws, f"{r['n_categories']} catégorie(s) — dominante : {r['dominant']} ({r['dominant_pct']}%)", row)
+                try:
+                    freq_df = pd.read_html(StringIO(r['table']))[0]
+                    row = _write_df(ws, freq_df, row)
+                except Exception:
+                    pass
+                bar_img = _fig_to_img(r.get('chart_bar'), width=480, height=300)
+                if bar_img:
+                    tmp_imgs.append(bar_img); row = _write_image(ws, bar_img, row)
+
+            # 5.4 Binaires
+            ws = _sheet('Brute-Binaires')
+            row = _write_title(ws, f'{section}.4 Binaires')
+            bin_list = desc.get('binary', []) or []
+            if not bin_list:
+                row = _write_note(ws, 'Aucune variable binaire détectée.', row)
+            else:
+                bin_df = pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'],
+                                          f"{r['pct_missing']}%", r['label_pos'],
+                                          f"{r['prevalence']}%"] for r in bin_list],
+                                       columns=['Variable', 'N valides', 'Manquantes',
+                                                 '% manq.', 'Modalité positive', 'Prévalence'])
+                row = _write_df(ws, bin_df, row)
+
+            # 5.5 Manquantes
+            ws = _sheet('Brute-Manquantes')
+            row = _write_title(ws, f'{section}.5 Manquantes')
+            try:
+                mb = missing_bar_chart(df)
+                if mb:
+                    b_img = _fig_to_img(mb, width=520, height=300)
+                    if b_img:
+                        tmp_imgs.append(b_img); row = _write_image(ws, b_img, row)
+            except Exception:
+                pass
+            try:
+                mh = missing_heatmap(df)
+                if mh:
+                    h_img = _fig_to_img(mh, width=520, height=300)
+                    if h_img:
+                        tmp_imgs.append(h_img); row = _write_image(ws, h_img, row)
+            except Exception:
+                pass
+
+            # 5.6 Corrélations
+            ws = _sheet('Brute-Corrélations')
+            row = _write_title(ws, f'{section}.6 Corrélations')
+            try:
+                corr = correlation_matrix(df)
+                c_img = _fig_to_img(corr, width=520, height=400) if corr else None
+                if c_img:
+                    tmp_imgs.append(c_img); row = _write_image(ws, c_img, row)
+                else:
+                    row = _write_note(ws, 'Pas assez de variables numériques pour une matrice de corrélations.', row)
+            except Exception:
+                row = _write_note(ws, 'Pas assez de variables numériques pour une matrice de corrélations.', row)
+
+            # 5.7 Vue d'ensemble
+            ws = _sheet("Brute-Ensemble")
+            row = _write_title(ws, f"{section}.7 Vue d'ensemble")
+            try:
+                ov_df = pd.read_html(StringIO(ov['table_html']))[0]
+                row = _write_df(ws, ov_df, row, max_rows=500)
+            except Exception as e:
+                row = _write_note(ws, f"Vue d'ensemble indisponible : {e}", row)
+
+            # 5.8 Anomalies & recommandations
+            if sysa.get('anomalies') or sysa.get('recommendations'):
+                ws = _sheet('Brute-Anomalies')
+                row = _write_title(ws, f'{section}.8 Anomalies & Recommandations')
+                if sysa.get('anomalies'):
+                    for a in sysa['anomalies'][:20]:
+                        row = _write_note(ws, f"- {a['type']} — {a['variable']} : {a['note']}", row)
+                if sysa.get('recommendations'):
+                    row = _write_note(ws, 'Recommandations :', row)
+                    for r in sysa['recommendations'][:10]:
+                        row = _write_note(ws, f"• {r['type']} — {r['rationale']}", row)
+        except Exception as e:
+            ws = _sheet('Brute-Erreur')
+            _write_note(ws, f"Erreur lors de l'analyse brute : {e}", 1)
+        section += 1
+
+    # ── 6. Multi-enquête (DPF / PHAKTS) ──────────────────────────────────────
+    if 'multi_survey' in selected_analyses and multi_survey_results:
+        ws = _sheet('Multi-enquête')
+        row = _write_title(ws, f'{section}. Analyse multi-enquête (DPF / PHAKTS)')
+        if multi_survey_meta:
+            row = _write_note(ws, (
+                f"{multi_survey_meta['n_surveys']} enquête(s) fusionnée(s) selon le mode "
+                f"« {multi_survey_meta['mode']} » — {multi_survey_meta['n_obs']} observations, "
+                f"{multi_survey_meta['n_vars']} variables alignées."), row)
+        for idx, r in enumerate(multi_survey_results, start=1):
+            row = _write_subheading(ws, f"{section}.{idx} Variable « {r.get('variable', '?')} »", row)
+            if r.get('error'):
+                row = _write_note(ws, f"Erreur : {r['error']}", row)
+                continue
+            try:
+                if r.get('kind') == 'continuous' and r.get('summary_html'):
+                    row = _write_note(ws, 'Résumé statistique par enquête :', row)
+                    summ_df = pd.read_html(StringIO(r['summary_html']))[0]
+                    row = _write_df(ws, summ_df, row)
+                elif r.get('kind') == 'categorical':
+                    if r.get('count_html'):
+                        row = _write_note(ws, 'Effectifs :', row)
+                        c_df = pd.read_html(StringIO(r['count_html']))[0]
+                        row = _write_df(ws, c_df, row)
+                    if r.get('pct_html'):
+                        row = _write_note(ws, 'Pourcentages (% colonne) :', row)
+                        p_df = pd.read_html(StringIO(r['pct_html']))[0]
+                        row = _write_df(ws, p_df, row)
+            except Exception as e:
+                row = _write_note(ws, f'Tableaux indisponibles : {e}', row)
+            chart_img = _fig_to_img(r.get('chart'), width=520, height=320)
+            if chart_img:
+                tmp_imgs.append(chart_img)
+                row = _write_image(ws, chart_img, row)
+        section += 1
+
+    if output_path:
+        wb.save(output_path)
+    else:
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        for p in tmp_imgs:
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+        return buf
+
     for p in tmp_imgs:
         try:
             os.remove(p)

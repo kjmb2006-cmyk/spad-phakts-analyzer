@@ -15,7 +15,7 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     compare_continuous_by_survey,
                                     auto_analyze)
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
-from modules.report_generator import generate_pdf_report, generate_word_report
+from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
                               auto_comment_crosstab, auto_comment_binary_group)
 from modules import ai_assistant
@@ -2329,7 +2329,7 @@ def report():
         crosstabs_row      = request.form.get('crosstabs_row')
         crosstabs_col      = request.form.get('crosstabs_col')
 
-        extension = 'pdf' if format_type == 'pdf' else 'docx'
+        extension = 'pdf' if format_type == 'pdf' else ('xlsx' if format_type == 'excel' else 'docx')
         report_path = os.path.join(
             app.config['REPORTS_FOLDER'],
             f'rapport_{uuid.uuid4().hex[:8]}.{extension}')
@@ -2363,6 +2363,20 @@ def report():
 
             if format_type == 'pdf':
                 generate_pdf_report(
+                    df, report_path,
+                    title=title, author=author,
+                    selected_analyses=selected_analyses,
+                    cat_vars=selected_cat,
+                    num_vars=selected_num,
+                    bin_groups=[g for g in bin_groups if g['parent'] in selected_bin_grps],
+                    crosstabs_row=crosstabs_row,
+                    crosstabs_col=crosstabs_col,
+                    user_comments=user_comments,
+                    multi_survey_results=multi_survey_results,
+                    multi_survey_meta=multi_survey_meta,
+                )
+            elif format_type == 'excel':
+                generate_excel_report(
                     df, report_path,
                     title=title, author=author,
                     selected_analyses=selected_analyses,
