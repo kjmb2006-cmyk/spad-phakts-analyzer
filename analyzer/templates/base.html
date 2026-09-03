@@ -114,32 +114,32 @@
     <!-- 🔬 - ANALYSES -->
     <div class="nav-section-label mt-3">🔬 - ANALYSES</div>
     {% if session.get('data_path') %}
-    <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}">
-      <i class="bi bi-table"></i> Aperçu des données
+    <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-table"></i> — Aperçu des données
     </a>
     {% endif %}
-    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}">
-      <i class="bi bi-clipboard2-data"></i> Hub Analyse de données
+    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-clipboard2-data"></i> — Hub Analyse de données
     </a>
     {% if session.get('data_path') %}
-    <a href="{{ url_for('raw_data') }}" class="nav-item {% if request.endpoint == 'raw_data' %}active{% endif %}">
-      <i class="bi bi-database-fill"></i> Analyse brute
+    <a href="{{ url_for('raw_data') }}" class="nav-item {% if request.endpoint == 'raw_data' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-database-fill"></i> — Analyse brute
     </a>
-    <a href="{{ url_for('descriptive') }}" class="nav-item {% if request.endpoint == 'descriptive' %}active{% endif %}">
-      <i class="bi bi-clipboard-data-fill"></i> Statistiques descriptives
+    <a href="{{ url_for('descriptive') }}" class="nav-item {% if request.endpoint == 'descriptive' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-clipboard-data-fill"></i> — Statistiques descriptives
     </a>
-    <a href="{{ url_for('crosstabs') }}" class="nav-item {% if request.endpoint == 'crosstabs' %}active{% endif %}">
-      <i class="bi bi-grid-3x3-gap-fill"></i> Analyse Croisée Dynamique
+    <a href="{{ url_for('crosstabs') }}" class="nav-item {% if request.endpoint == 'crosstabs' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-grid-3x3-gap-fill"></i> — Analyse Croisée Dynamique
     </a>
-    <a href="{{ url_for('multivariate') }}" class="nav-item {% if request.endpoint == 'multivariate' %}active{% endif %}">
-      <i class="bi bi-diagram-3-fill"></i> Analyses multivariées
+    <a href="{{ url_for('multivariate') }}" class="nav-item {% if request.endpoint == 'multivariate' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-diagram-3-fill"></i> — Analyses multivariées
     </a>
-    <a href="{{ url_for('map_view') }}" class="nav-item {% if request.endpoint == 'map_view' %}active{% endif %}">
-      <i class="bi bi-map-fill"></i> Carte géographique
+    <a href="{{ url_for('map_view') }}" class="nav-item {% if request.endpoint == 'map_view' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-map-fill"></i> — Carte géographique
     </a>
     {% endif %}
-    <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}">
-      <i class="bi bi-collection-fill"></i> Analyse multi-enquête
+    <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-collection-fill"></i> — Analyse multi-enquête
     </a>
 
     <!-- 🎨 - PHAKTS STUDIO -->
