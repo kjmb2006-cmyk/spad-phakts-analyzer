@@ -809,6 +809,7 @@
       <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
       <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
       <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
+      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● GPS __G__X!DMS</span>
       <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
     </div>
 
@@ -1001,6 +1002,7 @@
       <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
       <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
       <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
+      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● GPS __G__X!DMS</span>
       <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
     </div>
 
@@ -2861,6 +2863,7 @@ function showStatus(msg, type = 'info') {
 // ─── Type tag helper ──────────────────────────────────────────────────────────
 function typeTag(code) {
   if (code.includes('__B')) return {label:'Boolean', bg:'#1e3a5f', fg:'#7dd3fc'};
+  if (code.includes('__G__X')) return {label:'GPS', bg:'#1a3a3a', fg:'#5eead4'};
   if (code.includes('__X') && code.includes('1*1')) return {label:'Select 1', bg:'#1a3a2a', fg:'#86efac'};
   if (code.includes('__SRC')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
   if (code.includes('__X')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
@@ -4533,7 +4536,10 @@ function _isSuspect(r) {
 // suivent un __1/__2 légitime sont exclues à dessein (une vraie unité de
 // période/mesure est toujours en MAJUSCULE : __1Y, __2K…), donc ce garde-
 // fou ne rejette aucun code valide.
-const PHAKTS_TYPE_RX = /^(.+?)(__(?:B|X|1|2|Z|A|P|SRC)(?![a-z]).*)$/;
+// __G__X est un marqueur COMPOSÉ (Règle 19 : Géolocalisation) — testé avant
+// __X seul, sinon le radical engloberait à tort le "__G" (ex.
+// "Etablissement__Coordonnees__G" au lieu de "Etablissement__Coordonnees").
+const PHAKTS_TYPE_RX = /^(.+?)(__G__X(?![a-z]).*|__(?:B|X|1|2|Z|A|P|SRC)(?![a-z]).*)$/;
 
 function sanitizePhaktsItemClient(item) {
   if (!item || !item.pf_question || typeof item.pf_question !== 'string') return item;
@@ -4904,6 +4910,15 @@ function inferCode(libelle, normalized) {
   const words = normalized.split(' ').filter(w => w.length > 2 && !['les','des','est','par','une','que','qui','pas','vous','oui','non','sur','dans','pour','avec','votre','cette','quel','sont','ont','ete','elle','elles','ils','son','ses','ces','aux'].includes(w));
   const radical = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('_') || 'Question';
 
+  // Géolocalisation / coordonnées GPS (Règle 19) — vérifié AVANT le
+  // référentiel Admin_ : un libellé "Géolocalisation de l'établissement"
+  // contient le mot "établissement" mais demande des coordonnées GPS, pas
+  // une sélection d'établissement dans le référentiel (cas réel rencontré).
+  if (/\b(geolocalisation|coordonnees?\s+(gps|geographiques?)|position\s+gps|localisation\s+gps)\b/.test(normalized)) {
+    const hasCoord = /coordon|geolocalisation/i.test(radical);
+    return { libelle, pf_question: (hasCoord ? radical : radical + '_Coordonnees') + '__G__X!DMS', pf_modalites: 'GPS (DMS)' };
+  }
+
   const adminField = detectAdminReferenceField(libelle, normalized);
   if (adminField) return { libelle, ...adminField };
 
@@ -5003,6 +5018,15 @@ function codifyFromLibelleAndModalites(libelle, existingModalites) {
   const radical = _extractRadical(libelle, 4) || 'Question';
   const mod = String(existingModalites || '').trim();
   const modLower = mod.toLowerCase();
+
+  // Géolocalisation / coordonnées GPS (Règle 19) — vérifié AVANT le
+  // référentiel Admin_ : un libellé "Géolocalisation de l'établissement"
+  // contient le mot "établissement" mais demande des coordonnées GPS, pas
+  // une sélection d'établissement dans le référentiel (cas réel rencontré).
+  if (modLower === 'gps' || modLower === 'geopoint' || /\b(geolocalisation|coordonnees?\s+(gps|geographiques?)|position\s+gps|localisation\s+gps)\b/.test(normalized)) {
+    const hasCoord = /coordon|geolocalisation/i.test(radical);
+    return { pf_question: (hasCoord ? radical : radical + '_Coordonnees') + '__G__X!DMS', pf_modalites: 'GPS (DMS)' };
+  }
 
   // Champ de référentiel administratif (Règle 16) — vérifié AVANT les
   // modalités existantes : une ligne mal codée porte souvent "Texte
@@ -5739,6 +5763,10 @@ function buildXLSForm() {
 
     if (pf_question.includes('__B') || constraintPart === 'boolean') {
       type = 'select_one yes_no';
+    } else if (pf_question.includes('__G__X')) {
+      // Règle 19 : Géolocalisation geopoint — testé AVANT la branche __X
+      // générique, sinon __G__X serait traité comme un select_one standard.
+      type = 'geopoint';
     } else if (pf_question.includes('__X') || pf_question.includes('__SRC')) {
       const adminListName = adminListNameOf(currentMeta);
       if (adminListName) {
@@ -5917,6 +5945,7 @@ function _xlsformTypeToModalitesHint(type, choicesByList) {
   if (/^text$/i.test(t)) return 'Texte libre';
   if (/^date$/i.test(t)) return 'Date';
   if (/^(image|photo|file)$/i.test(t)) return 'Photo';
+  if (/^geopoint$/i.test(t)) return 'GPS';
   return '';
 }
 
