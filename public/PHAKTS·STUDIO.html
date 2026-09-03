@@ -1369,6 +1369,7 @@
             <option value="Admin_Etablissement_Sante_">Établissements</option>
             <option value="Admin_Superviseur_">Superviseurs</option>
             <option value="Admin_Enqueteur_">Enquêteurs</option>
+            <option value="Admin_Commune_Abidjan_">Communes (Abidjan)</option>
           </select>
           <button class="btn-ghost" onclick="document.getElementById('adminRefFileInput').click()" style="padding:5px 10px;font-size:10.5px" title="Importer un fichier — REMPLACE tout le référentiel actuel">📁 Importer / Remplacer</button>
           <input type="file" id="adminRefFileInput" accept=".xlsx,.csv" style="display:none" onchange="importAdminReferentiel(this.files[0]); this.value=''">
@@ -3343,6 +3344,7 @@ const ADMIN_REF_CATEGORIES = {
   'Admin_Etablissement_Sante_': 'Établissement',
   'Admin_Superviseur_': 'Superviseur',
   'Admin_Enqueteur_': 'Enquêteur',
+  'Admin_Commune_Abidjan_': 'Commune (Abidjan)',
 };
 
 let adminRef = [];
@@ -4903,6 +4905,12 @@ function inferModalites(code) {
 function detectAdminReferenceField(libelle, normalized) {
   const rawWordCount = String(libelle || '').trim().split(/\s+/).filter(Boolean).length;
   if (rawWordCount > 10) return null;
+  // Vérifié AVANT "district" : le libellé réel observé est "Commune
+  // (district d'Abidjan)" — contient les deux mots, mais désigne la commune
+  // administrative d'Abidjan (référentiel séparé), pas le district sanitaire.
+  if (/\bcommune\b/.test(normalized)) {
+    return { pf_question: 'Commune_Abidjan__X!1*1Admin_Commune_Abidjan_', pf_modalites: '' };
+  }
   if (/\bdistrict\b/.test(normalized)) {
     return { pf_question: 'District_Sanitaire__X!1*1Admin_District_Sanitaire_', pf_modalites: '' };
   }
