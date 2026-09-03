@@ -506,6 +506,7 @@ def collecte_dashboard():
     views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status, df=df)
     return render_template(
         'collecte_dashboard.html',
+        form_name=session.get('kobo_asset_name'),
         received=metrics['received'],
         cible=metrics['cible'],
         taux=metrics['taux'],
@@ -2567,7 +2568,7 @@ def kobo_load():
         f"{result['n_obs']} soumissions × {result['n_vars']} variables analysables.",
         'success'
     )
-    return redirect(url_for('data_preview'))
+    return redirect(url_for('collecte_dashboard'))
 
 
 @app.route('/kobo/refresh')

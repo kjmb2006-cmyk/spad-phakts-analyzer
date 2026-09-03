@@ -7,6 +7,13 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <div>
       <h3 class="fw-bold mb-1">Suivi d'un formulaire — Tableau de bord</h3>
+      {% if form_name %}
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge" style="background:#e8f4fd;color:#1a6fa8;font-size:.8rem;">
+          <i class="bi bi-file-earmark-text-fill me-1"></i>{{ form_name }}
+        </span>
+      </div>
+      {% endif %}
       <p class="text-muted mb-0">Vue synthétique du suivi des soumissions, des alertes et de la qualité des données.</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">

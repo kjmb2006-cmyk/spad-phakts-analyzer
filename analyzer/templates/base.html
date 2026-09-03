@@ -59,8 +59,8 @@
     <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}">
       <i class="bi bi-file-earmark-arrow-up"></i> Formulaire importé de l'ordinateur
     </a>
-    <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}">
-      <i class="bi bi-collection-fill"></i> Mes formulaires (KoboToolbox)
+    <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-collection-fill"></i> — Mes formulaires (KoboToolbox)
     </a>
 
     <!-- 📡 - SUIVI DE COLLECTE DE DONNÉES -->
@@ -71,33 +71,44 @@
     <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}">
       <i class="bi bi-broadcast"></i> Suivi multi-formulaires
     </a>
-    <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
-      <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
-    </a>
+    {% set completude_sub_endpoints = ['completude_regions', 'completude_region_detail', 'completude_districts', 'completude_district_detail', 'completude_etablissement_detail', 'completude_superviseurs', 'completude_superviseur_detail', 'completude_enqueteurs', 'completude_enqueteur_detail', 'completude_anomalies', 'completude_graphiques'] %}
+    {% set completude_sub_active = request.endpoint in completude_sub_endpoints %}
+    <div class="d-flex align-items-center">
+      <a href="{{ url_for('completude') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'completude' %}active{% endif %}">
+        <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
+      </a>
+      {% if session.get('kobo_token') %}
+      <button type="button" class="btn btn-sm text-white-50 border-0 px-2 nav-collapse-toggle {{ '' if completude_sub_active else 'collapsed' }}" data-bs-toggle="collapse" data-bs-target="#completudeSubmenu" aria-expanded="{{ 'true' if completude_sub_active else 'false' }}" title="Afficher/masquer les sous-rubriques">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+      {% endif %}
+    </div>
     {% if session.get('kobo_token') %}
-    <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-map"></i> — Complétude par région
-    </a>
-    <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-pin-map"></i> — Complétude par district
-    </a>
-    <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-person-badge"></i> — Performances superviseurs
-    </a>
-    <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-person-walking"></i> — Performances enquêteurs
-    </a>
-    <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-exclamation-triangle"></i> — Anomalies et signalements
-    </a>
-    <a href="{{ url_for('completude_graphiques') }}" class="nav-item {% if request.endpoint == 'completude_graphiques' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-graph-up"></i> — Graphiques et analyses
-    </a>
-    {% if session.get('kobo_uid') %}
-    <a href="{{ url_for('kobo_refresh') }}" class="nav-item" style="padding-left:28px">
-      <i class="bi bi-arrow-clockwise"></i> — Rafraîchir les données
-    </a>
-    {% endif %}
+    <div class="collapse {{ 'show' if completude_sub_active else '' }}" id="completudeSubmenu">
+      <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-map"></i> — Complétude par région
+      </a>
+      <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-pin-map"></i> — Complétude par district
+      </a>
+      <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-person-badge"></i> — Performances superviseurs
+      </a>
+      <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-person-walking"></i> — Performances enquêteurs
+      </a>
+      <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-exclamation-triangle"></i> — Anomalies et signalements
+      </a>
+      <a href="{{ url_for('completude_graphiques') }}" class="nav-item {% if request.endpoint == 'completude_graphiques' %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-graph-up"></i> — Graphiques et analyses
+      </a>
+      {% if session.get('kobo_uid') %}
+      <a href="{{ url_for('kobo_refresh') }}" class="nav-item" style="padding-left:28px">
+        <i class="bi bi-arrow-clockwise"></i> — Rafraîchir les données
+      </a>
+      {% endif %}
+    </div>
     {% endif %}
 
     <!-- 🔬 - ANALYSES -->
