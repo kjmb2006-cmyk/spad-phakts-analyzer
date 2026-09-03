@@ -5952,6 +5952,14 @@ async function parseXlsformSurveyAndChoices(file) {
       pf_question: r.name || '',
       pf_modalites: _xlsformTypeToModalitesHint(type, choicesByList),
       pf_skip: '',
+      // Champs temporaires internes (jamais exportés) — permettent à
+      // verifyXlsformPhaktsCompliance() de reconstruire pf_skip après coup :
+      // le "relevant" original référence le NOM XLSForm d'origine (ex.
+      // "${type_pdv}"), qui n'existe plus une fois le champ renommé en code
+      // PHAKTS — la traduction ne peut donc se faire qu'APRÈS avoir attribué
+      // les nouveaux codes à toutes les lignes.
+      _xlsformName: r.name || '',
+      _xlsformRelevant: r.relevant || '',
     });
   });
   return items;
@@ -5990,8 +5998,40 @@ async function importXLSFormFile(file) {
  * PHAKTS, à partir du libellé. Même logique que la vérification du
  * Questionnaire codifié (qcodif), appliquée ici à results directement —
  * hors-ligne, sans appel IA (rapide, déterministe, gratuit). */
+/** Traduit une expression "relevant" XLSForm simple en règle pf_skip
+ * PHAKTS, une fois le NOM XLSForm d'origine résolu vers le nouveau code
+ * (Règle 17). Ne couvre que les motifs à une seule condition (égalité,
+ * inégalité, appartenance select_multiple) — les combinaisons and/or ou
+ * fonctions XPath plus complexes ne sont pas traduites (mieux vaut ne rien
+ * inventer que produire une règle fausse). */
+function translateXlsformRelevantToSkip(raw, oldNameToLexia, myLexia) {
+  const expr = String(raw || '').trim();
+  let m = expr.match(/^\$\{(\w+)\}\s*=\s*['"]([^'"]*)['"]$/);
+  if (m) {
+    const lexia = oldNameToLexia.get(m[1]);
+    return lexia ? `${lexia} = ${m[2]} -> @${myLexia}` : '';
+  }
+  m = expr.match(/^selected\(\$\{(\w+)\},\s*['"]([^'"]*)['"]\)$/);
+  if (m) {
+    const lexia = oldNameToLexia.get(m[1]);
+    return lexia ? `${lexia} = ${m[2]} -> @${myLexia}` : '';
+  }
+  m = expr.match(/^\$\{(\w+)\}\s*!=\s*['"]([^'"]*)['"]$/);
+  if (m) {
+    const lexia = oldNameToLexia.get(m[1]);
+    return lexia ? `${lexia} != ${m[2]} -> @${myLexia}` : '';
+  }
+  m = expr.match(/^not\(\$\{(\w+)\}\s*=\s*['"]([^'"]*)['"]\)$/);
+  if (m) {
+    const lexia = oldNameToLexia.get(m[1]);
+    return lexia ? `${lexia} != ${m[2]} -> @${myLexia}` : '';
+  }
+  return '';
+}
+
 function verifyXlsformPhaktsCompliance() {
   if (!results.length) { showStatus('Aucun résultat à vérifier.', 'error'); return; }
+  const originalResults = results;
   const before = results.map(it => ({ pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip }));
   const stage1 = results.map(item => {
     const adminField = detectAdminReferenceField(item.libelle, normalizeText(item.libelle || ''));
@@ -6006,6 +6046,26 @@ function verifyXlsformPhaktsCompliance() {
   });
   const corrected = cleanResults(stage1);
 
+  // Reconstruit pf_skip depuis le "relevant" XLSForm importé (Règle 17),
+  // maintenant que chaque ligne a son code PHAKTS définitif — le "relevant"
+  // d'origine référence le NOM XLSForm d'avant renommage (ex. "${type_pdv}"),
+  // impossible à traduire avant cette étape. cleanResults() ne préserve que
+  // {libelle, pf_question, pf_modalites, pf_skip} : on relit _xlsformName/
+  // _xlsformRelevant depuis originalResults, aligné par index.
+  const oldNameToLexia = new Map();
+  originalResults.forEach((item, i) => {
+    if (item._xlsformName) oldNameToLexia.set(item._xlsformName, String(corrected[i].pf_question || '').split('!')[0]);
+  });
+  let relevantTranslated = 0, relevantUntranslated = 0;
+  corrected.forEach((item, i) => {
+    const raw = originalResults[i]._xlsformRelevant;
+    if (!raw || (item.pf_skip && item.pf_skip.trim())) return; // rien à faire, ou déjà déduit par inferSkipRulesInPlace
+    const myLexia = String(item.pf_question || '').split('!')[0];
+    const translated = translateXlsformRelevantToSkip(raw, oldNameToLexia, myLexia);
+    if (translated) { item.pf_skip = translated; relevantTranslated++; }
+    else relevantUntranslated++;
+  });
+
   let correctedCount = 0;
   results = corrected.map((fixed, i) => {
     const b = before[i];
@@ -6018,12 +6078,12 @@ function verifyXlsformPhaktsCompliance() {
   renderTable();
   renderXlsformPreview();
 
-  showStatus(
-    correctedCount > 0
-      ? `🔍 Vérification terminée — ${correctedCount} question(s) sur ${results.length} corrigée(s) aux normes PHAKTS.`
-      : `✓ Vérification terminée — les ${results.length} question(s) respectent déjà la grammaire PHAKTS.`,
-    'success'
-  );
+  let msg = correctedCount > 0
+    ? `🔍 Vérification terminée — ${correctedCount} question(s) sur ${results.length} corrigée(s) aux normes PHAKTS.`
+    : `✓ Vérification terminée — les ${results.length} question(s) respectent déjà la grammaire PHAKTS.`;
+  if (relevantTranslated > 0) msg += ` ${relevantTranslated} condition(s) « relevant » reconstruite(s).`;
+  if (relevantUntranslated > 0) msg += ` ⚠ ${relevantUntranslated} condition(s) « relevant » trop complexe(s) — à recréer manuellement (colonne Skip Logic).`;
+  showStatus(msg, relevantUntranslated > 0 ? 'warning' : 'success');
 }
 
 // ─── Downloads ────────────────────────────────────────────────────────────────
