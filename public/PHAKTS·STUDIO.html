@@ -3716,7 +3716,7 @@ function getPhaktsDpfTables() {
     { code: '__E', description: 'Identifiant externe alphanum. (DHIS2, Kobo, code unique)', statut: 'Confirmé — Règle 11 ext.' },
     { code: '__A!YYYY/MM/DD', description: 'Date ISO 8601 ; range: 2000/01/01<A<2026/12/31', statut: 'Confirmé — Règle 14 ext.' },
     { code: '__G__X!DMS', description: 'Géolocalisation geopoint (!DMS ou !DD)', statut: 'Confirmé — Règle 19' },
-    { code: '__P', description: 'Capture photo (type XLSForm "image") — aucune convention officielle antérieure', statut: "Proposition — à valider par l'équipe SPAD" },
+    { code: '__P!photo', description: 'Capture photo (type XLSForm "image") — aucune convention officielle antérieure', statut: "Proposition — à valider par l'équipe SPAD" },
   ];
   const numData = [
     { code: '__1', type: 'Entier générique', exemple: 'Score__1', statut: 'Confirmé' },
@@ -4910,7 +4910,7 @@ function inferCode(libelle, normalized) {
   // Photo / prise de vue — cas réel : champs photo importés d'un XLSForm
   // (type "image") retombaient sur Texte faute de marqueur PHAKTS dédié.
   if (/^(prenez?|prendre)\s+(une\s+)?photo\b|^photo(?:graphi[a-z]*)?\s+(du|de|d'|des)\b/.test(normalized)) {
-    return { libelle, pf_question: radical + '__P', pf_modalites: 'Photo' };
+    return { libelle, pf_question: radical + '__P!photo', pf_modalites: 'Photo' };
   }
 
   // Detect type from question text
@@ -5035,7 +5035,7 @@ function codifyFromLibelleAndModalites(libelle, existingModalites) {
   // une prise de vue — cas réel : champs photo importés retombaient sur
   // Texte faute de marqueur PHAKTS dédié)
   if (modLower === 'photo' || /^(prenez?|prendre)\s+(une\s+)?photo\b|^photo(?:graphi[a-z]*)?\s+(du|de|d'|des)\b/.test(normalized)) {
-    return { pf_question: radical + '__P', pf_modalites: 'Photo' };
+    return { pf_question: radical + '__P!photo', pf_modalites: 'Photo' };
   }
   // Liste à choix séparée par « | » → select_one
   if (mod.includes('|')) {
