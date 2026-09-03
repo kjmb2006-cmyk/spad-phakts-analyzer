@@ -145,37 +145,38 @@
     <!-- 🎨 - PHAKTS STUDIO -->
     <div class="nav-section-label mt-3">🎨 - PHAKTS STUDIO</div>
     {% if phakts_studio_url %}
-    <a href="{{ phakts_studio_url }}" target="_blank" rel="noopener" class="nav-item">
-      <i class="bi bi-palette-fill"></i> PHAKTS Studio
+    <a href="{{ phakts_studio_url }}" target="_blank" rel="noopener" class="nav-item" style="padding-left:28px">
+      <i class="bi bi-palette-fill"></i> — PHAKTS Studio
     </a>
     {% else %}
-    <span class="nav-item text-muted" style="cursor:default" title="Disponible uniquement dans l'application de bureau SPAD PHAKTS Analyzer (Electron)">
-      <i class="bi bi-palette-fill"></i> PHAKTS Studio
+    <span class="nav-item text-muted" style="cursor:default;padding-left:28px" title="Disponible uniquement dans l'application de bureau SPAD PHAKTS Analyzer (Electron)">
+      <i class="bi bi-palette-fill"></i> — PHAKTS Studio
     </span>
     {% endif %}
 
     {% if session.get('data_path') %}
     <div class="nav-section-label mt-3">Export</div>
-    <a href="{{ url_for('report') }}" class="nav-item {% if request.endpoint == 'report' %}active{% endif %}">
-      <i class="bi bi-file-earmark-pdf-fill"></i> Rapport PDF
+    <a href="{{ url_for('report') }}" class="nav-item {% if request.endpoint == 'report' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-file-earmark-pdf-fill"></i> — Rapport PDF
     </a>
     <a href="{{ url_for('reset_data') }}"
        class="nav-item text-danger"
+       style="padding-left:28px"
        onclick="return confirm('Effacer les données chargées ?')">
-      <i class="bi bi-trash3-fill"></i> Effacer les données
+      <i class="bi bi-trash3-fill"></i> — Effacer les données
     </a>
     {% endif %}
 
     {% if session.get('role') == 'admin' %}
     <div class="nav-section-label mt-3">Administration</div>
-    <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint in ['admin_users'] %}active{% endif %}">
-      <i class="bi bi-people-fill"></i> Comptes Data
+    <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint in ['admin_users'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-people-fill"></i> — Comptes Data
     </a>
-    <a href="{{ url_for('admin_activity') }}" class="nav-item {% if request.endpoint == 'admin_activity' %}active{% endif %}">
-      <i class="bi bi-clock-history"></i> Journal d'activité
+    <a href="{{ url_for('admin_activity') }}" class="nav-item {% if request.endpoint == 'admin_activity' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-clock-history"></i> — Journal d'activité
     </a>
-    <a href="{{ url_for('admin_forms') }}" class="nav-item {% if request.endpoint == 'admin_forms' %}active{% endif %}">
-      <i class="bi bi-collection"></i> Registre des formulaires
+    <a href="{{ url_for('admin_forms') }}" class="nav-item {% if request.endpoint == 'admin_forms' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-collection"></i> — Registre des formulaires
     </a>
     {% endif %}
 
