@@ -65,17 +65,17 @@
 
     <!-- 📡 - SUIVI DE COLLECTE DE DONNÉES -->
     <div class="nav-section-label mt-3">📡 - SUIVI DE COLLECTE DE DONNÉES</div>
-    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}">
-      <i class="bi bi-activity"></i> Suivi d'un formulaire
+    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-activity"></i> — Suivi d'un formulaire
     </a>
-    <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}">
-      <i class="bi bi-broadcast"></i> Suivi multi-formulaires
+    <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-broadcast"></i> — Suivi multi-formulaires
     </a>
     {% set completude_sub_endpoints = ['completude_regions', 'completude_region_detail', 'completude_districts', 'completude_district_detail', 'completude_etablissement_detail', 'completude_superviseurs', 'completude_superviseur_detail', 'completude_enqueteurs', 'completude_enqueteur_detail', 'completude_anomalies', 'completude_graphiques'] %}
     {% set completude_sub_active = request.endpoint in completude_sub_endpoints %}
     <div class="d-flex align-items-center">
-      <a href="{{ url_for('completude') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'completude' %}active{% endif %}">
-        <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
+      <a href="{{ url_for('completude') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'completude' %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-clipboard2-pulse"></i> — Complétude nationale
       </a>
       {% if session.get('kobo_token') %}
       <button type="button" class="btn btn-sm text-white-50 border-0 px-2 nav-collapse-toggle {{ '' if completude_sub_active else 'collapsed' }}" data-bs-toggle="collapse" data-bs-target="#completudeSubmenu" aria-expanded="{{ 'true' if completude_sub_active else 'false' }}" title="Afficher/masquer les sous-rubriques">
