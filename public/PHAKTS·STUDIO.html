@@ -1458,13 +1458,21 @@
       <span>Aperçu du format KoboToolbox généré à partir de vos résultats — vérifiez avant de télécharger ou de déployer directement</span>
     </label>
 
+    <input type="file" id="xlsformImportInput" accept=".xlsx" style="display:none" onchange="importXLSFormFile(this.files[0])">
+
     <div id="xlsformEmptyState" style="display:none;text-align:center;padding:60px 20px;color:var(--text3);border:1px dashed var(--border);border-radius:12px">
-      Aucun résultat codifié pour le moment. Retournez à l'onglet <strong>⊞ Résultats</strong> pour générer des codifications.
+      Aucun résultat codifié pour le moment. Retournez à l'onglet <strong>⊞ Résultats</strong> pour générer des codifications,
+      ou importez un XLSForm existant à corriger aux normes PHAKTS.
+      <div style="margin-top:16px">
+        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 Importer XLSForm</button>
+      </div>
     </div>
 
     <div id="xlsformPreviewSection">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
         <button class="btn-ghost" onclick="renderXlsformPreview()" style="padding:8px 16px;font-size:12px">↻ Actualiser l'aperçu</button>
+        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 Importer XLSForm</button>
+        <button class="btn-ghost" onclick="verifyXlsformPhaktsCompliance()" title="Corrige les codes PF/Question de tous les résultats actuels aux normes de la grammaire PHAKTS, à partir du libellé (hors-ligne, sans appel IA)" style="padding:8px 16px;font-size:12px">✓ Vérification de la conformité PHAKTS</button>
         <span style="flex:1"></span>
         <button class="btn-green" onclick="downloadXLSForm()" style="padding:8px 18px;font-size:12px">
           ⬇ Télécharger XLSForm
@@ -5871,6 +5879,151 @@ function renderXlsformPreview() {
       <td style="padding:7px 10px;font-family:var(--mono);font-size:10.5px;color:#94a3b8">${_esc(r.district_code || '')}</td>
     </tr>
   `).join('');
+}
+
+// Types XLSForm structurels (pas de vraie question, rien à codifier en PHAKTS)
+const XLSFORM_STRUCTURAL_TYPES_RX = /^(begin[\s_]group|end[\s_]group|begin[\s_]repeat|end[\s_]repeat|note|calculate|start|end|deviceid|simserial|subscriberid|phonenumber|today|username|caseid|audit|comments?)$/i;
+
+/** Convertit une liste de choix XLSForm en indice utilisable par
+ * codifyFromLibelleAndModalites() (même format que le reste de l'app :
+ * options séparées par "|", ou mots-clés type "Nombre entier"/"Texte"). */
+function _xlsformTypeToModalitesHint(type, choicesByList) {
+  const t = String(type || '').trim();
+  const m = t.match(/^select_(one|multiple)\s+(\S+)/i);
+  if (m) {
+    const opts = (choicesByList.get(m[2]) || []).map(o => o.label || o.name);
+    return opts.length ? opts.join(' | ') : '';
+  }
+  if (/^integer$/i.test(t)) return 'Nombre entier';
+  if (/^decimal$/i.test(t)) return 'Réel';
+  if (/^text$/i.test(t)) return 'Texte libre';
+  if (/^date$/i.test(t)) return 'Date';
+  return '';
+}
+
+/** Lit les feuilles "survey"/"choices" d'un XLSForm quelconque (pas
+ * forcément généré par PHAKTS Studio) — colonnes attendues : type, name,
+ * label (ou toute colonne "label::...") côté survey ; list_name, name,
+ * label côté choices. */
+async function parseXlsformSurveyAndChoices(file) {
+  await ensureExcelJsReady();
+  const buffer = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+
+  const readSheet = (name) => {
+    const ws = wb.getWorksheet(name);
+    if (!ws) return { headers: [], rows: [] };
+    const headers = [];
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNum) => { headers[colNum - 1] = String(cell.value || '').trim(); });
+    const rows = [];
+    ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+      if (rowNum === 1) return;
+      const obj = {};
+      headers.forEach((h, idx) => { if (h) obj[h] = String(row.getCell(idx + 1).value ?? '').trim(); });
+      rows.push(obj);
+    });
+    return { headers, rows };
+  };
+
+  const survey = readSheet('survey');
+  const choices = readSheet('choices');
+  if (!survey.rows.length) throw new Error('Feuille "survey" introuvable ou vide dans ce fichier.');
+
+  const labelKey = survey.headers.find(h => /^label(::|$)/i.test(h)) || 'label';
+  const choicesLabelKey = choices.headers.find(h => /^label(::|$)/i.test(h)) || 'label';
+
+  const choicesByList = new Map();
+  choices.rows.forEach(r => {
+    const list = r.list_name;
+    if (!list) return;
+    if (!choicesByList.has(list)) choicesByList.set(list, []);
+    choicesByList.get(list).push({ name: r.name || '', label: r[choicesLabelKey] || r.name || '' });
+  });
+
+  const items = [];
+  survey.rows.forEach(r => {
+    const type = r.type || '';
+    if (!type || XLSFORM_STRUCTURAL_TYPES_RX.test(type.trim())) return;
+    const libelle = (r[labelKey] || '').trim();
+    if (!libelle) return;
+    items.push({
+      libelle,
+      pf_question: r.name || '',
+      pf_modalites: _xlsformTypeToModalitesHint(type, choicesByList),
+      pf_skip: '',
+    });
+  });
+  return items;
+}
+
+/** Bouton "📥 Importer XLSForm" — charge un XLSForm existant (pas
+ * nécessairement produit par PHAKTS Studio) dans Résultats, TEL QUEL (name
+ * d'origine, pas encore un code PHAKTS) : utilisez ensuite "✓ Vérification
+ * de la conformité PHAKTS" pour le corriger. */
+async function importXLSFormFile(file) {
+  if (!file) return;
+  if (results.length && !confirm(`Importer « ${file.name} » va REMPLACER les ${results.length} résultat(s) actuel(s). Continuer ?`)) {
+    document.getElementById('xlsformImportInput').value = '';
+    return;
+  }
+  try {
+    const items = await parseXlsformSurveyAndChoices(file);
+    if (!items.length) {
+      showStatus('Aucune question exploitable trouvée dans ce XLSForm (feuille "survey" vide ou uniquement des éléments structurels).', 'error');
+      return;
+    }
+    results = items;
+    persistResults();
+    renderTable();
+    switchTabById('results');
+    showStatus(`📥 ${items.length} question(s) importée(s) depuis « ${file.name} » — pas encore aux normes PHAKTS. Cliquez « ✓ Vérification de la conformité PHAKTS » (onglet Fichier XLSForm) pour les corriger.`, 'info');
+  } catch (e) {
+    showStatus("Échec de l'import XLSForm : " + e.message, 'error');
+  } finally {
+    document.getElementById('xlsformImportInput').value = '';
+  }
+}
+
+/** Bouton "✓ Vérification de la conformité PHAKTS" — corrige pf_question/
+ * pf_modalites de TOUS les résultats actuels aux normes de la grammaire
+ * PHAKTS, à partir du libellé. Même logique que la vérification du
+ * Questionnaire codifié (qcodif), appliquée ici à results directement —
+ * hors-ligne, sans appel IA (rapide, déterministe, gratuit). */
+function verifyXlsformPhaktsCompliance() {
+  if (!results.length) { showStatus('Aucun résultat à vérifier.', 'error'); return; }
+  const before = results.map(it => ({ pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip }));
+  const stage1 = results.map(item => {
+    const adminField = detectAdminReferenceField(item.libelle, normalizeText(item.libelle || ''));
+    if (adminField) {
+      return { ...item, pf_question: adminField.pf_question, pf_modalites: adminField.pf_modalites };
+    }
+    if (!PHAKTS_TYPE_RX.test(String(item.pf_question || ''))) {
+      const derived = codifyFromLibelleAndModalites(item.libelle, item.pf_modalites);
+      return { ...item, pf_question: derived.pf_question, pf_modalites: derived.pf_modalites };
+    }
+    return sanitizePhaktsItemClient(item);
+  });
+  const corrected = cleanResults(stage1);
+
+  let correctedCount = 0;
+  results = corrected.map((fixed, i) => {
+    const b = before[i];
+    if (fixed.pf_question !== b.pf_question || fixed.pf_modalites !== b.pf_modalites || fixed.pf_skip !== b.pf_skip) {
+      correctedCount++;
+    }
+    return fixed;
+  });
+  persistResults();
+  renderTable();
+  renderXlsformPreview();
+
+  showStatus(
+    correctedCount > 0
+      ? `🔍 Vérification terminée — ${correctedCount} question(s) sur ${results.length} corrigée(s) aux normes PHAKTS.`
+      : `✓ Vérification terminée — les ${results.length} question(s) respectent déjà la grammaire PHAKTS.`,
+    'success'
+  );
 }
 
 // ─── Downloads ────────────────────────────────────────────────────────────────
