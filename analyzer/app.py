@@ -162,6 +162,7 @@ ANALYZER_PASSWORD_INVITE = os.environ.get('ANALYZER_PASSWORD_INVITE', '').strip(
 # l'ouvrir.
 INVITE_ALLOWED_ENDPOINTS = {
     'login', 'logout', 'static', 'favicon',
+    'index',
     'completude',
     'completude_districts', 'completude_district_detail', 'completude_etablissement_detail',
     'completude_superviseurs', 'completude_superviseur_detail',
@@ -206,10 +207,10 @@ def require_login():
         return redirect(url_for('login', next=request.path))
     if role != 'admin' and request.endpoint in ADMIN_ONLY_ENDPOINTS:
         flash("Cette page est réservée à l'administrateur.", 'warning')
-        return redirect(url_for('completude') if role == 'invite' else url_for('index'))
+        return redirect(url_for('index'))
     if role == 'invite' and request.endpoint not in INVITE_ALLOWED_ENDPOINTS:
         flash("Cette page n'est pas accessible avec un accès Invité.", 'warning')
-        return redirect(url_for('completude'))
+        return redirect(url_for('index'))
 
 
 
@@ -306,7 +307,7 @@ def login():
             session['authenticated'] = True
             session['role'] = 'invite'
             session.permanent = True
-            return redirect(url_for('completude'))
+            return redirect(url_for('index'))
         if not error:
             error = 'Mot de passe incorrect.'
     return render_template('login.html', error=error)
@@ -837,6 +838,8 @@ def save_comment():
 
 @app.route('/')
 def index():
+    if session.get('role') == 'invite':
+        return render_template('invite_dashboard.html')
     has_data = bool(session.get('data_path') and os.path.exists(session.get('data_path', '')))
     meta = session.get('data_meta', {})
     sheets = session.get('sheet_names', [])

@@ -31,7 +31,13 @@
 
   <nav class="sidebar-nav">
     {% if session.get('role') == 'invite' %}
-    <div class="nav-section-label">Tableau de bord (accès Invité)</div>
+    <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+      <i class="bi bi-house-fill"></i> Tableau de bord
+    </a>
+    <div class="nav-section-label mt-3">Accès Invité</div>
+    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint == 'collecte_dashboard' %}active{% endif %}">
+      <i class="bi bi-activity"></i> Suivi d'un formulaire
+    </a>
     <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
       <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
     </a>
@@ -43,9 +49,6 @@
     </a>
     <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}">
       <i class="bi bi-person-walking"></i> Performances enquêteurs
-    </a>
-    <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint == 'collecte_dashboard' %}active{% endif %}">
-      <i class="bi bi-activity"></i> Suivi d'un formulaire
     </a>
 
     <div class="nav-section-label mt-3">Session</div>

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — SPAD Analyzer{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Hero Card -->
+  <div class="hero-card mb-4 shadow-sm" style="background: linear-gradient(135deg, #1A5276 0%, #2E4A8A 60%, #17A589 100%); border-radius: 16px; padding: 28px 32px; color: #fff;">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span class="badge" style="background:rgba(255,255,255,.2);color:#fff;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);">
+            <i class="bi bi-eye-fill me-1"></i>Accès Invité — Lecture seule
+          </span>
+        </div>
+        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">SPAD Analyzer — Plateforme de Collecte & d'Analyse</h1>
+        <p class="hero-subtitle mb-0 opacity-90" style="font-size:.95rem;max-width:680px;">
+          Suivez la complétude de la collecte et l'avancement des formulaires SPAD en temps réel.
+        </p>
+      </div>
+      <div class="col-lg-4 text-end d-none d-lg-block">
+        <div style="width:110px;height:110px;background:rgba(255,255,255,.1);border-radius:24px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);">
+          <i class="bi bi-eye-fill" style="font-size:3.5rem;color:#fff;opacity:.9"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-4">
+      <div class="bulle-card shadow-sm">
+        <div class="bulle-header">
+          <div class="bulle-icon" style="background:#fef3e2;color:#e05c1a"><i class="bi bi-broadcast"></i></div>
+          <h5 class="bulle-title">Suivre une collecte en temps réel</h5>
+        </div>
+        <div class="bulle-items">
+          <a href="{{ url_for('collecte_dashboard') }}" class="bulle-item">
+            <i class="bi bi-activity"></i>Suivi d'un formulaire
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-8">
+      <div class="bulle-card shadow-sm">
+        <div class="bulle-header">
+          <div class="bulle-icon" style="background:#eaf5ea;color:#198754"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+          <h5 class="bulle-title">Complétude nationale</h5>
+        </div>
+        <div class="bulle-items">
+          <a href="{{ url_for('completude') }}" class="bulle-item">
+            <i class="bi bi-clipboard2-pulse"></i>Complétude nationale
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
+          <a href="{{ url_for('completude_districts') }}" class="bulle-item">
+            <i class="bi bi-pin-map"></i>Complétude par district / établissement
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
+          <a href="{{ url_for('completude_superviseurs') }}" class="bulle-item">
+            <i class="bi bi-person-badge"></i>Performances superviseurs
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
+          <a href="{{ url_for('completude_enqueteurs') }}" class="bulle-item">
+            <i class="bi bi-person-walking"></i>Performances enquêteurs
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
