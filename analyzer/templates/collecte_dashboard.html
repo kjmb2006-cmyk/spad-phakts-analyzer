@@ -7,15 +7,21 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <div>
       <h3 class="fw-bold mb-1">Suivi d'un formulaire — Tableau de bord</h3>
-      {% if form_name %}
-      <div class="d-flex align-items-center gap-2 mb-1">
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        {% if form_name %}
         <span class="badge" style="background:#e8f4fd;color:#1a6fa8;font-size:.8rem;">
           <i class="bi bi-file-earmark-text-fill me-1"></i>{{ form_name }}
         </span>
+        {% endif %}
+        {% if read_only_shared %}
+        <span class="badge" style="background:#f3f0fb;color:#6f42c1;font-size:.8rem;">
+          <i class="bi bi-eye-fill me-1"></i>Vue partagée en lecture seule — dernier formulaire synchronisé par l'équipe Data
+        </span>
+        {% endif %}
       </div>
-      {% endif %}
       <p class="text-muted mb-0">Vue synthétique du suivi des soumissions, des alertes et de la qualité des données.</p>
     </div>
+    {% if not read_only_shared %}
     <div class="d-flex gap-2 flex-wrap">
       <form method="post" action="{{ url_for('collecte_refresh') }}">
         <button class="btn btn-outline-secondary btn-sm">
@@ -29,6 +35,7 @@
         <i class="bi bi-bell me-1"></i>Alertes actives
       </a>
     </div>
+    {% endif %}
   </div>
 
   <div class="row g-3 mb-4">
@@ -113,8 +120,12 @@
         <div class="card-body">
           <h5 class="fw-bold mb-3">État de la synchronisation</h5>
           <div class="d-flex align-items-center gap-2 mb-3">
+            {% if read_only_shared %}
+            <span class="badge bg-info-subtle text-info">Vue partagée</span>
+            {% else %}
             <span class="badge {{ 'bg-success' if kobo_connected else 'bg-secondary' }}">{{ 'Connecté' if kobo_connected else 'Non connecté' }}</span>
             <span class="text-muted small">{{ kobo_user }}</span>
+            {% endif %}
           </div>
           <div class="small text-muted mb-2">Dernière synchronisation</div>
           <div class="fw-semibold">{{ last_sync }}</div>

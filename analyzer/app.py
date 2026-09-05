@@ -148,7 +148,9 @@ def favicon():
 #     les comptes existants doivent migrer vers un compte individuel.
 #   - ANALYZER_PASSWORD_INVITE -> rôle 'invite' : lecture seule, restreint au
 #     tableau de bord Complétude nationale / par district & établissement /
-#     performances superviseurs / performances enquêteurs — voir
+#     performances superviseurs / performances enquêteurs, et Suivi d'un
+#     formulaire (vue partagée en lecture seule du dernier formulaire
+#     synchronisé par un compte Data, voir _mirror_collecte_shared()) — voir
 #     INVITE_ALLOWED_ENDPOINTS ci-dessous. Pas d'export, pas de recalcul, pas
 #     d'accès à la connexion KoboToolbox ni aux autres modules d'analyse.
 ANALYZER_PASSWORD_ADMIN = os.environ.get('ANALYZER_PASSWORD_ADMIN', '').strip()
@@ -164,6 +166,7 @@ INVITE_ALLOWED_ENDPOINTS = {
     'completude_districts', 'completude_district_detail', 'completude_etablissement_detail',
     'completude_superviseurs', 'completude_superviseur_detail',
     'completude_enqueteurs', 'completude_enqueteur_detail',
+    'collecte_dashboard',
 }
 
 # Endpoints réservés au rôle 'admin' — bloqués pour 'data' et 'invite'.
@@ -489,24 +492,81 @@ def _save_dataframe_to_session(df, name):
     return save_path
 
 
+# ─── Vue partagée « Suivi d'un formulaire » pour le rôle invité ────────────
+# Le rôle invité n'a jamais de session Kobo/formulaire actif à lui (lecture
+# seule, aucun accès aux écrans de connexion/synchronisation) — sans ce
+# mirroir, "Suivi d'un formulaire" lui serait donc toujours vide. On y copie
+# le dernier formulaire réellement synchronisé par un compte Data (fichier
+# partagé, même principe que _load_completude_cache()), écrasé à chaque
+# synchronisation réussie. Les sessions 'data'/'admin' gardent, elles, leur
+# état propre (_collecte_state_path()) — ce mirroir n'affecte jamais leur
+# propre suivi.
+_COLLECTE_SHARED_STATE_NAME = 'collecte_state_shared.json'
+_COLLECTE_SHARED_DATA_NAME = 'collecte_shared_data.xlsx'
+
+
+def _collecte_shared_state_path():
+    return os.path.join(app.config['UPLOAD_FOLDER'], _COLLECTE_SHARED_STATE_NAME)
+
+
+def _collecte_shared_data_path():
+    return os.path.join(app.config['UPLOAD_FOLDER'], _COLLECTE_SHARED_DATA_NAME)
+
+
+def _mirror_collecte_shared(df, name, state):
+    try:
+        df.to_excel(_collecte_shared_data_path(), index=False, engine='openpyxl')
+        save_state(_collecte_shared_state_path(), state)
+    except Exception:
+        pass  # le mirroir partagé est un bonus pour le rôle invité, jamais bloquant
+
+
+def _collecte_shared_dataframe():
+    path = _collecte_shared_data_path()
+    if not os.path.exists(path):
+        return None
+    try:
+        return pd.read_excel(path)
+    except Exception:
+        return None
+
+
 @app.route('/collecte/dashboard')
 def collecte_dashboard():
-    state_path = _collecte_state_path()
-    state = load_state(state_path)
-    current_count = None
-    meta = session.get('data_meta') or {}
-    if meta.get('n_obs') is not None:
-        current_count = int(meta['n_obs'])
-    # df transmis pour une répartition géographique RÉELLE (district/région/
-    # établissement effectivement présents dans les données chargées) —
-    # voir modules/collecte_monitor.py::real_geo_breakdown().
-    df = get_dataframe()
+    # Le rôle invité n'a jamais de formulaire actif à lui (lecture seule,
+    # aucun accès Kobo) — il voit à la place le dernier formulaire
+    # réellement synchronisé par un compte Data (mirroir partagé, voir
+    # _mirror_collecte_shared()). Les rôles 'data'/'admin' gardent leur
+    # propre état de session, inchangé.
+    is_invite = session.get('role') == 'invite'
+    if is_invite:
+        state_path = _collecte_shared_state_path()
+        state = load_state(state_path)
+        df = _collecte_shared_dataframe()
+        meta = summarize_dataframe(df) if df is not None else {}
+        current_count = int(meta['n_obs']) if meta.get('n_obs') is not None else None
+        form_name = state.get('last_form_name')
+        kobo_connected = False
+    else:
+        state_path = _collecte_state_path()
+        state = load_state(state_path)
+        current_count = None
+        meta = session.get('data_meta') or {}
+        if meta.get('n_obs') is not None:
+            current_count = int(meta['n_obs'])
+        # df transmis pour une répartition géographique RÉELLE (district/région/
+        # établissement effectivement présents dans les données chargées) —
+        # voir modules/collecte_monitor.py::real_geo_breakdown().
+        df = get_dataframe()
+        form_name = session.get('kobo_asset_name')
+        kobo_connected = bool(session.get('kobo_token'))
+
     metrics = build_dashboard_metrics(state, current_count=current_count, df=df)
     sync_status = kobo_sync.status() if hasattr(kobo_sync, 'status') else {}
     views = build_collecte_views(state, current_count=current_count, data_meta=meta, sync_status=sync_status, df=df)
     return render_template(
         'collecte_dashboard.html',
-        form_name=session.get('kobo_asset_name'),
+        form_name=form_name,
         received=metrics['received'],
         cible=metrics['cible'],
         taux=metrics['taux'],
@@ -516,7 +576,7 @@ def collecte_dashboard():
         geo_column=metrics['geo_column'],
         enqueteurs=metrics['enqueteurs'],
         enqueteur_column=metrics['enqueteur_column'],
-        kobo_connected=bool(session.get('kobo_token')),
+        kobo_connected=kobo_connected,
         kobo_user=session.get('kobo_username', 'KoboToolbox'),
         last_sync=state.get('last_sync_at') or 'Aucune synchronisation',
         history=metrics['history'],
@@ -525,6 +585,7 @@ def collecte_dashboard():
         sync_status=views['sync_status'],
         stratified_summary=views['stratified_summary'],
         interpretation=views['interpretation'],
+        read_only_shared=is_invite,
     )
 
 
@@ -622,6 +683,7 @@ def collecte_sync_run():
     session['kobo_asset_name'] = name
     state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=target)
     session['collecte_state_path'] = state_path
+    _mirror_collecte_shared(df, name, state)
     flash(f"Synchronisation réussie — {result.get('n_obs')} soumissions chargées depuis {name}.", 'success')
     return redirect(url_for('collecte_sync'))
 
@@ -676,6 +738,7 @@ def collecte_refresh():
     session['kobo_uid'] = uid
     session['kobo_asset_name'] = name
     state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=state.get('target'))
+    _mirror_collecte_shared(df, name, state)
     flash(f"Données rafraîchies — {result.get('n_obs')} soumissions disponibles.", 'success')
     return redirect(url_for('collecte_dashboard'))
 
