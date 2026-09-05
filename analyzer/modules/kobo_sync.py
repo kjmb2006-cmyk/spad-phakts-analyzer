@@ -30,6 +30,19 @@ _state = {
 }
 _pending_df = None  # DataFrame en attente d'application (hors _state pour ne pas le sérialiser par erreur)
 
+# Callback optionnel appelé DIRECTEMENT depuis le thread de sondage quand de
+# nouvelles données sont détectées (jamais sérialisé dans _state — une
+# fonction Python, pas une donnée JSON). Utilisé uniquement par "Suivi d'un
+# formulaire" (voir app.py::collecte_sync_auto()) pour appliquer les
+# nouvelles soumissions sans dépendre d'un onglet de navigateur ouvert — le
+# thread n'a pas accès à la session Flask (liée à une requête HTTP), donc ce
+# callback écrit directement sur des CHEMINS DE FICHIERS fixes plutôt que
+# dans `session`. La page "Aperçu des données" (kobo_sync_start(), sans
+# callback) garde elle son comportement d'origine : ne jamais remplacer
+# silencieusement le jeu de données en cours d'analyse, application
+# manuelle via le bouton "Appliquer".
+_on_new_data = None
+
 
 def _loop(token, uid, instance, interval, stop_event):
     from modules.kobo_connector import load_data
@@ -53,16 +66,30 @@ def _loop(token, uid, instance, interval, stop_event):
                 _state["available_n_obs"]  = res["n_obs"]
                 _state["error"]            = None
                 if res["n_obs"] != _state["baseline_n_obs"]:
-                    _pending_df = res["df"]
+                    if _on_new_data is not None:
+                        try:
+                            _on_new_data(res["df"], _state["name"])
+                            _state["baseline_n_obs"] = res["n_obs"]
+                            _pending_df = None
+                        except Exception as e:
+                            _state["error"] = f"Application automatique échouée : {e}"
+                            _pending_df = res["df"]
+                    else:
+                        _pending_df = res["df"]
                 else:
                     _pending_df = None
             else:
                 _state["error"] = res.get("error", "Erreur inconnue")
 
 
-def start(token, uid, instance, name, interval, baseline_n_obs):
-    """Démarre (ou redémarre) le polling en tâche de fond pour ce formulaire."""
-    global _thread, _stop_event, _pending_df
+def start(token, uid, instance, name, interval, baseline_n_obs, on_new_data=None):
+    """Démarre (ou redémarre) le polling en tâche de fond pour ce formulaire.
+
+    on_new_data(df, name), si fourni, est appelé depuis le thread dès qu'une
+    nouvelle soumission est détectée, pour l'appliquer immédiatement côté
+    serveur (voir note ci-dessus) — sinon comportement d'origine (attente
+    d'une application manuelle via pop_pending_df())."""
+    global _thread, _stop_event, _pending_df, _on_new_data
     stop()
     interval = max(60, min(int(interval or 300), 3600))
     with _lock:
@@ -73,6 +100,7 @@ def start(token, uid, instance, name, interval, baseline_n_obs):
             last_check_at=None, last_success_at=None, error=None,
         )
         _pending_df = None
+    _on_new_data = on_new_data
     _stop_event = threading.Event()
     _thread = threading.Thread(
         target=_loop, args=(token, uid, instance, interval, _stop_event), daemon=True
@@ -82,12 +110,13 @@ def start(token, uid, instance, name, interval, baseline_n_obs):
 
 def stop():
     """Arrête le polling en cours, s'il y en a un."""
-    global _thread, _stop_event, _pending_df
+    global _thread, _stop_event, _pending_df, _on_new_data
     if _stop_event is not None:
         _stop_event.set()
     _thread = None
     _stop_event = None
     _pending_df = None
+    _on_new_data = None
     with _lock:
         _state["active"] = False
 

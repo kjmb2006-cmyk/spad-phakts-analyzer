@@ -97,37 +97,57 @@ print("OK — rôle 'admin' : accès complet + écrans d'administration")
 client.get('/logout')
 
 # --- Rôle Invité : whitelist stricte -----------------------------------------
+# Depuis l'ajout du tableau de bord Invité (raccourcis vers Suivi d'un
+# formulaire + Complétude), le rôle invité atterrit sur "/" (son propre
+# tableau de bord) plutôt que directement sur /completude — voir
+# app.py::index() (branche role == 'invite') et INVITE_ALLOWED_ENDPOINTS.
 with client.session_transaction() as sess:
     sess.clear()
 r = client.post('/login', data={'password': 'secret-invite', 'access': 'invite'}, follow_redirects=False)
-assert r.status_code == 302 and r.headers['Location'].endswith('/completude'), r.headers.get('Location')
+assert r.status_code == 302 and r.headers['Location'].endswith('/'), r.headers.get('Location')
 with client.session_transaction() as sess:
     assert sess.get('role') == 'invite', sess.get('role')
-print("OK — mot de passe Invité reconnu, redirection directe vers /completude")
+print("OK — mot de passe Invité reconnu, redirection directe vers / (tableau de bord Invité)")
 
-allowed = ['/completude', '/completude/districts', '/completude/superviseurs', '/completude/enqueteurs']
+# Les pages liste (districts/superviseurs/enquêteurs) exigent un calcul déjà
+# en cache — SESSION-SCOPÉ (voir app.py::_load_completude_cache()), jamais
+# un repli sur le calcul le plus récent d'un autre rôle. On seed donc ici un
+# cache minimal directement dans la session invité, plutôt que de dépendre
+# d'un /completude/calculer lancé par un autre rôle plus haut dans ce script
+# (qui ne serait de toute façon pas visible depuis cette session).
+import json as _json
+import tempfile as _tempfile
+_cache_path = os.path.join(_tempfile.gettempdir(), '_test_access_roles_completude_cache.json')
+with open(_cache_path, 'w', encoding='utf-8') as f:
+    _json.dump({'national': {}, 'district': {}, 'region': {}, 'etablissement': {},
+                'enqueteur': {}, 'superviseur': {}, 'anomalies_zero': [], 'anomalies_excess': [],
+                'export': []}, f)
+with client.session_transaction() as sess:
+    sess['completude_path'] = _cache_path
+
+allowed = ['/', '/collecte/dashboard', '/completude', '/completude/districts', '/completude/superviseurs', '/completude/enqueteurs']
 for path in allowed:
     r = client.get(path)
     assert r.status_code == 200, f"{path} -> {r.status_code} (devrait être accessible au rôle invité)"
 print(f"OK — rôle 'invite' : les {len(allowed)} pages du tableau de bord sont accessibles (200, pas de redirection)")
 
 blocked = [
-    '/', '/upload', '/analyse-donnees', '/multi-survey', '/projets', '/suivi',
+    '/upload', '/analyse-donnees', '/multi-survey', '/projets', '/suivi',
     '/completude/regions', '/completude/anomalies', '/completude/graphiques',
     '/completude/export.csv', '/completude/export.xlsx', '/completude/export.docx',
     '/kobo/connect', '/admin/users', '/admin/activity',
 ]
 for path in blocked:
     r = client.get(path, follow_redirects=False)
-    assert r.status_code == 302 and r.headers['Location'].endswith('/completude'), \
-        f"{path} -> {r.status_code} {r.headers.get('Location')} (devrait rediriger vers /completude)"
-print(f"OK — rôle 'invite' : les {len(blocked)} pages hors périmètre redirigent proprement vers /completude")
+    assert r.status_code == 302 and r.headers['Location'].endswith('/'), \
+        f"{path} -> {r.status_code} {r.headers.get('Location')} (devrait rediriger vers /)"
+print(f"OK — rôle 'invite' : les {len(blocked)} pages hors périmètre redirigent proprement vers /")
 
 # Actions de modification (mapping/calcul) bloquées même en POST
 r = client.post('/completude/mapper', follow_redirects=False)
-assert r.status_code == 302 and r.headers['Location'].endswith('/completude')
+assert r.status_code == 302 and r.headers['Location'].endswith('/')
 r = client.post('/completude/calculer', follow_redirects=False)
-assert r.status_code == 302 and r.headers['Location'].endswith('/completude')
+assert r.status_code == 302 and r.headers['Location'].endswith('/')
 print("OK — rôle 'invite' : actions de correspondance/calcul bloquées (POST)")
 
 client.get('/logout')
@@ -136,6 +156,10 @@ with client.session_transaction() as sess:
 print("OK — /logout efface bien authentification et rôle")
 
 accounts.delete_user(TEST_USER)
+try:
+    os.remove(_cache_path)
+except OSError:
+    pass
 
 print()
 print("=" * 70)

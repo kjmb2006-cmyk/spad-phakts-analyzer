@@ -532,6 +532,79 @@ def _collecte_shared_dataframe():
         return None
 
 
+def _make_autosync_callback(data_path, state_path):
+    """Callback appelé par kobo_sync._loop() (thread d'arrière-plan, sans
+    accès à la session Flask) dès qu'une nouvelle soumission est détectée —
+    écrit directement sur les CHEMINS capturés au démarrage de la synchro
+    plutôt que dans `session`, pour que "Suivi d'un formulaire" (et le
+    mirroir partagé Invité) se mettent à jour sans qu'aucun onglet de
+    navigateur ne soit ouvert."""
+    def _apply(df, name):
+        if data_path:
+            df.to_excel(data_path, index=False, engine='openpyxl')
+        state = load_state(state_path)
+        state = append_sync_event(state, state_path, form_name=name, count=len(df), status='réussi', target=state.get('target'))
+        _mirror_collecte_shared(df, name, state)
+    return _apply
+
+
+# ─── Reprise de la synchronisation automatique après redémarrage ───────────
+# kobo_sync.py garde son état EN MÉMOIRE (variables globales du processus) —
+# tout redémarrage du service (déploiement, crash, reboot) l'arrête donc
+# silencieusement, sans reprise automatique (cas réel constaté : la synchro
+# s'arrête à chaque déploiement effectué pendant qu'elle tournait). Ce petit
+# fichier persiste juste assez d'information pour la relancer au démarrage
+# du processus suivant — jamais utilisé pour autre chose.
+_AUTOSYNC_RESUME_NAME = 'kobo_autosync_resume.json'
+
+
+def _autosync_resume_path():
+    return os.path.join(app.config['UPLOAD_FOLDER'], _AUTOSYNC_RESUME_NAME)
+
+
+def _save_autosync_resume(token, uid, instance, name, interval, data_path, state_path):
+    try:
+        with open(_autosync_resume_path(), 'w', encoding='utf-8') as f:
+            json.dump({
+                'token': token, 'uid': uid, 'instance': instance, 'name': name,
+                'interval': interval, 'data_path': data_path, 'state_path': state_path,
+            }, f)
+    except Exception:
+        pass
+
+
+def _clear_autosync_resume():
+    try:
+        os.remove(_autosync_resume_path())
+    except Exception:
+        pass
+
+
+def _resume_autosync_if_any():
+    path = _autosync_resume_path()
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        data_path = data.get('data_path')
+        if not data_path or not os.path.exists(data_path):
+            return  # le fichier de données de cette session n'existe plus — rien de fiable à reprendre
+        try:
+            baseline = int(len(pd.read_excel(data_path)))
+        except Exception:
+            baseline = 0
+        state_path = data.get('state_path')
+        callback = _make_autosync_callback(data_path, state_path)
+        kobo_sync.start(
+            data.get('token'), data.get('uid'), data.get('instance'),
+            data.get('name', 'Formulaire KoboToolbox'), data.get('interval', 300),
+            baseline, on_new_data=callback,
+        )
+    except Exception:
+        pass
+
+
 @app.route('/collecte/dashboard')
 def collecte_dashboard():
     # Le rôle invité n'a jamais de formulaire actif à lui (lecture seule,
@@ -559,6 +632,16 @@ def collecte_dashboard():
         # établissement effectivement présents dans les données chargées) —
         # voir modules/collecte_monitor.py::real_geo_breakdown().
         df = get_dataframe()
+        # Priorité au contenu RÉEL du fichier plutôt qu'à data_meta (un
+        # instantané pris à la dernière action explicite de CETTE session) —
+        # la synchronisation automatique en tâche de fond (voir
+        # kobo_sync.py::_loop(), on_new_data) réécrit désormais le fichier
+        # directement, sans jamais repasser par la session Flask (elle n'y a
+        # pas accès depuis un thread). Sans ce correctif, le tableau de bord
+        # resterait bloqué sur l'ancien effectif tant qu'aucune action
+        # manuelle (Rafraîchir/Synchroniser) n'est faite dans CETTE session.
+        if df is not None:
+            current_count = int(len(df))
         form_name = session.get('kobo_asset_name')
         kobo_connected = bool(session.get('kobo_token'))
 
@@ -700,8 +783,12 @@ def collecte_sync_auto():
         return redirect(url_for('collecte_sync'))
     interval = int(request.form.get('interval_seconds', '300') or 300)
     baseline = int((session.get('data_meta') or {}).get('n_obs', 0) or 0)
-    kobo_sync.start(token, uid, instance, name, interval, baseline)
-    flash('Synchronisation automatique démarrée.', 'success')
+    data_path = session.get('data_path')
+    state_path = _collecte_state_path()
+    callback = _make_autosync_callback(data_path, state_path)
+    kobo_sync.start(token, uid, instance, name, interval, baseline, on_new_data=callback)
+    _save_autosync_resume(token, uid, instance, name, interval, data_path, state_path)
+    flash('Synchronisation automatique démarrée — les nouvelles soumissions seront appliquées automatiquement, même sans garder cette page ouverte.', 'success')
     return redirect(url_for('collecte_sync'))
 
 
@@ -3733,6 +3820,7 @@ def kobo_sync_start():
 @app.route('/kobo/sync/stop', methods=['POST'])
 def kobo_sync_stop():
     kobo_sync.stop()
+    _clear_autosync_resume()
     return jsonify({"success": True})
 
 
@@ -4181,6 +4269,14 @@ def xlsform_preview():
         survey_cols=list(survey_df.columns),
         choices_cols=list(choices_df.columns) if not choices_df.empty else [],
     )
+
+
+# Reprise de la synchronisation Kobo automatique éventuellement interrompue
+# par un redémarrage du processus (déploiement, crash) — voir
+# _resume_autosync_if_any(). Exécuté une fois à l'import du module, donc
+# aussi bien pour `python3 app.py` (local) que pour `gunicorn app:app`
+# (production, --workers 1 : un seul processus, donc une seule reprise).
+_resume_autosync_if_any()
 
 
 if __name__ == '__main__':
