@@ -279,12 +279,12 @@
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-          <h5 class="fw-bold mb-1">Collectes par enquêteur</h5>
+          <h5 class="fw-bold mb-1">Collectes par enquêteur / équipe</h5>
           <p class="text-muted small mb-0">
             {% if enqueteur_column %}
             Nombre de soumissions par valeur détectée dans « {{ enqueteur_column }} ».
             {% else %}
-            Répartition des soumissions par enquêteur, si ce formulaire comporte un champ dédié.
+            Répartition des soumissions par enquêteur ou équipe de collecte, si ce formulaire comporte un champ dédié.
             {% endif %}
           </p>
         </div>
@@ -294,7 +294,7 @@
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th>Enquêteur</th>
+              <th>Enquêteur / Équipe</th>
               <th class="text-end">Collectes</th>
             </tr>
           </thead>
@@ -308,7 +308,7 @@
             <tr>
               <td colspan="2" class="text-muted text-center py-3">
                 {% if not enqueteur_column %}
-                Aucun champ "Enquêteur" détecté dans ce formulaire.
+                Aucun champ "Enquêteur" ou "Équipe" détecté dans ce formulaire.
                 {% else %}
                 Aucune soumission avec une valeur renseignée dans « {{ enqueteur_column }} » pour l'instant.
                 {% endif %}

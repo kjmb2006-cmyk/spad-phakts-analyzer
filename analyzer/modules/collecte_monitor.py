@@ -96,8 +96,13 @@ def real_geo_breakdown(df, target: int = 0):
 # aucun nom de colonne fixe n'est garanti (voir modules/completeness.py pour
 # le cas des 7 formulaires officiels, où l'enquêteur est déduit de
 # l'établissement assigné plutôt que d'un champ de soumission).
+# À défaut d'un champ Enquêteur individuel, une Équipe de collecte/contrôle
+# identifie tout aussi bien QUI a fait chaque soumission — ce qui compte ici
+# est le nombre de collectes rattachées à une identité de terrain, pas le
+# libellé exact du champ.
 _ENQ_FIELD_KEYWORDS = [
     ['enqueteur', 'enquêteur'],
+    ['equipe', 'équipe'],
 ]
 
 
