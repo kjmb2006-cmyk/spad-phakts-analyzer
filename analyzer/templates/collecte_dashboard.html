@@ -274,5 +274,51 @@
       </div>
     </div>
   </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h5 class="fw-bold mb-1">Collectes par enquêteur</h5>
+          <p class="text-muted small mb-0">
+            {% if enqueteur_column %}
+            Nombre de soumissions par valeur détectée dans « {{ enqueteur_column }} ».
+            {% else %}
+            Répartition des soumissions par enquêteur, si ce formulaire comporte un champ dédié.
+            {% endif %}
+          </p>
+        </div>
+        <span class="badge bg-primary-subtle text-primary">Enquêteurs</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Enquêteur</th>
+              <th class="text-end">Collectes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in enqueteurs %}
+            <tr>
+              <td>{{ e.name }}</td>
+              <td class="text-end fw-semibold">{{ e.received }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2" class="text-muted text-center py-3">
+                {% if not enqueteur_column %}
+                Aucun champ "Enquêteur" détecté dans ce formulaire.
+                {% else %}
+                Aucune soumission avec une valeur renseignée dans « {{ enqueteur_column }} » pour l'instant.
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

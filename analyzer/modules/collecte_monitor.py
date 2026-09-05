@@ -90,6 +90,50 @@ def real_geo_breakdown(df, target: int = 0):
     items.sort(key=lambda it: it['rate'])
     return items, col
 
+
+# Même logique que _GEO_FIELD_KEYWORDS/detect_geo_column ci-dessus, appliquée
+# au champ Enquêteur — ce module suit un formulaire Kobo quelconque, donc
+# aucun nom de colonne fixe n'est garanti (voir modules/completeness.py pour
+# le cas des 7 formulaires officiels, où l'enquêteur est déduit de
+# l'établissement assigné plutôt que d'un champ de soumission).
+_ENQ_FIELD_KEYWORDS = [
+    ['enqueteur', 'enquêteur'],
+]
+
+
+def detect_enqueteur_column(df):
+    """Renvoie le nom de la colonne Enquêteur du formulaire chargé, ou None
+    si aucune n'est détectée."""
+    if df is None or getattr(df, 'empty', True):
+        return None
+    cols_lower = {col: str(col).lower() for col in df.columns}
+    for keywords in _ENQ_FIELD_KEYWORDS:
+        for col, low in cols_lower.items():
+            if any(k in low for k in keywords):
+                return col
+    return None
+
+
+def enqueteur_breakdown(df):
+    """Nombre de collectes par enquêteur, à partir de la colonne détectée
+    dans le formulaire chargé. Renvoie (items, colonne_utilisée) — items est
+    une liste vide si aucune colonne Enquêteur n'a été trouvée, ou si aucune
+    soumission n'a de valeur renseignée dans cette colonne."""
+    col = detect_enqueteur_column(df)
+    if not col:
+        return [], None
+
+    values = df[col].dropna().astype(str).str.strip()
+    values = values[values != '']
+    if values.empty:
+        return [], col
+
+    grouped = values.value_counts()
+    items = [{'name': str(name), 'received': int(n)} for name, n in grouped.items()]
+    items.sort(key=lambda it: -it['received'])
+    return items, col
+
+
 DEFAULT_STATE = {
     'target': 0,
     'history': [],
@@ -169,6 +213,7 @@ def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = N
     # détectée ; le gabarit l'affiche alors clairement plutôt que d'inventer
     # un contenu.
     zones, geo_column = real_geo_breakdown(df, target)
+    enqueteurs, enqueteur_column = enqueteur_breakdown(df)
     daily_rate = max(0, received // max(1, len(history) or 1)) if history else 0
     return {
         'received': received,
@@ -178,6 +223,8 @@ def build_dashboard_metrics(state: Dict[str, Any], current_count: int | None = N
         'evolution': evolution,
         'zones': zones,
         'geo_column': geo_column,
+        'enqueteurs': enqueteurs,
+        'enqueteur_column': enqueteur_column,
         'history': history,
         'daily_rate': daily_rate,
         'daily_target': max(1, target // max(1, len(history) or 1)) if target else 0,

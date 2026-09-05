@@ -514,6 +514,8 @@ def collecte_dashboard():
         evolution=metrics['evolution'],
         zones=metrics['zones'],
         geo_column=metrics['geo_column'],
+        enqueteurs=metrics['enqueteurs'],
+        enqueteur_column=metrics['enqueteur_column'],
         kobo_connected=bool(session.get('kobo_token')),
         kobo_user=session.get('kobo_username', 'KoboToolbox'),
         last_sync=state.get('last_sync_at') or 'Aucune synchronisation',
