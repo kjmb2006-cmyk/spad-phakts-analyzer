@@ -3764,6 +3764,19 @@ def kobo_sync_apply():
     session['data_meta']['name']   = name
     session.pop('child_path', None)
 
+    # La synchronisation automatique (polling en arrière-plan) contournait
+    # jusqu'ici l'historique de "Suivi d'un formulaire" ET le mirroir partagé
+    # pour le rôle invité (voir _mirror_collecte_shared()) — seuls
+    # collecte_sync_run()/collecte_refresh() les mettaient à jour. Un
+    # visiteur ne voyait donc jamais les soumissions arrivées par
+    # auto-synchronisation, même après leur apparition côté Data (cas réel
+    # constaté : 1 soumission bien reçue et visible en session Data, mais
+    # absente de la vue partagée Invité).
+    state_path = _collecte_state_path()
+    state = load_state(state_path)
+    state = append_sync_event(state, state_path, form_name=name, count=len(df), status='réussi', target=state.get('target'))
+    _mirror_collecte_shared(df, name, state)
+
     return jsonify({"success": True, "n_obs": len(df), "n_vars": int(df.shape[1])})
 
 
