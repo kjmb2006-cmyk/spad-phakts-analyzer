@@ -2868,13 +2868,39 @@ def _sync_completude_mapping(form_type, uid):
     qu'il vienne de la détection par préfixe, du bouton IA ou d'un choix
     manuel. Évite l'étape séparée « aller réassocier à la main dans
     Complétude » à chaque fois qu'un formulaire est ajouté ou retypé dans
-    Suivi ; sans effet si form_type est vide (type « Libre »)."""
+    Suivi ; sans effet si form_type est vide (type « Libre »).
+
+    Renvoie un avertissement (str) si cette réassignation casse
+    probablement la correspondance d'un code SPAD « roster » FRÈRE (même
+    champ role_filter, voir forms_registry.py — un formulaire à rôles
+    multiples a plusieurs codes sur le même UID, un par rôle) qui pointait
+    encore vers un AUTRE formulaire Kobo — sinon None. Cas réel : AVIS_SPAD1_SUP
+    réassigné par erreur au formulaire "Superviseurs" seul, qui a cassé sa
+    correspondance vers le formulaire combiné sans qu'aucun message
+    n'alerte — AVIS_SPAD1_ENQ y pointait pourtant toujours."""
     if not form_type:
-        return
+        return None
     mapping = form_mapping.load()
-    if mapping.get(form_type) != uid:
-        mapping[form_type] = uid
-        form_mapping.save(mapping)
+    if mapping.get(form_type) == uid:
+        return None
+    warning = None
+    role_filter = (forms_registry.get(form_type) or {}).get('role_filter')
+    if role_filter:
+        siblings = [
+            c for c, u in mapping.items()
+            if c != form_type and u != uid
+            and (forms_registry.get(c) or {}).get('role_filter', {}).get('field') == role_filter.get('field')
+        ]
+        if siblings:
+            warning = (
+                f"{form_type} a été associé à un nouveau formulaire Kobo, mais "
+                f"{' et '.join(siblings)} (même formulaire à rôles multiples) pointe "
+                f"encore vers un autre formulaire — vérifiez la correspondance dans "
+                f"Complétude nationale."
+            )
+    mapping[form_type] = uid
+    form_mapping.save(mapping)
+    return warning
 
 
 def _prune_completude_mapping(uid):
@@ -2904,8 +2930,8 @@ def suivi_add():
     if err:
         return jsonify({"success": False, "error": err}), 400
     kobo_track.add(token, instance, uid, name, target=target, form_type=form_type)
-    _sync_completude_mapping(form_type, uid)
-    return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+    warning = _sync_completude_mapping(form_type, uid)
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked(), "warning": warning})
 
 
 @app.route('/suivi/remove', methods=['POST'])
@@ -2945,8 +2971,8 @@ def suivi_target():
     if not kobo_track.is_tracked(uid):
         return jsonify({"success": False, "error": "Formulaire non suivi."}), 400
     kobo_track.set_target(uid, target=target, form_type=form_type)
-    _sync_completude_mapping(form_type, uid)
-    return jsonify({"success": True, "tracked": kobo_track.list_tracked()})
+    warning = _sync_completude_mapping(form_type, uid)
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked(), "warning": warning})
 
 
 @app.route('/suivi/ai_suggest', methods=['POST'])
@@ -2968,13 +2994,27 @@ def _enrich_tracked_district_reel(tracked):
     réutilise le dernier calcul de « Complétude nationale » en cache s'il
     couvre ce formulaire. Reste None pour les formulaires Kobo non-SPAD :
     kobo_track.py ne connaît volontairement aucun référentiel régions/
-    districts pour eux (sondage léger, voir modules/kobo_track.py)."""
+    districts pour eux (sondage léger, voir modules/kobo_track.py).
+
+    Ajoute aussi mapped_codes : TOUS les codes SPAD de la correspondance
+    Complétude nationale (form_mapping.py) qui pointent vers ce même UID —
+    pas seulement t['form_type'] (une seule valeur, affichée par la carte).
+    Un formulaire « roster » (voir forms_registry.py) a légitimement
+    PLUSIEURS codes sur le même UID (un par rôle) ; sans cette liste, la
+    carte ne montre jamais que l'un des deux, ce qui pousse à (re)choisir
+    l'autre dans le menu — écrasant silencieusement la bonne correspondance
+    de ce second code (cas réel rencontré)."""
     cached = _load_completude_cache()
     district_table = cached.get('district') if cached else None
+    mapping = form_mapping.load()
+    codes_by_uid = {}
+    for code, uid in mapping.items():
+        codes_by_uid.setdefault(uid, []).append(code)
     for t in tracked:
         t['district_reel'] = None
         if district_table and t.get('form_type'):
             t['district_reel'] = cp.district_reel(district_table, t['form_type'])
+        t['mapped_codes'] = sorted(codes_by_uid.get(t['uid'], []))
     return tracked
 
 

@@ -192,14 +192,18 @@
           <div class="d-flex align-items-baseline gap-2 mb-1 flex-wrap">
             <span class="stat-value-v" style="font-size:1.6rem">${fmtNum(t.count)}</span>
             ${t.target ? `<span class="text-muted small">/ ${fmtNum(t.target)}</span>` : ''}
-            ${t.target_source === 'detectee'
-              ? `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.62rem">
-                   <i class="bi bi-magic me-1"></i>${t.form_type} détecté
-                 </span>`
+            ${(t.mapped_codes && t.mapped_codes.length > 0)
+              ? t.mapped_codes.map(code => `
+                   <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.62rem">
+                     <i class="bi bi-magic me-1"></i>${code}
+                   </span>`).join('')
               : (t.target_source === 'manuelle'
                   ? `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.62rem">cible manuelle</span>`
                   : '')}
           </div>
+          ${(t.mapped_codes && t.mapped_codes.length > 1)
+            ? `<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>${t.mapped_codes.length} codes SPAD rattachés à ce même formulaire (un par rôle) — géré depuis Complétude nationale.</div>`
+            : ''}
           ${pct !== null ? `
           <div class="progress-track mb-2">
             <div class="progress-fill ${progressClass}" style="width:${pct}%"></div>
@@ -277,6 +281,7 @@
           cell.innerHTML = '<span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>';
           row.querySelector('.target-input').disabled = true;
           row.querySelector('.form-type-select').disabled = true;
+          if (res.warning) alert('⚠ ' + res.warning);
         } else {
           alert(res.error || 'Erreur inconnue.');
         }
