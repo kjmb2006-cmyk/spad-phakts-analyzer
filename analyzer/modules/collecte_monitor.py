@@ -105,12 +105,24 @@ _ENQ_FIELD_KEYWORDS = [
     ['equipe', 'équipe'],
 ]
 
+# Un champ dont les valeurs SONT des rôles connus identifie l'enquêteur/
+# superviseur tout aussi sûrement qu'un nom de colonne contenant
+# "enquêteur" — et fonctionne même quand le champ s'appelle autrement (cas
+# réel : "AVI_00c_fonction__X", qui distingue superviseur/enquêteur sur un
+# même formulaire rempli par les deux rôles). Priorité à ce signal par
+# valeur, plus fiable qu'un nom de colonne, sur le repli par mot-clé.
+_ROLE_VALUES = {'superviseur', 'enqueteur', 'enquêteur'}
+
 
 def detect_enqueteur_column(df):
-    """Renvoie le nom de la colonne Enquêteur du formulaire chargé, ou None
-    si aucune n'est détectée."""
+    """Renvoie le nom de la colonne Enquêteur (ou rôle enquêteur/superviseur)
+    du formulaire chargé, ou None si aucune n'est détectée."""
     if df is None or getattr(df, 'empty', True):
         return None
+    for col in df.columns:
+        values = {str(v).strip().lower() for v in df[col].dropna().unique()}
+        if values and values.issubset(_ROLE_VALUES):
+            return col
     cols_lower = {col: str(col).lower() for col in df.columns}
     for keywords in _ENQ_FIELD_KEYWORDS:
         for col, low in cols_lower.items():
