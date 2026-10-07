@@ -37,7 +37,14 @@
             <tr>
               <td class="fw-semibold small">{{ f.code }}</td>
               <td class="small">{{ f.label }}</td>
-              <td class="small text-muted">{{ 'Établissement' if f.grain == 'etablissement' else 'District' }}</td>
+              <td class="small text-muted">
+                {%- if f.grain == 'etablissement' -%}Établissement
+                {%- elif f.grain == 'district' -%}District
+                {%- elif f.grain == 'enqueteur' -%}Enquêteur (roster)
+                {%- elif f.grain == 'superviseur' -%}Superviseur (roster)
+                {%- else -%}{{ f.grain }}
+                {%- endif -%}
+              </td>
               <td class="small text-muted">{{ 'Enquêteur' if f.actor == 'enqueteur' else 'Superviseur' }}</td>
               <td class="small text-muted">{{ rule_type_labels.get(f.target_rule.type, f.target_rule.type) }}
                 {% if f.target_rule.params.get('n') is not none %} ({{ f.target_rule.params.n }}){% endif %}
