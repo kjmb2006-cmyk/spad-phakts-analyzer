@@ -25,7 +25,21 @@ pour ajouter un formulaire qui suit l'un de ces motifs) :
   - by_etablissement_type           : cible = etab['f6_target'] (motif F6 —
                                        type CSR-D/CSR-DM/EPH/CSU — trop
                                        spécifique pour être généralisé plus)
-"""
+  - fixed_national(n)               : cible nationale fixe, non multipliée
+                                       par le référentiel (motif "roster" —
+                                       voir grain 'enqueteur'/'superviseur'
+                                       ci-dessous)
+
+Grains pris en charge : 'etablissement', 'district', et 'enqueteur' /
+'superviseur' ("roster" — un même Kobo UID peut porter PLUSIEURS codes SPAD
+à la fois dans ce cas précis, un par rôle, chacun avec son propre
+role_filter — cas réel : un formulaire d'avis rempli à la fois par les
+superviseurs et les enquêteurs, où seul le champ "Fonction" distingue qui a
+répondu. Pour ce grain, 'reçu' compte les valeurs DISTINCTES de
+identity_field parmi les lignes où role_filter[field] == role_filter[value]
+— jamais un décompte par établissement/district, qui n'aurait pas de sens
+ici (une même personne répond une seule fois, pas une fois par
+établissement). Voir modules/completeness.py::roster_completeness()."""
 import os
 import json
 import copy
@@ -40,11 +54,15 @@ RULE_TYPES = (
     'etab_field_positive',
     'floor_sum_district_field',
     'by_etablissement_type',
+    'fixed_national',
 )
+
+GRAINS = ('etablissement', 'district', 'enqueteur', 'superviseur')
 
 RULE_TYPE_LABELS = {
     'fixed_per_etablissement': 'Nombre fixe par établissement',
     'fixed_per_district': 'Nombre fixe par district',
+    'fixed_national': 'Nombre fixe national (roster)',
     'etab_field_positive': "1 par établissement où un champ du référentiel est > 0",
     'floor_sum_district_field': "Somme d'un champ du référentiel par district (plancher)",
     'by_etablissement_type': "Selon le type d'établissement (réservé F6)",
@@ -134,15 +152,16 @@ def set_active(code, active):
     return False
 
 
-def add_form(code, label, name_hint, grain, actor, etab_field, district_field, target_rule):
+def add_form(code, label, name_hint, grain, actor, etab_field, district_field, target_rule,
+             role_filter=None, identity_field=None):
     code = (code or '').strip()
     if not code:
         return False, "Code obligatoire."
     forms = _load_raw()
     if any(f['code'] == code for f in forms):
         return False, f"Le code « {code} » existe déjà."
-    if grain not in ('etablissement', 'district'):
-        return False, "Grain invalide (établissement ou district)."
+    if grain not in GRAINS:
+        return False, "Grain invalide (établissement, district, enquêteur ou superviseur)."
     if actor not in ('enqueteur', 'superviseur'):
         return False, "Acteur invalide (enquêteur ou superviseur)."
     if not isinstance(target_rule, dict) or target_rule.get('type') not in RULE_TYPES:
@@ -152,6 +171,7 @@ def add_form(code, label, name_hint, grain, actor, etab_field, district_field, t
         'grain': grain, 'actor': actor,
         'etab_field': etab_field or None, 'district_field': district_field or None,
         'target_rule': target_rule, 'active': True,
+        'role_filter': role_filter or None, 'identity_field': identity_field or None,
     })
     _save_raw(forms)
     return True, None
@@ -221,4 +241,6 @@ def national_target(form, ref):
         return sum((e.get(field) or 0) for e in ref['etablissements'].values())
     if rtype == 'by_etablissement_type':
         return sum(e.get('f6_target', 0) for e in ref['etablissements'].values())
+    if rtype == 'fixed_national':
+        return rule['params']['n']
     return None

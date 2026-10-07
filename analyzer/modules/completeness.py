@@ -122,12 +122,56 @@ def district_completeness(ref, form_code, df):
     return rows
 
 
+def roster_completeness(form, df):
+    """Reçu/cible pour un formulaire au grain 'enqueteur'/'superviseur'
+    (motif « roster » — voir modules/forms_registry.py) : une MÊME personne
+    répond une seule fois, donc 'reçu' compte les valeurs DISTINCTES
+    d'identity_field parmi les lignes qui passent role_filter — jamais un
+    décompte par établissement/district (qui n'aurait pas de sens ici, une
+    soumission pouvant référencer plusieurs établissements à la fois).
+
+    Renvoie une liste à UN élément (plutôt qu'un dict nu) pour rester
+    compatible avec les appelants de form_completeness(), qui itèrent tous
+    sur une liste de lignes (national_summary() fait sum(r['recu'] for r in
+    rows), par exemple)."""
+    cible = form['target_rule']['params']['n']
+    if df is None:
+        return [{'recu': 0, 'cible': cible, 'taux': None, 'statut': 'inconnu'}]
+
+    sub = df
+    role_filter = form.get('role_filter')
+    if role_filter:
+        col = find_column(sub, role_filter['field'])
+        if col is not None:
+            values = sub[col].astype(str).str.strip().str.lower()
+            sub = sub[values == str(role_filter['value']).strip().lower()]
+        else:
+            sub = sub.iloc[0:0]  # champ de rôle absent : aucune ligne ne peut être attribuée à ce rôle
+
+    identity_field = form.get('identity_field')
+    if identity_field:
+        col = find_column(sub, identity_field)
+        recu = int(sub[col].dropna().astype(str).str.strip().nunique()) if col is not None else 0
+    else:
+        recu = int(len(sub))
+
+    return [{
+        'recu': recu, 'cible': cible,
+        'taux': round(100 * recu / cible, 1) if cible else None,
+        'statut': status_for(recu, cible),
+    }]
+
+
 def form_completeness(ref, form_code, df):
-    """Répartiteur : établissement ou district selon le formulaire."""
+    """Répartiteur : établissement, district, ou "roster" (enquêteur/
+    superviseur) selon le grain du formulaire."""
     if form_code in etablissement_forms():
         return etablissement_completeness(ref, form_code, df)
     if form_code in district_forms():
         return district_completeness(ref, form_code, df)
+    form = forms_registry.get(form_code)
+    if form and form.get('grain') in ('enqueteur', 'superviseur'):
+        return roster_completeness(form, df)
     raise ValueError(f"Formulaire inconnu : {form_code}")
 
 
@@ -292,7 +336,13 @@ def enqueteur_table(ref, form_dataframes):
     table = {code: {'nom': e['nom_complet'], 'sous_titre': e['district_code'], 'forms': {}}
               for code, e in ref['enqueteurs'].items()}
 
+    # Un formulaire « roster » (grain enquêteur/superviseur, voir
+    # forms_registry.py) n'a pas de comptage par établissement — exclu ici,
+    # il apparaît seulement en cible nationale agrégée (national_summary()).
     for form_code in enqueteur_forms():
+        form = forms_registry.get(form_code)
+        if form and form.get('grain') not in ('etablissement',):
+            continue
         df = form_dataframes.get(form_code)
         if df is None:
             for code in table:
@@ -315,15 +365,21 @@ def enqueteur_table(ref, form_dataframes):
 
 def superviseur_table(ref, form_dataframes):
     """Table superviseur × formulaire (F01/F02/F07 — le volet RDM). Un
-    superviseur par district, reprend directement district_table()."""
+    superviseur par district, reprend directement district_table().
+
+    Les formulaires « roster » (grain enquêteur/superviseur) sont exclus de
+    cette table par personne — pas de comptage par district pour eux, voir
+    enqueteur_table()."""
     dtable = district_table(ref, form_dataframes)
+    etab_district_codes = {fc for fc in superviseur_forms()
+                            if (forms_registry.get(fc) or {}).get('grain') == 'district'}
     table = {}
     for code, s in ref['superviseurs'].items():
         d = s['district_code']
         drow = dtable.get(d, {'forms': {}})
         table[code] = {
             'nom': s['nom_complet'], 'sous_titre': d,
-            'forms': {fc: drow['forms'].get(fc, _empty_cell()) for fc in superviseur_forms()},
+            'forms': {fc: drow['forms'].get(fc, _empty_cell()) for fc in etab_district_codes},
         }
     return table
 

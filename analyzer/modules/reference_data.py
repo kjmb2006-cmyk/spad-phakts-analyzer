@@ -124,11 +124,31 @@ def validate_mapping(mapping, assets):
     vus = {}
     for code, uid in mapping.items():
         vus.setdefault(uid, []).append(code)
-    erreurs = [
-        f"{' et '.join(codes)} pointent vers le même formulaire Kobo "
-        f"(« {by_uid.get(uid, uid)} ») — corrigez avant de calculer."
-        for uid, codes in vus.items() if len(codes) > 1
-    ]
+    erreurs = []
+    for uid, codes in vus.items():
+        if len(codes) <= 1:
+            continue
+        # Exception légitime : un même Kobo UID peut porter plusieurs codes
+        # SPAD à la fois quand chacun filtre sur un rôle DISTINCT (grain
+        # "roster", voir forms_registry.py) — un même formulaire d'avis
+        # rempli à la fois par les superviseurs et les enquêteurs, par
+        # exemple. Erreur seulement si au moins un code n'a pas de filtre de
+        # rôle, ou si deux codes partagent le même filtre (vraie confusion).
+        role_values = []
+        all_filtered = True
+        for code in codes:
+            form = forms_registry.get(code)
+            rf = (form or {}).get('role_filter')
+            if not rf:
+                all_filtered = False
+                break
+            role_values.append((rf.get('field'), str(rf.get('value', '')).strip().lower()))
+        if all_filtered and len(set(role_values)) == len(role_values):
+            continue  # chaque code cible un rôle différent sur le même formulaire — légitime
+        erreurs.append(
+            f"{' et '.join(codes)} pointent vers le même formulaire Kobo "
+            f"(« {by_uid.get(uid, uid)} ») — corrigez avant de calculer."
+        )
 
     hints = forms_registry.name_hints()
     labels = forms_registry.labels()
