@@ -49,6 +49,27 @@ def superviseur_forms():
     return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False) if f['actor'] == 'superviseur')
 
 
+def enqueteur_table_forms():
+    """Sous-ensemble de enqueteur_forms() réellement présent dans
+    enqueteur_table() (grain établissement uniquement — voir le filtre dans
+    enqueteur_table() ci-dessous). Un formulaire roster (grain enquêteur,
+    motif RAA Phase 1 — voir forms_registry.py) a lui aussi actor='enqueteur'
+    mais PAS de colonne par personne dans ce tableau (il a sa propre vue
+    régionale, roster_family_table()) : passer enqueteur_forms() tel quel
+    comme liste de colonnes à un template qui lit row.forms[code] lève une
+    jinja2.exceptions.UndefinedError (cas réel rencontré sur
+    /completude/enqueteurs après l'ajout de formulaires roster)."""
+    return tuple(fc for fc in enqueteur_forms()
+                 if (forms_registry.get(fc) or {}).get('grain') == 'etablissement')
+
+
+def superviseur_table_forms():
+    """Équivalent de enqueteur_table_forms() pour superviseur_table() —
+    grain district uniquement (motif F01/F07)."""
+    return tuple(fc for fc in superviseur_forms()
+                 if (forms_registry.get(fc) or {}).get('grain') == 'district')
+
+
 def find_column(df, field_name):
     """Retrouve une colonne par nom exact ou par suffixe `.../field_name`."""
     if field_name is None or df is None:
