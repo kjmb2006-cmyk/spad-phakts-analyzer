@@ -73,8 +73,8 @@
             </tr>
           </thead>
           <tbody>
-            {% for r_code, region in regions|dictsort(by='value', attribute='nom') %}
-            {% for d_code, d in region.districts|dictsort(by='value', attribute='nom') %}
+            {% for r_code, region in regions.items()|sort(attribute='1.nom') %}
+            {% for d_code, d in region.districts.items()|sort(attribute='1.nom') %}
             <tr>
               <td class="small">
                 <span class="text-muted">{{ region.nom }}</span><br>{{ d.nom }}
