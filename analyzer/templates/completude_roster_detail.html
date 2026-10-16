@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}{{ form.label if form else form_code }} — Répartition par district — SPAD Analyzer{% endblock %}
+{% block page_title %}
+  {{ form.label if form else form_code }}
+  <span class="badge bg-primary ms-2" style="font-size:.6em;vertical-align:middle">
+    {{ 'Enquêteur' if form and form.grain == 'enqueteur' else 'Superviseur' }} — roster
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  {# ── En-tête navigation ─────────────────────────────────────────────────── #}
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+    <div class="d-flex gap-2 flex-wrap">
+      {% for sf in sibling_forms %}
+      <a href="{{ url_for('completude_roster_detail', form_code=sf.code) }}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left-right me-1"></i>{{ sf.code }}
+        — {{ 'Enquêteurs' if sf.grain == 'enqueteur' else 'Superviseurs' }}
+      </a>
+      {% endfor %}
+      <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Complétude nationale
+      </a>
+    </div>
+  </div>
+
+  {# ── Carte nationale ─────────────────────────────────────────────────────── #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center py-4">
+          <div class="text-muted small mb-1">Total national</div>
+          {% set nat = data.national %}
+          <div class="display-6 fw-bold
+            {% if nat.statut == 'cible' %}text-success
+            {% elif nat.statut == 'en_cours' %}text-warning
+            {% elif nat.statut == 'verifier' %}text-danger
+            {% else %}text-muted{% endif %}">
+            {{ nat.recu }} / {{ nat.cible }}
+          </div>
+          {% if nat.taux is not none %}
+          <div class="mt-2">
+            <div class="progress" style="height:8px">
+              <div class="progress-bar
+                {% if nat.statut == 'cible' %}bg-success
+                {% elif nat.statut == 'en_cours' %}bg-warning
+                {% elif nat.statut == 'verifier' %}bg-danger
+                {% else %}bg-secondary{% endif %}"
+                style="width:{{ [nat.taux, 100]|min }}%"></div>
+            </div>
+            <div class="small mt-1 fw-semibold">{{ nat.taux }} %</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="fw-semibold mb-2">Paramètres du formulaire</div>
+          <dl class="row mb-0 small">
+            <dt class="col-5 text-muted">Code</dt>
+            <dd class="col-7">{{ form_code }}</dd>
+            <dt class="col-5 text-muted">Libellé</dt>
+            <dd class="col-7">{{ form.label if form else '—' }}</dd>
+            <dt class="col-5 text-muted">Rôle ciblé</dt>
+            <dd class="col-7">
+              {% if form and form.grain == 'enqueteur' %}Enquêteur{% else %}Superviseur{% endif %}
+              {% if form and form.role_filter %}
+              <span class="text-muted">({{ form.role_filter.field }} = « {{ form.role_filter.value }} »)</span>
+              {% endif %}
+            </dd>
+            <dt class="col-5 text-muted">Cible nationale</dt>
+            <dd class="col-7">{{ data.national.cible }} personnes</dd>
+            {% if form and form.identity_field %}
+            <dt class="col-5 text-muted">Identifiant</dt>
+            <dd class="col-7"><code>{{ form.identity_field }}</code></dd>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tableau par région / district ──────────────────────────────────────── #}
+  <span class="section-label d-block mb-2">
+    <i class="bi bi-geo-alt me-1"></i>Répartition par district
+    <span class="text-muted fw-normal small ms-2">— nombre de répondants distincts par district</span>
+  </span>
+
+  {% set total_districts = data.by_district|length %}
+  {% set districts_nonzero = data.by_district.values()|selectattr('recu','gt',0)|list|length %}
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+      <span class="small text-muted">
+        {{ districts_nonzero }} district(s) avec au moins un répondant sur {{ total_districts }}
+      </span>
+      <span class="small text-muted">Cible totale nationale : {{ data.national.cible }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive" style="max-height:600px;overflow-y:auto">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0;background:#fff;z-index:1">
+            <tr>
+              <th style="min-width:180px">Région</th>
+              <th style="min-width:200px">District</th>
+              <th class="text-center" style="min-width:90px">Reçus</th>
+              <th style="min-width:140px">Progression</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r_code, region in regions|dictsort(by='value', attribute='nom') %}
+            {% set region_total = region.districts.values()|sum(attribute='recu') %}
+            <tr class="table-light fw-semibold small">
+              <td colspan="2">
+                <i class="bi bi-geo me-1 text-primary"></i>{{ region.nom }}
+              </td>
+              <td class="text-center">
+                <span class="badge bg-secondary">{{ region_total }}</span>
+              </td>
+              <td></td>
+            </tr>
+            {% for d_code, d in region.districts|dictsort(by='value', attribute='nom') %}
+            <tr>
+              <td class="text-muted small ps-4">—</td>
+              <td class="small">{{ d.nom }}</td>
+              <td class="text-center">
+                {% if d.recu == 0 %}
+                <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">0</span>
+                {% else %}
+                <span class="status-pill status-pill--en-cours" style="font-size:.68rem;padding:2px 8px">
+                  {{ d.recu }}
+                </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if d.recu > 0 %}
+                <div class="progress" style="height:6px;width:120px">
+                  {% set pct = [(d.recu / data.national.cible * 100)|round(1), 100]|min %}
+                  <div class="progress-bar bg-primary" style="width:{{ pct }}%"
+                       title="{{ d.recu }} / {{ data.national.cible }}"></div>
+                </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-semibold">
+            <tr>
+              <td colspan="2">Total national</td>
+              <td class="text-center">
+                <span class="status-pill status-pill--{{ 'cible' if data.national.statut == 'cible' else ('en-cours' if data.national.statut == 'en_cours' else ('verifier' if data.national.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.75rem;padding:3px 10px">
+                  {{ data.national.recu }} / {{ data.national.cible }}
+                  {% if data.national.taux is not none %} · {{ data.national.taux }} %{% endif %}
+                </span>
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

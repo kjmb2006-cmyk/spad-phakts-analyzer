@@ -162,6 +162,82 @@ def roster_completeness(form, df):
     }]
 
 
+def roster_by_district(form, df, ref):
+    """Répartition par district d'un formulaire roster (grain enquêteur/superviseur).
+
+    Applique role_filter, groupe par district_field, compte les valeurs
+    distinctes d'identity_field par district. Renvoie :
+      {
+        'national': {'recu', 'cible', 'taux', 'statut'},
+        'by_district': {district_code: {'nom', 'region_code', 'recu'}},
+      }
+    """
+    cible = form['target_rule']['params']['n']
+
+    sub = df
+    role_filter = form.get('role_filter')
+    if sub is not None and role_filter:
+        col = find_column(sub, role_filter['field'])
+        if col is not None:
+            values = sub[col].astype(str).str.strip().str.lower()
+            sub = sub[values == str(role_filter['value']).strip().lower()]
+        else:
+            sub = sub.iloc[0:0]
+
+    identity_field = form.get('identity_field')
+    district_field = form.get('district_field')
+
+    if sub is None or len(sub) == 0:
+        national_recu = 0
+    elif identity_field:
+        col = find_column(sub, identity_field)
+        national_recu = int(sub[col].dropna().astype(str).str.strip().nunique()) if col is not None else 0
+    else:
+        national_recu = int(len(sub))
+
+    national = {
+        'recu': national_recu, 'cible': cible,
+        'taux': round(100 * national_recu / cible, 1) if cible else None,
+        'statut': status_for(national_recu, cible),
+    }
+
+    by_district = {
+        d_code: {'nom': d['nom'], 'region_code': d['region_code'], 'recu': 0}
+        for d_code, d in ref['districts'].items()
+    }
+
+    if sub is not None and len(sub) > 0 and district_field:
+        d_col = find_column(sub, district_field)
+        if d_col is not None:
+            working = sub.copy()
+            working['__district'] = working[d_col].astype(str).str.strip()
+            if identity_field:
+                id_col = find_column(working, identity_field)
+                if id_col is not None:
+                    working['__id'] = working[id_col].dropna().astype(str).str.strip()
+                    counts = working.dropna(subset=['__id']).groupby('__district')['__id'].nunique()
+                else:
+                    counts = working['__district'].value_counts()
+            else:
+                counts = working['__district'].value_counts()
+            for d_code, cnt in counts.items():
+                if d_code in by_district:
+                    by_district[d_code]['recu'] = int(cnt)
+
+    return {'national': national, 'by_district': by_district}
+
+
+def all_roster_by_district(ref, form_dataframes):
+    """Calcule roster_by_district() pour tous les formulaires roster actifs."""
+    result = {}
+    for form in forms_registry.all_forms(include_inactive=False):
+        if form.get('grain') not in ('enqueteur', 'superviseur'):
+            continue
+        df = form_dataframes.get(form['code'])
+        result[form['code']] = roster_by_district(form, df, ref)
+    return result
+
+
 def form_completeness(ref, form_code, df):
     """Répartiteur : établissement, district, ou "roster" (enquêteur/
     superviseur) selon le grain du formulaire."""

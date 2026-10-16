@@ -415,7 +415,7 @@ def admin_form_deactivate(code):
 def admin_form_add():
     rtype = request.form.get('rule_type', '')
     params = {}
-    if rtype in ('fixed_per_etablissement', 'fixed_per_district'):
+    if rtype in ('fixed_per_etablissement', 'fixed_per_district', 'fixed_national'):
         try:
             params = {'n': int(request.form.get('rule_n', ''))}
         except ValueError:
@@ -428,15 +428,29 @@ def admin_form_add():
             return redirect(url_for('admin_forms'))
         params = {'field': field}
 
+    grain = request.form.get('grain', '')
+    role_filter = None
+    identity_field = None
+    if grain in ('enqueteur', 'superviseur'):
+        rf_field = (request.form.get('role_filter_field') or '').strip()
+        rf_value = (request.form.get('role_filter_value') or '').strip()
+        if rf_field and rf_value:
+            role_filter = {'field': rf_field, 'value': rf_value}
+        idfield = (request.form.get('identity_field') or '').strip()
+        if idfield:
+            identity_field = idfield
+
     ok, err = forms_registry.add_form(
         code=request.form.get('code', ''),
         label=request.form.get('label', ''),
         name_hint=request.form.get('name_hint', ''),
-        grain=request.form.get('grain', ''),
+        grain=grain,
         actor=request.form.get('actor', ''),
         etab_field=request.form.get('etab_field', ''),
         district_field=request.form.get('district_field', ''),
         target_rule={'type': rtype, 'params': params},
+        role_filter=role_filter,
+        identity_field=identity_field,
     )
     if ok:
         flash(f"Formulaire ajouté au registre.", 'success')
@@ -3149,6 +3163,9 @@ def completude():
         computed_at=session.get('completude_computed_at'),
         mapping_erreurs=mapping_erreurs,
         mapping_avertissements=mapping_avertissements,
+        roster_forms=[f for f in forms_registry.all_forms(include_inactive=False)
+                      if f.get('grain') in ('enqueteur', 'superviseur')],
+        roster_data=cached.get('roster', {}) if cached else {},
     )
 
 
@@ -3271,6 +3288,53 @@ def completude_superviseur_detail(sup_code):
         superviseur_etab_form_codes=[c for c in superviseur_forms if c in cp.etablissement_forms()],
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/roster/<form_code>')
+def completude_roster_detail(form_code):
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+
+    roster_all = cached.get('roster', {})
+    data = roster_all.get(form_code)
+    if not data:
+        flash('Formulaire roster introuvable ou complétude non encore calculée.', 'warning')
+        return redirect(url_for('completude'))
+
+    form = forms_registry.get(form_code)
+
+    # Regroupe by_district par région, avec nom de région depuis le cache
+    cached_regions = cached.get('region', {})
+    regions = {}
+    for d_code, d_info in data['by_district'].items():
+        r_code = d_info['region_code']
+        if r_code not in regions:
+            regions[r_code] = {
+                'nom': cached_regions.get(r_code, {}).get('nom', r_code),
+                'districts': {},
+            }
+        regions[r_code]['districts'][d_code] = d_info
+
+    # Formulaires connexes (même name_hint → même formulaire Kobo sous-jacent)
+    sibling_forms = []
+    if form and form.get('name_hint'):
+        hint = form['name_hint']
+        sibling_forms = [
+            f for f in forms_registry.all_forms(include_inactive=False)
+            if f['code'] != form_code
+            and f.get('name_hint') == hint
+            and f.get('grain') in ('enqueteur', 'superviseur')
+        ]
+
+    return render_template(
+        'completude_roster_detail.html',
+        form=form, form_code=form_code, data=data,
+        regions=regions, sibling_forms=sibling_forms,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -3805,6 +3869,7 @@ def completude_calculer():
         'etablissement':  cp.etablissement_table(ref, form_dataframes),
         'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
+        'roster':         cp.all_roster_by_district(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
         'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
         'export':           cp.export_rows(ref, form_dataframes),

@@ -103,9 +103,12 @@
 
           <div class="col-md-3">
             <label class="form-label small fw-semibold">Grain</label>
-            <select class="form-select form-select-sm" name="grain" required>
+            <select class="form-select form-select-sm" name="grain" id="grain-select" required
+                    onchange="toggleRosterSection(this.value)">
               <option value="etablissement">Établissement</option>
               <option value="district">District</option>
+              <option value="enqueteur">Enquêteur (roster)</option>
+              <option value="superviseur">Superviseur (roster)</option>
             </select>
           </div>
           <div class="col-md-3">
@@ -124,11 +127,42 @@
             <input type="text" class="form-control form-control-sm" name="district_field" placeholder="ex. District_Sanitaire__X">
           </div>
 
+          <!-- Section roster (enquêteur/superviseur) — masquée par défaut -->
+          <div class="col-12" id="roster-section" style="display:none">
+            <div class="card border-warning bg-warning bg-opacity-10 p-3">
+              <div class="fw-semibold small mb-2">
+                <i class="bi bi-people me-1 text-warning"></i>Configuration roster
+                <span class="text-muted fw-normal">— un même formulaire Kobo peut porter plusieurs codes SPAD (un par rôle)</span>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Champ de rôle (role_filter field)</label>
+                  <input type="text" class="form-control form-control-sm" name="role_filter_field"
+                         placeholder="ex. Fonction">
+                  <div class="form-text" style="font-size:.7rem">Nom du champ Kobo qui distingue les rôles.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Valeur attendue (role_filter value)</label>
+                  <input type="text" class="form-control form-control-sm" name="role_filter_value"
+                         placeholder="ex. Superviseur">
+                  <div class="form-text" style="font-size:.7rem">Valeur exacte du champ pour ce rôle (insensible à la casse).</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Champ d'identité (identity_field)</label>
+                  <input type="text" class="form-control form-control-sm" name="identity_field"
+                         placeholder="ex. _submitted_by">
+                  <div class="form-text" style="font-size:.7rem">Champ Kobo identifiant chaque répondant (compte les individus distincts, pas les soumissions).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="col-12"><hr class="my-1"></div>
 
           <div class="col-md-4">
             <label class="form-label small fw-semibold">Type de règle de cible</label>
-            <select class="form-select form-select-sm" name="rule_type" required>
+            <select class="form-select form-select-sm" name="rule_type" id="rule-type-select" required
+                    onchange="toggleRuleFields(this.value)">
               {% for rt in rule_types %}
               {% if rt != 'by_etablissement_type' %}
               <option value="{{ rt }}">{{ rule_type_labels.get(rt, rt) }}</option>
@@ -136,11 +170,11 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" id="field-rule-n">
             <label class="form-label small fw-semibold">Nombre (si règle « fixe »)</label>
             <input type="number" min="0" class="form-control form-control-sm" name="rule_n" placeholder="ex. 1">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" id="field-rule-field">
             <label class="form-label small fw-semibold">Champ du référentiel (si règle « champ »)</label>
             <input type="text" class="form-control form-control-sm" name="rule_field" placeholder="ex. sig_deces_maternels">
             <div class="form-text" style="font-size:.7rem">Seuls les champs déjà présents dans le référentiel établissement (voir org_unit.xlsx / tirage_etablissements.xlsx) sont utilisables.</div>
@@ -161,4 +195,24 @@
   </p>
 
 </div>
+
+<script>
+function toggleRosterSection(grain) {
+  var isRoster = grain === 'enqueteur' || grain === 'superviseur';
+  document.getElementById('roster-section').style.display = isRoster ? 'block' : 'none';
+  if (isRoster) {
+    var ruleSelect = document.getElementById('rule-type-select');
+    ruleSelect.value = 'fixed_national';
+    toggleRuleFields('fixed_national');
+  }
+}
+function toggleRuleFields(ruleType) {
+  var needsN     = ['fixed_per_etablissement','fixed_per_district','fixed_national'].includes(ruleType);
+  var needsField = ['etab_field_positive','floor_sum_district_field'].includes(ruleType);
+  document.getElementById('field-rule-n').style.opacity     = needsN     ? '1' : '0.4';
+  document.getElementById('field-rule-field').style.opacity = needsField ? '1' : '0.4';
+}
+// Initialise au chargement
+toggleRuleFields(document.getElementById('rule-type-select').value);
+</script>
 {% endblock %}
