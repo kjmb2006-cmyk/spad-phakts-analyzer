@@ -487,7 +487,27 @@ def district_table(ref, form_dataframes):
               for code, d in ref['districts'].items()}
 
     for form_code in rd.FORM_CODES:
+        form = forms_registry.get(form_code)
+        is_roster = bool(form) and form.get('grain') in ('enqueteur', 'superviseur')
         df = form_dataframes.get(form_code)
+
+        if is_roster:
+            # Un formulaire roster (motif RAA Phase 1 : DRS/DDS/Superviseur/
+            # Enquêteurs sur le même formulaire Kobo, un role_filter chacun)
+            # n'est PAS un formulaire de grain district classique — le
+            # décompte brut de district_completeness() ignorerait
+            # role_filter et mélangerait tous les rôles entre eux (cas réel
+            # observé : les 4 colonnes affichaient la même valeur par
+            # district). roster_by_district() applique le bon filtre.
+            roster_result = roster_by_district(form, df, ref)
+            for code in table:
+                cell = roster_result['by_district'].get(code)
+                table[code]['forms'][form_code] = (
+                    {'recu': cell['recu'], 'cible': cell['cible'], 'taux': cell['taux'], 'statut': cell['statut']}
+                    if cell else _empty_cell()
+                )
+            continue
+
         if df is None:
             for code, d in ref['districts'].items():
                 cible = rd.target_for(ref, form_code, district_code=code) if form_code in district_forms() else None
