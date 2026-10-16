@@ -1,10 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ form.label if form else form_code }} — Répartition par district — SPAD Analyzer{% endblock %}
+{% block title %}{{ form.label if form else form_code }} — Tableau régional — SPAD Analyzer{% endblock %}
 {% block page_title %}
   {{ form.label if form else form_code }}
-  <span class="badge bg-primary ms-2" style="font-size:.6em;vertical-align:middle">
-    {{ 'Enquêteur' if form and form.grain == 'enqueteur' else 'Superviseur' }} — roster
-  </span>
+  <span class="badge bg-primary ms-2" style="font-size:.6em;vertical-align:middle">roster — vue régionale</span>
 {% endblock %}
 
 {% block content %}
@@ -13,162 +11,127 @@
   {# ── En-tête navigation ─────────────────────────────────────────────────── #}
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {{ family.forms|length }} rôle(s) suivi(s) sur ce formulaire
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
     </span>
-    <div class="d-flex gap-2 flex-wrap">
-      {% for sf in sibling_forms %}
-      <a href="{{ url_for('completude_roster_detail', form_code=sf.code) }}"
-         class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left-right me-1"></i>{{ sf.code }}
-        — {{ 'Enquêteurs' if sf.grain == 'enqueteur' else 'Superviseurs' }}
-      </a>
-      {% endfor %}
-      <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Complétude nationale
-      </a>
-    </div>
+    <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Complétude nationale
+    </a>
   </div>
 
-  {# ── Carte nationale ─────────────────────────────────────────────────────── #}
+  {# ── Cartes nationales par rôle ───────────────────────────────────────────── #}
+  <span class="section-label d-block mb-2"><i class="bi bi-people me-1"></i>Complétude nationale par rôle</span>
   <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    {% for f in family.forms %}
+    {% set nat = family.per_form.get(f.code, {}).get('national', {}) %}
+    <div class="col-md-3 col-sm-6">
       <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center py-4">
-          <div class="text-muted small mb-1">Total national</div>
-          {% set nat = data.national %}
-          <div class="display-6 fw-bold
+        <div class="card-body text-center py-3">
+          <div class="text-muted small mb-1 fw-semibold">{{ f.role_value or f.code }}</div>
+          <div class="fw-bold fs-4
             {% if nat.statut == 'cible' %}text-success
             {% elif nat.statut == 'en_cours' %}text-warning
             {% elif nat.statut == 'verifier' %}text-danger
             {% else %}text-muted{% endif %}">
-            {{ nat.recu }} / {{ nat.cible }}
+            {{ nat.recu }} / {{ nat.cible if nat.cible is not none else '—' }}
           </div>
           {% if nat.taux is not none %}
-          <div class="mt-2">
-            <div class="progress" style="height:8px">
-              <div class="progress-bar
-                {% if nat.statut == 'cible' %}bg-success
-                {% elif nat.statut == 'en_cours' %}bg-warning
-                {% elif nat.statut == 'verifier' %}bg-danger
-                {% else %}bg-secondary{% endif %}"
-                style="width:{{ [nat.taux, 100]|min }}%"></div>
-            </div>
-            <div class="small mt-1 fw-semibold">{{ nat.taux }} %</div>
+          <div class="progress mt-1" style="height:6px">
+            <div class="progress-bar
+              {% if nat.statut == 'cible' %}bg-success
+              {% elif nat.statut == 'en_cours' %}bg-warning
+              {% elif nat.statut == 'verifier' %}bg-danger
+              {% else %}bg-secondary{% endif %}"
+              style="width:{{ [nat.taux, 100]|min }}%"></div>
           </div>
+          <div class="small mt-1 text-muted">{{ nat.taux }} %</div>
           {% endif %}
         </div>
       </div>
     </div>
-    <div class="col-md-8">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="fw-semibold mb-2">Paramètres du formulaire</div>
-          <dl class="row mb-0 small">
-            <dt class="col-5 text-muted">Code</dt>
-            <dd class="col-7">{{ form_code }}</dd>
-            <dt class="col-5 text-muted">Libellé</dt>
-            <dd class="col-7">{{ form.label if form else '—' }}</dd>
-            <dt class="col-5 text-muted">Rôle ciblé</dt>
-            <dd class="col-7">
-              {% if form and form.grain == 'enqueteur' %}Enquêteur{% else %}Superviseur{% endif %}
-              {% if form and form.role_filter %}
-              <span class="text-muted">({{ form.role_filter.field }} = « {{ form.role_filter.value }} »)</span>
-              {% endif %}
-            </dd>
-            <dt class="col-5 text-muted">Cible nationale</dt>
-            <dd class="col-7">{{ data.national.cible }} personnes</dd>
-            {% if form and form.identity_field %}
-            <dt class="col-5 text-muted">Identifiant</dt>
-            <dd class="col-7"><code>{{ form.identity_field }}</code></dd>
-            {% endif %}
-          </dl>
-        </div>
-      </div>
-    </div>
+    {% endfor %}
   </div>
 
-  {# ── Tableau par région / district ──────────────────────────────────────── #}
+  {# ── Tableau régional combiné ─────────────────────────────────────────────── #}
   <span class="section-label d-block mb-2">
-    <i class="bi bi-geo-alt me-1"></i>Répartition par district
-    <span class="text-muted fw-normal small ms-2">— nombre de répondants distincts par district</span>
+    <i class="bi bi-geo-alt me-1"></i>Niveau déconcentré — par région sanitaire
+    <span class="text-muted fw-normal small ms-2">— reçus par rôle et par district</span>
   </span>
 
-  {% set total_districts = data.by_district|length %}
-  {% set districts_nonzero = data.by_district.values()|selectattr('recu','gt',0)|list|length %}
-
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-      <span class="small text-muted">
-        {{ districts_nonzero }} district(s) avec au moins un répondant sur {{ total_districts }}
-      </span>
-      <span class="small text-muted">Cible totale nationale : {{ data.national.cible }}</span>
-    </div>
     <div class="card-body p-0">
-      <div class="table-responsive" style="max-height:600px;overflow-y:auto">
+      <div class="table-responsive" style="max-height:620px;overflow-y:auto">
         <table class="table table-sm align-middle mb-0">
           <thead style="position:sticky;top:0;background:#fff;z-index:1">
             <tr>
-              <th style="min-width:180px">Région</th>
-              <th style="min-width:200px">District</th>
-              <th class="text-center" style="min-width:90px">Reçus</th>
-              <th style="min-width:140px">Progression</th>
+              <th style="min-width:160px">Région / district</th>
+              {% for f in family.forms %}
+              <th class="text-center" style="min-width:70px" title="{{ f.label }}">{{ f.role_value or f.code }}</th>
+              {% endfor %}
+              <th class="text-center" style="min-width:100px">Complétude</th>
+              <th style="min-width:110px">Dernière soumission</th>
             </tr>
           </thead>
           <tbody>
             {% for r_code, region in regions|dictsort(by='value', attribute='nom') %}
-            {% set region_total = region.districts.values()|sum(attribute='recu') %}
-            <tr class="table-light fw-semibold small">
-              <td colspan="2">
-                <i class="bi bi-geo me-1 text-primary"></i>{{ region.nom }}
-              </td>
-              <td class="text-center">
-                <span class="badge bg-secondary">{{ region_total }}</span>
-              </td>
-              <td></td>
-            </tr>
             {% for d_code, d in region.districts|dictsort(by='value', attribute='nom') %}
             <tr>
-              <td class="text-muted small ps-4">—</td>
-              <td class="small">{{ d.nom }}</td>
+              <td class="small">
+                <span class="text-muted">{{ region.nom }}</span><br>{{ d.nom }}
+              </td>
+              {% for f in family.forms %}
+              {% set cell = d.par_role.get(f.code, {'recu':0,'cible':none,'statut':'inconnu'}) %}
               <td class="text-center">
-                {% if d.recu == 0 %}
-                <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">0</span>
-                {% else %}
-                <span class="status-pill status-pill--en-cours" style="font-size:.68rem;padding:2px 8px">
-                  {{ d.recu }}
+                {% if cell.cible and cell.cible > 1 %}
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.68rem;padding:2px 6px">{{ cell.recu }}/{{ cell.cible }}</span>
+                {% elif cell.recu and cell.recu > 0 %}
+                <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 6px">
+                  <i class="bi bi-check-lg"></i>Reçu
                 </span>
+                {% else %}
+                <span class="text-muted small">Attendu</span>
                 {% endif %}
               </td>
-              <td>
-                {% if d.recu > 0 %}
-                <div class="progress" style="height:6px;width:120px">
-                  {% set pct = [(d.recu / data.national.cible * 100)|round(1), 100]|min %}
-                  <div class="progress-bar bg-primary" style="width:{{ pct }}%"
-                       title="{{ d.recu }} / {{ data.national.cible }}"></div>
-                </div>
-                {% endif %}
+              {% endfor %}
+              <td class="text-center">
+                <span class="status-pill status-pill--{{ 'cible' if d.total_statut == 'cible' else ('en-cours' if d.total_statut == 'en_cours' else ('verifier' if d.total_statut == 'verifier' else 'zero')) }}"
+                      style="font-size:.7rem;padding:2px 8px">
+                  {{ d.total_recu }}/{{ d.total_cible }}{% if d.total_taux is not none %} · {{ d.total_taux }} %{% endif %}
+                </span>
               </td>
+              <td class="small text-muted">{{ d.last_submission_display or '—' }}</td>
             </tr>
             {% endfor %}
             {% endfor %}
           </tbody>
-          <tfoot class="table-light fw-semibold">
-            <tr>
-              <td colspan="2">Total national</td>
-              <td class="text-center">
-                <span class="status-pill status-pill--{{ 'cible' if data.national.statut == 'cible' else ('en-cours' if data.national.statut == 'en_cours' else ('verifier' if data.national.statut == 'verifier' else 'zero')) }}"
-                      style="font-size:.75rem;padding:3px 10px">
-                  {{ data.national.recu }} / {{ data.national.cible }}
-                  {% if data.national.taux is not none %} · {{ data.national.taux }} %{% endif %}
-                </span>
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </div>
   </div>
+
+  {# ── Rythme des soumissions ───────────────────────────────────────────────── #}
+  {% if family.daily %}
+  <span class="section-label d-block mb-2">
+    <i class="bi bi-bar-chart-steps me-1"></i>Rythme des soumissions
+    <span class="text-muted fw-normal small ms-2">— nombre de questionnaires reçus par jour, tous rôles confondus</span>
+  </span>
+  {% set max_count = family.daily|map(attribute='count')|max %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-end gap-3" style="height:160px">
+        {% for pt in family.daily %}
+        <div class="d-flex flex-column align-items-center justify-content-end h-100" style="flex:1;min-width:30px">
+          <div class="small fw-semibold mb-1">{{ pt.count }}</div>
+          <div class="bg-primary rounded-top"
+               style="width:100%;max-width:40px;height:{{ (pt.count / max_count * 120)|round(0)|int if max_count else 0 }}px;min-height:2px"></div>
+          <div class="small text-muted mt-1">{{ pt.date }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}

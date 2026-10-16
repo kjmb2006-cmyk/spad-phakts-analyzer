@@ -3300,41 +3300,38 @@ def completude_roster_detail(form_code):
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
         return redirect(url_for('completude'))
 
-    roster_all = cached.get('roster', {})
-    data = roster_all.get(form_code)
-    if not data:
-        flash('Formulaire roster introuvable ou complétude non encore calculée.', 'warning')
+    form = forms_registry.get(form_code)
+    if not form or form.get('grain') not in ('enqueteur', 'superviseur'):
+        flash('Formulaire roster introuvable.', 'warning')
         return redirect(url_for('completude'))
 
-    form = forms_registry.get(form_code)
+    # Vue combinée par famille (même name_hint → même formulaire Kobo
+    # source, plusieurs rôles) — motif RAA Phase 1 : DRS/DDS/Superviseur/
+    # Enquêteurs forment UNE SEULE famille, affichée dans UN tableau régional
+    # combiné plutôt qu'une page par rôle (voir cp.all_roster_families()).
+    hint = form.get('name_hint') or form_code
+    families = cached.get('roster_families', {})
+    family_data = families.get(hint)
+    if not family_data:
+        flash('Complétude non encore calculée pour ce formulaire.', 'warning')
+        return redirect(url_for('completude'))
 
     # Regroupe by_district par région, avec nom de région depuis le cache
     cached_regions = cached.get('region', {})
     regions = {}
-    for d_code, d_info in data['by_district'].items():
-        r_code = d_info['region_code']
+    for d_code, row in family_data['by_district'].items():
+        r_code = row['region_code']
         if r_code not in regions:
             regions[r_code] = {
                 'nom': cached_regions.get(r_code, {}).get('nom', r_code),
                 'districts': {},
             }
-        regions[r_code]['districts'][d_code] = d_info
-
-    # Formulaires connexes (même name_hint → même formulaire Kobo sous-jacent)
-    sibling_forms = []
-    if form and form.get('name_hint'):
-        hint = form['name_hint']
-        sibling_forms = [
-            f for f in forms_registry.all_forms(include_inactive=False)
-            if f['code'] != form_code
-            and f.get('name_hint') == hint
-            and f.get('grain') in ('enqueteur', 'superviseur')
-        ]
+        regions[r_code]['districts'][d_code] = row
 
     return render_template(
         'completude_roster_detail.html',
-        form=form, form_code=form_code, data=data,
-        regions=regions, sibling_forms=sibling_forms,
+        form=form, form_code=form_code, family=family_data,
+        regions=regions,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -3851,7 +3848,14 @@ def completude_calculer():
     form_dataframes = {}
     errors = []
     for code, uid in mapping.items():
-        res = kobo_load_data(token, uid, instance=instance)
+        form = forms_registry.get(code)
+        # Les formulaires roster ont besoin de _submission_time/_submitted_by
+        # (normalement supprimés par clean_kobo_dataframe) pour compter les
+        # répondants distincts et dater la dernière soumission par district —
+        # voir modules/completeness.py::roster_by_district().
+        is_roster = bool(form) and form.get('grain') in ('enqueteur', 'superviseur')
+        keep_cols = ('_submission_time', '_submitted_by') if is_roster else ()
+        res = kobo_load_data(token, uid, instance=instance, keep_meta_cols=keep_cols)
         if res.get('success'):
             form_dataframes[code] = res['df']
         else:
@@ -3870,6 +3874,7 @@ def completude_calculer():
         'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
         'roster':         cp.all_roster_by_district(ref, form_dataframes),
+        'roster_families': cp.all_roster_families(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
         'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
         'export':           cp.export_rows(ref, form_dataframes),

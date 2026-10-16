@@ -51,15 +51,23 @@ def _flatten_cell(val):
     return val
 
 
-def clean_kobo_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def clean_kobo_dataframe(df: pd.DataFrame, keep_meta_cols=()) -> pd.DataFrame:
     """
     Supprime les colonnes techniques KoBoToolbox (garde lat/lon pour la carte).
     Convertit les colonnes contenant des listes (select_multiple, GPS brut)
     en chaînes de caractères pour éviter les TypeError lors de l'analyse.
-    """
+
+    keep_meta_cols : colonnes techniques à NE PAS supprimer malgré leur
+    présence dans _KOBO_META_COLS — ex. ('_submission_time', '_submitted_by')
+    pour les formulaires « roster » (motif RAA Phase 1), qui en ont besoin
+    pour compter les répondants distincts et dater la dernière soumission
+    par district (voir modules/completeness.py::roster_by_district()). Vide
+    par défaut : comportement inchangé pour tous les autres appelants."""
     cols_to_drop = []
     for col in df.columns:
         if col in _KOBO_META_COLS:
+            if col in keep_meta_cols:
+                continue
             cols_to_drop.append(col)
         elif _FREE_TEXT_PATTERN.match(col):
             cols_to_drop.append(col)

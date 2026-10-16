@@ -12,6 +12,7 @@ Kobo exporte parfois les champs regroupés (`begin_group`) avec un préfixe
 « groupe/champ » — _find_column() gère les deux cas (avec ou sans préfixe)
 puisqu'aucune soumission réelle n'a encore été observée pour trancher.
 """
+import pandas as pd
 from modules import reference_data as rd
 from modules import forms_registry
 
@@ -166,13 +167,30 @@ def roster_by_district(form, df, ref):
     """Répartition par district d'un formulaire roster (grain enquêteur/superviseur).
 
     Applique role_filter, groupe par district_field, compte les valeurs
-    distinctes d'identity_field par district. Renvoie :
+    distinctes d'identity_field par district. Si la règle de cible est
+    'fixed_per_district' (motif RAA Phase 1 : 1 DRS/DDS/superviseur et 5
+    enquêteurs attendus PAR district), chaque district reçoit sa propre
+    cible/taux/statut — pas seulement un total national brut comme avant.
+    Pour 'fixed_national' (motif UGP/Programmes — pas réparti par district),
+    cible de district reste None : seul le total national est significatif.
+
+    Capture aussi la date de la dernière soumission par district
+    (_submission_time, préservé par kobo_load_data(keep_meta_cols=...) —
+    voir modules/data_loader.py) : nécessaire pour la colonne « Dernière
+    soumission » du tableau régional combiné (roster_family_table()).
+
+    Renvoie :
       {
         'national': {'recu', 'cible', 'taux', 'statut'},
-        'by_district': {district_code: {'nom', 'region_code', 'recu'}},
+        'by_district': {district_code: {'nom', 'region_code', 'recu',
+                         'cible', 'taux', 'statut',
+                         'last_submission' (ISO, pour tri/comparaison),
+                         'last_submission_display' (jj/mm HH:MM)}},
       }
     """
-    cible = form['target_rule']['params']['n']
+    rule = form['target_rule']
+    national_cible = forms_registry.national_target(form, ref)
+    per_district_cible = rule['params']['n'] if rule['type'] == 'fixed_per_district' else None
 
     sub = df
     role_filter = form.get('role_filter')
@@ -196,13 +214,18 @@ def roster_by_district(form, df, ref):
         national_recu = int(len(sub))
 
     national = {
-        'recu': national_recu, 'cible': cible,
-        'taux': round(100 * national_recu / cible, 1) if cible else None,
-        'statut': status_for(national_recu, cible),
+        'recu': national_recu, 'cible': national_cible,
+        'taux': round(100 * national_recu / national_cible, 1) if national_cible else None,
+        'statut': status_for(national_recu, national_cible),
     }
 
     by_district = {
-        d_code: {'nom': d['nom'], 'region_code': d['region_code'], 'recu': 0}
+        d_code: {
+            'nom': d['nom'], 'region_code': d['region_code'],
+            'recu': 0, 'cible': per_district_cible, 'taux': None,
+            'statut': status_for(0, per_district_cible),
+            'last_submission': None, 'last_submission_display': None,
+        }
         for d_code, d in ref['districts'].items()
     }
 
@@ -211,18 +234,34 @@ def roster_by_district(form, df, ref):
         if d_col is not None:
             working = sub.copy()
             working['__district'] = working[d_col].astype(str).str.strip()
+
             if identity_field:
                 id_col = find_column(working, identity_field)
                 if id_col is not None:
-                    working['__id'] = working[id_col].dropna().astype(str).str.strip()
-                    counts = working.dropna(subset=['__id']).groupby('__district')['__id'].nunique()
+                    valid = working.dropna(subset=[id_col]).copy()
+                    valid['__id'] = valid[id_col].astype(str).str.strip()
+                    counts = valid.groupby('__district')['__id'].nunique()
                 else:
                     counts = working['__district'].value_counts()
             else:
                 counts = working['__district'].value_counts()
+
             for d_code, cnt in counts.items():
                 if d_code in by_district:
-                    by_district[d_code]['recu'] = int(cnt)
+                    recu = int(cnt)
+                    by_district[d_code]['recu'] = recu
+                    by_district[d_code]['taux'] = (
+                        round(100 * recu / per_district_cible, 1) if per_district_cible else None)
+                    by_district[d_code]['statut'] = status_for(recu, per_district_cible)
+
+            ts_col = find_column(working, '_submission_time')
+            if ts_col is not None:
+                ts_series = pd.to_datetime(working[ts_col], errors='coerce')
+                last_by_district = ts_series.groupby(working['__district']).max()
+                for d_code, ts in last_by_district.items():
+                    if d_code in by_district and pd.notna(ts):
+                        by_district[d_code]['last_submission'] = ts.isoformat()
+                        by_district[d_code]['last_submission_display'] = ts.strftime('%d/%m %H:%M')
 
     return {'national': national, 'by_district': by_district}
 
@@ -235,6 +274,118 @@ def all_roster_by_district(ref, form_dataframes):
             continue
         df = form_dataframes.get(form['code'])
         result[form['code']] = roster_by_district(form, df, ref)
+    return result
+
+
+def roster_family(form_code):
+    """Formulaires roster actifs partageant le même name_hint que form_code
+    — motif introduit pour RAA Phase 1 : UN SEUL formulaire Kobo porte
+    plusieurs rôles (DRS/DDS/Superviseur/Enquêteurs), chacun son propre code
+    SPAD avec son role_filter, mais tous mappés au même UID Kobo. Permet de
+    les afficher groupés dans un seul tableau régional (roster_family_table())
+    plutôt qu'une page par rôle."""
+    form = forms_registry.get(form_code)
+    if not form:
+        return []
+    hint = form.get('name_hint')
+    if not hint:
+        return [form]
+    family = [f for f in forms_registry.all_forms(include_inactive=False)
+              if f.get('name_hint') == hint and f.get('grain') in ('enqueteur', 'superviseur')]
+    return family or [form]
+
+
+def roster_family_table(ref, form_dataframes, family_forms):
+    """Combine plusieurs formulaires roster d'une même famille (même
+    formulaire Kobo source) en UNE ligne par district : un sous-total par
+    rôle (par_role), un total combiné (tous rôles confondus) et la dernière
+    soumission la plus récente tous rôles confondus — reproduit le tableau
+    « Niveau déconcentré » de l'application de référence (spad-raa-suivi).
+
+    Renvoie (table, per_form) où table est
+      {district_code: {'nom', 'region_code', 'par_role': {code: cellule},
+                        'total_recu', 'total_cible', 'total_taux',
+                        'total_statut', 'last_submission_display'}}
+    et per_form est {code: résultat brut de roster_by_district()} (réutilisé
+    pour les cartes KPI nationales par rôle)."""
+    per_form = {f['code']: roster_by_district(f, form_dataframes.get(f['code']), ref) for f in family_forms}
+
+    table = {
+        d_code: {
+            'nom': d['nom'], 'region_code': d['region_code'],
+            'par_role': {}, 'total_recu': 0, 'total_cible': 0,
+            'last_submission': None, 'last_submission_display': None,
+        }
+        for d_code, d in ref['districts'].items()
+    }
+
+    for f in family_forms:
+        data = per_form[f['code']]
+        for d_code, cell in data['by_district'].items():
+            if d_code not in table:
+                continue
+            table[d_code]['par_role'][f['code']] = cell
+            table[d_code]['total_recu'] += cell['recu']
+            table[d_code]['total_cible'] += (cell['cible'] or 0)
+            ls = cell.get('last_submission')
+            if ls and (table[d_code]['last_submission'] is None or ls > table[d_code]['last_submission']):
+                table[d_code]['last_submission'] = ls
+                table[d_code]['last_submission_display'] = cell.get('last_submission_display')
+
+    for row in table.values():
+        recu, cible = row['total_recu'], row['total_cible']
+        row['total_taux'] = round(100 * recu / cible, 1) if cible else None
+        row['total_statut'] = status_for(recu, cible)
+
+    return table, per_form
+
+
+def roster_daily_counts(form_dataframes, family_forms):
+    """Nombre de soumissions reçues par jour, tous rôles confondus — pour le
+    graphique « Rythme des soumissions ». Les formulaires d'une même famille
+    partagent le même UID Kobo (un seul jeu de soumissions réel, rechargé une
+    fois par code SPAD mappé) : on prend donc le premier jeu de données non
+    vide plutôt que de sommer plusieurs copies du même décompte."""
+    df = None
+    for f in family_forms:
+        candidate = form_dataframes.get(f['code'])
+        if candidate is not None and len(candidate):
+            df = candidate
+            break
+    if df is None:
+        return []
+    ts_col = find_column(df, '_submission_time')
+    if ts_col is None:
+        return []
+    ts = pd.to_datetime(df[ts_col], errors='coerce').dropna()
+    if ts.empty:
+        return []
+    counts = ts.dt.date.value_counts().sort_index()
+    return [{'date': d.strftime('%d/%m'), 'count': int(c)} for d, c in counts.items()]
+
+
+def all_roster_families(ref, form_dataframes):
+    """Regroupe tous les formulaires roster actifs par name_hint (même
+    formulaire Kobo, rôles différents) et calcule, pour chaque groupe, la
+    table régionale combinée + le rythme des soumissions. Clé du résultat :
+    name_hint du groupe."""
+    roster_forms = [f for f in forms_registry.all_forms(include_inactive=False)
+                     if f.get('grain') in ('enqueteur', 'superviseur')]
+    groups = {}
+    for f in roster_forms:
+        hint = f.get('name_hint') or f['code']
+        groups.setdefault(hint, []).append(f)
+
+    result = {}
+    for hint, family in groups.items():
+        table, per_form = roster_family_table(ref, form_dataframes, family)
+        result[hint] = {
+            'forms': [{'code': f['code'], 'label': f['label'],
+                       'role_value': (f.get('role_filter') or {}).get('value')} for f in family],
+            'by_district': table,
+            'per_form': per_form,
+            'daily': roster_daily_counts(form_dataframes, family),
+        }
     return result
 
 

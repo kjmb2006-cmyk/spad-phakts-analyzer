@@ -329,7 +329,7 @@ def get_asset_info(token, uid, instance=None):
         return {"success": False, "error": str(e)}
 
 
-def load_data(token, uid, instance=None, limit=30000):
+def load_data(token, uid, instance=None, limit=30000, keep_meta_cols=()):
     base = _normalize_instance(instance) or detect_instance(token)
     if not base:
         return {"success": False, "error": "Instance KoboToolbox introuvable."}
@@ -355,7 +355,7 @@ def load_data(token, uid, instance=None, limit=30000):
                 break
         if not all_r:
             return {"success": False, "error": "Aucune soumission disponible."}
-        df = clean_kobo_dataframe(pd.DataFrame(all_r))
+        df = clean_kobo_dataframe(pd.DataFrame(all_r), keep_meta_cols=keep_meta_cols)
         return {
             "success": True, "df": df,
             "n_obs":   len(df), "n_vars": len(df.columns),
