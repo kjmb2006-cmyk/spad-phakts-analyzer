@@ -2823,6 +2823,15 @@ def suivi():
     tracked_uids = {t['uid'] for t in tracked}
     guessed_types = {a['uid']: ref_data.guess_form_type(a['name']) for a in assets}
 
+    # Rôles déjà associés à chaque formulaire Kobo (form_mapping.py) — pré-
+    # sélectionne le <select multiple> pour un formulaire déjà suivi, et
+    # permet de corriger la sélection sans perdre les rôles déjà en place
+    # (voir /suivi/retype, _apply_form_types()).
+    mapping = form_mapping.load()
+    mapped_codes_by_uid = {}
+    for code, uid in mapping.items():
+        mapped_codes_by_uid.setdefault(uid, []).append(code)
+
     # Même logique d'alerte que « Complétude nationale » (validate_mapping) :
     # un type manuellement choisi qui ne correspond pas au nom du formulaire,
     # ou le même type SPAD assigné à 2 formulaires suivis différents, sont
@@ -2854,6 +2863,7 @@ def suivi():
         form_codes=ref_data.FORM_CODES,
         form_labels=ref_data.FORM_LABELS,
         guessed_types=guessed_types,
+        mapped_codes_by_uid=mapped_codes_by_uid,
         suivi_avertissements=suivi_avertissements,
         ai_available=ai_form_assist.available(),
     )
@@ -2877,43 +2887,57 @@ def _parse_target_form(request_form):
 
 
 def _sync_completude_mapping(form_type, uid):
-    """Répercute automatiquement dans la correspondance de Complétude
-    nationale (form_mapping.py) le type assigné à un formulaire suivi —
-    qu'il vienne de la détection par préfixe, du bouton IA ou d'un choix
-    manuel. Évite l'étape séparée « aller réassocier à la main dans
-    Complétude » à chaque fois qu'un formulaire est ajouté ou retypé dans
-    Suivi ; sans effet si form_type est vide (type « Libre »).
-
-    Renvoie un avertissement (str) si cette réassignation casse
-    probablement la correspondance d'un code SPAD « roster » FRÈRE (même
-    champ role_filter, voir forms_registry.py — un formulaire à rôles
-    multiples a plusieurs codes sur le même UID, un par rôle) qui pointait
-    encore vers un AUTRE formulaire Kobo — sinon None. Cas réel : AVIS_SPAD1_SUP
-    réassigné par erreur au formulaire "Superviseurs" seul, qui a cassé sa
-    correspondance vers le formulaire combiné sans qu'aucun message
-    n'alerte — AVIS_SPAD1_ENQ y pointait pourtant toujours."""
+    """Cas à UN SEUL type — voir _apply_form_types() pour le cas général
+    (plusieurs rôles sur un même formulaire, motif roster)."""
     if not form_type:
         return None
+    return _apply_form_types(uid, [form_type], prune_others=False)
+
+
+def _apply_form_types(uid, types, prune_others=True):
+    """Associe CE formulaire Kobo (uid) à zéro, un ou PLUSIEURS codes SPAD à
+    la fois — un formulaire « roster » (voir forms_registry.py) comme RAA
+    Phase 1 porte légitimement plusieurs rôles (DRS/DDS/Superviseur/
+    Enquêteurs) sur le même UID, chacun avec sa propre cible déjà définie
+    dans le registre (pas de cible manuelle à ressaisir par rôle).
+
+    Si prune_others, retire d'abord toute correspondance EXISTANTE qui
+    pointait vers cet uid mais n'est plus dans `types` — sinon changer la
+    sélection de rôles laisserait une association périmée (cas réel qui a
+    fait disparaître le mapping RAA_DRS/DDS/SUP/ENQ en silence après un
+    enregistrement partiel depuis Complétude nationale).
+
+    Renvoie un avertissement (str) si un rôle sélectionné appartient à une
+    famille roster (même name_hint) dont un AUTRE rôle n'est pas inclus
+    dans la sélection — probablement un oubli — sinon None."""
+    types = [t for t in types if t and forms_registry.get(t) and forms_registry.get(t).get('active', True)]
     mapping = form_mapping.load()
-    if mapping.get(form_type) == uid:
-        return None
+    if prune_others:
+        for code in list(mapping.keys()):
+            if mapping[code] == uid and code not in types:
+                mapping.pop(code)
+    for t in types:
+        mapping[t] = uid
+    form_mapping.save(mapping)
+
     warning = None
-    role_filter = (forms_registry.get(form_type) or {}).get('role_filter')
-    if role_filter:
+    for t in types:
+        form = forms_registry.get(t) or {}
+        if not form.get('role_filter'):
+            continue
         siblings = [
-            c for c, u in mapping.items()
-            if c != form_type and u != uid
-            and (forms_registry.get(c) or {}).get('role_filter', {}).get('field') == role_filter.get('field')
+            f['code'] for f in forms_registry.all_forms(include_inactive=False)
+            if f['code'] != t and f.get('name_hint') == form.get('name_hint')
+            and f.get('grain') in ('enqueteur', 'superviseur')
+            and f['code'] not in types
         ]
         if siblings:
             warning = (
-                f"{form_type} a été associé à un nouveau formulaire Kobo, mais "
-                f"{' et '.join(siblings)} (même formulaire à rôles multiples) pointe "
-                f"encore vers un autre formulaire — vérifiez la correspondance dans "
-                f"Complétude nationale."
+                f"{', '.join(siblings)} partage(nt) le même formulaire Kobo (autre(s) rôle(s) "
+                f"du même questionnaire) mais n'est/ne sont pas sélectionné(s) — ajoutez-le(s) "
+                f"si ce(s) rôle(s) doit/doivent aussi être suivi(s)."
             )
-    mapping[form_type] = uid
-    form_mapping.save(mapping)
+            break
     return warning
 
 
@@ -2930,6 +2954,18 @@ def _prune_completude_mapping(uid):
         form_mapping.save(changed)
 
 
+def _parse_form_types(request_form):
+    """Lit la sélection de rôles (0, 1 ou plusieurs) envoyée par le
+    <select multiple> de Suivi multi-formulaires — form_types[] pour la
+    sélection multiple, avec repli sur l'ancien champ singulier form_type
+    (compat formulaires déjà soumis avant ce changement)."""
+    types = [t.strip() for t in request_form.getlist('form_types') if t.strip()]
+    legacy = (request_form.get('form_type') or '').strip()
+    if legacy and legacy not in types:
+        types.append(legacy)
+    return types
+
+
 @app.route('/suivi/add', methods=['POST'])
 def suivi_add():
     token = session.get('kobo_token')
@@ -2940,11 +2976,43 @@ def suivi_add():
     name = (request.form.get('name') or 'Formulaire').strip()
     if not uid:
         return jsonify({"success": False, "error": "Formulaire manquant."}), 400
-    target, form_type, err = _parse_target_form(request.form)
-    if err:
-        return jsonify({"success": False, "error": err}), 400
-    kobo_track.add(token, instance, uid, name, target=target, form_type=form_type)
-    warning = _sync_completude_mapping(form_type, uid)
+    types = _parse_form_types(request.form)
+    target_raw = (request.form.get('target') or '').strip()
+    target = None
+    if target_raw:
+        try:
+            target = int(target_raw)
+            if target <= 0:
+                target = None
+        except ValueError:
+            return jsonify({"success": False, "error": "Cible invalide (nombre entier attendu)."}), 400
+    # Un seul rôle reconnu : comportement historique (carte avec cible/jauge
+    # dédiée). Plusieurs rôles : kobo_track n'a pas de cible unique à afficher
+    # — le détail par rôle vit dans Complétude nationale (voir mapped_codes
+    # dans _enrich_tracked_district_reel()).
+    single_type = types[0] if len(types) == 1 else None
+    kobo_track.add(token, instance, uid, name, target=target, form_type=single_type)
+    warning = _apply_form_types(uid, types) if types else None
+    return jsonify({"success": True, "tracked": kobo_track.list_tracked(), "warning": warning})
+
+
+@app.route('/suivi/retype', methods=['POST'])
+def suivi_retype():
+    """Change les rôles SPAD associés à un formulaire DÉJÀ suivi, sans
+    redémarrer son sondage (contrairement à /suivi/add, qui recrée l'entrée
+    kobo_track et repartirait de compteurs vides) — jusqu'ici, il n'existait
+    aucun moyen de corriger un type après le premier ajout au suivi."""
+    uid = (request.form.get('uid') or '').strip()
+    if not uid:
+        return jsonify({"success": False, "error": "Formulaire manquant."}), 400
+    if not kobo_track.is_tracked(uid):
+        return jsonify({"success": False, "error": "Ce formulaire n'est pas suivi."}), 400
+    types = _parse_form_types(request.form)
+    single_type = types[0] if len(types) == 1 else None
+    current = next((t for t in kobo_track.list_tracked() if t['uid'] == uid), None)
+    manual_target = (current or {}).get('target') if (current or {}).get('target_source') == 'manuelle' else None
+    kobo_track.set_target(uid, target=manual_target, form_type=single_type)
+    warning = _apply_form_types(uid, types)
     return jsonify({"success": True, "tracked": kobo_track.list_tracked(), "warning": warning})
 
 

@@ -104,26 +104,35 @@
               </td>
               <td class="text-center small">{{ a.submission_count }}</td>
               {% set guess = guessed_types.get(a.uid) %}
+              {% set mapped = mapped_codes_by_uid.get(a.uid, []) %}
+              {% set preselected = mapped if mapped else ([guess] if guess else []) %}
               <td>
-                <select class="form-select form-select-sm form-type-select" {% if a.uid in tracked_uids %}disabled{% endif %}>
-                  <option value="" {% if not guess %}selected{% endif %}>— Libre (cible manuelle) —</option>
+                <select class="form-select form-select-sm form-type-select" multiple size="3">
                   {% for code in form_codes %}
-                  <option value="{{ code }}" {% if guess == code %}selected{% endif %}>{{ code }} — {{ form_labels[code] }}</option>
+                  <option value="{{ code }}" {% if code in preselected %}selected{% endif %}>{{ code }} — {{ form_labels[code] }}</option>
                   {% endfor %}
                 </select>
-                {% if guess %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>détecté depuis le nom</div>{% endif %}
+                <div class="text-muted" style="font-size:.66rem">
+                  <i class="bi bi-info-circle me-1"></i>Ctrl/Cmd+clic pour plusieurs rôles (formulaire à rôles multiples)
+                </div>
+                {% if guess and not mapped %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>détecté depuis le nom</div>{% endif %}
                 <div class="ai-rationale text-muted" style="font-size:.68rem"></div>
               </td>
               <td class="text-center">
                 <input type="number" min="1" class="form-control form-control-sm target-input"
-                       placeholder="{{ 'détectée automatiquement' if guess else 'ex. 1800' }}"
-                       {% if a.uid in tracked_uids or guess %}disabled{% endif %}>
+                       placeholder="{{ 'détectée automatiquement' if preselected else 'ex. 1800' }}"
+                       {% if preselected %}disabled{% endif %}>
               </td>
               <td class="text-center">
                 {% if a.uid in tracked_uids %}
-                <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px">
-                  <i class="bi bi-check-lg me-1"></i>Suivi
-                </span>
+                <div class="d-flex flex-column align-items-center gap-1">
+                  <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px">
+                    <i class="bi bi-check-lg me-1"></i>Suivi
+                  </span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary btn-retype" style="font-size:.68rem;padding:1px 8px">
+                    <i class="bi bi-arrow-repeat me-1"></i>Mettre à jour
+                  </button>
+                </div>
                 {% else %}
                 <div class="d-flex gap-1 justify-content-center">
                   {% if ai_available %}
@@ -154,6 +163,7 @@
 
 {% block scripts %}
 <script>
+window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
 (function () {
   const grid       = document.getElementById('trackedGrid');
   const emptyState = document.getElementById('trackedEmpty');
@@ -242,6 +252,35 @@
     fetch('/suivi/status').then(r => r.json()).then(data => render(data.tracked)).catch(() => {});
   }
 
+  function selectedTypes(row) {
+    return Array.from(row.querySelector('.form-type-select').selectedOptions).map(o => o.value);
+  }
+
+  function rebuildAddCell(row) {
+    const cell = row.querySelector('td:last-child');
+    const aiBtn = window.__suiviAiAvailable
+      ? '<button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l\'IA"><i class="bi bi-stars"></i></button>'
+      : '';
+    cell.innerHTML = `<div class="d-flex gap-1 justify-content-center">${aiBtn}
+      <button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>
+      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="Supprimer définitivement ce formulaire sur KoboToolbox"><i class="bi bi-trash3"></i></button>
+    </div>`;
+    cell.querySelector('.btn-track-add').addEventListener('click', () => addTracked(row));
+    cell.querySelector('.btn-delete-asset').addEventListener('click', () => deleteAsset(cell.querySelector('.btn-delete-asset')));
+    if (cell.querySelector('.btn-ai-suggest')) {
+      cell.querySelector('.btn-ai-suggest').addEventListener('click', (e) => suggestWithAI(e.currentTarget));
+    }
+  }
+
+  function rebuildTrackedCell(row) {
+    const cell = row.querySelector('td:last-child');
+    cell.innerHTML = `<div class="d-flex flex-column align-items-center gap-1">
+      <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary btn-retype" style="font-size:.68rem;padding:1px 8px"><i class="bi bi-arrow-repeat me-1"></i>Mettre à jour</button>
+    </div>`;
+    cell.querySelector('.btn-retype').addEventListener('click', () => retypeTracked(row));
+  }
+
   function removeTracked(uid) {
     const fd = new FormData();
     fd.append('uid', uid);
@@ -252,11 +291,8 @@
           render(res.tracked);
           const row = document.querySelector(`tr[data-uid="${uid}"]`);
           if (row) {
-            const cell = row.querySelector('td:last-child');
-            cell.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>';
-            cell.querySelector('.btn-track-add').addEventListener('click', () => addTracked(row));
-            row.querySelector('.target-input').disabled = false;
-            row.querySelector('.form-type-select').disabled = false;
+            rebuildAddCell(row);
+            row.querySelector('.target-input').disabled = selectedTypes(row).length > 0;
           }
         }
       });
@@ -265,22 +301,20 @@
   function addTracked(row) {
     const uid = row.dataset.uid;
     const name = row.dataset.name;
-    const formType = row.querySelector('.form-type-select').value;
+    const types = selectedTypes(row);
     const target = row.querySelector('.target-input').value.trim();
     const fd = new FormData();
     fd.append('uid', uid);
     fd.append('name', name);
-    if (formType) fd.append('form_type', formType);
+    types.forEach(t => fd.append('form_types', t));
     if (target) fd.append('target', target);
     fetch('/suivi/add', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(res => {
         if (res.success) {
           render(res.tracked);
-          const cell = row.querySelector('td:last-child');
-          cell.innerHTML = '<span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>';
+          rebuildTrackedCell(row);
           row.querySelector('.target-input').disabled = true;
-          row.querySelector('.form-type-select').disabled = true;
           if (res.warning) alert('⚠ ' + res.warning);
         } else {
           alert(res.error || 'Erreur inconnue.');
@@ -288,13 +322,33 @@
       });
   }
 
-  // Sélectionner un type SPAD reconnu désactive et vide la cible manuelle —
-  // la cible sera détectée automatiquement depuis le référentiel.
+  function retypeTracked(row) {
+    const uid = row.dataset.uid;
+    const types = selectedTypes(row);
+    const fd = new FormData();
+    fd.append('uid', uid);
+    types.forEach(t => fd.append('form_types', t));
+    fetch('/suivi/retype', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          render(res.tracked);
+          if (res.warning) alert('⚠ ' + res.warning);
+          else alert('Rôles mis à jour.');
+        } else {
+          alert(res.error || 'Erreur inconnue.');
+        }
+      });
+  }
+
+  // Sélectionner au moins un type SPAD reconnu désactive et vide la cible
+  // manuelle — la cible sera détectée automatiquement depuis le référentiel
+  // pour chaque rôle sélectionné (pas de cible unique à ressaisir à la main).
   document.querySelectorAll('.form-type-select').forEach(sel => {
     sel.addEventListener('change', () => {
       const row = sel.closest('tr');
       const targetInput = row.querySelector('.target-input');
-      if (sel.value) {
+      if (selectedTypes(row).length > 0) {
         targetInput.value = '';
         targetInput.disabled = true;
         targetInput.placeholder = 'détectée automatiquement';
@@ -307,6 +361,10 @@
 
   document.querySelectorAll('.btn-track-add').forEach(btn => {
     btn.addEventListener('click', () => addTracked(btn.closest('tr')));
+  });
+
+  document.querySelectorAll('.btn-retype').forEach(btn => {
+    btn.addEventListener('click', () => retypeTracked(btn.closest('tr')));
   });
 
   // Suggestion IA — pré-remplit Type/Cible, ne coche/n'enregistre jamais
