@@ -3240,6 +3240,29 @@ def completude():
     )
 
 
+@app.route('/completude/equipe-spad')
+def completude_equipe_spad():
+    """Complétude de l'équipe SPAD (motif RAA Phase 1) : regroupe TOUS les
+    formulaires roster national (grain 'roster_national' — UGP, Programmes
+    de santé...) sur une seule page, détectés automatiquement depuis le
+    registre plutôt que codés en dur — un futur formulaire de ce grain y
+    apparaîtrait sans changement de code. Volontairement distinct de
+    « Complétude par région » : ces entités n'ont pas de dimension
+    géographique (voir modules/completeness.py::named_roster_detail())."""
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+    forms = [f for f in forms_registry.all_forms(include_inactive=False)
+             if f.get('grain') == 'roster_national']
+    named_roster = cached.get('named_roster', {})
+    return render_template(
+        'completude_equipe_spad.html',
+        forms=forms, named_roster=named_roster,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
 @app.route('/completude/regions')
 def completude_regions():
     token = session.get('kobo_token')

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Complétude de l'équipe SPAD — SPAD Analyzer{% endblock %}
+{% block page_title %}Complétude de l'équipe SPAD{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Sous-navigation Complétude nationale -->
+  <div class="card border-0 shadow-sm mb-3" style="background:#fff;border-radius:12px;">
+    <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <div class="d-flex flex-wrap gap-1 align-items-center">
+        <a href="{{ url_for('completude') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ Complétude nationale
+        </a>
+        <a href="{{ url_for('completude_equipe_spad') }}" class="btn btn-sm btn-primary fw-semibold">
+          <i class="bi bi-diagram-3 me-1"></i>Équipe SPAD
+        </a>
+        <a href="{{ url_for('completude_regions') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-map me-1"></i>🗺️ Régions
+        </a>
+        <a href="{{ url_for('completude_districts') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pin-map me-1"></i>📍 Districts
+        </a>
+        <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-person-badge me-1"></i>👔 Superviseurs
+        </a>
+        <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-person-walking me-1"></i>🚶 Enquêteurs
+        </a>
+        <a href="{{ url_for('completude_anomalies') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ Anomalies
+        </a>
+        <a href="{{ url_for('completude_graphiques') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-graph-up me-1"></i>📈 Graphiques (10j)
+        </a>
+      </div>
+      <a href="{{ url_for('suivi') }}" class="btn btn-sm btn-outline-primary fw-semibold">
+        <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+      </a>
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <span class="text-muted small">
+      Équipe de coordination (UGP) et programmes de santé représentés — suivi nominatif, sans dimension géographique.
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+    </span>
+  </div>
+
+  {% if not forms %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-diagram-3 display-3 mb-3 d-block opacity-25"></i>
+      <h5 class="fw-semibold mb-2">Aucun formulaire « roster national » dans le registre</h5>
+      <p class="small mb-0">Ajoutez-en un (grain « roster_national ») depuis le registre des formulaires si vous êtes administrateur.</p>
+    </div>
+  </div>
+  {% else %}
+
+  <div class="row g-3">
+    {% for form in forms %}
+    {% set data = named_roster.get(form.code, {}) %}
+    {% set nat = data.get('national', {}) %}
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-people me-2 text-primary"></i>{{ form.label }}
+            <span class="text-muted fw-normal small ms-1">({{ form.code }})</span>
+          </h6>
+          {% if nat %}
+          <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero')) }}">
+            {{ nat.recu }} / {{ nat.cible }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          </span>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          {% if not data %}
+          <div class="p-4 text-muted small text-center">
+            Calcul non disponible — cliquez « Calculer la complétude » depuis Complétude nationale.
+          </div>
+          {% else %}
+          {% if nat.taux is not none %}
+          <div class="px-3 pt-3">
+            <div class="progress" style="height:8px">
+              <div class="progress-bar
+                {% if nat.statut == 'cible' %}bg-success
+                {% elif nat.statut == 'en_cours' %}bg-warning
+                {% elif nat.statut == 'verifier' %}bg-danger
+                {% else %}bg-secondary{% endif %}"
+                style="width:{{ [nat.taux, 100]|min }}%"></div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Entité</th>
+                  <th class="text-center" style="width:90px">Reçus</th>
+                  <th class="text-center" style="width:130px">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for e in data.entries %}
+                <tr>
+                  <td class="small fw-semibold">{{ e.label }}</td>
+                  <td class="text-center small">{{ e.recu }} / {{ e.cible }}</td>
+                  <td class="text-center">
+                    {% if e.statut == 'cible' %}
+                    <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 8px">
+                      <i class="bi bi-check-lg me-1"></i>Reçu
+                    </span>
+                    {% elif e.statut == 'en_cours' %}
+                    <span class="status-pill status-pill--en-cours" style="font-size:.68rem;padding:2px 8px">{{ e.taux }} %</span>
+                    {% elif e.statut == 'verifier' %}
+                    <span class="status-pill status-pill--verifier" style="font-size:.68rem;padding:2px 8px">À vérifier</span>
+                    {% else %}
+                    <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">En attente</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="p-2 text-end border-top">
+            <a href="{{ url_for('completude_roster_national_detail', form_code=form.code) }}"
+               class="btn btn-sm btn-link py-0" style="font-size:.78rem">
+              Détail complet <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

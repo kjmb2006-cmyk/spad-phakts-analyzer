@@ -77,7 +77,7 @@
     <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-broadcast"></i> — Suivi multi-formulaires
     </a>
-    {% set completude_sub_endpoints = ['completude_regions', 'completude_region_detail', 'completude_districts', 'completude_district_detail', 'completude_etablissement_detail', 'completude_superviseurs', 'completude_superviseur_detail', 'completude_enqueteurs', 'completude_enqueteur_detail', 'completude_anomalies', 'completude_graphiques'] %}
+    {% set completude_sub_endpoints = ['completude_equipe_spad', 'completude_roster_national_detail', 'completude_regions', 'completude_region_detail', 'completude_districts', 'completude_district_detail', 'completude_etablissement_detail', 'completude_superviseurs', 'completude_superviseur_detail', 'completude_enqueteurs', 'completude_enqueteur_detail', 'completude_anomalies', 'completude_graphiques'] %}
     {% set completude_sub_active = request.endpoint in completude_sub_endpoints %}
     <div class="d-flex align-items-center">
       <a href="{{ url_for('completude') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'completude' %}active{% endif %}" style="padding-left:28px">
@@ -91,6 +91,9 @@
     </div>
     {% if session.get('kobo_token') %}
     <div class="collapse {{ 'show' if completude_sub_active else '' }}" id="completudeSubmenu">
+      <a href="{{ url_for('completude_equipe_spad') }}" class="nav-item {% if request.endpoint in ['completude_equipe_spad', 'completude_roster_national_detail'] %}active{% endif %}" style="padding-left:28px">
+        <i class="bi bi-diagram-3"></i> — Complétude de l'équipe SPAD
+      </a>
       <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
         <i class="bi bi-map"></i> — Complétude par région
       </a>
