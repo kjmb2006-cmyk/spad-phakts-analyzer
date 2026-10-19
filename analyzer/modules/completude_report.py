@@ -665,7 +665,12 @@ def build_docx(cached, ref, computed_at=None):
         rows.append(row)
     _add_table(doc, headers, rows)
     doc.add_paragraph()
-    district_chart = _grouped_bar_chart(district_table, form_codes, 'Taux de complétude par district et par formulaire')
+    # Formulaires roster national (UGP/Programmes — grain roster_national)
+    # n'ont aucune dimension district : systématiquement à 0 dans cette
+    # vue, ils n'y apporteraient que du bruit — voir cp.geographic_forms().
+    geo_set = set(cp.geographic_forms())
+    district_form_codes = [c for c in form_codes if c in geo_set]
+    district_chart = _grouped_bar_chart(district_table, district_form_codes, 'Taux de complétude par district et par formulaire')
     if district_chart:
         try:
             doc.add_picture(district_chart, width=Inches(6.2))
@@ -675,7 +680,7 @@ def build_docx(cached, ref, computed_at=None):
             except OSError:
                 pass
     doc.add_paragraph()
-    for bullet in _district_form_bullets(district_table, form_codes):
+    for bullet in _district_form_bullets(district_table, district_form_codes):
         doc.add_paragraph(bullet, style='List Bullet')
     doc.add_paragraph()
 

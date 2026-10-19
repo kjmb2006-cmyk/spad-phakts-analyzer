@@ -3276,7 +3276,7 @@ def completude_regions():
     return render_template(
         'completude_table.html',
         title='Complétude par région', echelon='région',
-        rows=cached['region'], form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
+        rows=cached['region'], form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -3292,7 +3292,7 @@ def completude_districts():
     return render_template(
         'completude_table.html',
         title='Complétude par district', echelon='district',
-        rows=cached['district'], form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
+        rows=cached['district'], form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -3486,7 +3486,7 @@ def completude_region_detail(region_code):
     return render_template(
         'completude_region_detail.html',
         region_code=region_code, region=region, districts=districts,
-        form_codes=_completude_scope(), form_labels=ref_data.FORM_LABELS,
+        form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
         computed_at=session.get('completude_computed_at'),
     )
@@ -3513,7 +3513,7 @@ def completude_district_detail(district_code):
         'completude_district_detail.html',
         district_code=district_code, district=district, etablissements=etablissements,
         enqueteurs=enqueteurs, superviseur=superviseur,
-        form_codes=_completude_scope(),
+        form_codes=_completude_scope(cp.geographic_forms()),
         etablissement_form_codes=_completude_scope(cp.etablissement_forms()),
         enqueteur_form_codes=_completude_scope(cp.enqueteur_table_forms()), superviseur_form_codes=_completude_scope(cp.superviseur_table_forms()),
         form_labels=ref_data.FORM_LABELS,

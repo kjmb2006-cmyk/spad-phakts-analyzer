@@ -78,6 +78,20 @@ def superviseur_table_forms():
                  if (forms_registry.get(fc) or {}).get('grain') == 'district')
 
 
+def geographic_forms():
+    """Codes des formulaires actifs ayant une pertinence géographique
+    (grain etablissement/district/enqueteur/superviseur) — exclut les
+    formulaires « roster national » (grain roster_national, motif UGP/
+    Programmes de santé — voir forms_registry.py). district_table() les
+    traite déjà en cellule vide (aucune dimension district/région), donc
+    une colonne RAA_UGP/RAA_PRG dans « Complétude par région »/« par
+    district » n'afficherait jamais que des 0 % trompeurs — ils ont leur
+    propre page (/completude/equipe-spad), pas de raison de les lister ici
+    aussi."""
+    return tuple(f['code'] for f in forms_registry.all_forms(include_inactive=False)
+                 if f.get('grain') != 'roster_national')
+
+
 def find_column(df, field_name):
     """Retrouve une colonne par nom exact ou par suffixe `.../field_name`."""
     if field_name is None or df is None:
