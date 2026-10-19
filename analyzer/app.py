@@ -3917,11 +3917,20 @@ def completude_calculer():
     errors = []
     for code, uid in mapping.items():
         form = forms_registry.get(code)
+        if not form or not form.get('active', True):
+            # Code désactivé (ou supprimé) du registre, mais dont la
+            # correspondance Kobo n'a jamais été nettoyée (ex. un formulaire
+            # retiré de la collecte) — l'interroger quand même ne sert à
+            # rien et peut même échouer bruyamment (« Aucune soumission
+            # disponible ») pour un code qui n'apparaît de toute façon plus
+            # nulle part dans l'UI. Silencieusement ignoré, pas en erreur :
+            # ce n'est pas un échec, juste un résidu à ne pas calculer.
+            continue
         # Les formulaires roster ont besoin de _submission_time/_submitted_by
         # (normalement supprimés par clean_kobo_dataframe) pour compter les
         # répondants distincts et dater la dernière soumission par district —
         # voir modules/completeness.py::roster_by_district().
-        is_roster = bool(form) and form.get('grain') in ('enqueteur', 'superviseur')
+        is_roster = form.get('grain') in ('enqueteur', 'superviseur')
         keep_cols = ('_submission_time', '_submitted_by') if is_roster else ()
         res = kobo_load_data(token, uid, instance=instance, keep_meta_cols=keep_cols)
         if res.get('success'):
