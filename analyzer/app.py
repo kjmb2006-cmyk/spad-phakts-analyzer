@@ -3234,6 +3234,9 @@ def completude():
         roster_forms=[f for f in forms_registry.all_forms(include_inactive=False)
                       if f.get('grain') in ('enqueteur', 'superviseur')],
         roster_data=cached.get('roster', {}) if cached else {},
+        named_roster_forms=[f for f in forms_registry.all_forms(include_inactive=False)
+                             if f.get('grain') == 'roster_national'],
+        named_roster_data=cached.get('named_roster', {}) if cached else {},
     )
 
 
@@ -3400,6 +3403,31 @@ def completude_roster_detail(form_code):
         'completude_roster_detail.html',
         form=form, form_code=form_code, family=family_data,
         regions=regions,
+        computed_at=session.get('completude_computed_at'),
+    )
+
+
+@app.route('/completude/roster-national/<form_code>')
+def completude_roster_national_detail(form_code):
+    # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
+    cached = _load_completude_cache()
+    if not cached:
+        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        return redirect(url_for('completude'))
+
+    form = forms_registry.get(form_code)
+    if not form or form.get('grain') != 'roster_national':
+        flash('Formulaire roster national introuvable.', 'warning')
+        return redirect(url_for('completude'))
+
+    data = cached.get('named_roster', {}).get(form_code)
+    if not data:
+        flash('Complétude non encore calculée pour ce formulaire.', 'warning')
+        return redirect(url_for('completude'))
+
+    return render_template(
+        'completude_roster_national_detail.html',
+        form=form, form_code=form_code, data=data,
         computed_at=session.get('completude_computed_at'),
     )
 
@@ -3952,6 +3980,7 @@ def completude_calculer():
         'superviseur':    cp.superviseur_table(ref, form_dataframes),
         'roster':         cp.all_roster_by_district(ref, form_dataframes),
         'roster_families': cp.all_roster_families(ref, form_dataframes),
+        'named_roster':   cp.all_named_rosters(ref, form_dataframes),
         'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
         'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
         'export':           cp.export_rows(ref, form_dataframes),

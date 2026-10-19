@@ -410,9 +410,90 @@ def all_roster_families(ref, form_dataframes):
     return result
 
 
+def named_roster_detail(form, df):
+    """Reçu/cible d'un formulaire au grain 'roster_national' (motif UGP/
+    Programmes — RAA Phase 1) : la cible varie par ENTITÉ NOMMÉE, pas par
+    district (voir target_rule.type == 'fixed_named_list' dans
+    forms_registry.py). Une valeur de match préfixée "AUTRE:xxx" désigne une
+    entité qui n'a pas de code Kobo dédié, saisie en texte libre via le champ
+    "<field>_Autre__Z" (convention PHAKTS pour un "Autre, précisez") — cas
+    réel : la 5e entité de l'UGP RAA Phase 1 ("DPPS") n'existe que sous cette
+    forme, les 4 autres (DIS/OMS/INSP/ANSTAT) ont un code Kobo direct.
+
+    Renvoie {'national': {...}, 'entries': [{'label','recu','cible','taux',
+    'statut'}, ...]} — pas de dimension district/région, donc pas de place
+    dans district_table()/region_table() (voir le filtre ajouté là-bas)."""
+    rule = form['target_rule']
+    field = rule['params']['field']
+    entries_cfg = rule['params']['entries']
+    national_cible = sum(e['n'] for e in entries_cfg)
+
+    sub = df
+    role_filter = form.get('role_filter')
+    if sub is not None and role_filter:
+        col = find_column(sub, role_filter['field'])
+        if col is not None:
+            values = sub[col].astype(str).str.strip().str.lower()
+            sub = sub[values == str(role_filter['value']).strip().lower()]
+        else:
+            sub = sub.iloc[0:0]
+
+    field_col = find_column(sub, field) if sub is not None else None
+    autre_col = find_column(sub, field + '_Autre__Z') if sub is not None else None
+    field_vals = sub[field_col].astype(str).str.strip().str.lower() if field_col is not None else None
+    autre_vals = sub[autre_col].astype(str).str.strip().str.lower() if autre_col is not None else None
+
+    entries = []
+    national_recu = 0
+    for cfg in entries_cfg:
+        recu = 0
+        if field_vals is not None:
+            for m in cfg['match']:
+                if m.upper().startswith('AUTRE:'):
+                    want = m.split(':', 1)[1].strip().lower()
+                    if autre_vals is not None:
+                        recu += int(((field_vals == 'autre') & (autre_vals == want)).sum())
+                else:
+                    recu += int((field_vals == m.strip().lower()).sum())
+        cible = cfg['n']
+        entries.append({
+            'label': cfg['label'], 'recu': recu, 'cible': cible,
+            'taux': round(100 * recu / cible, 1) if cible else None,
+            'statut': status_for(recu, cible),
+        })
+        national_recu += recu
+
+    national = {
+        'recu': national_recu, 'cible': national_cible,
+        'taux': round(100 * national_recu / national_cible, 1) if national_cible else None,
+        'statut': status_for(national_recu, national_cible),
+    }
+    return {'national': national, 'entries': entries}
+
+
+def named_roster_completeness(form, df):
+    """Forme compatible form_completeness() : une liste à un élément, comme
+    roster_completeness() — voir named_roster_detail() pour le détail par
+    entité (utilisé par la page dédiée /completude/roster-national/<code>)."""
+    return [named_roster_detail(form, df)['national']]
+
+
+def all_named_rosters(ref, form_dataframes):
+    """Calcule named_roster_detail() pour tous les formulaires roster
+    national actifs (motif UGP/Programmes)."""
+    result = {}
+    for form in forms_registry.all_forms(include_inactive=False):
+        if form.get('grain') != 'roster_national':
+            continue
+        df = form_dataframes.get(form['code'])
+        result[form['code']] = named_roster_detail(form, df)
+    return result
+
+
 def form_completeness(ref, form_code, df):
-    """Répartiteur : établissement, district, ou "roster" (enquêteur/
-    superviseur) selon le grain du formulaire."""
+    """Répartiteur : établissement, district, "roster" géographique
+    (enquêteur/superviseur) ou "roster national" (grain roster_national)
+    selon le grain du formulaire."""
     if form_code in etablissement_forms():
         return etablissement_completeness(ref, form_code, df)
     if form_code in district_forms():
@@ -420,6 +501,8 @@ def form_completeness(ref, form_code, df):
     form = forms_registry.get(form_code)
     if form and form.get('grain') in ('enqueteur', 'superviseur'):
         return roster_completeness(form, df)
+    if form and form.get('grain') == 'roster_national':
+        return named_roster_completeness(form, df)
     raise ValueError(f"Formulaire inconnu : {form_code}")
 
 
@@ -506,6 +589,14 @@ def district_table(ref, form_dataframes):
                     {'recu': cell['recu'], 'cible': cell['cible'], 'taux': cell['taux'], 'statut': cell['statut']}
                     if cell else _empty_cell()
                 )
+            continue
+
+        if form and form.get('grain') == 'roster_national':
+            # Motif UGP/Programmes : aucune dimension district/région (cible
+            # par entité nommée, pas par unité géographique) — rien à
+            # afficher ici, voir /completude/roster-national/<code>.
+            for code in table:
+                table[code]['forms'][form_code] = _empty_cell()
             continue
 
         if df is None:

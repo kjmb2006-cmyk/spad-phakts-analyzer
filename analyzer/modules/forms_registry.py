@@ -29,10 +29,32 @@ pour ajouter un formulaire qui suit l'un de ces motifs) :
                                        par le référentiel (motif "roster" —
                                        voir grain 'enqueteur'/'superviseur'
                                        ci-dessous)
+  - fixed_named_list(field, entries) : cible NOMMÉE par entité (pas par
+                                       district) — motif "roster national"
+                                       (grain 'roster_national' ci-dessous).
+                                       entries est une liste de
+                                       {label, match, n} ; 'match' est une
+                                       liste de valeurs à comparer (insensible
+                                       à la casse) au champ Kobo 'field' —
+                                       une valeur préfixée "AUTRE:xxx" veut
+                                       dire : field == 'AUTRE' ET le champ
+                                       "<field>_Autre__Z" associé (convention
+                                       PHAKTS pour le texte libre d'un
+                                       "Autre, précisez") vaut xxx. Cas réel :
+                                       l'UGP RAA Phase 1 compte DIS/OMS/INSP/
+                                       ANSTAT par code Kobo, mais une 5e
+                                       entité ("DPPS") n'a pas de code dédié
+                                       — seulement saisie en texte libre.
 
-Grains pris en charge : 'etablissement', 'district', et 'enqueteur' /
-'superviseur' ("roster" — un même Kobo UID peut porter PLUSIEURS codes SPAD
-à la fois dans ce cas précis, un par rôle, chacun avec son propre
+Grains pris en charge : 'etablissement', 'district', 'enqueteur' /
+'superviseur' ("roster" géographique — voir ci-dessous), et
+'roster_national' ("roster nominatif", sans dimension géographique — motif
+UGP/Programmes RAA Phase 1 : chaque entité nommée a son propre effectif
+attendu, voir fixed_named_list ci-dessus et
+modules/completeness.py::named_roster_detail()).
+
+'enqueteur'/'superviseur' : un même Kobo UID peut porter PLUSIEURS codes
+SPAD à la fois dans ce cas précis, un par rôle, chacun avec son propre
 role_filter — cas réel : un formulaire d'avis rempli à la fois par les
 superviseurs et les enquêteurs, où seul le champ "Fonction" distingue qui a
 répondu. Pour ce grain, 'reçu' compte les valeurs DISTINCTES de
@@ -55,14 +77,16 @@ RULE_TYPES = (
     'floor_sum_district_field',
     'by_etablissement_type',
     'fixed_national',
+    'fixed_named_list',
 )
 
-GRAINS = ('etablissement', 'district', 'enqueteur', 'superviseur')
+GRAINS = ('etablissement', 'district', 'enqueteur', 'superviseur', 'roster_national')
 
 RULE_TYPE_LABELS = {
     'fixed_per_etablissement': 'Nombre fixe par établissement',
     'fixed_per_district': 'Nombre fixe par district',
     'fixed_national': 'Nombre fixe national (roster)',
+    'fixed_named_list': 'Liste nominative à cibles variables (roster national)',
     'etab_field_positive': "1 par établissement où un champ du référentiel est > 0",
     'floor_sum_district_field': "Somme d'un champ du référentiel par district (plancher)",
     'by_etablissement_type': "Selon le type d'établissement (réservé F6)",
@@ -243,4 +267,6 @@ def national_target(form, ref):
         return sum(e.get('f6_target', 0) for e in ref['etablissements'].values())
     if rtype == 'fixed_national':
         return rule['params']['n']
+    if rtype == 'fixed_named_list':
+        return sum(e['n'] for e in rule['params']['entries'])
     return None
