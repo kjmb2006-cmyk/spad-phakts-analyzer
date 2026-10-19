@@ -141,3 +141,89 @@ def suggest_for_kobo_form(kobo_name, sample_columns=None):
         'target': parsed.get('target') if isinstance(parsed.get('target'), int) else None,
         'rationale': parsed.get('rationale'),
     }
+
+
+def suggest_multi_role(kobo_name, structure):
+    """Analyse la STRUCTURE complète (survey + choices, voir
+    kobo_connector.get_asset_structure()) d'un formulaire Kobo pour détecter
+    s'il est rempli par PLUSIEURS catégories d'acteurs distinctes (motif
+    « roster » — voir forms_registry.py, grain enquêteur/superviseur :
+    un même formulaire porte alors plusieurs codes SPAD, un par rôle, via
+    role_filter) — ce que suggest_for_kobo_form() ne couvre pas, limité à UN
+    SEUL code.
+
+    Ne propose JAMAIS de cible chiffrée : combien de DRS, de DDS, etc. sont
+    attendus est un fait organisationnel (SOP du projet), pas quelque chose
+    de déductible de la structure d'un formulaire — voir la note du bouton
+    « Analyser la structure » dans templates/suivi.html. L'utilisateur reste
+    seul décideur de la configuration finale dans /admin/forms.
+
+    Renvoie toujours un dict, jamais None : {'available', 'error',
+    'has_multi_role', 'role_field', 'roles' (liste de {'value','label'}),
+    'district_field', 'identity_hint', 'rationale'}."""
+    client = _get_client()
+    if client is None:
+        return {'available': False, 'error': None}
+
+    survey = structure.get('survey', [])
+    choices = structure.get('choices', [])
+
+    # Ne garde que les champs select_one/select_multiple/text — les seuls
+    # susceptibles d'être le champ de rôle, le champ district ou un champ
+    # d'identité ; le reste (questions d'évaluation, notes...) n'apporte
+    # rien à cette détection et gonflerait inutilement le prompt (un XLSForm
+    # réel peut avoir plusieurs centaines de questions).
+    relevant = [q for q in survey if q.get('type') in ('select_one', 'select_multiple', 'text')]
+    choice_lists = {}
+    for c in choices:
+        ln = c.get('list_name')
+        if ln:
+            choice_lists.setdefault(ln, []).append(c.get('name'))
+
+    prompt = (
+        "Tu analyses la structure d'un formulaire KoboToolbox utilisé pour une enquête de santé publique (SPAD).\n\n"
+        f"Nom du formulaire : {kobo_name!r}\n\n"
+        f"Champs pertinents (type/nom/libellé/liste de choix associée) :\n{json.dumps(relevant, ensure_ascii=False)}\n\n"
+        f"Valeurs de chaque liste de choix :\n{json.dumps(choice_lists, ensure_ascii=False)}\n\n"
+        "Question : ce formulaire est-il rempli par PLUSIEURS catégories d'acteurs distinctes (ex. superviseur "
+        "ET enquêteur, ou plusieurs profils d'intervenants), identifiables par un SEUL champ dont les valeurs "
+        "correspondent chacune à un rôle ? Ou est-ce un formulaire à rôle unique (ou sans rôle du tout) ?\n\n"
+        "Réponds UNIQUEMENT avec un objet JSON compact sur une seule ligne, sans texte autour et sans balise "
+        "markdown, avec ces clés :\n"
+        '- has_multi_role : booléen\n'
+        '- role_field : nom EXACT du champ qui distingue les rôles, ou null\n'
+        '- roles : liste d\'objets {"value": "...", "label": "..."} (value = valeur Kobo exacte, label = libellé '
+        'lisible en français) — une entrée par rôle détecté, liste vide si has_multi_role est false\n'
+        '- district_field : nom EXACT du champ qui identifie le district/la zone géographique du répondant, ou null\n'
+        '- identity_hint : nom EXACT d\'un champ texte libre qui pourrait identifier individuellement le répondant '
+        '(nom, téléphone...), ou null si aucun ne semble fiable\n'
+        '- rationale : UNE phrase courte en français expliquant le raisonnement (moins de 30 mots)\n\n'
+        "Ne propose JAMAIS de nombre ou de cible — ce n'est pas déductible de la structure du formulaire seule."
+    )
+
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = "".join(block.text for block in response.content if getattr(block, 'type', None) == 'text')
+    except Exception as e:
+        return {'available': True, 'error': f"Appel IA impossible : {e}"}
+
+    parsed = _extract_json(raw)
+    if not parsed:
+        return {'available': True, 'error': "Réponse de l'IA illisible — réessayez."}
+
+    roles = [r for r in (parsed.get('roles') or []) if isinstance(r, dict) and r.get('value')]
+
+    return {
+        'available': True,
+        'error': None,
+        'has_multi_role': bool(parsed.get('has_multi_role')) and bool(roles),
+        'role_field': parsed.get('role_field'),
+        'roles': roles,
+        'district_field': parsed.get('district_field'),
+        'identity_hint': parsed.get('identity_hint'),
+        'rationale': parsed.get('rationale'),
+    }

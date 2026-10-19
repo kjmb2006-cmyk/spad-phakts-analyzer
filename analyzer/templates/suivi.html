@@ -139,6 +139,9 @@
                   <button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l'IA">
                     <i class="bi bi-stars"></i>
                   </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée">
+                    <i class="bi bi-diagram-3"></i>
+                  </button>
                   {% endif %}
                   <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
                     <i class="bi bi-plus-lg me-1"></i>Suivre
@@ -258,10 +261,11 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
 
   function rebuildAddCell(row) {
     const cell = row.querySelector('td:last-child');
-    const aiBtn = window.__suiviAiAvailable
-      ? '<button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l\'IA"><i class="bi bi-stars"></i></button>'
+    const aiBtns = window.__suiviAiAvailable
+      ? `<button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l'IA"><i class="bi bi-stars"></i></button>
+         <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée"><i class="bi bi-diagram-3"></i></button>`
       : '';
-    cell.innerHTML = `<div class="d-flex gap-1 justify-content-center">${aiBtn}
+    cell.innerHTML = `<div class="d-flex gap-1 justify-content-center">${aiBtns}
       <button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>
       <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="Supprimer définitivement ce formulaire sur KoboToolbox"><i class="bi bi-trash3"></i></button>
     </div>`;
@@ -269,6 +273,9 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
     cell.querySelector('.btn-delete-asset').addEventListener('click', () => deleteAsset(cell.querySelector('.btn-delete-asset')));
     if (cell.querySelector('.btn-ai-suggest')) {
       cell.querySelector('.btn-ai-suggest').addEventListener('click', (e) => suggestWithAI(e.currentTarget));
+    }
+    if (cell.querySelector('.btn-ai-structure')) {
+      cell.querySelector('.btn-ai-structure').addEventListener('click', (e) => analyzeStructure(e.currentTarget));
     }
   }
 
@@ -413,6 +420,59 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
         btn.disabled = false;
       });
   }
+
+  // Analyse de structure IA — lit le XLSForm complet (survey + choix) pour
+  // détecter si CE formulaire est rempli par plusieurs rôles distincts
+  // (motif roster). N'écrit RIEN côté serveur et ne propose jamais de
+  // cible chiffrée : affiche seulement un diagnostic texte, à utiliser
+  // pour configurer /admin/forms soi-même (un rôle par code SPAD, avec
+  // role_filter) — voir modules/ai_form_assist.py::suggest_multi_role().
+  function analyzeStructure(btn) {
+    const row = btn.closest('tr');
+    const uid = row.dataset.uid;
+    const name = row.dataset.name;
+    const rationaleEl = row.querySelector('.ai-rationale');
+    const icon = btn.querySelector('i');
+    icon.className = 'spinner-border spinner-border-sm';
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('uid', uid);
+    fd.append('name', name);
+    fetch('/suivi/ai_analyze_structure', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.available) {
+          rationaleEl.textContent = res.error || "Analyse IA indisponible pour l'instant.";
+          return;
+        }
+        if (res.error) {
+          rationaleEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${res.error}`;
+          return;
+        }
+        if (!res.has_multi_role) {
+          rationaleEl.innerHTML = `<i class="bi bi-diagram-3 me-1"></i>Formulaire à rôle unique (ou sans rôle détecté).${res.rationale ? ' ' + res.rationale : ''}`;
+          return;
+        }
+        const rolesTxt = res.roles.map(r => `« ${r.value} » (${r.label})`).join(', ');
+        let html = `<i class="bi bi-diagram-3 me-1"></i><strong>Plusieurs rôles détectés</strong> — champ : <code>${res.role_field || '?'}</code><br>`;
+        html += `Rôles : ${rolesTxt}<br>`;
+        if (res.district_field) html += `Champ district probable : <code>${res.district_field}</code><br>`;
+        if (res.identity_hint) html += `Champ d'identité possible : <code>${res.identity_hint}</code><br>`;
+        html += `<em>${res.rationale || ''}</em><br>`;
+        html += `<span class="text-muted">Créez un code SPAD par rôle dans le Registre des formulaires (role_filter = champ ci-dessus) — la cible reste à saisir vous-même.</span>`;
+        rationaleEl.innerHTML = html;
+      })
+      .catch(() => { rationaleEl.textContent = "Analyse IA indisponible pour l'instant."; })
+      .finally(() => {
+        icon.className = 'bi bi-diagram-3';
+        btn.disabled = false;
+      });
+  }
+
+  document.querySelectorAll('.btn-ai-structure').forEach(btn => {
+    btn.addEventListener('click', () => analyzeStructure(btn));
+  });
 
   document.querySelectorAll('.btn-ai-suggest').forEach(btn => {
     btn.addEventListener('click', () => suggestWithAI(btn));

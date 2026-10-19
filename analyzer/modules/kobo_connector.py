@@ -329,6 +329,50 @@ def get_asset_info(token, uid, instance=None):
         return {"success": False, "error": str(e)}
 
 
+def get_asset_structure(token, uid, instance=None):
+    """Structure du XLSForm (survey + choices), pas les soumissions —
+    utilisé par modules/ai_form_assist.py::suggest_multi_role() pour
+    détecter si un formulaire est rempli par plusieurs rôles distincts
+    (champ de rôle, valeurs, champ district) sans avoir à télécharger les
+    données. Ne renvoie que type/nom/libellé par question et nom/libellé
+    par choix — suffisant pour cette détection, beaucoup plus léger qu'un
+    export complet (un XLSForm réel peut avoir plusieurs centaines de
+    questions, voir le motif RAA Phase 1 : 292 colonnes)."""
+    base = _normalize_instance(instance) or detect_instance(token)
+    if not base:
+        return {"success": False, "error": "Instance introuvable."}
+    try:
+        r = _get(f"{base}/api/v2/assets/{uid}/?format=json", token)
+        if r.status_code == 404:
+            return {"success": False, "error": "Formulaire introuvable."}
+        if r.status_code != 200:
+            return {"success": False, "error": f"Erreur HTTP {r.status_code}."}
+        d = r.json()
+        content = d.get("content", {}) or {}
+        survey = []
+        for q in content.get("survey", []):
+            qtype = q.get("type", "")
+            if qtype in ("start", "end", "today", "deviceid", "note", "calculate",
+                         "begin_group", "end_group", "begin_repeat", "end_repeat"):
+                continue
+            label = q.get("label", "")
+            if isinstance(label, list):
+                label = label[0] if label else ""
+            entry = {"type": qtype, "name": q.get("name") or q.get("$autoname", ""), "label": label}
+            list_name = q.get("select_from_list_name")
+            if list_name:
+                entry["list_name"] = list_name
+            survey.append(entry)
+        choices = [
+            {"list_name": c.get("list_name"), "name": c.get("name"),
+             "label": (c.get("label") or [""])[0] if isinstance(c.get("label"), list) else c.get("label")}
+            for c in content.get("choices", [])
+        ]
+        return {"success": True, "survey": survey, "choices": choices}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def load_data(token, uid, instance=None, limit=30000, keep_meta_cols=()):
     base = _normalize_instance(instance) or detect_instance(token)
     if not base:

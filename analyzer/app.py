@@ -28,7 +28,7 @@ from modules.raw_analysis import (systematic_analysis, descriptive_summary,
 # (nécessite le package 'requests' — installé via : venv/bin/pip install requests)
 try:
     from modules.kobo_connector import (validate_token, list_assets,
-                                         get_asset_info, load_data as kobo_load_data,
+                                         get_asset_info, get_asset_structure, load_data as kobo_load_data,
                                          deploy_xlsform, delete_asset as kobo_delete_asset)
     KOBO_AVAILABLE = True
 except ImportError:
@@ -36,6 +36,7 @@ except ImportError:
     def validate_token(*a, **k): return {"valid": False, "error": "Package 'requests' manquant. Lancez : venv/bin/pip install requests"}
     def list_assets(*a, **k):    return {"success": False, "error": "Package 'requests' manquant."}
     def get_asset_info(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
+    def get_asset_structure(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def kobo_load_data(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def deploy_xlsform(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
     def kobo_delete_asset(*a, **k): return {"success": False, "error": "Package 'requests' manquant."}
@@ -3068,6 +3069,28 @@ def suivi_ai_suggest():
     if not name:
         return jsonify({'available': False, 'error': 'Nom de formulaire manquant.'}), 400
     return jsonify(ai_form_assist.suggest_for_kobo_form(name))
+
+
+@app.route('/suivi/ai_analyze_structure', methods=['POST'])
+def suivi_ai_analyze_structure():
+    """Analyse la structure complète (survey + choices) d'un formulaire
+    Kobo pour détecter s'il est rempli par plusieurs rôles distincts (motif
+    « roster » — voir forms_registry.py) — voir
+    modules/ai_form_assist.py::suggest_multi_role(). Ne propose jamais de
+    cible chiffrée ni n'enregistre rien : affiche seulement un diagnostic
+    que l'utilisateur utilise pour configurer /admin/forms lui-même."""
+    uid = (request.form.get('uid') or '').strip()
+    if not uid:
+        return jsonify({'available': False, 'error': 'Formulaire manquant.'}), 400
+    token = session.get('kobo_token')
+    if not token:
+        return jsonify({'available': False, 'error': "Non connecté à KoboToolbox."}), 400
+    instance = session.get('kobo_instance')
+    structure = get_asset_structure(token, uid, instance=instance)
+    if not structure.get('success'):
+        return jsonify({'available': True, 'error': structure.get('error', 'Lecture de la structure Kobo impossible.')})
+    name = (request.form.get('name') or '').strip()
+    return jsonify(ai_form_assist.suggest_multi_role(name, structure))
 
 
 def _enrich_tracked_district_reel(tracked):
