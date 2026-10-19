@@ -12,9 +12,17 @@ Kobo exporte parfois les champs regroupés (`begin_group`) avec un préfixe
 « groupe/champ » — _find_column() gère les deux cas (avec ou sans préfixe)
 puisqu'aucune soumission réelle n'a encore été observée pour trancher.
 """
+import re
 import pandas as pd
 from modules import reference_data as rd
 from modules import forms_registry
+
+# Convention PHAKTS : le champ "Autre, précisez" compagnon d'un select_one
+# reprend le nom du champ principal SANS son suffixe de type (__X, __B,
+# __Z, __1D...), avec "_Autre__Z" accolé à la place — ex.
+# Acteur_SPAD__Structure__X -> Acteur_SPAD__Structure_Autre__Z (pas
+# Acteur_SPAD__Structure__X_Autre__Z). Utilisé par named_roster_detail().
+_PHAKTS_TYPE_SUFFIX = re.compile(r'__[A-Za-z0-9]+$')
 
 
 def form_fields(form_code):
@@ -439,7 +447,8 @@ def named_roster_detail(form, df):
             sub = sub.iloc[0:0]
 
     field_col = find_column(sub, field) if sub is not None else None
-    autre_col = find_column(sub, field + '_Autre__Z') if sub is not None else None
+    autre_field = _PHAKTS_TYPE_SUFFIX.sub('', field) + '_Autre__Z'
+    autre_col = find_column(sub, autre_field) if sub is not None else None
     field_vals = sub[field_col].astype(str).str.strip().str.lower() if field_col is not None else None
     autre_vals = sub[autre_col].astype(str).str.strip().str.lower() if autre_col is not None else None
 
