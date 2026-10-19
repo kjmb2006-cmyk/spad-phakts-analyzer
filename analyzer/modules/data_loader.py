@@ -162,6 +162,17 @@ def get_var_types(df: pd.DataFrame) -> dict:
 
 
 def summarize_dataframe(df: pd.DataFrame) -> dict:
+    """Résumé stocké tel quel dans session['data_meta'] — donc dans le cookie
+    de session Flask, limité à ~4 Ko par les navigateurs. 'columns' (la liste
+    complète des noms de colonnes) n'est lue nulle part dans le code mais
+    gonflait ce résumé bien au-delà de cette limite dès qu'un formulaire a
+    beaucoup de colonnes à noms longs (ex. RAA Phase 1 : 292 colonnes
+    préfixées par groupe, certaines > 70 caractères) — le navigateur rejette
+    alors silencieusement le cookie, donc TOUTE la session (data_path,
+    kobo_uid...) reste bloquée sur son état précédent malgré une
+    synchronisation signalée comme réussie (cas réel : tableau de bord
+    "Suivi d'un formulaire" resté bloqué sur d'anciennes données après
+    plusieurs synchronisations manifestement réussies)."""
     var_types = get_var_types(df)
     counts = {t: 0 for t in ['categorielle', 'continue', 'binaire', 'date', 'texte_libre']}
     for t in var_types.values():
@@ -177,7 +188,6 @@ def summarize_dataframe(df: pd.DataFrame) -> dict:
         'n_date':        counts['date'],
         'missing':       missing,
         'missing_pct':   round(missing / total_cells * 100, 1) if total_cells > 0 else 0,
-        'columns':       df.columns.tolist(),
     }
 
 
