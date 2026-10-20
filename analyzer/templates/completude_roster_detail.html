@@ -32,6 +32,7 @@
             {% if nat.statut == 'cible' %}text-success
             {% elif nat.statut == 'exces' %}text-warning
             {% elif nat.statut == 'en_cours' %}text-warning
+            {% elif nat.statut == 'critique' %}text-danger
             {% elif nat.statut == 'verifier' %}text-danger
             {% else %}text-muted{% endif %}">
             {{ nat.recu }} / {{ nat.cible if nat.cible is not none else '—' }}
@@ -42,6 +43,7 @@
               {% if nat.statut == 'cible' %}bg-success
               {% elif nat.statut == 'exces' %}bg-warning
               {% elif nat.statut == 'en_cours' %}bg-warning
+              {% elif nat.statut == 'critique' %}bg-danger
               {% elif nat.statut == 'verifier' %}bg-danger
               {% else %}bg-secondary{% endif %}"
               style="width:{{ [nat.taux, 100]|min }}%"></div>
@@ -85,7 +87,7 @@
               {% set cell = d.par_role.get(f.code, {'recu':0,'cible':none,'statut':'inconnu'}) %}
               <td class="text-center">
                 {% if cell.cible and cell.cible > 1 %}
-                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero'))) }}"
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else ('critique' if cell.statut == 'critique' else 'zero')))) }}"
                       style="font-size:.68rem;padding:2px 6px">{{ cell.recu }}/{{ cell.cible }}</span>
                 {% elif cell.recu and cell.recu > 0 %}
                 <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 6px">
@@ -97,7 +99,7 @@
               </td>
               {% endfor %}
               <td class="text-center">
-                <span class="status-pill status-pill--{{ 'cible' if d.total_statut == 'cible' else ('exces' if d.total_statut == 'exces' else ('en-cours' if d.total_statut == 'en_cours' else ('verifier' if d.total_statut == 'verifier' else 'zero'))) }}"
+                <span class="status-pill status-pill--{{ 'cible' if d.total_statut == 'cible' else ('exces' if d.total_statut == 'exces' else ('en-cours' if d.total_statut == 'en_cours' else ('verifier' if d.total_statut == 'verifier' else ('critique' if d.total_statut == 'critique' else 'zero')))) }}"
                       style="font-size:.7rem;padding:2px 8px">
                   {{ d.total_recu }}/{{ d.total_cible }}{% if d.total_taux is not none %} · {{ d.total_taux }} %{% endif %}
                 </span>

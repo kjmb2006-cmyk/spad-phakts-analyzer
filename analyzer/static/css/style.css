@@ -9,6 +9,7 @@
   --teal:          #17A589;
   --teal-dark:     #148f77;
   --orange:        #E67E22;
+  --yellow:        #D4AC0D;
   --red:           #C0392B;
   --bg:            #F0F4F8;
   --card-bg:       #ffffff;
@@ -258,11 +259,12 @@ body {
   width: 4px; height: 100%;
   border-radius: 12px 0 0 12px;
 }
-.stat-card-v.kpi-primary::before { background: #1A5276; }
-.stat-card-v.kpi-success::before { background: #198754; }
-.stat-card-v.kpi-warning::before { background: #E67E22; }
-.stat-card-v.kpi-exces::before   { background: #D35400; }
-.stat-card-v.kpi-info::before    { background: #0dcaf0; }
+.stat-card-v.kpi-primary::before  { background: #1A5276; }
+.stat-card-v.kpi-success::before  { background: #198754; }
+.stat-card-v.kpi-warning::before  { background: var(--yellow); }
+.stat-card-v.kpi-exces::before    { background: #D35400; }
+.stat-card-v.kpi-critique::before { background: var(--red); }
+.stat-card-v.kpi-info::before     { background: #0dcaf0; }
 
 .card .badge {
   font-weight: 600;
@@ -616,8 +618,10 @@ body {
 }
 .status-pill--zero       { background: #F1F3F5; color: #718096; }
 .status-pill--zero::before       { background: #A0AEC0; }
-.status-pill--en-cours   { background: #FEF3E2; color: #B7620A; }
-.status-pill--en-cours::before   { background: var(--orange); }
+.status-pill--critique   { background: #FCEAEA; color: #A32E2E; }
+.status-pill--critique::before   { background: var(--red); }
+.status-pill--en-cours   { background: #FCF6DC; color: #8A6D00; }
+.status-pill--en-cours::before   { background: var(--yellow); }
 .status-pill--cible      { background: #EAF5EE; color: #1E7A46; }
 .status-pill--cible::before      { background: #2E7D4F; }
 .status-pill--exces      { background: #FCEADA; color: #AD4E0A; }
@@ -640,7 +644,8 @@ body {
   transition: width .3s ease;
 }
 .progress-fill.is-zero      { background: #CBD5E0; }
-.progress-fill.is-en-cours  { background: var(--orange); }
+.progress-fill.is-critique  { background: var(--red); }
+.progress-fill.is-en-cours  { background: var(--yellow); }
 .progress-fill.is-cible     { background: #2E7D4F; }
 .progress-fill.is-exces     { background: #D35400; }
 .progress-fill.is-verifier  { background: var(--red); }

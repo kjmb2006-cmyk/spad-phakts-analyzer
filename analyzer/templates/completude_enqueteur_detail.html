@@ -44,7 +44,7 @@
               <td class="text-center">
                 {% if not cell or cell.statut == 'inconnu' %}<span class="text-muted small">—</span>
                 {% else %}
-                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero'))) }}"
+                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else ('critique' if cell.statut == 'critique' else 'zero')))) }}"
                       style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
                   {{ cell.recu }} soum.{% if cell.taux is not none %} · {{ cell.taux }} %{% endif %}
                 </span>

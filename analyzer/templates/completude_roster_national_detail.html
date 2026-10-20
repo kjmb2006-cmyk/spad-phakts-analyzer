@@ -29,6 +29,7 @@
             {% if nat.statut == 'cible' %}text-success
             {% elif nat.statut == 'exces' %}text-warning
             {% elif nat.statut == 'en_cours' %}text-warning
+            {% elif nat.statut == 'critique' %}text-danger
             {% elif nat.statut == 'verifier' %}text-danger
             {% else %}text-muted{% endif %}">
             {{ nat.recu }} / {{ nat.cible }}
@@ -40,6 +41,7 @@
                 {% if nat.statut == 'cible' %}bg-success
                 {% elif nat.statut == 'exces' %}bg-warning
                 {% elif nat.statut == 'en_cours' %}bg-warning
+                {% elif nat.statut == 'critique' %}bg-danger
                 {% elif nat.statut == 'verifier' %}bg-danger
                 {% else %}bg-secondary{% endif %}"
                 style="width:{{ [nat.taux, 100]|min }}%"></div>
@@ -102,6 +104,7 @@
                     {% if e.statut == 'cible' %}bg-success
                     {% elif e.statut == 'exces' %}bg-warning
                     {% elif e.statut == 'en_cours' %}bg-warning
+                    {% elif e.statut == 'critique' %}bg-danger
                     {% elif e.statut == 'verifier' %}bg-danger
                     {% else %}bg-secondary{% endif %}"
                     style="width:{{ [e.taux, 100]|min }}%"></div>
@@ -120,6 +123,10 @@
                 {% elif e.statut == 'en_cours' %}
                 <span class="status-pill status-pill--en-cours" style="font-size:.7rem;padding:2px 10px">
                   En cours · {{ e.taux }} %
+                </span>
+                {% elif e.statut == 'critique' %}
+                <span class="status-pill status-pill--critique" style="font-size:.7rem;padding:2px 10px">
+                  Critique · {{ e.taux }} %
                 </span>
                 {% elif e.statut == 'verifier' %}
                 <span class="status-pill status-pill--verifier" style="font-size:.7rem;padding:2px 10px">
@@ -140,7 +147,7 @@
               <td class="text-center">{{ data.national.recu }} / {{ data.national.cible }}</td>
               <td></td>
               <td class="text-center">
-                <span class="status-pill status-pill--{{ 'cible' if data.national.statut == 'cible' else ('exces' if data.national.statut == 'exces' else ('en-cours' if data.national.statut == 'en_cours' else ('verifier' if data.national.statut == 'verifier' else 'zero'))) }}"
+                <span class="status-pill status-pill--{{ 'cible' if data.national.statut == 'cible' else ('exces' if data.national.statut == 'exces' else ('en-cours' if data.national.statut == 'en_cours' else ('verifier' if data.national.statut == 'verifier' else ('critique' if data.national.statut == 'critique' else 'zero')))) }}"
                       style="font-size:.7rem;padding:2px 10px">
                   {% if data.national.taux is not none %}{{ data.national.taux }} %{% else %}—{% endif %}
                 </span>

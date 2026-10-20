@@ -89,8 +89,8 @@
   const historique     = {{ historique | tojson }};
   const formCodes      = {{ form_codes | tojson }};
 
-  const STATUT_COLOR = { zero: '#A0AEC0', en_cours: '#E67E22', cible: '#2E7D4F', exces: '#D35400', verifier: '#C0392B' };
-  const STATUT_LABEL = { zero: '0 %', en_cours: 'En cours', cible: 'Cible atteinte', exces: 'Dépassement', verifier: 'À vérifier' };
+  const STATUT_COLOR = { zero: '#A0AEC0', critique: '#C0392B', en_cours: '#D4AC0D', cible: '#2E7D4F', exces: '#D35400', verifier: '#C0392B' };
+  const STATUT_LABEL = { zero: '0 %', critique: 'Critique', en_cours: 'En cours', cible: 'Cible atteinte', exces: 'Dépassement', verifier: 'À vérifier' };
   const cfg = { responsive: true, displaylogo: false };
 
   function drawDistrictChart(formCode) {

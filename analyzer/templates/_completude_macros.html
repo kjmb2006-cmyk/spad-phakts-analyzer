@@ -3,15 +3,16 @@
   {% for code in form_codes %}
   {% set r = forms.get(code, {'recu': 0, 'cible': None, 'taux': none, 'statut': 'inconnu'}) %}
   <div class="col-md-6 col-lg-4">
-    <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'exces' %}kpi-exces{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+    <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'exces' %}kpi-exces{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'critique' %}kpi-critique{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
       <h6 class="mb-2 fw-semibold" style="font-size:.82rem">{{ code }} — {{ form_labels[code] }}</h6>
       <div class="d-flex align-items-baseline gap-2 mb-1">
         <span class="stat-value-v" style="font-size:1.4rem">{{ r.recu }}</span>
         <span class="text-muted small">/ {{ r.cible if r.cible is not none else '—' }}</span>
       </div>
-      <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('exces' if r.statut == 'exces' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero'))) }}">
+      <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('exces' if r.statut == 'exces' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else ('critique' if r.statut == 'critique' else 'zero')))) }}">
         {% if r.statut == 'inconnu' %}Non calculé
         {% elif r.statut == 'zero' %}0 %
+        {% elif r.statut == 'critique' %}Critique · {{ r.taux }} %
         {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
         {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
         {% elif r.statut == 'exces' %}Dépassement · {{ r.taux }} %

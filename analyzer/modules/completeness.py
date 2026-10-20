@@ -106,15 +106,19 @@ def find_column(df, field_name):
 
 def status_for(recu, cible, is_floor=False):
     """Statut d'un couple (reçu, cible), cohérent avec le vocabulaire déjà
-    utilisé dans l'UI (status-pill : zero / en_cours / cible / exces /
-    verifier).
+    utilisé dans l'UI (status-pill : zero / critique / en_cours / cible /
+    exces / verifier) — un dégradé complet de 0 % à 200 %+ :
+      zero       recu == 0 (aucune soumission)
+      critique   0 % < taux ≤ 50 %   (rouge — très en retard)
+      en_cours   50 % < taux < 100 % (jaune — en cours)
+      cible      taux == 100 %       (vert — cible atteinte)
+      exces      100 % < taux < 200 %(orange — dépassement modéré)
+      verifier   taux ≥ 200 %        (rouge — doublons potentiels)
 
-    'exces' (101-199 % de la cible) est distinct de 'cible' (exactement
-    100 %) et de 'verifier' (≥ 200 %, doublons potentiels) : un léger
-    dépassement est normal (ex. un enquêteur de plus affecté à un district)
-    et ne justifie pas la même alerte qu'un doublon suspecté, mais doit
-    rester visuellement signalé plutôt que confondu avec une cible pile
-    atteinte (cas réel signalé)."""
+    'exces' et 'critique' existent pour qu'un dépassement modéré ou un
+    retard marqué restent visuellement distincts d'une cible pile atteinte
+    ou d'un simple démarrage — sans se confondre non plus avec 'verifier'
+    (doublon suspecté) côté dépassement (cas réel signalé)."""
     if not cible:
         return 'zero' if not recu else 'suivi'
     if not recu:
@@ -128,7 +132,9 @@ def status_for(recu, cible, is_floor=False):
         return 'exces'  # dépassement modéré (101-199 %) — signalé, pas une anomalie
     if ratio >= 1:
         return 'cible'
-    return 'en_cours'
+    if ratio > 0.5:
+        return 'en_cours'  # 51-99 %
+    return 'critique'  # 0 % exclu (statut 'zero' séparé) à 50 %
 
 
 def etablissement_completeness(ref, form_code, df):
