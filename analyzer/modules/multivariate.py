@@ -99,7 +99,12 @@ def run_pca(df: pd.DataFrame, variables: list, n_components: int = 2) -> dict:
                              height=360, plot_bgcolor='white', paper_bgcolor='white',
                              font=dict(family='Inter, sans-serif'),
                              yaxis_title='Variance expliquée (%)',
-                             legend=dict(orientation='h', y=1.1))
+                             # Marge haute agrandie pour que le titre et la légende horizontale
+                             # (par défaut superposés sans elle, cas réel signalé) tiennent chacun
+                             # dans leur propre bande au-dessus de la zone de tracé.
+                             margin=dict(t=90),
+                             legend=dict(orientation='h', yanchor='bottom', y=1.02,
+                                         xanchor='center', x=0.5))
 
     # Biplot (F1 × F2)
     scores_df = pd.DataFrame(scores[:, :2], columns=['F1', 'F2'])
