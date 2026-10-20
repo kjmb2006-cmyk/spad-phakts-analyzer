@@ -261,6 +261,7 @@ body {
 .stat-card-v.kpi-primary::before { background: #1A5276; }
 .stat-card-v.kpi-success::before { background: #198754; }
 .stat-card-v.kpi-warning::before { background: #E67E22; }
+.stat-card-v.kpi-exces::before   { background: #D35400; }
 .stat-card-v.kpi-info::before    { background: #0dcaf0; }
 
 .card .badge {
@@ -619,6 +620,8 @@ body {
 .status-pill--en-cours::before   { background: var(--orange); }
 .status-pill--cible      { background: #EAF5EE; color: #1E7A46; }
 .status-pill--cible::before      { background: #2E7D4F; }
+.status-pill--exces      { background: #FCEADA; color: #AD4E0A; }
+.status-pill--exces::before      { background: #D35400; }
 .status-pill--verifier   { background: #FCEAEA; color: #A32E2E; }
 .status-pill--verifier::before   { background: var(--red); }
 
@@ -639,6 +642,7 @@ body {
 .progress-fill.is-zero      { background: #CBD5E0; }
 .progress-fill.is-en-cours  { background: var(--orange); }
 .progress-fill.is-cible     { background: #2E7D4F; }
+.progress-fill.is-exces     { background: #D35400; }
 .progress-fill.is-verifier  { background: var(--red); }
 
 /* ── Chips de filtre (région / district / statut) ─────── */

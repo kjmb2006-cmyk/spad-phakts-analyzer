@@ -106,7 +106,15 @@ def find_column(df, field_name):
 
 def status_for(recu, cible, is_floor=False):
     """Statut d'un couple (reçu, cible), cohérent avec le vocabulaire déjà
-    utilisé dans l'UI (status-pill : zero / en_cours / cible / verifier)."""
+    utilisé dans l'UI (status-pill : zero / en_cours / cible / exces /
+    verifier).
+
+    'exces' (101-199 % de la cible) est distinct de 'cible' (exactement
+    100 %) et de 'verifier' (≥ 200 %, doublons potentiels) : un léger
+    dépassement est normal (ex. un enquêteur de plus affecté à un district)
+    et ne justifie pas la même alerte qu'un doublon suspecté, mais doit
+    rester visuellement signalé plutôt que confondu avec une cible pile
+    atteinte (cas réel signalé)."""
     if not cible:
         return 'zero' if not recu else 'suivi'
     if not recu:
@@ -116,6 +124,8 @@ def status_for(recu, cible, is_floor=False):
         return 'cible'  # F07 : cible = plancher, la dépasser est normal
     if ratio >= 2:
         return 'verifier'  # doublons potentiels
+    if ratio > 1:
+        return 'exces'  # dépassement modéré (101-199 %) — signalé, pas une anomalie
     if ratio >= 1:
         return 'cible'
     return 'en_cours'

@@ -150,7 +150,7 @@
               <td class="small fw-semibold">{{ g.groupe }}</td>
               <td class="text-center small">{{ g.recu }} / {{ g.cible }}</td>
               <td class="text-center">
-                <span class="status-pill status-pill--{{ 'cible' if g.statut == 'cible' else ('en-cours' if g.statut == 'en_cours' else ('verifier' if g.statut == 'verifier' else 'zero')) }}">
+                <span class="status-pill status-pill--{{ 'cible' if g.statut == 'cible' else ('exces' if g.statut == 'exces' else ('en-cours' if g.statut == 'en_cours' else ('verifier' if g.statut == 'verifier' else 'zero'))) }}">
                   {% if g.taux is not none %}{{ g.taux }} %{% else %}{{ g.recu }}{% endif %}
                 </span>
               </td>
@@ -187,7 +187,7 @@
               {% if groupes %}<td class="small text-muted">{{ u.groupe or '—' }}</td>{% endif %}
               <td class="text-center small">{{ u.recu }} / {{ u.cible }}</td>
               <td class="text-center">
-                <span class="status-pill status-pill--{{ 'cible' if u.statut == 'cible' else ('en-cours' if u.statut == 'en_cours' else ('verifier' if u.statut == 'verifier' else 'zero')) }}"
+                <span class="status-pill status-pill--{{ 'cible' if u.statut == 'cible' else ('exces' if u.statut == 'exces' else ('en-cours' if u.statut == 'en_cours' else ('verifier' if u.statut == 'verifier' else 'zero'))) }}"
                       style="font-size:.68rem;padding:2px 8px">
                   {% if u.taux is not none %}{{ u.taux }} %{% else %}{{ u.recu }}{% endif %}
                 </span>

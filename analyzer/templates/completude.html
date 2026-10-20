@@ -145,7 +145,7 @@
     {% set rd = roster_data.get(f.code, {}) %}
     {% set nat = rd.get('national', {}) %}
     <div class="col-md-6 col-lg-4">
-      <div class="stat-card-v {% if nat.get('statut') == 'cible' %}kpi-success{% elif nat.get('statut') == 'en_cours' %}kpi-warning{% elif nat.get('statut') == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+      <div class="stat-card-v {% if nat.get('statut') == 'cible' %}kpi-success{% elif nat.get('statut') == 'exces' %}kpi-exces{% elif nat.get('statut') == 'en_cours' %}kpi-warning{% elif nat.get('statut') == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
             {{ f.code }} — {{ f.label }}
@@ -161,14 +161,15 @@
         </div>
         {% if nat.taux is not none %}
         <div class="progress-track mb-2">
-          <div class="progress-fill {% if nat.statut == 'cible' %}is-cible{% elif nat.statut == 'en_cours' %}is-en-cours{% else %}is-zero{% endif %}"
+          <div class="progress-fill {% if nat.statut == 'cible' %}is-cible{% elif nat.statut == 'exces' %}is-exces{% elif nat.statut == 'en_cours' %}is-en-cours{% elif nat.statut == 'verifier' %}is-verifier{% else %}is-zero{% endif %}"
                style="width:{{ [nat.taux, 100]|min }}%"></div>
         </div>
         {% endif %}
-        <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero')) }}">
+        <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('exces' if nat.statut == 'exces' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero'))) }}">
           {% if nat.statut == 'zero' %}0 %
           {% elif nat.statut == 'en_cours' %}En cours{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
           {% elif nat.statut == 'cible' %}Cible atteinte{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'exces' %}Dépassement · {{ nat.taux }} %
           {% elif nat.statut == 'verifier' %}À vérifier · {{ nat.taux }} %
           {% else %}Non calculé
           {% endif %}
@@ -198,7 +199,7 @@
     {% set data = named_roster_data.get(f.code, {}) %}
     {% set nat = data.get('national', {}) %}
     <div class="col-md-6 col-lg-4">
-      <div class="stat-card-v {% if nat.get('statut') == 'cible' %}kpi-success{% elif nat.get('statut') == 'en_cours' %}kpi-warning{% elif nat.get('statut') == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+      <div class="stat-card-v {% if nat.get('statut') == 'cible' %}kpi-success{% elif nat.get('statut') == 'exces' %}kpi-exces{% elif nat.get('statut') == 'en_cours' %}kpi-warning{% elif nat.get('statut') == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
             {{ f.code }} — {{ f.label }}
@@ -212,14 +213,15 @@
         </div>
         {% if nat.taux is not none %}
         <div class="progress-track mb-2">
-          <div class="progress-fill {% if nat.statut == 'cible' %}is-cible{% elif nat.statut == 'en_cours' %}is-en-cours{% else %}is-zero{% endif %}"
+          <div class="progress-fill {% if nat.statut == 'cible' %}is-cible{% elif nat.statut == 'exces' %}is-exces{% elif nat.statut == 'en_cours' %}is-en-cours{% elif nat.statut == 'verifier' %}is-verifier{% else %}is-zero{% endif %}"
                style="width:{{ [nat.taux, 100]|min }}%"></div>
         </div>
         {% endif %}
-        <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero')) }}">
+        <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('exces' if nat.statut == 'exces' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero'))) }}">
           {% if nat.statut == 'zero' %}0 %
           {% elif nat.statut == 'en_cours' %}En cours{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
           {% elif nat.statut == 'cible' %}Cible atteinte{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'exces' %}Dépassement · {{ nat.taux }} %
           {% elif nat.statut == 'verifier' %}À vérifier · {{ nat.taux }} %
           {% else %}Non calculé
           {% endif %}
@@ -261,7 +263,7 @@
         <span class="text-muted small">Formulaire ajouté au registre après le dernier calcul — cliquez « Calculer la complétude » pour l'inclure.</span>
       </div>
       {% else %}
-      <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
+      <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'exces' %}kpi-exces{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">{{ code }} — {{ r.label }}</h6>
         </div>
@@ -271,15 +273,16 @@
         </div>
         {% if r.taux is not none %}
         <div class="progress-track mb-2">
-          <div class="progress-fill {% if r.statut == 'cible' %}is-cible{% elif r.statut == 'en_cours' %}is-en-cours{% elif r.statut == 'verifier' %}is-en-cours{% else %}is-zero{% endif %}"
+          <div class="progress-fill {% if r.statut == 'cible' %}is-cible{% elif r.statut == 'exces' %}is-exces{% elif r.statut == 'en_cours' %}is-en-cours{% elif r.statut == 'verifier' %}is-en-cours{% else %}is-zero{% endif %}"
                style="width:{{ [r.taux, 100] | min }}%"></div>
         </div>
         {% endif %}
-        <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero')) }}">
+        <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('exces' if r.statut == 'exces' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else 'zero'))) }}">
           {% if r.statut == 'inconnu' %}Non calculé
           {% elif r.statut == 'zero' %}0 %
           {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
           {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          {% elif r.statut == 'exces' %}Dépassement · {{ r.taux }} %
           {% elif r.statut == 'verifier' %}À vérifier · {{ r.taux }} %
           {% else %}{{ r.statut }}
           {% endif %}

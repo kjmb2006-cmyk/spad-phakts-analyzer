@@ -69,7 +69,7 @@
             <span class="text-muted fw-normal small ms-1">({{ form.code }})</span>
           </h6>
           {% if nat %}
-          <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero')) }}">
+          <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('exces' if nat.statut == 'exces' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else 'zero'))) }}">
             {{ nat.recu }} / {{ nat.cible }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
           </span>
           {% endif %}
@@ -85,6 +85,7 @@
             <div class="progress" style="height:8px">
               <div class="progress-bar
                 {% if nat.statut == 'cible' %}bg-success
+                {% elif nat.statut == 'exces' %}bg-warning
                 {% elif nat.statut == 'en_cours' %}bg-warning
                 {% elif nat.statut == 'verifier' %}bg-danger
                 {% else %}bg-secondary{% endif %}"
@@ -111,6 +112,8 @@
                     <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 8px">
                       <i class="bi bi-check-lg me-1"></i>Reçu
                     </span>
+                    {% elif e.statut == 'exces' %}
+                    <span class="status-pill status-pill--exces" style="font-size:.68rem;padding:2px 8px">{{ e.taux }} %</span>
                     {% elif e.statut == 'en_cours' %}
                     <span class="status-pill status-pill--en-cours" style="font-size:.68rem;padding:2px 8px">{{ e.taux }} %</span>
                     {% elif e.statut == 'verifier' %}

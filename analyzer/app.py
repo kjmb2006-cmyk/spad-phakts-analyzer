@@ -3587,7 +3587,7 @@ def completude_graphiques():
         flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
         return redirect(url_for('completude'))
 
-    statut_counts = {'zero': 0, 'en_cours': 0, 'cible': 0, 'verifier': 0}
+    statut_counts = {'zero': 0, 'en_cours': 0, 'cible': 0, 'exces': 0, 'verifier': 0}
     for r in cached.get('export', []):
         if r['statut'] in statut_counts:
             statut_counts[r['statut']] += 1

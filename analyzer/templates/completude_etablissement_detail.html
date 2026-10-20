@@ -35,7 +35,7 @@
             {% for code, cell in enqueteur.forms.items() %}
             <div class="col-6">
               <div class="small text-muted">{{ code }}</div>
-              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}">
+              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero'))) }}">
                 {{ cell.recu }} / {{ cell.cible if cell.cible is not none else '—' }}
               </span>
             </div>
@@ -60,7 +60,7 @@
             {% for code, cell in superviseur[1].forms.items() %}
             <div class="col-4">
               <div class="small text-muted">{{ code }}</div>
-              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero')) }}">
+              <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else 'zero'))) }}">
                 {{ cell.recu }} / {{ cell.cible if cell.cible is not none else '—' }}
               </span>
             </div>
