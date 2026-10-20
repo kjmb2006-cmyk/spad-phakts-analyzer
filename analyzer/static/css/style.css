@@ -266,6 +266,14 @@ body {
 .stat-card-v.kpi-critique::before { background: var(--red); }
 .stat-card-v.kpi-info::before     { background: #0dcaf0; }
 
+/* ── Équivalents Bootstrap pour le statut 'exces' (status_for()) ────────
+   bg-warning/text-warning (Bootstrap) servent déjà à 'en_cours' (jaune) ;
+   les réutiliser aussi pour 'exces' les confondait visuellement (108 %
+   rendu avec la même couleur que 75 %, cas réel signalé) — 'exces' a
+   besoin de sa PROPRE couleur (orange), distincte du jaune Bootstrap. */
+.text-exces { color: #D35400 !important; }
+.bg-exces   { background-color: #D35400 !important; }
+
 .card .badge {
   font-weight: 600;
   letter-spacing: .01em;

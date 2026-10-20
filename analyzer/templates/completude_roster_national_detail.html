@@ -27,7 +27,7 @@
           {% set nat = data.national %}
           <div class="display-6 fw-bold
             {% if nat.statut == 'cible' %}text-success
-            {% elif nat.statut == 'exces' %}text-warning
+            {% elif nat.statut == 'exces' %}text-exces
             {% elif nat.statut == 'en_cours' %}text-warning
             {% elif nat.statut == 'critique' %}text-danger
             {% elif nat.statut == 'verifier' %}text-danger
@@ -39,7 +39,7 @@
             <div class="progress" style="height:8px">
               <div class="progress-bar
                 {% if nat.statut == 'cible' %}bg-success
-                {% elif nat.statut == 'exces' %}bg-warning
+                {% elif nat.statut == 'exces' %}bg-exces
                 {% elif nat.statut == 'en_cours' %}bg-warning
                 {% elif nat.statut == 'critique' %}bg-danger
                 {% elif nat.statut == 'verifier' %}bg-danger
@@ -102,7 +102,7 @@
                 <div class="progress" style="height:8px">
                   <div class="progress-bar
                     {% if e.statut == 'cible' %}bg-success
-                    {% elif e.statut == 'exces' %}bg-warning
+                    {% elif e.statut == 'exces' %}bg-exces
                     {% elif e.statut == 'en_cours' %}bg-warning
                     {% elif e.statut == 'critique' %}bg-danger
                     {% elif e.statut == 'verifier' %}bg-danger
