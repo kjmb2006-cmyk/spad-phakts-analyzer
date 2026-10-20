@@ -48,6 +48,7 @@ from modules import completeness as cp
 from modules import projets as proj
 from modules import tendance
 from modules import completude_report
+from modules import completude_cache
 from modules import form_mapping
 from modules import accounts
 from modules import activity_log
@@ -1248,14 +1249,12 @@ def export_var_types_xlsx():
 @app.route('/data/reset')
 def reset_data():
     # Ne purge que les fichiers propres à CETTE session (data_path,
-    # child_path, completude_path) — jamais tout le dossier partagé
-    # UPLOAD_FOLDER. Avec plusieurs comptes Data actifs simultanément
-    # (voir modules/accounts.py), vider tous les completude_*.json du
-    # dossier effacerait aussi le calcul de complétude des AUTRES
-    # utilisateurs (et celui du script d'actualisation automatique,
-    # scripts/kobo_completude_refresh.py) — un « Effacer mes données »
-    # ne doit jamais avoir d'effet de bord sur une session tierce.
-    for key in ['data_path', 'child_path', 'completude_path']:
+    # child_path) — jamais le cache de Complétude nationale, désormais un
+    # fichier CANONIQUE partagé (voir modules/completude_cache.py), tenu à
+    # jour par le timer systemd pour tout le monde : un « Effacer mes
+    # données » individuel ne doit jamais faire disparaître le calcul des
+    # AUTRES utilisateurs.
+    for key in ['data_path', 'child_path']:
         path = session.get(key)
         if path and os.path.exists(path):
             try:
@@ -3167,32 +3166,20 @@ def suivi_analyser(uid):
 # modules/completeness.py, au regard du référentiel modules/reference_data.py.
 
 def _load_completude_cache():
-    """Relit le résultat de calcul depuis le fichier JSON référencé en session.
+    """Relit le cache canonique partagé (voir modules/completude_cache.py).
 
-    Les tables région/district (12 × 7 formulaires × plusieurs champs)
-    dépassent largement la limite d'un cookie de session Flask (~4 Ko) — donc,
-    comme pour le jeu de données analysé (session['data_path']), seul le
-    CHEMIN du fichier de résultat est stocké en session, jamais son contenu.
-
-    Si la session ne référence pas (ou plus) de fichier valide, retourne None
-    — l'utilisateur voit alors « Aucun calcul disponible » plutôt qu'un
-    résultat recalculé par quelqu'un d'autre. Un ancien filet de sécurité
-    retombait ici sur le fichier completude_*.json le plus récent du dossier
-    d'upload, quelle que soit sa provenance ; retiré car l'app tourne
-    désormais en web multi-rôles (Data / Invité, voir _kobo_credentials())
-    et non plus en usage mono-utilisateur local comme prévu à l'origine —
-    ce repli faisait apparaître à un utilisateur le calcul (potentiellement
-    périmé) d'un autre, sans sélection de formulaires "Suivi" correspondante
-    ni indice visuel du décalage (cas réel signalé).
-    """
-    path = session.get('completude_path')
-    if path and os.path.exists(path):
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return None
+    Historique : avant ce module, le résultat était stocké dans un fichier
+    par SESSION (chemin en cookie), avec un filet de sécurité "session ->
+    fichier le plus récent du dossier" retiré après un bug réel (une
+    session neuve affichait le calcul, potentiellement sans rapport, d'un
+    autre utilisateur). Ce risque ne s'applique pas au fichier canonique :
+    form_mapping.py (la correspondance SPAD -> Kobo) est déjà global, pas
+    par session — il n'existe donc jamais deux calculs "légitimement
+    différents" au même instant, seulement des instantanés plus ou moins
+    récents du même calcul, tenu à jour automatiquement toutes les 2 min
+    (scripts/kobo_completude_refresh.py + timer systemd) et rafraîchissable
+    immédiatement via le bouton « Calculer »."""
+    return completude_cache.load_cache(app.config['UPLOAD_FOLDER'])
 
 
 def _kobo_credentials():
@@ -3251,7 +3238,7 @@ def completude():
         form_labels=ref_data.FORM_LABELS,
         result=cached['national'] if cached else None,
         district_reel=district_reel,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
         mapping_erreurs=mapping_erreurs,
         mapping_avertissements=mapping_avertissements,
         roster_forms=[f for f in forms_registry.all_forms(include_inactive=False)
@@ -3282,7 +3269,7 @@ def completude_equipe_spad():
     return render_template(
         'completude_equipe_spad.html',
         forms=forms, named_roster=named_roster,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3300,7 +3287,7 @@ def completude_regions():
         'completude_table.html',
         title='Complétude par région', echelon='région',
         rows=cached['region'], form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3316,7 +3303,7 @@ def completude_districts():
         'completude_table.html',
         title='Complétude par district', echelon='district',
         rows=cached['district'], form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3331,7 +3318,7 @@ def completude_enqueteurs():
         'completude_table.html',
         title='Complétude par enquêteur', echelon='enquêteur', sous_titre_label='District',
         rows=cached['enqueteur'], form_codes=_completude_scope(cp.enqueteur_table_forms()), form_labels=ref_data.FORM_LABELS,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3346,7 +3333,7 @@ def completude_superviseurs():
         'completude_table.html',
         title='Complétude par superviseur', echelon='superviseur', sous_titre_label='District',
         rows=cached['superviseur'], form_codes=_completude_scope(cp.superviseur_table_forms()), form_labels=ref_data.FORM_LABELS,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3372,7 +3359,7 @@ def completude_enqueteur_detail(enq_code):
         enq_code=enq_code, enq=enq, etablissements=etablissements,
         form_codes=_completude_scope(cp.enqueteur_table_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3405,7 +3392,7 @@ def completude_superviseur_detail(sup_code):
         superviseur_etab_form_codes=[c for c in superviseur_forms if c in cp.etablissement_forms()],
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3449,7 +3436,7 @@ def completude_roster_detail(form_code):
         'completude_roster_detail.html',
         form=form, form_code=form_code, family=family_data,
         regions=regions,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3474,7 +3461,7 @@ def completude_roster_national_detail(form_code):
     return render_template(
         'completude_roster_national_detail.html',
         form=form, form_code=form_code, data=data,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3511,7 +3498,7 @@ def completude_region_detail(region_code):
         region_code=region_code, region=region, districts=districts,
         form_codes=_completude_scope(cp.geographic_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3541,7 +3528,7 @@ def completude_district_detail(district_code):
         enqueteur_form_codes=_completude_scope(cp.enqueteur_table_forms()), superviseur_form_codes=_completude_scope(cp.superviseur_table_forms()),
         form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3567,7 +3554,7 @@ def completude_etablissement_detail(etablissement_code):
         enqueteur_code=etab['enqueteur_code'], enqueteur=enqueteur, superviseur=superviseur,
         form_codes=_completude_scope(cp.etablissement_forms()), form_labels=ref_data.FORM_LABELS,
         anomalies_zero=zeros, anomalies_excess=excess,
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3585,7 +3572,7 @@ def completude_anomalies():
         'completude_anomalies.html',
         zeros=cached.get('anomalies_zero', []),
         excess=cached.get('anomalies_excess', []),
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3612,7 +3599,7 @@ def completude_graphiques():
         form_labels=ref_data.FORM_LABELS,
         statut_counts=statut_counts,
         historique=tendance.load_history(10),
-        computed_at=session.get('completude_computed_at'),
+        computed_at=(cached or {}).get('computed_at'),
     )
 
 
@@ -3675,7 +3662,7 @@ def completude_export_docx():
         return redirect(url_for('completude'))
     ref = ref_data.load()
     docx_bytes = completude_report.build_docx(
-        cached, ref, computed_at=session.get('completude_computed_at'))
+        cached, ref, computed_at=(cached or {}).get('computed_at'))
     buf = io.BytesIO(docx_bytes)
     return send_file(
         buf, as_attachment=True, download_name=_export_filename('docx'),
@@ -3987,66 +3974,24 @@ def completude_calculer():
         return redirect(url_for('completude'))
 
     ref = ref_data.load()
-    form_dataframes = {}
-    errors = []
-    for code, uid in mapping.items():
-        form = forms_registry.get(code)
-        if not form or not form.get('active', True):
-            # Code désactivé (ou supprimé) du registre, mais dont la
-            # correspondance Kobo n'a jamais été nettoyée (ex. un formulaire
-            # retiré de la collecte) — l'interroger quand même ne sert à
-            # rien et peut même échouer bruyamment (« Aucune soumission
-            # disponible ») pour un code qui n'apparaît de toute façon plus
-            # nulle part dans l'UI. Silencieusement ignoré, pas en erreur :
-            # ce n'est pas un échec, juste un résidu à ne pas calculer.
-            continue
-        # Les formulaires roster ont besoin de _submission_time/_submitted_by
-        # (normalement supprimés par clean_kobo_dataframe) pour compter les
-        # répondants distincts et dater la dernière soumission par district —
-        # voir modules/completeness.py::roster_by_district().
-        is_roster = form.get('grain') in ('enqueteur', 'superviseur')
-        keep_cols = ('_submission_time', '_submitted_by') if is_roster else ()
-        res = kobo_load_data(token, uid, instance=instance, keep_meta_cols=keep_cols)
-        if res.get('success'):
-            form_dataframes[code] = res['df']
-        else:
-            errors.append(f"{code} : {res.get('error', 'erreur inconnue')}")
+    # Même calcul, même fichier canonique que le rafraîchissement automatique
+    # toutes les 2 min (scripts/kobo_completude_refresh.py) — voir
+    # modules/completude_cache.py. Cliquer ici force juste un recalcul
+    # immédiat plutôt que d'attendre le prochain passage du timer, ex.
+    # juste après avoir changé la correspondance formulaire.
+    cache, errors, n_ok = completude_cache.build_cache(ref, token, instance, mapping)
+    if cache is None:
+        flash("Calcul impossible — erreurs : " + " · ".join(errors), 'danger')
+        return redirect(url_for('completude'))
 
-    # Calcul en une seule passe sur les données tirées — évite de retirer les
-    # mêmes formulaires depuis Kobo pour chaque vue (nationale/région/district).
-    # Résultat écrit sur disque (voir _load_completude_cache) : bien trop
-    # volumineux pour un cookie de session.
-    national = cp.national_summary(ref, form_dataframes)
-    cache = {
-        'national':       national,
-        'district':       cp.district_table(ref, form_dataframes),
-        'region':         cp.region_table(ref, form_dataframes),
-        'etablissement':  cp.etablissement_table(ref, form_dataframes),
-        'enqueteur':      cp.enqueteur_table(ref, form_dataframes),
-        'superviseur':    cp.superviseur_table(ref, form_dataframes),
-        'roster':         cp.all_roster_by_district(ref, form_dataframes),
-        'roster_families': cp.all_roster_families(ref, form_dataframes),
-        'named_roster':   cp.all_named_rosters(ref, form_dataframes),
-        'anomalies_zero':   cp.all_anomalies_zero(ref, form_dataframes),
-        'anomalies_excess': cp.all_anomalies_excess(ref, form_dataframes),
-        'export':           cp.export_rows(ref, form_dataframes),
-    }
-    tendance.add_snapshot(national)  # un point d'historique par jour calendaire (voir modules/tendance.py)
-    old_path = session.get('completude_path')
-    if old_path and os.path.exists(old_path):
-        try: os.remove(old_path)
-        except Exception: pass
-    fname = f"completude_{uuid.uuid4().hex[:8]}.json"
-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-    with open(save_path, 'w', encoding='utf-8') as f:
-        json.dump(cache, f, ensure_ascii=False)
-    session['completude_path'] = save_path
-    session['completude_computed_at'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    tendance.add_snapshot(cache['national'])  # un point d'historique par jour calendaire (voir modules/tendance.py)
+    computed_at = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    completude_cache.save_cache(cache, app.config['UPLOAD_FOLDER'], computed_at)
 
     if errors:
         flash("Calcul partiel — erreurs : " + " · ".join(errors), 'warning')
     else:
-        flash(f"Complétude calculée pour {len(form_dataframes)} formulaire(s).", 'success')
+        flash(f"Complétude calculée pour {n_ok} formulaire(s).", 'success')
     return redirect(url_for('completude'))
 
 
