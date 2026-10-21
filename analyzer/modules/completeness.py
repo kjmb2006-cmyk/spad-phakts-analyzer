@@ -294,6 +294,32 @@ def roster_by_district(form, df, ref):
             working = sub.copy()
             working['__district'] = working[d_col].astype(str).str.strip()
 
+            # Repli pour un acteur RÉGIONAL (motif DRS, RAA Phase 1) : le
+            # formulaire ne demande district_field qu'aux acteurs de niveau
+            # district (skip logic XLSForm) — un DRS le laisse vide et
+            # renseigne à la place sa région via un champ texte libre
+            # compagnon (voir region_fallback_field). Résolu vers l'unique
+            # district de cette région — le référentiel actuel n'en compte
+            # qu'un par région — en matchant le texte libre contre le CODE
+            # ou le NOM de région (insensible à la casse). Cas réel signalé :
+            # RAA_DRS avait 4 soumissions valides mais 0 affichées par
+            # district, alors que le total national les comptait bien.
+            region_fallback_field = form.get('region_fallback_field')
+            if region_fallback_field:
+                rf_col = find_column(working, region_fallback_field)
+                if rf_col is not None:
+                    region_lookup = {}
+                    for d_code, d in ref['districts'].items():
+                        r = ref['regions'].get(d['region_code'], {})
+                        for key in (d['region_code'], r.get('nom')):
+                            if key:
+                                region_lookup[str(key).strip().upper()] = d_code
+                    missing = ~working['__district'].isin(by_district.keys())
+                    resolved = (working.loc[missing, rf_col].astype(str).str.strip()
+                                .str.upper().map(region_lookup))
+                    working.loc[missing, '__district'] = resolved.combine_first(
+                        working.loc[missing, '__district'])
+
             if identity_field:
                 id_col = find_column(working, identity_field)
                 if id_col is not None:
