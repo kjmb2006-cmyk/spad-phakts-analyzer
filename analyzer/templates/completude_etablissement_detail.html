@@ -11,8 +11,10 @@
       {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
     </span>
     <div class="d-flex gap-2">
-      <a href="{{ url_for('completude_district_detail', district_code=etab.district_code) }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>District
+      <a href="{{ url_for('completude_district_detail', district_code=etab.district_code) }}"
+         onclick="smartBack('{{ url_for('completude_district_detail', district_code=etab.district_code) }}'); return false;"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Retour
       </a>
       <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">Vue nationale</a>
     </div>

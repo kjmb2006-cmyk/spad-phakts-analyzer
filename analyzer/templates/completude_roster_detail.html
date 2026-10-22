@@ -14,8 +14,10 @@
       {{ family.forms|length }} rôle(s) suivi(s) sur ce formulaire
       {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
     </span>
-    <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Complétude nationale
+    <a href="{{ url_for('completude') }}"
+       onclick="smartBack('{{ url_for('completude') }}'); return false;"
+       class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Retour
     </a>
   </div>
 

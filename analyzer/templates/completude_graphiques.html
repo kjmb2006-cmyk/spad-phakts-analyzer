@@ -19,8 +19,10 @@
       <a href="{{ url_for('completude_export_xlsx') }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-file-earmark-excel me-1"></i>Export XLSX
       </a>
-      <a href="{{ url_for('completude') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Vue nationale
+      <a href="{{ url_for('completude') }}"
+         onclick="smartBack('{{ url_for('completude') }}'); return false;"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Retour
       </a>
     </div>
   </div>

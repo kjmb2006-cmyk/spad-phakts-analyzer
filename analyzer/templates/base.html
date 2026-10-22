@@ -524,6 +524,21 @@ document.addEventListener('DOMContentLoaded', function () {
   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
   tooltipTriggerList.forEach(function (el) { new bootstrap.Tooltip(el) })
 });
+
+// Boutons « Retour » des pages de détail : revient à la page réellement
+// visitée avant (comportement attendu d'un bouton "retour"), pas à une
+// destination fixe dans la hiérarchie (ex. district -> toujours "sa"
+// région, même si on venait de la liste des districts — cas réel signalé).
+// Repli sur `fallbackUrl` (la destination hiérarchique d'origine) quand il
+// n'y a pas d'historique exploitable dans cet onglet (lien direct, nouvel
+// onglet...), pour ne jamais laisser le bouton sans effet.
+function smartBack(fallbackUrl) {
+  if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.origin) === 0) {
+    window.history.back();
+  } else {
+    window.location.href = fallbackUrl;
+  }
+}
 </script>
 
 {% block scripts %}{% endblock %}
