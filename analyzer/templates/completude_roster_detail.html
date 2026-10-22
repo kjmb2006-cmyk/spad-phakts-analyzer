@@ -85,16 +85,21 @@
               </td>
               {% for f in family.forms %}
               {% set cell = d.par_role.get(f.code, {'recu':0,'cible':none,'statut':'inconnu'}) %}
+              {% set cell_pill = 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else ('critique' if cell.statut == 'critique' else 'zero')))) %}
               <td class="text-center">
-                {% if cell.cible and cell.cible > 1 %}
-                <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else ('critique' if cell.statut == 'critique' else 'zero')))) }}"
-                      style="font-size:.68rem;padding:2px 6px">{{ cell.recu }}/{{ cell.cible }}</span>
-                {% elif cell.recu and cell.recu > 0 %}
+                {% if cell.statut in ('zero', 'inconnu') %}
+                <span class="text-muted small">Attendu</span>
+                {% elif cell.statut == 'cible' and cell.cible and cell.cible <= 1 %}
                 <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 6px">
                   <i class="bi bi-check-lg"></i>Reçu
                 </span>
                 {% else %}
-                <span class="text-muted small">Attendu</span>
+                {#- cible > 1 (ex. ENQ) OU cible <= 1 mais statut anormal (ex. DRS/DDS/SUP
+                   à 2+ reçus, un doublon potentiel) : le nombre réel doit rester visible,
+                   jamais réduit au badge "Reçu" générique — cas réel signalé (DDS à 3/1
+                   sur un district s'affichait comme n'importe quel 1/1 normal). -#}
+                <span class="status-pill status-pill--{{ cell_pill }}"
+                      style="font-size:.68rem;padding:2px 6px">{{ cell.recu }}/{{ cell.cible }}</span>
                 {% endif %}
               </td>
               {% endfor %}
