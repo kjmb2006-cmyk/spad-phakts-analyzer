@@ -578,6 +578,32 @@ def named_roster_completeness(form, df):
     return [named_roster_detail(form, df)['national']]
 
 
+def named_roster_anomalies_zero(form, df):
+    """Entités à 0 soumission pour un formulaire roster national (motif
+    UGP/Programmes) — même lacune que roster_anomalies_zero() pour le
+    roster géographique : form_completeness() ne renvoie qu'UN agrégat
+    national pour ces formulaires, donc anomalies_zero() seule ne peut
+    rien détecter par entité (ex. une entité jamais remplie reste invisible
+    tant que le total national reste non nul)."""
+    detail = named_roster_detail(form, df)
+    return [
+        {'unite': e['label'], 'cible': e['cible']}
+        for e in detail['entries'] if e['cible'] and e['recu'] == 0
+    ]
+
+
+def named_roster_anomalies_excess(form, df, threshold=2.0):
+    """Entités en excès (doublons potentiels) pour un formulaire roster
+    national — même raisonnement que named_roster_anomalies_zero()
+    ci-dessus."""
+    detail = named_roster_detail(form, df)
+    return [
+        {'unite': e['label'], 'recu': e['recu'], 'cible': e['cible'],
+         'ratio': round(e['recu'] / e['cible'], 2)}
+        for e in detail['entries'] if e['cible'] and e['recu'] >= threshold * e['cible']
+    ]
+
+
 def all_named_rosters(ref, form_dataframes):
     """Calcule named_roster_detail() pour tous les formulaires roster
     national actifs (motif UGP/Programmes)."""
@@ -857,13 +883,44 @@ def anomalies_excess(ref, form_code, df, threshold=2.0):
 
 def export_rows(ref, form_dataframes):
     """Grain établissement × formulaire (F5/F6/F7/F8/F02) et district ×
-    formulaire (F01/F07) — une ligne par couple, pour l'export CSV/XLSX.
-    N'inclut que les formulaires effectivement mappés (comme les autres vues)."""
+    formulaire (F01/F07, roster enquêteur/superviseur) — une ligne par
+    couple, pour l'export CSV/XLSX et pour la vue Graphiques (qui en tire
+    le taux par district et la répartition des statuts). N'inclut que les
+    formulaires effectivement mappés (comme les autres vues)."""
     rows = []
     for code in rd.FORM_CODES:
         df = form_dataframes.get(code)
         if df is None:
             continue
+        form = forms_registry.get(code)
+
+        if form and form.get('grain') in ('enqueteur', 'superviseur'):
+            # Un formulaire roster partage son UID Kobo avec les autres rôles
+            # de la même famille (DRS/DDS/Superviseur/Enquêteurs) — passer
+            # par district_completeness() ici comptait TOUTES les lignes du
+            # df par district sans jamais appliquer role_filter, mélangeant
+            # les 4 rôles (même bug déjà corrigé dans district_table(), que
+            # cette fonction n'avait pas reçu — cas réel : export/graphiques
+            # montraient le même total gonflé pour RAA_DRS/DDS/SUP/ENQ).
+            result = roster_by_district(form, df, ref)
+            for d_code, cell in result['by_district'].items():
+                d = ref['districts'].get(d_code, {})
+                rows.append({
+                    'region':        ref['regions'].get(d.get('region_code'), {}).get('nom', d.get('region_code')),
+                    'district':      d.get('nom', d_code),
+                    'unite':         d.get('nom', d_code),
+                    'formulaire':    code,
+                    'formulaire_label': rd.FORM_LABELS[code],
+                    'cible': cell['cible'], 'recu': cell['recu'], 'taux': cell['taux'], 'statut': cell['statut'],
+                })
+            continue
+
+        if form and form.get('grain') == 'roster_national':
+            # Motif UGP/Programmes : cible par entité nommée, aucune
+            # dimension région/district/établissement à exporter ici (voir
+            # named_roster_detail() et /completude/roster-national/<code>).
+            continue
+
         if code in etablissement_forms():
             for r in etablissement_completeness(ref, code, df):
                 rows.append({
@@ -898,7 +955,9 @@ def all_anomalies_zero(ref, form_dataframes):
     Les formulaires roster (grain enquêteur/superviseur) passent par
     roster_anomalies_zero() — voir sa docstring : form_completeness() ne
     leur donne jamais de dimension district, donc anomalies_zero() seule
-    ne pouvait rien y détecter."""
+    ne pouvait rien y détecter. Les formulaires roster national (UGP/
+    Programmes) passent de même par named_roster_anomalies_zero(), par
+    entité plutôt que par district."""
     out = []
     for code in rd.FORM_CODES:
         df = form_dataframes.get(code)
@@ -912,6 +971,15 @@ def all_anomalies_zero(ref, form_dataframes):
                     'unite': r['unite'],
                     'etablissement_code': None,
                     'district_code': r['district_code'], 'region_code': r['region_code'],
+                    'cible': r['cible'],
+                })
+            continue
+        if form and form.get('grain') == 'roster_national':
+            for r in named_roster_anomalies_zero(form, df):
+                out.append({
+                    'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
+                    'unite': r['unite'],
+                    'etablissement_code': None, 'district_code': None, 'region_code': None,
                     'cible': r['cible'],
                 })
             continue
@@ -931,7 +999,8 @@ def all_anomalies_excess(ref, form_dataframes, threshold=2.0):
     Les formulaires à cible plancher (motif F07 — somme des décès SIG) sont
     exclus : la dépasser est normal, pas une anomalie (voir rd.is_floor()).
     Les formulaires roster passent par roster_anomalies_excess() — voir
-    all_anomalies_zero() ci-dessus pour la même lacune côté district."""
+    all_anomalies_zero() ci-dessus pour la même lacune côté district (et
+    named_roster_anomalies_excess() pour le roster national, par entité)."""
     out = []
     for code in rd.FORM_CODES:
         if rd.is_floor(code):
@@ -947,6 +1016,15 @@ def all_anomalies_excess(ref, form_dataframes, threshold=2.0):
                     'unite': r['unite'],
                     'etablissement_code': None,
                     'district_code': r['district_code'], 'region_code': r['region_code'],
+                    'recu': r['recu'], 'cible': r['cible'], 'ratio': r['ratio'],
+                })
+            continue
+        if form and form.get('grain') == 'roster_national':
+            for r in named_roster_anomalies_excess(form, df, threshold=threshold):
+                out.append({
+                    'formulaire': code, 'formulaire_label': rd.FORM_LABELS[code],
+                    'unite': r['unite'],
+                    'etablissement_code': None, 'district_code': None, 'region_code': None,
                     'recu': r['recu'], 'cible': r['cible'], 'ratio': r['ratio'],
                 })
             continue
