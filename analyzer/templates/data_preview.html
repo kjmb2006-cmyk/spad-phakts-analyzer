@@ -208,11 +208,18 @@
         <i class="bi bi-list-check me-2 text-primary"></i>Questionnaire des variables détectées
       </h6>
       <span class="text-muted small">{{ shape[1] }} questions · cliquez sur un libellé pour le modifier</span>
-      <a href="{{ url_for('export_var_types_xlsx') }}"
-         class="btn btn-sm btn-outline-success ms-auto"
-         title="Télécharger le questionnaire complet au format XLSX (libellés, modalités, statistiques)">
-        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Télécharger questionnaire XLSX
-      </a>
+      <div class="d-flex gap-2 ms-auto">
+        <a href="{{ url_for('export_var_types_xlsx') }}"
+           class="btn btn-sm btn-outline-success"
+           title="Télécharger le questionnaire complet au format XLSX (libellés, modalités, statistiques)">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Questionnaire XLSX
+        </a>
+        <a href="{{ url_for('export_var_types_csv') }}"
+           class="btn btn-sm btn-outline-success"
+           title="Télécharger le questionnaire complet au format CSV (libellés, modalités, statistiques)">
+          <i class="bi bi-filetype-csv me-1"></i>Questionnaire CSV
+        </a>
+      </div>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive" style="max-height:520px;overflow-y:auto">
@@ -328,12 +335,25 @@
 
   <!-- Main sheet preview -->
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
+    <div class="card-header bg-white border-bottom d-flex align-items-center py-3 gap-2 flex-wrap">
       <h6 class="mb-0 fw-semibold">
         <i class="bi bi-table me-2 text-primary"></i>
         Aperçu — {{ meta.get('sheet_name', 'Feuille principale') }}
       </h6>
-      <span class="badge bg-secondary ms-2">{{ shape[0] }} lignes</span>
+      <span class="badge bg-secondary">{{ shape[0] }} lignes</span>
+      <span class="text-muted small">Aperçu limité à 20 lignes — export ci-dessous pour les {{ shape[0] }} au complet</span>
+      <div class="d-flex gap-2 ms-auto">
+        <a href="{{ url_for('export_data_xlsx') }}"
+           class="btn btn-sm btn-outline-primary"
+           title="Télécharger les {{ shape[0] }} observations au format XLSX">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Données XLSX
+        </a>
+        <a href="{{ url_for('export_data_csv') }}"
+           class="btn btn-sm btn-outline-primary"
+           title="Télécharger les {{ shape[0] }} observations au format CSV">
+          <i class="bi bi-filetype-csv me-1"></i>Données CSV
+        </a>
+      </div>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">{{ preview | safe }}</div>

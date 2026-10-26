@@ -1085,6 +1085,15 @@ def _extract_modalites(series, typ: str, max_items: int = 20) -> str:
         return ''
 
 
+_VAR_TYPE_LABELS = {
+    'categorielle': 'Choix unique / multiple',
+    'continue':     'Numérique',
+    'binaire':      'Booléen (Oui/Non)',
+    'date':         'Date',
+    'texte_libre':  'Texte libre',
+}
+
+
 def _build_var_types_table(df) -> list:
     """
     Construit la liste { variable, type, libelle, modalites, n_obs, n_manq, %manq }
@@ -1176,13 +1185,7 @@ def export_var_types_xlsx():
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
     rows = _build_var_types_table(df)
-    TYPE_LABEL = {
-        'categorielle': 'Choix unique / multiple',
-        'continue':     'Numérique',
-        'binaire':      'Booléen (Oui/Non)',
-        'date':         'Date',
-        'texte_libre':  'Texte libre',
-    }
+    TYPE_LABEL = _VAR_TYPE_LABELS
     table = pd.DataFrame([{
         'N°': r['idx'],
         'Variable (code)': r['variable'],
@@ -1244,6 +1247,65 @@ def export_var_types_xlsx():
     return send_file(buf, as_attachment=True,
                       download_name=f'{fname}_questionnaire.xlsx',
                       mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@app.route('/data/var-types.csv')
+def export_var_types_csv():
+    """Même questionnaire reconstruit que export_var_types_xlsx(), au format
+    CSV — demandé en plus du XLSX (certains outils/habitudes d'équipe
+    préfèrent le CSV, ex. réimport dans un autre logiciel)."""
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+    rows = _build_var_types_table(df)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['N°', 'Variable (code)', 'Question / Libellé', 'Type',
+                      'Modalités attendues', 'Obs. valides', 'Manquantes', '% manquantes'])
+    for r in rows:
+        writer.writerow([r['idx'], r['variable'], r['libelle'],
+                          _VAR_TYPE_LABELS.get(r['type'], r['type']),
+                          r['modalites'], r['n_obs'], r['n_manq'], r['pct_manq']])
+
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{fname}_questionnaire.csv"'
+    return resp
+
+
+@app.route('/data/export.xlsx')
+def export_data_xlsx():
+    """Export du jeu de données chargé tel quel (toutes les lignes, pas
+    seulement l'aperçu des 20 premières affiché sur /data/preview) — par
+    opposition à var-types.xlsx qui exporte le QUESTIONNAIRE reconstruit,
+    pas les données."""
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Données')
+    buf.seek(0)
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    return send_file(buf, as_attachment=True,
+                      download_name=f'{fname}_donnees.xlsx',
+                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@app.route('/data/export.csv')
+def export_data_csv():
+    """Export CSV du jeu de données chargé tel quel — voir export_data_xlsx()."""
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    resp = Response(df.to_csv(index=False), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{fname}_donnees.csv"'
+    return resp
 
 
 @app.route('/data/reset')
