@@ -34,6 +34,15 @@
       <a href="{{ url_for('collecte_alertes') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-bell me-1"></i>Alertes actives
       </a>
+      <a href="{{ url_for('collecte_geographique') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-geo-alt me-1"></i>Suivi géographique
+      </a>
+      <a href="{{ url_for('collecte_equipes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-people me-1"></i>Suivi équipes
+      </a>
+      <a href="{{ url_for('collecte_qualite') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-clipboard-check me-1"></i>Qualité des données
+      </a>
     </div>
     {% endif %}
   </div>
@@ -205,7 +214,9 @@
             {% endif %}
           </p>
         </div>
-        <span class="badge bg-primary-subtle text-primary">Pilotage</span>
+        <a href="{{ url_for('collecte_geographique') }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-geo-alt me-1"></i>Détail géographique
+        </a>
       </div>
       <div class="table-responsive mb-3">
         <table class="table table-sm align-middle">
@@ -299,7 +310,9 @@
             {% endif %}
           </p>
         </div>
-        <span class="badge bg-primary-subtle text-primary">Enquêteurs</span>
+        <a href="{{ url_for('collecte_equipes') }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-people me-1"></i>Détail équipes
+        </a>
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
