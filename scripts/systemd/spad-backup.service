@@ -1,0 +1,6 @@
+[Unit]
+Description=SPAD - sauvegarde quotidienne des données et de la configuration
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/spad-analyzer/scripts/backup-prod.sh
