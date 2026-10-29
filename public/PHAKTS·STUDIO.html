@@ -1161,15 +1161,27 @@
         </table>
       </div>
 
-      <!-- ═══ D. LISTES PRÉDÉFINIES ═══ -->
+      <!-- ═══ D. LISTES STANDARD DU DPF ═══ -->
       <div class="grammar-card" id="dpfCardListes">
-        <h3>D. Listes Prédéfinies
-          <button class="btn-icon btn-edit" style="margin-left:8px;vertical-align:middle" onclick="addDpfListe()" title="Ajouter une liste">＋</button>
+        <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span>D. Listes standard du DPF</span>
+          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfListesCount">0</span> liste(s)</span>
+          <span style="flex:1"></span>
+          <button class="btn-ghost" onclick="document.getElementById('dpfImportInput').click()" style="padding:5px 10px;font-size:10.5px" title="Importer la feuille DPF_lists_Abreviations d'un Dictionnaire des Propriétés Fonctionnelles (.xlsx) — remplace les listes DPF actuelles">📁 Importer le DPF</button>
+          <input type="file" id="dpfImportInput" accept=".xlsx" style="display:none" onchange="importDpfCatalogue(this.files[0]); this.value=''">
+          <button class="btn-ghost" onclick="resetDpfListes()" style="padding:5px 10px;font-size:10.5px" title="Rétablir le catalogue par défaut (DPF officiel + listes Studio)">↺ Par défaut</button>
+          <button class="btn-icon btn-edit" onclick="addDpfListe()" title="Ajouter une liste">＋</button>
         </h3>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
+          Vocabulaire contrôlé injecté dans la grammaire (codification en ligne, Agent IA et mode hors-ligne) : une liste qui correspond au sens de la question est réutilisée au lieu d'en inventer une. Partagé entre tous les postes via le serveur.
+          <strong>« 📁 Importer le DPF »</strong> lit la feuille <em>DPF_lists_Abreviations</em> d'un nouveau Dictionnaire et remplace les listes DPF (les listes Studio et locales sans équivalent sont conservées).
+          Source : <span style="color:#22c55e">DPF</span> = Dictionnaire officiel · <span style="color:#38bdf8">Studio</span> = liste de Studio sans équivalent DPF · <span style="color:#fbbf24">local</span> = ajoutée ou modifiée ici.
+        </p>
         <table class="grammar-table">
           <thead><tr><th style="width:30%">Identifiant</th><th>Valeurs</th><th style="width:10%;text-align:center">Actions</th></tr></thead>
           <tbody id="dpfListesBody"></tbody>
         </table>
+        <p id="dpfAbreviations" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></p>
       </div>
 
       <!-- ═══ E. EXEMPLES DU MODÈLE ═══ -->
@@ -1487,6 +1499,8 @@
           🚀 Déployer sur Kobo
         </button>
       </div>
+
+      <div id="xlsformQualityBox" style="display:none"></div>
 
       <div style="font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:8px">📋 Feuille « survey » — <span id="xlsformSurveyCount">0</span> question(s)</div>
       <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px;margin-bottom:24px">
@@ -3184,35 +3198,66 @@ function addManualRow() {
   if (tbody.lastElementChild) tbody.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// ─── DPF Listes Prédéfinies – CRUD + sync grammaire ─────────────────────────
-const DPF_DEFAULT_LISTES = [
-  { identifiant: 'boolean', valeurs: 'Oui, Non' },
-  { identifiant: 'Trilean_', valeurs: 'Oui, Non, Ne_Sait_Pas' },
-  { identifiant: 'Niveau_', valeurs: 'Eleve, Moyen, Faible' },
-  { identifiant: 'Motivation_', valeurs: 'Très_Motivée, Peu_Motivée, Pas_Motivée' },
-  { identifiant: 'Dangereux_', valeurs: 'Très_dangereux, Dangereux, Peu_dangereux, Pas_dangereux' },
-  { identifiant: 'Instruction_', valeurs: 'Primaire, Secondaire, Supérieur, Autre' },
-  { identifiant: 'Statut_Matrimonial_', valeurs: 'Célibataire, Marié(e), Divorcé(e), Veuf(ve), Concubinage' },
-  { identifiant: 'Source_Info_Sante_', valeurs: 'Personnel_Sante | Media | Reseaux_Sociaux | Entourage | Famille | 0' },
-  { identifiant: 'Zone_Residence_', valeurs: 'Urbain, Rural, Périurbain' },
-  { identifiant: 'Allaitement_', valeurs: 'Naturel, Artificiel, Mixte' },
-  { identifiant: 'Profession_', valeurs: 'Sans_emploi, Ménagère, Employée, Commerçante, Informelle/Auto_entreprise, Autre' },
-  { identifiant: 'Religion_', valeurs: 'Chrétienne, Musulmane, Traditionnelle, Autre, 0' },
-];
+// ─── D. Listes standard du DPF — catalogue partagé + sync grammaire ─────────
+// Listes et abréviations du Dictionnaire des Propriétés Fonctionnelles,
+// stockées côté serveur (/api/dpf-catalogue) pour être les mêmes dans tous
+// les navigateurs ET atteindre le LLM en ligne ; copie locale pour le
+// hors-ligne. Valeurs par défaut : PHAKTS_CORE.DEFAULT_DPF_CATALOGUE.
+const DPF_CATALOGUE_KEY = 'phakts_dpf_catalogue';
+const DPF_SOURCE_BADGE = { DPF: ['DPF', '#22c55e'], Studio: ['Studio', '#38bdf8'], local: ['local', '#fbbf24'] };
 
 let dpfListes = [];
+let dpfAbreviations = [];
 let dpfEditingIdx = -1;
+let injectedDpfSection = '';
+
+function defaultDpfCatalogue() {
+  return JSON.parse(JSON.stringify(PHAKTS_CORE.DEFAULT_DPF_CATALOGUE));
+}
+
+function readLocalDpfCatalogue() {
+  try {
+    const cat = JSON.parse(localStorage.getItem(DPF_CATALOGUE_KEY) || 'null');
+    return cat && Array.isArray(cat.lists) ? cat : null;
+  } catch (_) { return null; }
+}
+
+// Listes ajoutées à la main avant le catalogue partagé (ancienne clé
+// « dpf_listes », propre à ce navigateur) — reprises pour ne pas les perdre.
+function legacyDpfAdditions(lists) {
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem('dpf_listes') || '[]'); } catch (_) {}
+  const known = new Set(lists.map(l => PHAKTS_CORE.dpfListKey(l.identifiant)));
+  return (Array.isArray(legacy) ? legacy : [])
+    .filter(l => l && l.identifiant && !known.has(PHAKTS_CORE.dpfListKey(l.identifiant)))
+    .map(l => ({ identifiant: l.identifiant, valeurs: l.valeurs || '', source: 'local' }));
+}
 
 function initDpfListes() {
-  const saved = localStorage.getItem('dpf_listes');
-  if (saved) {
-    try { dpfListes = JSON.parse(saved); } catch (_) { dpfListes = []; }
+  let cat = readLocalDpfCatalogue();
+  if (!cat) {
+    cat = defaultDpfCatalogue();
+    const additions = legacyDpfAdditions(cat.lists);
+    if (additions.length) {
+      cat.lists = cat.lists.concat(additions);
+      // poussé au serveur par syncDpfCatalogueFromServer()
+      try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify(cat)); } catch (_) {}
+    }
   }
-  if (!dpfListes.length) {
-    dpfListes = DPF_DEFAULT_LISTES.map(l => ({ ...l }));
-  }
+  applyDpfCatalogue(cat);
+}
+
+function applyDpfCatalogue(cat) {
+  dpfListes = cat.lists || [];
+  dpfAbreviations = cat.abbreviations || [];
+  dpfEditingIdx = -1;
   renderDpfListes();
   syncDpfToGrammar();
+}
+
+function dpfSourceBadge(l) {
+  const [label, color] = DPF_SOURCE_BADGE[l.source] || DPF_SOURCE_BADGE.local;
+  return '<span style="font-size:9.5px;padding:1px 6px;border-radius:8px;border:1px solid ' + color + '66;color:' + color + ';margin-left:6px">' + label + '</span>';
 }
 
 function renderDpfListes() {
@@ -3226,24 +3271,33 @@ function renderDpfListes() {
         '<td><input class="edit-input" id="dpf_ed_id" value="' + esc(l.identifiant) + '" placeholder="Identifiant"/></td>' +
         '<td><input class="edit-input" id="dpf_ed_val" value="' + esc(l.valeurs) + '" placeholder="Valeurs (séparées par , ou |)"/></td>' +
         '<td style="text-align:center;white-space:nowrap">' +
-          '<button class="btn-icon btn-save" onclick="saveDpfListe(' + i + ')" title="Sauvegarder">\u2713</button> ' +
-          '<button class="btn-icon btn-delete" onclick="cancelDpfEdit()" title="Annuler">\u2715</button>' +
+          '<button class="btn-icon btn-save" onclick="saveDpfListe(' + i + ')" title="Sauvegarder">✓</button> ' +
+          '<button class="btn-icon btn-delete" onclick="cancelDpfEdit()" title="Annuler">✕</button>' +
         '</td>';
     } else {
       tr.innerHTML =
-        '<td class="gc">' + esc(l.identifiant) + '</td>' +
-        '<td class="gd">' + esc(l.valeurs) + '</td>' +
+        '<td class="gc">' + esc(l.identifiant) + dpfSourceBadge(l) + '</td>' +
+        '<td class="gd">' + esc(l.valeurs) + (l.ouverte ? ' <em style="color:var(--text3)" title="Liste incomplète dans le DPF (etc.)">(ouverte)</em>' : '') + '</td>' +
         '<td style="text-align:center;white-space:nowrap">' +
-          '<button class="btn-icon btn-edit" onclick="editDpfListe(' + i + ')" title="Modifier">\u270e</button> ' +
-          '<button class="btn-icon btn-delete" onclick="deleteDpfListe(' + i + ')" title="Supprimer">\u2715</button>' +
+          '<button class="btn-icon btn-edit" onclick="editDpfListe(' + i + ')" title="Modifier">✎</button> ' +
+          '<button class="btn-icon btn-delete" onclick="deleteDpfListe(' + i + ')" title="Supprimer">✕</button>' +
         '</td>';
     }
     tbody.appendChild(tr);
   });
+  const count = document.getElementById('dpfListesCount');
+  if (count) count.textContent = dpfListes.length;
+  const abbr = document.getElementById('dpfAbreviations');
+  if (abbr) {
+    abbr.innerHTML = dpfAbreviations.length
+      ? '<strong>Abréviations DPF</strong> (' + dpfAbreviations.length + ') : ' +
+        dpfAbreviations.map(a => '<code>' + esc(a.code) + '</code> = ' + esc(a.sens)).join(' · ')
+      : '';
+  }
 }
 
 function addDpfListe() {
-  dpfListes.push({ identifiant: '', valeurs: '' });
+  dpfListes.push({ identifiant: '', valeurs: '', source: 'local' });
   dpfEditingIdx = dpfListes.length - 1;
   renderDpfListes();
   const tbody = document.getElementById('dpfListesBody');
@@ -3262,12 +3316,21 @@ function saveDpfListe(i) {
   const id = idEl.value.trim();
   const val = valEl.value.trim();
   if (!id) { showStatus('Identifiant requis.', 'error'); return; }
-  dpfListes[i] = { identifiant: id, valeurs: val };
+  const key = PHAKTS_CORE.dpfListKey(id);
+  if (dpfListes.some((l, j) => j !== i && PHAKTS_CORE.dpfListKey(l.identifiant) === key)) {
+    showStatus('Une liste « ' + id + ' » existe déjà dans le catalogue.', 'error');
+    return;
+  }
+  const prev = dpfListes[i] || {};
+  const changed = prev.identifiant !== id || prev.valeurs !== val;
+  dpfListes[i] = changed
+    ? { identifiant: id, valeurs: val, source: 'local' }
+    : prev;
   dpfEditingIdx = -1;
   renderDpfListes();
   persistDpfListes();
   syncDpfToGrammar();
-  showStatus('Liste \u00ab ' + id + ' \u00bb mise \u00e0 jour \u2014 grammaire synchronis\u00e9e.', 'success');
+  showStatus('Liste « ' + id + ' » mise à jour — grammaire synchronisée.', 'success');
 }
 
 function cancelDpfEdit() {
@@ -3280,58 +3343,124 @@ function cancelDpfEdit() {
 
 function deleteDpfListe(i) {
   const name = dpfListes[i].identifiant || '(vide)';
-  if (!confirm('Supprimer la liste \u00ab ' + name + ' \u00bb ?')) return;
+  if (!confirm('Supprimer la liste « ' + name + ' » ?')) return;
   dpfListes.splice(i, 1);
   dpfEditingIdx = -1;
   renderDpfListes();
   persistDpfListes();
   syncDpfToGrammar();
-  showStatus('Liste \u00ab ' + name + ' \u00bb supprim\u00e9e \u2014 grammaire synchronis\u00e9e.', 'success');
+  showStatus('Liste « ' + name + ' » supprimée — grammaire synchronisée.', 'success');
 }
 
 function persistDpfListes() {
-  localStorage.setItem('dpf_listes', JSON.stringify(dpfListes));
+  const cat = { lists: dpfListes, abbreviations: dpfAbreviations };
+  try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify(cat)); } catch (_) {}
+  syncDpfCatalogueToServer(cat);
+}
+
+/** Best-effort : hors-ligne, seule la copie locale est conservée. */
+async function syncDpfCatalogueToServer(cat) {
+  const base = (document.getElementById('apiBaseInput') || {}).value;
+  if (!base) return;
+  try {
+    const resp = await apiFetch('/api/dpf-catalogue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cat),
+    });
+    if (!resp.ok) console.warn('[syncDpfCatalogue] Erreur serveur:', resp.status);
+  } catch (e) {
+    console.warn('[syncDpfCatalogue] Hors-ligne, catalogue sauvé localement seulement:', e.message);
+  }
+}
+
+/** Au démarrage : le catalogue serveur fait autorité dès qu'il a été
+ * enregistré une fois. Sinon (valeurs par défaut côté serveur), une copie
+ * modifiée dans ce navigateur devient la référence serveur — même logique
+ * que le Référentiel Administratif (L). */
+async function syncDpfCatalogueFromServer() {
+  const base = (document.getElementById('apiBaseInput') || {}).value;
+  if (!base) return;
+  try {
+    const resp = await apiFetch('/api/dpf-catalogue');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.saved) {
+      try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify({ lists: data.lists, abbreviations: data.abbreviations })); } catch (_) {}
+      applyDpfCatalogue(data);
+    } else if (readLocalDpfCatalogue()) {
+      syncDpfCatalogueToServer({ lists: dpfListes, abbreviations: dpfAbreviations });
+    }
+  } catch (e) {
+    console.warn('[syncDpfCatalogueFromServer] Hors-ligne ou erreur serveur:', e && e.message);
+  }
 }
 
 function syncDpfToGrammar() {
-  let section = '\nLISTES PR\u00c9D\u00c9FINIES (DPF):\n';
-  dpfListes.forEach(l => {
-    if (l.identifiant && l.valeurs) {
-      section += '- ' + l.identifiant + ' = [' + l.valeurs + ']\n';
-    }
-  });
+  let section = PHAKTS_CORE.formatDpfSection({ lists: dpfListes, abbreviations: dpfAbreviations });
 
   if (dpfCustomRules && dpfCustomRules.length > 0) {
-    section += '\nEXTENSIONS DE GRAMMAIRE PERSONNALIS\u00c9ES (Section J):\n';
+    section += '\nEXTENSIONS DE GRAMMAIRE PERSONNALISÉES (Section J):\n';
     dpfCustomRules.forEach(r => {
       if (r.code || r.description) {
-        section += '- ' + (r.code || '') + ' \u2192 ' + (r.description || '');
+        section += '- ' + (r.code || '') + ' → ' + (r.description || '');
         if (r.exemple) section += ' | Exemple: ' + r.exemple;
         section += '\n';
       }
     });
   }
 
-  const startTag = '\nLISTES PR\u00c9D\u00c9FINIES (DPF):';
-  const endTag = '\nINSTRUCTIONS:';
-  const existingStart = SYSTEM.indexOf(startTag);
-  const instructionsIdx = SYSTEM.indexOf(endTag);
-
-  if (existingStart !== -1 && instructionsIdx !== -1 && existingStart < instructionsIdx) {
-    SYSTEM = SYSTEM.slice(0, existingStart) + section + SYSTEM.slice(instructionsIdx);
-  } else if (instructionsIdx !== -1) {
-    SYSTEM = SYSTEM.slice(0, instructionsIdx) + section + SYSTEM.slice(instructionsIdx);
+  // Remplace exactement le bloc injecté la fois précédente : les exemples
+  // appris ajoutés entre-temps avant INSTRUCTIONS ne sont pas effacés.
+  if (injectedDpfSection && SYSTEM.includes(injectedDpfSection)) {
+    SYSTEM = SYSTEM.replace(injectedDpfSection, () => section);
+  } else {
+    SYSTEM = PHAKTS_CORE.insertBeforeInstructions(SYSTEM, section);
   }
+  injectedDpfSection = section;
 }
 
 function resetDpfListes() {
-  if (!confirm('R\u00e9tablir les listes par d\u00e9faut du DPF ?')) return;
-  dpfListes = DPF_DEFAULT_LISTES.map(l => ({ ...l }));
-  dpfEditingIdx = -1;
-  renderDpfListes();
+  if (!confirm('Rétablir le catalogue par défaut (DPF officiel + listes Studio) ?\nLes listes ajoutées ou modifiées ici seront perdues, pour tous les postes.')) return;
+  applyDpfCatalogue(defaultDpfCatalogue());
   persistDpfListes();
-  syncDpfToGrammar();
-  showStatus('Listes DPF r\u00e9initialis\u00e9es \u2014 grammaire synchronis\u00e9e.', 'success');
+  showStatus('Catalogue DPF rétabli — grammaire synchronisée.', 'success');
+}
+
+/** Import de la feuille « DPF_lists_Abreviations » d'un Dictionnaire des
+ * Propriétés Fonctionnelles : remplace les listes de source DPF et les
+ * abréviations ; les listes Studio/locales sans équivalent sont gardées. */
+async function importDpfCatalogue(file) {
+  if (!file) return;
+  try {
+    await ensureExcelJsReady();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await file.arrayBuffer());
+    const sheet = wb.worksheets.find(ws => /^DPF_lists/i.test(ws.name) && !/\(fmt\)/i.test(ws.name))
+      || wb.worksheets.find(ws => /^DPF_lists/i.test(ws.name));
+    if (!sheet) throw new Error('feuille « DPF_lists_Abreviations » introuvable dans ce fichier');
+    const rows = [];
+    sheet.eachRow({ includeEmpty: false }, row => rows.push(row.values.map(PHAKTS_CORE.excelCellText)));
+    const parsed = PHAKTS_CORE.parseDpfCatalogue(rows);
+    if (!parsed.lists.length) throw new Error('aucune liste reconnue dans la feuille ' + sheet.name);
+
+    const imported = new Set(parsed.lists.map(l => PHAKTS_CORE.dpfListKey(l.identifiant)));
+    const kept = dpfListes.filter(l => l.source !== 'DPF' && !imported.has(PHAKTS_CORE.dpfListKey(l.identifiant)));
+    const overwritten = dpfListes.filter(l => l.source !== 'DPF' && imported.has(PHAKTS_CORE.dpfListKey(l.identifiant)));
+    let msg = 'Importer ' + parsed.lists.length + ' listes et ' + parsed.abbreviations.length + ' abréviations depuis « ' + file.name + ' » ?\n\n' +
+      '• Les listes DPF actuelles sont remplacées ; ' + kept.length + ' liste(s) Studio/locales sans équivalent sont conservées.';
+    if (overwritten.length) msg += '\n• Remplacées par la version du DPF : ' + overwritten.map(l => l.identifiant).join(', ');
+    if (parsed.ignored.aCompleter.length) msg += '\n• Ignorées (« Liste à Compléter ») : ' + parsed.ignored.aCompleter.join(', ');
+    if (parsed.ignored.admin.length) msg += '\n• Listes Admin_ laissées au Référentiel Administratif (L) : ' + parsed.ignored.admin.join(', ');
+    if (!confirm(msg)) return;
+
+    applyDpfCatalogue({ lists: parsed.lists.concat(kept), abbreviations: parsed.abbreviations });
+    persistDpfListes();
+    showStatus('✓ Catalogue DPF importé depuis « ' + file.name + ' » : ' + parsed.lists.length + ' listes, ' + parsed.abbreviations.length + ' abréviations — grammaire synchronisée.', 'success');
+  } catch (err) {
+    showStatus('Import du DPF impossible : ' + err.message, 'error');
+    console.error('[dpf-import]', err);
+  }
 }
 
 // ─── L. Référentiel Administratif (Admin_ — Règle 16) — CRUD + import/export ─
@@ -3810,10 +3939,17 @@ async function downloadDPF() {
   ]);
 
   // ── Sheet 4: Listes Pr\u00e9d\u00e9finies (dynamique) ──
-  addObjectWorksheet(workbook, 'D_Listes_Predefinies', dpfListes.map(l => ({ identifiant: l.identifiant, valeurs: l.valeurs })), [
+  addObjectWorksheet(workbook, 'D_Listes_Predefinies', dpfListes.map(l => ({ identifiant: l.identifiant, valeurs: l.valeurs, source: l.source || 'local' })), [
     { header: 'Identifiant', key: 'identifiant', width: 30 },
-    { header: 'Valeurs', key: 'valeurs', width: 70 }
+    { header: 'Valeurs', key: 'valeurs', width: 70 },
+    { header: 'Source', key: 'source', width: 12 }
   ]);
+  if (dpfAbreviations.length) {
+    addObjectWorksheet(workbook, 'D_Abreviations', dpfAbreviations.map(a => ({ code: a.code, sens: a.sens })), [
+      { header: 'Abréviation', key: 'code', width: 16 },
+      { header: 'Signification', key: 'sens', width: 60 }
+    ]);
+  }
 
   // ── Sheet J: Extensions de Grammaire (dynamique) ──
   if (dpfCustomRules && dpfCustomRules.length > 0) {
@@ -4987,6 +5123,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     ['loadPersistedResults', loadPersistedResults],
     ['initDpfListes', initDpfListes],
     ['initDpfRules', initDpfRules],
+    ['syncDpfCatalogueFromServer', syncDpfCatalogueFromServer],
     ['initAdminRef', initAdminRef],
     ['syncAdminRefFromServer', syncAdminRefFromServer],
   ];
@@ -5467,10 +5604,20 @@ const ADMIN_CASCADE = {
   'Admin_Superviseur_':         { parentList: 'Admin_District_Sanitaire_', filterCol: 'district_code' },
 };
 
+// Choix cité sans « Liste_=[…] » dans pf_modalites (sinon généré en Oui/Non) :
+// définition reconstruite depuis le nom de liste du code et le catalogue DPF.
+function withCanonicalModalites(items) {
+  return items.map(it => {
+    const m = PHAKTS_CORE.canonicalListModalites(it.pf_question, it.pf_modalites, dpfListes);
+    return m === it.pf_modalites ? it : { ...it, pf_modalites: m };
+  });
+}
+
 function buildXLSForm() {
   const surveyRows = [];
   const choicesMap = { yes_no: [{name:'oui',label:'Oui'},{name:'non',label:'Non'}] };
-  const fieldMetas = results.map(buildSurveyFieldMeta);
+  const items = withCanonicalModalites(results);
+  const fieldMetas = items.map(buildSurveyFieldMeta);
   // Garantit l'unicité de xlsName : deux libellés distincts (ou le même
   // libellé posé deux fois dans le questionnaire) peuvent produire le même
   // radical une fois le marqueur de type retiré par buildXlsNameFromCode().
@@ -5495,8 +5642,8 @@ function buildXLSForm() {
   });
   const regionFieldName = regionField ? regionField.xlsName : '';
 
-  for (let index = 0; index < results.length; index += 1) {
-    const item = results[index];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
     const currentMeta = fieldMetas[index];
     const { libelle, pf_question, pf_modalites } = item;
     const parts = pf_question.split('!');
@@ -5646,6 +5793,7 @@ function renderXlsformPreview() {
   section.style.display = 'block';
 
   const { surveyRows, choicesRows } = buildXLSForm();
+  renderXlsformQualityWarnings();
 
   const surveyBody = document.getElementById('xlsformSurveyBody');
   document.getElementById('xlsformSurveyCount').textContent = surveyRows.length;
@@ -6026,7 +6174,7 @@ function buildDictionnairePhaktsRows() {
   numData.forEach(r => rows.push({ categorie: 'B. Types numériques', cle: r.code, description: r.type, exemple: r.exemple, statut: r.statut }));
   convData.forEach(r => rows.push({ categorie: 'C. Conventions syntaxiques', cle: r.symbole, description: r.role, exemple: r.exemple, statut: '' }));
   (dpfListes || []).forEach(l => {
-    if (l.identifiant) rows.push({ categorie: 'D. Listes prédéfinies', cle: l.identifiant, description: l.valeurs, exemple: '', statut: '' });
+    if (l.identifiant) rows.push({ categorie: 'D. Listes standard (DPF)', cle: l.identifiant, description: l.valeurs, exemple: '', statut: l.source || 'local' });
   });
   skipData.forEach(r => rows.push({ categorie: 'H. Skip logic', cle: r.syntaxe, description: r.signification, exemple: r.exemple, statut: '' }));
   methodeData.forEach(r => rows.push({ categorie: 'G. Méthode de codage', cle: `Étape ${r.etape}`, description: r.description, exemple: r.exemple, statut: '' }));
@@ -6057,8 +6205,10 @@ function addReferencePhaktsWorksheet(workbook) {
 // Dictionnaire PHAKTS officiel (accents, collision L2/M2, ambiguïtés, années
 // mal positionnées, renvois de logique de saut vers une cible introuvable).
 function phaktsQualityWarnings(items) {
+  items = withCanonicalModalites(items);
   const warnings = [];
   const codeParts = items.map(it => String(it.pf_question || '').split('!')[0]);
+  const officialLists = (dpfListes || []).filter(l => l.source === 'DPF');
   items.forEach((it, i) => {
     const code = String(it.pf_question || '');
     const codePart = codeParts[i];
@@ -6068,7 +6218,8 @@ function phaktsQualityWarnings(items) {
     if (/__L2\b/.test(code)) {
       warnings.push({ n: i + 1, variable: codePart, anomalie: "Symbole 'L2' en collision avec le xType Longueur", action: "Renommer en 'M2' — Règle 18" });
     }
-    if (code.includes('/')) {
+    // Le « / » d'un format de date (__A!YYYY/MM/DD, 2000/01/01<A<…) n'en est pas un
+    if (code.replace(/YYYY\/MM\/DD|\d{4}\/\d{2}\/\d{2}/gi, '').includes('/')) {
       warnings.push({ n: i + 1, variable: codePart, anomalie: 'Codifications candidates multiples juxtaposées avec «/»', action: "Séparer en colonnes 'Proposition A' / 'Proposition B' + 'Validé'" });
     }
     if (/^.+?(19|20)\d{2}/.test(codePart) && !/^(19|20)\d{2}/.test(codePart)) {
@@ -6101,8 +6252,43 @@ function phaktsQualityWarnings(items) {
         });
       }
     }
+    // Séparateur ↔ multiplicité, multiplicité mal placée ou impossible,
+    // téléphone mal typé, écart avec les listes standard du DPF
+    warnings.push(...PHAKTS_CORE.codingWarnings(it, i + 1, officialLists));
   });
   return warnings;
+}
+
+/** Avertissements qualité affichés dans l'aperçu XLSForm — visibles AVANT
+ * le téléchargement ou le déploiement (sinon seulement dans la feuille Admin). */
+function renderXlsformQualityWarnings() {
+  const box = document.getElementById('xlsformQualityBox');
+  if (!box) return;
+  const warnings = phaktsQualityWarnings(results);
+  if (!warnings.length) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div style="font-size:13px;font-weight:600;color:#fbbf24;margin-bottom:8px">⚠ ' + warnings.length +
+      ' avertissement(s) qualité PHAKTS — à vérifier avant de télécharger ou déployer</div>' +
+    '<div style="overflow-x:auto;border:1px solid #fbbf2444;border-radius:10px;margin-bottom:24px">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="background:#0a1628;border-bottom:1px solid #fbbf2444">' +
+      '<th style="padding:8px 10px;text-align:left;color:#fbbf24">#</th>' +
+      '<th style="padding:8px 10px;text-align:left;color:#fbbf24">Variable</th>' +
+      '<th style="padding:8px 10px;text-align:left;color:#fbbf24">Anomalie</th>' +
+      '<th style="padding:8px 10px;text-align:left;color:#fbbf24">Action proposée</th>' +
+    '</tr></thead><tbody>' +
+    warnings.map((w, i) =>
+      '<tr style="border-bottom:1px solid #0f2040;' + (i % 2 ? 'background:#040c1a' : '') + '">' +
+        '<td style="padding:7px 10px;color:var(--text3);font-family:var(--mono);font-size:11px">' + w.n + '</td>' +
+        '<td style="padding:7px 10px;font-family:var(--mono);font-size:11px;color:#38bdf8">' + _esc(w.variable) + '</td>' +
+        '<td style="padding:7px 10px;color:var(--text);font-size:12px">' + _esc(w.anomalie) + '</td>' +
+        '<td style="padding:7px 10px;color:var(--text2);font-size:12px">' + _esc(w.action) + '</td>' +
+      '</tr>').join('') +
+    '</tbody></table></div>';
 }
 
 function addAdminWorksheet(workbook, { title, settingsRow, surveyRows, choicesRows, warnings }) {

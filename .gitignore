@@ -50,6 +50,8 @@ data/learned.json
 # Référentiel Administratif — contient les noms réels des 60 enquêteurs et
 # 12 superviseurs (données personnelles), jamais commité (dépôt public)
 data/admin_referentiel.json
+# Catalogue DPF édité/importé depuis PHAKTS Studio (valeurs par défaut : public/phakts-core.js)
+data/dpf_catalogue.json
 analyzer/data/projets/
 analyzer/data/completude_historique.jsonl
 # Noms réels enquêteurs/superviseurs — données personnelles, jamais commitées (dépôt public)

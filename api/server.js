@@ -20,6 +20,7 @@ const mammoth = require("mammoth");
 
 let { PHAKTS_SYSTEM_PROMPT, PHAKTS_MODEL, PHAKTS_MAX_TOKENS, GRAMMAR_VERSION } = require("./grammar");
 const { buildXLSForm } = require("./xlsform");
+const { DEFAULT_DPF_CATALOGUE, formatDpfSection, insertBeforeInstructions, dpfListKey, canonicalListModalites } = require("../public/phakts-core.js");
 
 // ── Hot-reload de la grammaire (grammar.js + le noyau partagé qui contient le
 // prompt) — dev uniquement : fs.watch échoue dans un bundle asar, ignoré. ──
@@ -82,19 +83,39 @@ function saveLearned(arr) {
   fs.writeFileSync(LEARNED_FILE, JSON.stringify(arr, null, 2), "utf8");
 }
 
-/** Build an augmented SYSTEM prompt that includes learned examples */
+// ── Catalogue des listes standard du DPF (panneau « D » de l'onglet DPF) —
+// côté serveur pour être le même dans tous les navigateurs ET atteindre le
+// LLM en ligne. Tant que personne ne l'a enregistré, les valeurs par défaut
+// du noyau partagé s'appliquent (saved: false).
+const DPF_CATALOGUE_FILE = path.join(DATA_DIR, "dpf_catalogue.json");
+
+function loadDpfCatalogue() {
+  try {
+    if (fs.existsSync(DPF_CATALOGUE_FILE)) {
+      const cat = JSON.parse(fs.readFileSync(DPF_CATALOGUE_FILE, "utf8"));
+      if (Array.isArray(cat.lists)) return { ...cat, abbreviations: cat.abbreviations || [], saved: true };
+    }
+  } catch (_) {}
+  return { ...DEFAULT_DPF_CATALOGUE, saved: false };
+}
+
+function saveDpfCatalogue(cat) {
+  const tmp = DPF_CATALOGUE_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(cat, null, 2), "utf8");
+  fs.renameSync(tmp, DPF_CATALOGUE_FILE);
+}
+
+/** Prompt système + listes standard du DPF + exemples mémorisés */
 function buildAugmentedPrompt() {
+  let prompt = insertBeforeInstructions(PHAKTS_SYSTEM_PROMPT, formatDpfSection(loadDpfCatalogue()));
   const learned = loadLearned();
-  if (!learned.length) return PHAKTS_SYSTEM_PROMPT;
+  if (!learned.length) return prompt;
   const lines = learned.map(r => {
     let line = '- "' + (r.libelle || '').replace(/"/g, "'") + '" → ' + (r.pf_question || '');
     if (r.pf_modalites && r.pf_modalites.trim()) line += '            ' + r.pf_modalites.trim();
     return line;
   }).join('\n');
-  const marker = '\nINSTRUCTIONS:';
-  const pos = PHAKTS_SYSTEM_PROMPT.indexOf(marker);
-  if (pos === -1) return PHAKTS_SYSTEM_PROMPT;
-  return PHAKTS_SYSTEM_PROMPT.slice(0, pos) + '\n\nEXEMPLES MÉMORISÉS (codifications validées par l\'utilisateur):\n' + lines + marker + PHAKTS_SYSTEM_PROMPT.slice(pos + marker.length);
+  return insertBeforeInstructions(prompt, '\n\nEXEMPLES MÉMORISÉS (codifications validées par l\'utilisateur):\n' + lines);
 }
 
 // ── Helper : map une erreur Anthropic vers une réponse HTTP avec un CODE
@@ -237,8 +258,10 @@ function isRadicalSuspect(radical) {
 // Filet de sécurité côté serveur qui corrige les erreurs courantes du LLM.
 // Si le radical produit par le LLM est suspect, on le reconstruit depuis
 // le libellé original à l'aide de extractRadicalFromLibelle.
-function sanitizePhaktsItem(item) {
+// lists : listes du catalogue DPF (loadDpfCatalogue().lists).
+function sanitizePhaktsItem(item, lists = []) {
   if (!item || !item.pf_question || typeof item.pf_question !== 'string') return item;
+  const listKeys = new Set(lists.map(l => dpfListKey(l.identifiant)));
   let pf = item.pf_question;
   let modal = String(item.pf_modalites || '');
 
@@ -283,7 +306,10 @@ function sanitizePhaktsItem(item) {
   // (Admin_Region_Sanitaire_, Admin_District_Sanitaire_, etc. — Règle 16) :
   // ce ne sont pas des radicaux générés par le LLM mais des noms de liste
   // fixes du Dictionnaire Genesis, souvent >18 caractères par construction.
-  if (listMatch && !listMatch[2].startsWith('Admin_')) {
+  // Idem pour les listes du catalogue DPF : Combustible_Cuisson__X!1*1
+  // Combustible_Cuisson_ est la réutilisation voulue d'un nom officiel, pas
+  // l'erreur « liste = radical ».
+  if (listMatch && !listMatch[2].startsWith('Admin_') && !listKeys.has(dpfListKey(listMatch[2]))) {
     const oldListKey = listMatch[2].replace(/_$/, '');
     // Si la list_key est trop longue, ou égale (ou très proche) du radical →
     // la remplacer par un nom court basé sur le PREMIER segment du radical.
@@ -302,10 +328,18 @@ function sanitizePhaktsItem(item) {
   }
 
   const newPf = radical + rest;
+  // 4. Liste citée sans sa définition « Liste_=[…] » (sinon Oui/Non dans Kobo)
+  modal = canonicalListModalites(newPf, modal, lists);
   if (newPf !== pf || modal !== item.pf_modalites) {
     console.log(`[sanitize] "${pf}" → "${newPf}"`);
   }
   return { ...item, pf_question: newPf, pf_modalites: modal };
+}
+
+// Nettoie les items d’une réponse LLM avec le catalogue DPF courant (lu une fois)
+function sanitizeItems(items) {
+  const lists = loadDpfCatalogue().lists;
+  return (items || []).map(it => sanitizePhaktsItem(it, lists));
 }
 
 // ── Storage for uploaded files ──
@@ -782,6 +816,43 @@ app.post("/api/admin-referentiel", (req, res) => {
   return res.json({ count: cleaned.length, rows: cleaned });
 });
 
+/**
+ * GET /api/dpf-catalogue
+ * Listes standard du DPF + abréviations ; saved=false = valeurs par défaut.
+ */
+app.get("/api/dpf-catalogue", (req, res) => {
+  res.json(loadDpfCatalogue());
+});
+
+/**
+ * POST /api/dpf-catalogue
+ * Corps: { lists: [{identifiant, valeurs, source?, ouverte?}], abbreviations: [{code, sens}] }
+ * REMPLACE le catalogue (édition dans le panneau ou import d'un DPF).
+ */
+app.post("/api/dpf-catalogue", (req, res) => {
+  const { lists, abbreviations } = req.body;
+  if (!Array.isArray(lists) || (abbreviations != null && !Array.isArray(abbreviations))) {
+    return res.status(400).json({ error: "Les champs 'lists' et 'abbreviations' doivent être des tableaux." });
+  }
+  const cat = {
+    lists: lists.slice(0, 500)
+      .filter(l => l && String(l.identifiant || '').trim())
+      .map(l => ({
+        identifiant: String(l.identifiant).trim().slice(0, 100),
+        valeurs: String(l.valeurs || '').slice(0, 2000),
+        source: ['DPF', 'Studio', 'local'].includes(l.source) ? l.source : 'local',
+        ...(l.ouverte ? { ouverte: true } : {}),
+      })),
+    abbreviations: (abbreviations || []).slice(0, 300)
+      .filter(a => a && String(a.code || '').trim())
+      .map(a => ({ code: String(a.code).trim().slice(0, 30), sens: String(a.sens || '').slice(0, 200) })),
+    updated_at: new Date().toISOString(),
+  };
+  saveDpfCatalogue(cat);
+  console.log(`[/api/dpf-catalogue] Catalogue mis à jour (${cat.lists.length} listes, ${cat.abbreviations.length} abréviations)`);
+  return res.json({ ...cat, saved: true });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -970,7 +1041,7 @@ app.post("/api/extract-and-codify", async (req, res) => {
       }
     }
 
-    const items = (parsed.items || []).map(sanitizePhaktsItem);
+    const items = sanitizeItems(parsed.items);
     const title = formTitle || fileName || "Questionnaire";
 
     // Supprimer le fichier après extraction + codification
@@ -1096,7 +1167,7 @@ app.post("/api/codify", async (req, res) => {
       }
     }
 
-    const items = (parsed.items || []).map(sanitizePhaktsItem);
+    const items = sanitizeItems(parsed.items);
     const title = formTitle || "Questionnaire";
 
     return res.json({
@@ -1211,7 +1282,7 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
       }
     }
     if (parsed && Array.isArray(parsed.items)) {
-      items = parsed.items.map(sanitizePhaktsItem);
+      items = sanitizeItems(parsed.items);
     }
 
     // Sauvegarde dans le DPF si demandé
@@ -1275,7 +1346,10 @@ app.post("/api/xlsform", (req, res) => {
   }
 
   try {
-    const xlsform = buildXLSForm(items, formTitle || "Questionnaire");
+    const lists = loadDpfCatalogue().lists;
+    const xlsform = buildXLSForm(
+      items.map(it => ({ ...it, pf_modalites: canonicalListModalites(it.pf_question, it.pf_modalites, lists) })),
+      formTitle || "Questionnaire");
     return res.json({
       formTitle: formTitle || "Questionnaire",
       sheets: { survey: xlsform.survey.length, choices: xlsform.choices.length },
@@ -1329,7 +1403,7 @@ app.post("/api/codify-and-convert", async (req, res) => {
       return res.status(502).json({ error: "Réponse Claude non parsable.", raw: raw.substring(0, 500) });
     }
 
-    const items = (parsed.items || []).map(sanitizePhaktsItem);
+    const items = sanitizeItems(parsed.items);
     const title = formTitle || "Questionnaire";
 
     // Step 2: Build XLSForm

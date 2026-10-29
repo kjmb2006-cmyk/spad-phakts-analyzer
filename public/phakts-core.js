@@ -507,6 +507,303 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     return ['Oui', 'Non', opts.length === 3 ? opts[2] : 'Autre'];
   }
 
+  // ── Catalogue des listes standard du DPF ──────────────────────────────────
+  // Feuille « DPF_lists_Abreviations » du Dictionnaire des Propriétés
+  // Fonctionnelles. Injecté dans le prompt (serveur ET hors-ligne) pour que
+  // les codifications réutilisent le vocabulaire contrôlé au lieu d'inventer
+  // une liste à chaque question.
+
+  const DPF_SECTION_HEADER = '\nLISTES STANDARD DU DPF';
+
+  // Valeurs et identifiants tels qu'écrits dans un code : sans accents ni espaces.
+  function normalizeDpfToken(s) {
+    return String(s || '')
+      .replace(/œ/g, 'oe').replace(/Œ/g, 'OE').replace(/æ/g, 'ae').replace(/Æ/g, 'AE')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .trim().replace(/\s+/g, '_')
+      .replace(/[^A-Za-z0-9_-]/g, '')
+      .replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  // Clé de comparaison d'identifiants de liste (casse, accents, "_" final ignorés).
+  function dpfListKey(identifiant) {
+    return normalizeDpfToken(identifiant).toLowerCase();
+  }
+
+  function splitListValues(valeurs) {
+    const s = String(valeurs || '');
+    return s.split(s.includes('|') ? '|' : ',').map(v => v.trim()).filter(Boolean);
+  }
+
+  const cellText = c => (c == null ? '' : String(c)).trim();
+
+  // Valeur d'une cellule ExcelJS en texte (texte riche, formule, lien).
+  function excelCellText(v) {
+    if (v == null) return '';
+    if (typeof v !== 'object') return String(v);
+    if (Array.isArray(v.richText)) return v.richText.map(t => t.text).join('');
+    if (v.text != null) return String(v.text);
+    if (v.result != null) return String(v.result);
+    return '';
+  }
+
+  // rows : lignes de la feuille (tableaux de cellules). Colonnes repérées par
+  // l'en-tête « Code » / « Valeurs » ; la ligne « Abréviations » ouvre la
+  // section des abréviations. Ne sont pas importées : les « Liste à Compléter »
+  // et les listes Admin_ (Référentiel Administratif, Règle 16).
+  function parseDpfCatalogue(rows) {
+    let codeCol = -1;
+    let valCol = -1;
+    let start = 0;
+    for (let r = 0; r < rows.length && codeCol < 0; r++) {
+      const row = rows[r] || [];
+      const c = row.findIndex(v => /^code$/i.test(cellText(v)));
+      const v = row.findIndex(v => /^valeurs?\b/i.test(cellText(v)));
+      if (c >= 0 && v >= 0) { codeCol = c; valCol = v; start = r + 1; }
+    }
+    if (codeCol < 0) throw new Error('en-têtes « Code » et « Valeurs » introuvables dans la feuille');
+
+    const lists = [];
+    const abbreviations = [];
+    const ignored = { aCompleter: [], admin: [] };
+    const seen = new Set();
+    let inAbbreviations = false;
+    for (let r = start; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const code = cellText(row[codeCol]);
+      const raw = cellText(row[valCol]);
+      if (!code) continue;
+      if (!raw) {
+        if (/abr[ée]viation/i.test(code)) inAbbreviations = true;
+        continue;
+      }
+      if (inAbbreviations) {
+        abbreviations.push({ code, sens: raw });
+        continue;
+      }
+      for (const name of code.split('|')) {
+        const id = normalizeDpfToken(name);
+        if (!id) continue;
+        const identifiant = id + '_';
+        if (/^admin_/i.test(id)) { ignored.admin.push(identifiant); continue; }
+        if (/liste\s+[àa]\s+compl[ée]ter/i.test(raw)) { ignored.aCompleter.push(identifiant); continue; }
+        const key = dpfListKey(identifiant);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        let ouverte = false;
+        const values = [];
+        for (const token of splitListValues(raw.replace(/^[\s{[(]+|[\s}\])]+$/g, ''))) {
+          if (/^(etc\.?|…|\.\.\.)$/i.test(token)) { ouverte = true; continue; }
+          const v = normalizeDpfToken(token);
+          if (v && !values.includes(v)) values.push(v);
+        }
+        if (!values.length) continue;
+        const entry = { identifiant, valeurs: values.join(', '), source: 'DPF' };
+        if (ouverte) entry.ouverte = true;
+        lists.push(entry);
+      }
+    }
+    return { lists, abbreviations, ignored };
+  }
+
+  function formatDpfSection(catalogue) {
+    const lists = ((catalogue && catalogue.lists) || []).filter(l => l && l.identifiant && l.valeurs);
+    const abbreviations = ((catalogue && catalogue.abbreviations) || []).filter(a => a && a.code && a.sens);
+    if (!lists.length && !abbreviations.length) return '';
+    let out = DPF_SECTION_HEADER + ' (vocabulaire contrôlé — à RÉUTILISER):\n' +
+      "- Quand une liste ci-dessous correspond au sens de la question, la réutiliser telle quelle (même identifiant, mêmes valeurs) au lieu d'en inventer une nouvelle.\n" +
+      '- pf_modalites garde TOUJOURS la forme Identifiant_=[valeur1,valeur2,…] (ex. Combustible_Cuisson_=[Bois,Charbon,Gaz,Electricite,Kerosene,Mazout,0]).\n' +
+      "- Séparer les valeurs par ',' (choix unique, *1) ou '|' (choix multiple) selon la question ; \"0\" = option Aucun/Autre du DPF, à garder tel quel (ne pas le remplacer par Autre).\n" +
+      '- (ouverte) = liste incomplète dans le DPF : ne la compléter qu\'avec les modalités citées dans le libellé.\n';
+    lists.forEach(l => {
+      out += '- ' + l.identifiant + ' = [' + splitListValues(l.valeurs).join(', ') + ']' + (l.ouverte ? ' (ouverte)' : '') + '\n';
+    });
+    if (abbreviations.length) {
+      out += '\nABRÉVIATIONS STANDARD DU DPF (forme courte à employer dans les radicaux et déterminants, ex. SS__Couverture__Assurance__C):\n';
+      abbreviations.forEach(a => { out += '- ' + a.code + ' = ' + a.sens + '\n'; });
+    }
+    return out;
+  }
+
+  // Choix dont pf_modalites n'a pas la forme « Liste_=[…] » (ex. « Bois,
+  // Charbon, 0 ») : sans elle, les générateurs XLSForm ne trouvent aucune
+  // liste et produisent un Oui/Non. On la reconstruit avec le nom de liste
+  // du code (!1*1Liste_) et les valeurs données, à défaut celles du catalogue.
+  function canonicalListModalites(pfQuestion, pfModalites, lists) {
+    const mod = String(pfModalites || '');
+    if (/\w+_\s*=\s*\[/.test(mod) || classifyCode(pfQuestion).kind !== 'select') return mod;
+    const { codePart, constraintPart } = splitCode(pfQuestion);
+    const name = (constraintPart.match(/^\s*\d*\s*\*\s*\d*\s*([A-Za-z][A-Za-z0-9_]*_)\s*$/) || [])[1];
+    if (!name || /^Admin_/i.test(name)) return mod;
+    let values = /[,|]/.test(mod) ? splitListValues(mod) : [];
+    if (!values.length) {
+      const entry = (lists || []).find(l => dpfListKey(l.identifiant) === dpfListKey(name));
+      if (!entry) return mod;
+      values = splitListValues(entry.valeurs);
+    }
+    const n = parseMultiplicity(constraintPart);
+    const sep = mod.includes('|') || codePart.endsWith('__SRC') || n !== 1 ? '|' : ',';
+    return name + '=[' + values.join(sep) + ']';
+  }
+
+  function insertBeforeInstructions(prompt, text) {
+    const pos = prompt.indexOf('\nINSTRUCTIONS:');
+    return pos < 0 || !text ? prompt : prompt.slice(0, pos) + text + prompt.slice(pos);
+  }
+
+  // Valeurs par défaut : DPF officiel + listes de Studio sans équivalent DPF
+  // (source "Studio"). Remplaçable à tout moment par l'import d'un DPF plus récent.
+  // Généré depuis « Dictionnaire des Propriete Fonctionnelles -genesis-FWD version finale29102026.xlsx » (feuille DPF_lists_Abreviations).
+  const DEFAULT_DPF_CATALOGUE = {
+    lists: [
+      { identifiant: "Acces_soins_Obstacles_", valeurs: "Financier, Distance, Qualite, Information, 0", source: "DPF" },
+      { identifiant: "Appreciation_", valeurs: "Excellente, Tres_Bonne, Bonne, Acceptable, Mauvaise, Tres_Mauvaise, 0", source: "DPF" },
+      { identifiant: "Attentes_Vs_SS_", valeurs: "Accueil, Confidentialite, Disponibilite, Ecoute, 0", source: "DPF" },
+      { identifiant: "Boolean_", valeurs: "OUI, NON", source: "DPF" },
+      { identifiant: "Cite_Changements_Structurels_", valeurs: "Habitations_Plus, Habitations_Moins, Circulation_Plus, Circulation_Moins, Pollution_Plus, Pollution_Moins, Acces_Services_Meilleur, Acces_Services_Degrade, 0", source: "DPF" },
+      { identifiant: "Combustible_Cuisson_", valeurs: "Bois, Charbon, Gaz, Electricite, Kerosene, Mazout, 0", source: "DPF" },
+      { identifiant: "Degre_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Infifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
+      { identifiant: "Gradation_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Infifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
+      { identifiant: "Depot_Ordures_Menageres_", valeurs: "Ramassage, Depot_Riverain, Brulees, Enterree_s, Jetees_Riviere, 0", source: "DPF" },
+      { identifiant: "ES_Problemes_", valeurs: "Manque_de_personnel, Manque_de_medicaments, Longues_attentes, Cout_eleve, Mauvais_accueil, Insalubrite, 0", source: "DPF" },
+      { identifiant: "Frequence_", valeurs: "Permanent, Quotidien, Hebdomadaire, Mensuel, Annuel, Occasionnel, Occasionnel_D, Occasionnel_W, Occasionnel_M, Occasionnel_Y, 0", source: "DPF" },
+      { identifiant: "Fumer_Vapoter_Effet_Bebe_", valeurs: "Irritabilite, Trouble_Digestif, Colique, Vomissement, Trouble_Sommeil, Augmentation_Risque_MS, Affaiblissement_Immunite, Infection_Respiratoire, Retard_Croissance_IU, Changement_Gout_Lait, Probleme_Respiratoire_Otite, 0", source: "DPF" },
+      { identifiant: "Fumer_Vapoter_Effet_Fertilite_", valeurs: "Grossesse_Extra_Uterine, Diminution_Ovocyte, Alteration_hormonale, Menopause_Precoce, Dyskinesie_Ciliaire, Delai_Conception_allonge, Risque_Infertilite_Accru, Fausse_Couche, Diminution_Chances_Succes_PMA, 0", source: "DPF" },
+      { identifiant: "Fumer_Vapoter_Effet_Foetus_", valeurs: "Faible_Poids_Naissance, Retard_Croissance, Naissance_Premature, Risque_Mort_Foetale_Accru, Syndrome_Mort_Subite_Nourrisson, Complication_Placentaire, Rupture_Membranes, Trouble_Apprentissage_Langage, 0", source: "DPF" },
+      { identifiant: "Gestion_Dechets_", valeurs: "Ramassage_Municipal, Incineration, Enfouillage, a_l_Eau, Compost, Collecte_informelle, 0", source: "DPF" },
+      { identifiant: "Impact_", valeurs: "Positif, Negatif, Aucun, 0", source: "DPF" },
+      { identifiant: "Affecte_Sante_", valeurs: "Maladies, Accidents, Pollution, Nuisance, Alimemtation, 0Ativite_Sportive", source: "DPF", ouverte: true },
+      { identifiant: "Institution_", valeurs: "Municipalite, Centre_Sante, ONG, Communaute, 0", source: "DPF" },
+      { identifiant: "Localisation_Urbaine_", valeurs: "Urbain, Periurbain, Centre_Ville, Peripherie, Rurale, Campement, 0", source: "DPF" },
+      { identifiant: "Materiaux_Construction_", valeurs: "Parpaing_Beton, Bois, Terre, Metal, Chaume, Tole, 0", source: "DPF" },
+      { identifiant: "Method_Elimination_Dechet_Biomed_", valeurs: "Incineration, Enfouissement_Securise, Collecte_Specialisee, Traitement_Centrale, 0", source: "DPF" },
+      { identifiant: "Methode_Pretraitement_Eau_", valeurs: "Ebullition, Filtration, Chloration, Traitement_Solaire, Autre, 0", source: "DPF" },
+      { identifiant: "Moyen_Deplacement_", valeurs: "Marche, Velo, Moto, Bus, Voiture, Train, Avion, 0", source: "DPF" },
+      { identifiant: "Niveau_Instruction_", valeurs: "PRIMAIRE, SECONDAIRE, SUPERIEUR, 0", source: "DPF" },
+      { identifiant: "Occurrence_", valeurs: "Toujours, Parfois, Rarement, Jamais, 0", source: "DPF" },
+      { identifiant: "Outils_Sensibilisation_", valeurs: "Media, Famille, Amis, ES", source: "DPF", ouverte: true },
+      { identifiant: "Periode_Annee_", valeurs: "Janvier, Fevrier, Decembre, Saison_Pluie, Saison_Seche, Harmattan, Trimestre1, Trimestre3", source: "DPF", ouverte: true },
+      { identifiant: "Pretraitement_Eau_", valeurs: "Ebullition, Filtration, Chloration, Traitement_solaire, 0", source: "DPF" },
+      { identifiant: "Qualite_Occupation_Logement_", valeurs: "Proprietaire, Locataire, Usufruitier, Viager, Gratuite, Resquilleur, Squatteur, 0", source: "DPF" },
+      { identifiant: "Religion_", valeurs: "Chretienne, Musulmane, Traditionnelle, 0", source: "DPF" },
+      { identifiant: "Securite_Routiere_", valeurs: "Accidents_Frequents, Trottoire_Absence, Vitesse_Exces, Signalisation_Mauvaise, Aucun, 0", source: "DPF" },
+      { identifiant: "Services_Publics_", valeurs: "Gestion_Dechets, Acces_Eau_Potable, Eclairage_Public, Amenagement_Route, Hygiene_Alimentaire, Centre_Sante, Equipement_Sportif, Ecole, Commerce, 0", source: "DPF" },
+      { identifiant: "Sexe_", valeurs: "Masculin, Feminin, Autre, 0", source: "DPF" },
+      { identifiant: "Src_Eau_Menage_", valeurs: "Reseau_Public, Puit, Forage, Source, Camion_Citerne, Eau_Pluie, Eau_Embouteille, 0", source: "DPF" },
+      { identifiant: "Src_Eau_Potable_", valeurs: "Reseau_Public, Puit, Forage, Source, Camion_Citerne, Eau_Pluie, Eau_Embouteille, 0", source: "DPF" },
+      { identifiant: "Src_Info_Sante_", valeurs: "Personnel_Sante, Media, Reseaux_Sociaux, Entourage, 0", source: "DPF" },
+      { identifiant: "Statut_Matrimonial_", valeurs: "Celibataire, Mariee, Divorcee, Veuve, Concubinage, 0", source: "DPF" },
+      { identifiant: "Statut_Urbain_", valeurs: "Urbain, Periurbain, Rural, Campement, 0", source: "DPF" },
+      { identifiant: "Systeme_Defecation_", valeurs: "Reseau_Collectif, Fosse_Sceptique, Latrine_Simple, A_Ciel_ouvert, Aucun, 0", source: "DPF" },
+      { identifiant: "Tranche_Revenus_M_Milliers_", valeurs: "10000_100000, 100000_200000, 200000_400000, 500000", source: "DPF" },
+      { identifiant: "Trilean_", valeurs: "OUI, NON, 0", source: "DPF" },
+      { identifiant: "Type_Allaitement_", valeurs: "Naturel, Artificiel, Mixte", source: "DPF" },
+      { identifiant: "Type_ES_", valeurs: "Centre_Sante, CS_Ref, Hopital, Clinique_Privee, Pharmacie, Tradipraticien, 0", source: "DPF" },
+      { identifiant: "Type_Etablissement_Sanitaire_", valeurs: "Centre_de_sante, CSRef, Hopital, Clinique_privee, Poste_de_sante, Pharmacie, Autre, 0", source: "DPF" },
+      { identifiant: "Type_Evacuation_Eaux_Usees_", valeurs: "Reseau_collectif, Caniveaux, Drainage, Champ_Infiltration, Ciel_Ouvert, 0", source: "DPF" },
+      { identifiant: "Type_Latrine_", valeurs: "Latrine_Amenagee, Fosse_Sceptiqu, Latrine_partage, Latrine_Simple, 0", source: "DPF" },
+      { identifiant: "Type_Logement_", valeurs: "Maison, Appartement, Case, Immeuble_Collectif, 0", source: "DPF" },
+      { identifiant: "Type_Savon_", valeurs: "Savon_solide, Savon_liquide, Detergent, Gel_Alcoolique, 0", source: "DPF" },
+      { identifiant: "Type_Toiture_", valeurs: "Tole, Tuile, Chaume, Beton, 0", source: "DPF" },
+      { identifiant: "Niveau_", valeurs: "Eleve, Moyen, Faible", source: "Studio" },
+      { identifiant: "Motivation_", valeurs: "Très_Motivée, Peu_Motivée, Pas_Motivée", source: "Studio" },
+      { identifiant: "Dangereux_", valeurs: "Très_dangereux, Dangereux, Peu_dangereux, Pas_dangereux", source: "Studio" },
+      { identifiant: "Instruction_", valeurs: "Primaire, Secondaire, Supérieur, Autre", source: "Studio" },
+      { identifiant: "Source_Info_Sante_", valeurs: "Personnel_Sante | Media | Reseaux_Sociaux | Entourage | Famille | 0", source: "Studio" },
+      { identifiant: "Zone_Residence_", valeurs: "Urbain, Rural, Périurbain", source: "Studio" },
+      { identifiant: "Allaitement_", valeurs: "Naturel, Artificiel, Mixte", source: "Studio" },
+      { identifiant: "Profession_", valeurs: "Sans_emploi, Ménagère, Employée, Commerçante, Informelle/Auto_entreprise, Autre", source: "Studio" },
+    ],
+    abbreviations: [
+      { code: "APCP", sens: "Analyse et Perception des Comportement des Populations" },
+      { code: "ES", sens: "Établissement de Santé" },
+      { code: "FAP", sens: "Femme en Age de Procréer" },
+      { code: "FEA", sens: "Femme Enceinte & Alaitante" },
+      { code: "FRQ", sens: "Frequency" },
+      { code: "IISC", sens: "Interventions Intensives de Soutien Comportemental" },
+      { code: "LQL", sens: "Lesquelles | Lequel | Laquelle | Quelle | Quel" },
+      { code: "LST", sens: "List" },
+      { code: "PEX", sens: "Par Exemple | Exemple" },
+      { code: "Pt", sens: "Patiente | Patient" },
+      { code: "RSC", sens: "Resource" },
+      { code: "SRC", sens: "Source" },
+      { code: "SS", sens: "Services de Santé" },
+      { code: "STD", sens: "Standard" },
+      { code: "XPQ", sens: "Expliquez | Pourquoi | Comment" },
+    ],
+  };
+
+  // ── Contrôles qualité d'une question codée (avertissements) ───────────────
+
+  const comparableValues = valeurs =>
+    splitListValues(valeurs).map(v => normalizeDpfToken(v).toLowerCase()).filter(v => v && v !== '0').sort().join('|');
+
+  function normalizeLabel(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  // dpfLists : listes de source DPF, pour le contrôle du vocabulaire contrôlé.
+  function codingWarnings(item, n, dpfLists) {
+    const out = [];
+    const q = String((item && item.pf_question) || '');
+    const { codePart, constraintPart } = splitCode(q);
+    const kind = classifyCode(q).kind;
+    const warn = (anomalie, action) => out.push({ n, variable: codePart, anomalie, action });
+
+    if (kind === 'select') {
+      const misplaced = constraintPart.match(/^\s*(\d+)\s*\*\s*(?=[A-Za-z]|$)/);
+      if (misplaced && parseInt(misplaced[1], 10) >= 2) {
+        warn(`Multiplicité mal placée (!${misplaced[1]}*…) : le nombre de choix suit l'astérisque`,
+          `Écrire !1*${misplaced[1]}… pour « au moins ${misplaced[1]} choix »`);
+      }
+      const def = String(item.pf_modalites || '').match(/(\w+_)\s*=\s*\[([^\]]+)\]/);
+      if (def) {
+        const raw = def[2];
+        const options = splitListValues(raw).filter(v => v !== '0');
+        const min = parseMultiplicity(constraintPart);
+        const pipe = raw.includes('|');
+        if (min === 1 && pipe) {
+          warn('Choix unique (*1) mais modalités séparées par « | » (cumulables)',
+            'Séparer par « , » pour un choix unique, ou écrire !1* pour un choix multiple');
+        } else if (min !== 1 && !pipe && options.length > 1) {
+          warn(min === null && !codePart.endsWith('__SRC')
+            ? 'Choix multiple (!1*) mais modalités séparées par « , » (exclusives) : généré en choix unique'
+            : 'Choix multiple mais modalités séparées par « , » (exclusives)',
+            'Séparer par « | » pour un choix multiple, ou écrire !1*1 pour un choix unique');
+        }
+        if (min >= 2 && options.length < min) {
+          warn(`Au moins ${min} choix demandés mais seulement ${options.length} modalité(s)`,
+            `Réduire la multiplicité ou compléter la liste ${def[1]}`);
+        }
+        const listName = def[1];
+        const values = comparableValues(raw);
+        const same = (dpfLists || []).find(l => dpfListKey(l.identifiant) === dpfListKey(listName));
+        if (same) {
+          if (!same.ouverte && comparableValues(same.valeurs) !== values) {
+            warn(`Liste « ${listName} » différente de celle du DPF (${splitListValues(same.valeurs).join(', ')})`,
+              'Reprendre les valeurs du DPF, ou renommer la liste si le sens diffère');
+          }
+        } else if (options.length >= 2) {
+          const twin = (dpfLists || []).find(l => comparableValues(l.valeurs) === values);
+          if (twin) {
+            warn(`Mêmes modalités que la liste du DPF « ${twin.identifiant} »`,
+              `Réutiliser l'identifiant ${twin.identifiant} (vocabulaire contrôlé)`);
+          }
+        }
+      }
+    }
+
+    if (kind === 'integer' || kind === 'decimal' || kind === 'text') {
+      const label = normalizeLabel(item.libelle);
+      if (/\bnumero\b.*\b(telephone|portable|mobile|whatsapp|cellulaire)\b|\b(telephone|whatsapp) (du|de|des)\b/.test(label)) {
+        warn('Numéro de téléphone non codé __Z!1*Tel',
+          'Coder __Z!1*Tel (texte validé par regex) — jamais __1 ni __Z!1*Expression');
+      }
+    }
+    return out;
+  }
+
   return {
     GRAMMAR_VERSION,
     SYSTEM_PROMPT,
@@ -519,5 +816,16 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     isPhoneConstraint,
     PHONE_CONSTRAINT,
     trileanChoices,
+    DPF_SECTION_HEADER,
+    DEFAULT_DPF_CATALOGUE,
+    normalizeDpfToken,
+    dpfListKey,
+    splitListValues,
+    excelCellText,
+    parseDpfCatalogue,
+    formatDpfSection,
+    canonicalListModalites,
+    insertBeforeInstructions,
+    codingWarnings,
   };
 });
