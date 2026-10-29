@@ -4432,7 +4432,7 @@ function sanitizePhaktsItemClient(item) {
     .split('__').map(part => part.split('_').filter(s => s.length >= 2 || /^\d/.test(s)).join('_')).filter(Boolean).join('__')
     .replace(/^_+|_+$/g, '');
   if (!radical) radical = oldRadical;
-  const lm = rest.match(/^(__X!\d+\*(?:\d+)?)([A-Za-z][A-Za-z0-9_]*?_)$/);
+  const lm = rest.match(/^(__X!\d*\*\d*)([A-Za-z][A-Za-z0-9_]*?_)$/);
   // Liste du catalogue DPF (Combustible_Cuisson_…) : nom officiel, jamais raccourci
   const isDpfList = lm && dpfListes.some(l => PHAKTS_CORE.dpfListKey(l.identifiant) === PHAKTS_CORE.dpfListKey(lm[2]));
   if (lm && !lm[2].startsWith('Admin_') && !isDpfList) {
@@ -5226,13 +5226,13 @@ function buildDefaultConstraint(pfQuestion, constraintPart, type, libelle) {
     return explicitRange;
   }
 
-  // Un champ à choix n'a que la contrainte de multiplicité (!1*3Liste_) : les
-  // heuristiques sur le libellé ci-dessous posaient sinon une regex téléphone
-  // sur « Avez-vous eu un contact… ? » (Oui/Non), rendant la question bloquante.
+  // Un champ à choix n'a que la contrainte de multiplicité N*M (!3*Liste_,
+  // !1*3Liste_) : les heuristiques sur le libellé ci-dessous posaient sinon une
+  // regex téléphone sur « Avez-vous eu un contact… ? » (Oui/Non), rendant la
+  // question bloquante.
   if (/^select_(one|multiple) /.test(type)) {
-    const min = /^select_multiple /.test(type) ? PHAKTS_CORE.parseMultiplicity(constraintPart) : null;
-    return min >= 2
-      ? { expression: `count-selected(.) >= ${min}`, message: `Sélectionnez au moins ${min} réponses.` }
+    return /^select_multiple /.test(type)
+      ? PHAKTS_CORE.multiplicityConstraint(constraintPart)
       : { expression: '', message: '' };
   }
 
@@ -5469,11 +5469,12 @@ function buildSurveyFieldMeta(item) {
 
 // select_one ou select_multiple — même décision pour le type du champ
 // (buildXLSForm) et pour la logique de saut (selected()). Une liste Admin_
-// n'a pas de valeurs dans les modalités (référentiel) : seul *1 la rend unique.
+// n'a pas de valeurs dans les modalités (référentiel) : seul 1*1 la rend unique.
 function selectIsMultiple(meta) {
   const q = meta.item.pf_question;
   if (adminListNameOf(meta)) {
-    return q.includes('__SRC') || PHAKTS_CORE.parseMultiplicity(meta.constraintPart) !== 1;
+    const mult = PHAKTS_CORE.parseMultiplicity(meta.constraintPart);
+    return q.includes('__SRC') || !(mult && mult.max === 1);
   }
   return PHAKTS_CORE.selectCardinality(q, meta.item.pf_modalites).multiple;
 }
@@ -5807,7 +5808,9 @@ function buildXLSForm() {
       choice_filter: choiceFilter,
       constraint,
       'constraint message::French (fr)': constraintMsg,
-      'hint::French (fr)': hint
+      'hint::French (fr)': hint,
+      // Précision GPS exigée (Directive de configuration du questionnaire)
+      parameters: type === 'geopoint' ? PHAKTS_CORE.GEOPOINT_PARAMETERS : ''
     });
   }
 
@@ -6402,7 +6405,8 @@ async function downloadXLSForm() {
     { header: 'choice_filter', key: 'choice_filter', width: 28 },
     { header: 'constraint', key: 'constraint', width: 30 },
     { header: 'constraint message::French (fr)', key: 'constraint message::French (fr)', width: 40 },
-    { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 }
+    { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 },
+    { header: 'parameters', key: 'parameters', width: 36 }
   ]);
 
   addObjectWorksheet(workbook, 'choices', choicesRows, [
@@ -6476,7 +6480,8 @@ async function buildXLSFormBuffer() {
     { header: 'choice_filter', key: 'choice_filter', width: 28 },
     { header: 'constraint', key: 'constraint', width: 30 },
     { header: 'constraint message::French (fr)', key: 'constraint message::French (fr)', width: 40 },
-    { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 }
+    { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 },
+    { header: 'parameters', key: 'parameters', width: 36 }
   ]);
   addObjectWorksheet(workbook, 'choices', choicesRows, [
     { header: 'list_name', key: 'list_name', width: 20 },

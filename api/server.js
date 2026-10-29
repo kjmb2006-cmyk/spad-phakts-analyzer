@@ -303,7 +303,7 @@ function sanitizePhaktsItem(item, lists = []) {
 
   // 3. Détecte list_key = radical complet (ou variante) après __X!N*M
   // ex: "Quelle_Distance_Trouve__X!1*1Quelle_Distance_Trouve_"
-  const listMatch = rest.match(/^(__X!\d+\*(?:\d+)?)([A-Za-z][A-Za-z0-9_]*?_)$/);
+  const listMatch = rest.match(/^(__X!\d*\*\d*)([A-Za-z][A-Za-z0-9_]*?_)$/);
   // Ne jamais recalibrer une list_key du référentiel administratif partagé
   // (Admin_Region_Sanitaire_, Admin_District_Sanitaire_, etc. — Règle 16) :
   // ce ne sont pas des radicaux générés par le LLM mais des noms de liste

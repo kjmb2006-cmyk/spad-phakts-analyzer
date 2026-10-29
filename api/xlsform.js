@@ -5,7 +5,7 @@
 
 const {
   classifyCode, selectCardinality, parseRange, rangeConstraint,
-  PHONE_CONSTRAINT, trileanChoices,
+  multiplicityConstraint, GEOPOINT_PARAMETERS, PHONE_CONSTRAINT, trileanChoices,
 } = require("../public/phakts-core.js");
 
 function sanitizeName(str) {
@@ -224,12 +224,12 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
       constraintMsg = PHONE_CONSTRAINT.message;
     }
 
-    // Multiplicité *N (ex. !1*3Liste_) : au moins N choix cochés
+    // Multiplicité N*M (ex. !3*Liste_, !1*3Liste_) : nombre de choix cochés
     if (type.startsWith("select_multiple ")) {
-      const { min } = selectCardinality(pf_question, pf_modalites);
-      if (min) {
-        constraint = `count-selected(.) >= ${min}`;
-        constraintMsg = `Sélectionnez au moins ${min} réponses.`;
+      const mult = multiplicityConstraint(constraintPart);
+      if (mult.expression) {
+        constraint = mult.expression;
+        constraintMsg = mult.message;
       }
     }
 
@@ -254,6 +254,8 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
       constraint,
       constraint_message: constraintMsg,
       choice_filter: choiceFilter,
+      // Précision GPS exigée (Directive de configuration du questionnaire)
+      parameters: type === "geopoint" ? GEOPOINT_PARAMETERS : "",
       hint,
       // Colonne personnalisée pour numéro de question
       "_question_no": questionNumber,

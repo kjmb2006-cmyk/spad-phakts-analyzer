@@ -31,12 +31,14 @@ B. TYPES CHOIX (MULTIPLE CHOICES):
     SÉPARATEURS DANS LES LISTES:
     - Virgule ','  → choix EXCLUSIFS (radio/select_one) : Sport__X![Football,Natation]
     - Pipe '|'     → choix CUMULABLES (checkbox/select_multiple) : Sport__X![Football|Course|Natation]
-    MULTIPLICITÉ *n:
-    - *1  = exactement 1 seul choix possible
-    - *3  = minimum 3 choix requis
-    - *   = aucune limite de sélection
-    POSITION : le nombre de choix s'écrit APRÈS l'astérisque, précédé de 1 → __X!1*3Sport_ (jamais __X!3*Sport_)
-    Exemple : "Quels sports pratiquez-vous ? (au moins 3)" → Sport__X!1*3Sport_            Sport_=[Football|Course|Natation|Tennis]
+    MULTIPLICITÉ N*M (BNF PHAKTS) : N = nombre MINIMUM de choix, M = nombre MAXIMUM ; l'un ou l'autre peut être omis :
+    - 1*1 = exactement 1 choix (choix unique)
+    - 1*  = au moins 1 choix, sans maximum (choix multiples)
+    - 3*  = au moins 3 choix
+    - *3  = au plus 3 choix
+    - 1*3 = entre 1 et 3 choix
+    Exemples : "Quels sports pratiquez-vous ? (au moins 3)" → Sport__X!3*Sport_            Sport_=[Football|Course|Natation|Tennis]
+               "Citez au plus 2 raisons" → Raison__X!1*2Raison_            Raison_=[Cout|Distance|Accueil|0]
 
 C. TYPES TEXTE LIBRE:
 6.  __Z!1*Expression  → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
@@ -92,7 +94,7 @@ RÈGLES STRICTES DE FORMAT:
 - Réel: TOUJOURS utiliser la plage numérique → __2K!0<R<300, __2T!35<R<42, __2P!0<R<100
 - Texte libre: TOUJOURS écrire __Z!1*Expression (jamais __Z seul)
 - Téléphone: TOUJOURS écrire __Z!1*Tel (jamais __Z!1*Expression ni __1 — un numéro de tél commence souvent par 0 ou + et est un TEXTE, pas un entier). pf_modalites = "Numéro de téléphone (ex: 0XXXXXXXXX)"
-- Cohérence séparateur ↔ multiplicité: virgule ',' ↔ *1 (select_one) ; pipe '|' ↔ * ou *N (select_multiple, N = nombre minimum de choix). JAMAIS __X!1*1 avec des '|', JAMAIS __X!1* avec des ','.
+- Cohérence séparateur ↔ multiplicité: virgule ',' ↔ 1*1 (choix unique) ; pipe '|' ↔ toute autre multiplicité (1*, 3*, *3, 1*3 : choix multiples). JAMAIS __X!1*1 avec des '|', JAMAIS __X!1* avec des ','.
 - Variable générée par Kobo (GPS, début/fin, date du jour, appareil, compte enquêteur): __G!<variable> — jamais une question à saisir (__Z, __A, __X)
 - Valeur SAISIE par l'enquêteur (code, identifiant, code DHIS2, numéro alphanumérique) → TOUJOURS __Z!1*Expression, jamais __G
 - Géolocalisation: utiliser __G!DMS ou __G!DD (jamais __Z pour les coordonnées GPS)
@@ -271,7 +273,7 @@ EXEMPLES SURVEILLANCE & CONTEXTE ÉPIDÉMIOLOGIQUE:
 - "Si oui, quelle(s) maladie(s) ?" → Flambee_Epidemique__Maladie__X!1*Maladie_            Maladie_=[Rougeole|Fievre_Hemorragique|PFA|Diarrhee|Meningite]
   ⚠️ ERREUR COURANTE: Quelle_Maladie_Plusieurs__X — le radical doit être ABSTRAIT et lié au contexte parent, pas verbeux. Le pluriel "(s)" → pipe (select_multiple, pas virgule)
   ⚠️ ERREUR COURANTE: accents/espaces dans les modalités (Fièvre hémorragique) — utiliser Snake_Case SANS accents (Fievre_Hemorragique)
-  ⚠️ ERREUR COURANTE: __X!1*1Maladie_ avec pipe "|" — INCOHÉRENT ! *1 = select_one (max 1 choix) exige la virgule "," (exclusif). Le pipe "|" = cumulable → DOIT utiliser * (sans limite) ou *N (min N). RÈGLE: pipe "|" ↔ * / virgule "," ↔ *1
+  ⚠️ ERREUR COURANTE: __X!1*1Maladie_ avec pipe "|" — INCOHÉRENT ! 1*1 = select_one (max 1 choix) exige la virgule "," (exclusif). Le pipe "|" = cumulable → DOIT utiliser 1* (sans limite), N* (au moins N) ou N*M (entre N et M). RÈGLE: pipe "|" ↔ 1*, N*, N*M / virgule "," ↔ 1*1
   ⚠️ SKIP: "Si oui" → Flambee_Epidemique__B -> @Flambee_Epidemique__Maladie__X
 
 EXEMPLES DÉMOGRAPHIQUES (Fiche Identité Patient):
@@ -488,24 +490,42 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     return { codePart, constraintPart, affix, kind, unit, metadata };
   }
 
-  // Multiplicité d'un choix (!1*3Liste_) = nombre après "*" : 1 = un seul
-  // choix, N ≥ 2 = au moins N choix, null = "*" seul (aucune limite).
+  // Multiplicité N*M d'un choix (BNF PHAKTS, annexe 1/b du rapport de 2025) :
+  // N = nombre minimum de choix, M = nombre maximum, chacun facultatif —
+  // 1*1 un seul choix, 1* au moins un, 3* au moins trois, *3 au plus trois,
+  // 1*3 entre un et trois. null si la contrainte n'est pas une multiplicité.
   function parseMultiplicity(constraintPart) {
-    const m = String(constraintPart || '').match(/^\s*\d*\s*\*\s*(\d*)/);
-    return m && m[1] ? parseInt(m[1], 10) : null;
+    const m = String(constraintPart || '').match(/^\s*(\d*)\s*\*\s*(\d*)/);
+    if (!m) return null;
+    return { min: m[1] ? parseInt(m[1], 10) : null, max: m[2] ? parseInt(m[2], 10) : null };
+  }
+
+  const isSingleChoice = mult => Boolean(mult) && mult.max === 1;
+
+  // Contrainte XLSForm d'un choix multiple (le minimum de 1 découle déjà de
+  // l'obligation de répondre).
+  function multiplicityConstraint(constraintPart) {
+    const mult = parseMultiplicity(constraintPart);
+    const min = mult && mult.min >= 2 ? mult.min : null;
+    const max = mult && mult.max >= 1 ? mult.max : null;
+    if (min && max) {
+      return { expression: `count-selected(.) >= ${min} and count-selected(.) <= ${max}`, message: `Sélectionnez entre ${min} et ${max} réponses.` };
+    }
+    if (min) return { expression: `count-selected(.) >= ${min}`, message: `Sélectionnez au moins ${min} réponses.` };
+    if (max) return { expression: `count-selected(.) <= ${max}`, message: `Sélectionnez au plus ${max} réponses.` };
+    return { expression: '', message: '' };
   }
 
   // select_one ou select_multiple — la même décision doit servir au type du
   // champ ET à la logique de saut (selected() pour un choix multiple).
   function selectCardinality(pfQuestion, pfModalites) {
     const { codePart, constraintPart } = splitCode(pfQuestion);
-    const n = parseMultiplicity(constraintPart);
-    const min = n && n >= 2 ? n : null;
-    if (/__SRC$/.test(codePart)) return { multiple: true, min };
-    if (n === 1) return { multiple: false, min: null };
-    if (min) return { multiple: true, min };
+    const mult = parseMultiplicity(constraintPart);
+    if (/__SRC$/.test(codePart)) return { multiple: true };
+    if (isSingleChoice(mult)) return { multiple: false };
+    if (mult && (mult.min >= 2 || mult.max >= 2)) return { multiple: true };
     const list = String(pfModalites || '').match(/\w+_\s*=\s*\[([^\]]+)\]/);
-    return { multiple: Boolean(list && list[1].includes('|')), min: null };
+    return { multiple: Boolean(list && list[1].includes('|')) };
   }
 
   // Plage « a<N<b » (bornes exclusives) ou « a<=N<=b » (inclusives, Règle 14
@@ -532,6 +552,10 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       message: `La valeur doit être comprise entre ${range.lower} et ${range.upper}.`,
     };
   }
+
+  // Précision exigée des points GPS (Directive de configuration du
+  // questionnaire du CGD) : capture acceptée à 10 m, avertissement au-delà.
+  const GEOPOINT_PARAMETERS = 'capture-accuracy=10 warning-accuracy=10';
 
   const PHONE_CONSTRAINT = {
     expression: "regex(., '^\\+?[0-9 ]{8,20}$')",
@@ -689,8 +713,8 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       if (!entry) return mod;
       values = splitListValues(entry.valeurs);
     }
-    const n = parseMultiplicity(constraintPart);
-    const sep = mod.includes('|') || codePart.endsWith('__SRC') || n !== 1 ? '|' : ',';
+    const single = isSingleChoice(parseMultiplicity(constraintPart));
+    const sep = mod.includes('|') || codePart.endsWith('__SRC') || !single ? '|' : ',';
     return name + '=[' + values.join(sep) + ']';
   }
 
@@ -812,22 +836,23 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     }
 
     if (kind === 'select') {
-      const misplaced = constraintPart.match(/^\s*(\d+)\s*\*\s*(?=[A-Za-z]|$)/);
-      if (misplaced && parseInt(misplaced[1], 10) >= 2) {
-        warn(`Multiplicité mal placée (!${misplaced[1]}*…) : le nombre de choix suit l'astérisque`,
-          `Écrire !1*${misplaced[1]}… pour « au moins ${misplaced[1]} choix »`);
+      const mult = parseMultiplicity(constraintPart);
+      if (mult && mult.min !== null && mult.max !== null && mult.min > mult.max) {
+        warn(`Multiplicité incohérente (!${mult.min}*${mult.max}) : au moins ${mult.min} mais au plus ${mult.max} choix`,
+          'Corriger N*M : le minimum N ne peut pas dépasser le maximum M');
       }
       const def = String(item.pf_modalites || '').match(/(\w+_)\s*=\s*\[([^\]]+)\]/);
       if (def) {
         const raw = def[2];
         const options = splitListValues(raw).filter(v => v !== '0');
-        const min = parseMultiplicity(constraintPart);
+        const min = mult ? mult.min : null;
+        const explicitMultiple = mult && (mult.min >= 2 || mult.max >= 2);
         const pipe = raw.includes('|');
-        if (min === 1 && pipe) {
-          warn('Choix unique (*1) mais modalités séparées par « | » (cumulables)',
+        if (isSingleChoice(mult) && pipe) {
+          warn('Choix unique (1*1) mais modalités séparées par « | » (cumulables)',
             'Séparer par « , » pour un choix unique, ou écrire !1* pour un choix multiple');
-        } else if (min !== 1 && !pipe && options.length > 1) {
-          warn(min === null && !codePart.endsWith('__SRC')
+        } else if (!isSingleChoice(mult) && !pipe && options.length > 1) {
+          warn(!explicitMultiple && !codePart.endsWith('__SRC')
             ? 'Choix multiple (!1*) mais modalités séparées par « , » (exclusives) : généré en choix unique'
             : 'Choix multiple mais modalités séparées par « , » (exclusives)',
             'Séparer par « | » pour un choix multiple, ou écrire !1*1 pour un choix unique');
@@ -870,6 +895,8 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     splitCode,
     classifyCode,
     parseMultiplicity,
+    multiplicityConstraint,
+    GEOPOINT_PARAMETERS,
     selectCardinality,
     parseRange,
     rangeConstraint,
