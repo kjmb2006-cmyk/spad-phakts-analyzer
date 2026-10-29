@@ -265,7 +265,7 @@ function sanitizePhaktsItem(item, lists = []) {
   let pf = item.pf_question;
   let modal = String(item.pf_modalites || '');
 
-  const TYPE_RX = /^(.+?)(__(?:B|C|E|X|1|2|Z|A|SRC).*)$/;
+  const TYPE_RX = /^(.+?)(__(?:B|C|E|G|X|1|2|Z|A|SRC).*)$/;
   const m = pf.match(TYPE_RX);
   if (!m) return item;
 
@@ -293,8 +293,10 @@ function sanitizePhaktsItem(item, lists = []) {
     .replace(/^Est_Ce_Que_/i, '')
     .replace(/_Trouvez?_/gi, '_')
     .replace(/_Se_Trouve(_|$)/gi, '$1')
-    // Retire les segments d'une seule lettre (résidus d', l', n', s', t', j', m', c')
-    .split('_').filter(s => s.length >= 2 || /^\d/.test(s)).join('_')
+    // Retire les segments d'une seule lettre (résidus d', l', n', s', t', j', m', c'),
+    // partie par partie : « __ » sépare radical et déterminants
+    // (Fumer_Conso__FRQ devenait Fumer_Conso_FRQ).
+    .split('__').map(part => part.split('_').filter(s => s.length >= 2 || /^\d/.test(s)).join('_')).filter(Boolean).join('__')
     .replace(/^_+|_+$/g, '');
 
   if (!radical) radical = oldRadical;  // safety: never empty
@@ -826,14 +828,18 @@ app.get("/api/dpf-catalogue", (req, res) => {
 
 /**
  * POST /api/dpf-catalogue
- * Corps: { lists: [{identifiant, valeurs, source?, ouverte?}], abbreviations: [{code, sens}] }
- * REMPLACE le catalogue (édition dans le panneau ou import d'un DPF).
+ * Corps: { lists: [{identifiant, valeurs, source?, ouverte?}], abbreviations: [{code, sens}],
+ *         rules?: [{code, description, exemple}] }  (rules = extensions de grammaire, section J)
+ * REMPLACE le catalogue (édition dans le panneau ou import d'un DPF). Sans
+ * "rules" (page ouverte avant cette version), les règles enregistrées sont gardées.
  */
 app.post("/api/dpf-catalogue", (req, res) => {
-  const { lists, abbreviations } = req.body;
-  if (!Array.isArray(lists) || (abbreviations != null && !Array.isArray(abbreviations))) {
-    return res.status(400).json({ error: "Les champs 'lists' et 'abbreviations' doivent être des tableaux." });
+  const { lists, abbreviations, rules } = req.body;
+  if (!Array.isArray(lists) || (abbreviations != null && !Array.isArray(abbreviations)) ||
+      (rules != null && !Array.isArray(rules))) {
+    return res.status(400).json({ error: "Les champs 'lists', 'abbreviations' et 'rules' doivent être des tableaux." });
   }
+  const keptRules = Array.isArray(rules) ? rules : (loadDpfCatalogue().rules || []);
   const cat = {
     lists: lists.slice(0, 500)
       .filter(l => l && String(l.identifiant || '').trim())
@@ -846,10 +852,17 @@ app.post("/api/dpf-catalogue", (req, res) => {
     abbreviations: (abbreviations || []).slice(0, 300)
       .filter(a => a && String(a.code || '').trim())
       .map(a => ({ code: String(a.code).trim().slice(0, 30), sens: String(a.sens || '').slice(0, 200) })),
+    rules: keptRules.slice(0, 200)
+      .filter(r => r && (String(r.code || '').trim() || String(r.description || '').trim()))
+      .map(r => ({
+        code: String(r.code || '').trim().slice(0, 60),
+        description: String(r.description || '').slice(0, 300),
+        exemple: String(r.exemple || '').slice(0, 200),
+      })),
     updated_at: new Date().toISOString(),
   };
   saveDpfCatalogue(cat);
-  console.log(`[/api/dpf-catalogue] Catalogue mis à jour (${cat.lists.length} listes, ${cat.abbreviations.length} abréviations)`);
+  console.log(`[/api/dpf-catalogue] Catalogue mis à jour (${cat.lists.length} listes, ${cat.abbreviations.length} abréviations, ${cat.rules.length} extension(s))`);
   return res.json({ ...cat, saved: true });
 });
 

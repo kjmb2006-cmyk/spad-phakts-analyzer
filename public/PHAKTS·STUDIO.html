@@ -810,7 +810,7 @@
       <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
       <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
       <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
-      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● GPS __G__X!DMS</span>
+      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● Kobo auto / GPS __G</span>
       <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
     </div>
 
@@ -1003,7 +1003,7 @@
       <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
       <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
       <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
-      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● GPS __G__X!DMS</span>
+      <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● Kobo auto / GPS __G</span>
       <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
     </div>
 
@@ -1138,8 +1138,8 @@
             <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
             <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
             <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
-            <tr><td class="gc">__E</td><td class="gd">Identifiant externe alphanum. (DHIS2, Kobo) <em>Règle 11 ext.</em></td><td class="gm">ID_Etablissement__E</td></tr>
-            <tr><td class="gc">__G__X!DMS</td><td class="gd">Géolocalisation geopoint · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G__X!DMS</td></tr>
+            <tr><td class="gc">__G!start…</td><td class="gd">Variable générée automatiquement par Kobo (aucune saisie) · <code>!start</code> <code>!end</code> <code>!today</code> <code>!deviceid</code> <code>!username</code> <code>!phonenumber</code> <code>!audit</code> — remplace <code>__E</code></td><td class="gm">Entretien__Debut__G!start</td></tr>
+            <tr><td class="gc">__G!DMS</td><td class="gd">Géolocalisation geopoint (variable générée par Kobo) · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G!DMS</td></tr>
           </tbody>
         </table>
       </div>
@@ -1351,9 +1351,9 @@
             </tr>
             <tr>
               <td class="gc">19</td>
-              <td class="gc">Expr__G__X!DMS</td>
+              <td class="gc">Expr__G!DMS</td>
               <td class="gd">Géolocalisation geopoint (<code>!DMS</code> = degrés-min-sec / <code>!DD</code> = degrés décimaux)</td>
-              <td class="gm">Etablissement__Coordonnees__G__X!DMS</td>
+              <td class="gm">Etablissement__Coordonnees__G!DMS</td>
             </tr>
             <tr>
               <td class="gc">20</td>
@@ -1415,8 +1415,9 @@
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
           Ajoutez ici vos <strong>types PHAKTS personnalisés</strong>, des règles spécifiques
-          à votre domaine ou des contraintes supplémentaires. Ces extensions sont automatiquement
-          injectées dans le prompt de l'<strong>Agent IA</strong> et exportées avec le DPF.
+          à votre domaine ou des contraintes supplémentaires. Ces extensions sont partagées entre
+          tous les postes via le serveur, injectées dans la grammaire (codification en ligne,
+          <strong>Agent IA</strong> et mode hors-ligne) et exportées avec le DPF.
         </p>
         <table class="grammar-table">
           <thead><tr>
@@ -2879,7 +2880,10 @@ function showStatus(msg, type = 'info') {
 // ─── Type tag helper ──────────────────────────────────────────────────────────
 function typeTag(code) {
   if (code.includes('__B')) return {label:'Boolean', bg:'#1e3a5f', fg:'#7dd3fc'};
-  if (code.includes('__G__X')) return {label:'GPS', bg:'#1a3a3a', fg:'#5eead4'};
+  const generatedKind = PHAKTS_CORE.classifyCode(code).kind;
+  if (generatedKind === 'geopoint') return {label:'GPS', bg:'#1a3a3a', fg:'#5eead4'};
+  if (generatedKind === 'trilean') return {label:'Triléen', bg:'#1e3a5f', fg:'#7dd3fc'};
+  if (generatedKind === 'metadata' || generatedKind === 'generated') return {label:'Kobo auto', bg:'#1a3a3a', fg:'#5eead4'};
   if (code.includes('__X') && code.includes('1*1')) return {label:'Select 1', bg:'#1a3a2a', fg:'#86efac'};
   if (code.includes('__SRC')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
   if (code.includes('__X')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
@@ -2907,22 +2911,28 @@ function cleanResults(items) {
     // détection déjà en place côté moteur hors-ligne (inferCode()) et
     // vérification qcodif (codifyFromLibelleAndModalites()), puisque ni
     // l'un ni l'autre n'est appelé sur ce chemin-là.
-    if (typeof detectAdminReferenceField === 'function') {
+    // Exception : une variable déjà codée __G (GPS, start, deviceid…) reste
+    // telle quelle — « Coordonnées GPS de l'établissement » devenait sinon une
+    // liste d'établissements Admin_ à cause du mot « établissement ».
+    const generatedKind = PHAKTS_CORE.classifyCode(q).kind;
+    if (generatedKind === 'geopoint' || generatedKind === 'metadata') {
+      // rien : ni Admin_, ni recodage GPS/Photo depuis le libellé
+    } else if (typeof detectAdminReferenceField === 'function') {
       try {
         const adminField = detectAdminReferenceField(r.libelle, normalizeText(r.libelle || ''));
         if (adminField) { q = adminField.pf_question; m = adminField.pf_modalites; }
       } catch (_) {}
     }
-    // Même raisonnement pour GPS (Règle 19) et Photo (proposition) — sans
-    // ça, la codification EN LIGNE ne les produira jamais d'elle-même
-    // (aucune connaissance de ces règles dans le prompt IA actuel).
-    if (typeof detectGpsField === 'function') {
+    // Même raisonnement pour GPS (Règle 19) et Photo (proposition), filet de
+    // sécurité si la codification n'a pas reconnu ces champs.
+    const keepGenerated = generatedKind === 'geopoint' || generatedKind === 'metadata';
+    if (!keepGenerated && typeof detectGpsField === 'function') {
       try {
         const gpsField = detectGpsField(r.libelle, normalizeText(r.libelle || ''), m);
         if (gpsField) { q = gpsField.pf_question; m = gpsField.pf_modalites; }
       } catch (_) {}
     }
-    if (typeof detectPhotoField === 'function') {
+    if (!keepGenerated && typeof detectPhotoField === 'function') {
       try {
         const photoField = detectPhotoField(r.libelle, normalizeText(r.libelle || ''), m);
         if (photoField) { q = photoField.pf_question; m = photoField.pf_modalites; }
@@ -3247,12 +3257,26 @@ function initDpfListes() {
   applyDpfCatalogue(cat);
 }
 
+// cat.rules absent (import d'un DPF, valeurs par défaut) : extensions inchangées.
 function applyDpfCatalogue(cat) {
   dpfListes = cat.lists || [];
   dpfAbreviations = cat.abbreviations || [];
   dpfEditingIdx = -1;
+  if (Array.isArray(cat.rules)) {
+    dpfCustomRules = cat.rules;
+    dpfRulesEditingIdx = -1;
+    renderDpfRules();
+  }
   renderDpfListes();
   syncDpfToGrammar();
+}
+
+function currentDpfCatalogue() {
+  return { lists: dpfListes, abbreviations: dpfAbreviations, rules: dpfCustomRules };
+}
+
+function writeLocalDpfCatalogue() {
+  try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify(currentDpfCatalogue())); } catch (_) {}
 }
 
 function dpfSourceBadge(l) {
@@ -3353,9 +3377,8 @@ function deleteDpfListe(i) {
 }
 
 function persistDpfListes() {
-  const cat = { lists: dpfListes, abbreviations: dpfAbreviations };
-  try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify(cat)); } catch (_) {}
-  syncDpfCatalogueToServer(cat);
+  writeLocalDpfCatalogue();
+  syncDpfCatalogueToServer(currentDpfCatalogue());
 }
 
 /** Best-effort : hors-ligne, seule la copie locale est conservée. */
@@ -3386,10 +3409,15 @@ async function syncDpfCatalogueFromServer() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (data.saved) {
-      try { localStorage.setItem(DPF_CATALOGUE_KEY, JSON.stringify({ lists: data.lists, abbreviations: data.abbreviations })); } catch (_) {}
-      applyDpfCatalogue(data);
+      const serverRules = Array.isArray(data.rules) ? data.rules : [];
+      const missing = pendingLegacyRules.filter(r =>
+        !serverRules.some(s => s.code === r.code && s.description === r.description));
+      pendingLegacyRules = [];
+      applyDpfCatalogue({ ...data, rules: serverRules.concat(missing) });
+      writeLocalDpfCatalogue();
+      if (missing.length) syncDpfCatalogueToServer(currentDpfCatalogue());
     } else if (readLocalDpfCatalogue()) {
-      syncDpfCatalogueToServer({ lists: dpfListes, abbreviations: dpfAbreviations });
+      syncDpfCatalogueToServer(currentDpfCatalogue());
     }
   } catch (e) {
     console.warn('[syncDpfCatalogueFromServer] Hors-ligne ou erreur serveur:', e && e.message);
@@ -3397,18 +3425,8 @@ async function syncDpfCatalogueFromServer() {
 }
 
 function syncDpfToGrammar() {
-  let section = PHAKTS_CORE.formatDpfSection({ lists: dpfListes, abbreviations: dpfAbreviations });
-
-  if (dpfCustomRules && dpfCustomRules.length > 0) {
-    section += '\nEXTENSIONS DE GRAMMAIRE PERSONNALISÉES (Section J):\n';
-    dpfCustomRules.forEach(r => {
-      if (r.code || r.description) {
-        section += '- ' + (r.code || '') + ' → ' + (r.description || '');
-        if (r.exemple) section += ' | Exemple: ' + r.exemple;
-        section += '\n';
-      }
-    });
-  }
+  // Même texte que celui que le serveur envoie au LLM (formatDpfSection)
+  const section = PHAKTS_CORE.formatDpfSection(currentDpfCatalogue());
 
   // Remplace exactement le bloc injecté la fois précédente : les exemples
   // appris ajoutés entre-temps avant INSTRUCTIONS ne sont pas effacés.
@@ -3764,16 +3782,29 @@ async function importAdminReferentiel(file) {
 let dpfCustomRules = [];
 let dpfRulesEditingIdx = -1;
 
+// Extensions saisies dans CE navigateur avant leur partage (ancienne clé
+// « phakts_dpf_rules ») : ajoutées au catalogue serveur au premier contact
+// (syncDpfCatalogueFromServer), jamais écrasées par lui.
+let pendingLegacyRules = [];
+
+// Les extensions font partie du catalogue DPF partagé (serveur + copie
+// locale) : mêmes règles sur tous les postes, et envoyées au LLM en ligne.
 function initDpfRules() {
-  try {
-    const saved = localStorage.getItem('phakts_dpf_rules');
-    dpfCustomRules = saved ? JSON.parse(saved) : [];
-  } catch (_) { dpfCustomRules = []; }
+  const cat = readLocalDpfCatalogue();
+  if (cat && Array.isArray(cat.rules)) {
+    dpfCustomRules = cat.rules;
+  } else {
+    try { pendingLegacyRules = JSON.parse(localStorage.getItem('phakts_dpf_rules') || '[]'); } catch (_) { pendingLegacyRules = []; }
+    if (!Array.isArray(pendingLegacyRules)) pendingLegacyRules = [];
+    dpfCustomRules = pendingLegacyRules.slice();
+    if (dpfCustomRules.length) writeLocalDpfCatalogue();
+  }
   renderDpfRules();
+  syncDpfToGrammar();
 }
 
 function persistDpfRules() {
-  try { localStorage.setItem('phakts_dpf_rules', JSON.stringify(dpfCustomRules)); } catch (_) {}
+  persistDpfListes();
 }
 
 function renderDpfRules() {
@@ -3863,9 +3894,9 @@ function getPhaktsDpfTables() {
     { code: '__SRC!1*Source_', description: "Source d'information (choix multiple)", statut: 'Confirmé' },
     { code: '__Z!1*Expression', description: 'Texte libre (free text)', statut: 'Confirmé' },
     { code: '__Z!1*Tel', description: 'Numéro de téléphone (texte + regex ^\+?[0-9 ]{8,20}$ — jamais __1)', statut: 'Confirmé' },
-    { code: '__E', description: 'Identifiant externe alphanum. (DHIS2, Kobo, code unique)', statut: 'Confirmé — Règle 11 ext.' },
+    { code: '__G!start…', description: 'Variable générée automatiquement par Kobo (!start, !end, !today, !deviceid, !username, !phonenumber, !audit) — remplace __E', statut: 'Confirmé' },
     { code: '__A!YYYY/MM/DD', description: 'Date ISO 8601 ; range: 2000/01/01<A<2026/12/31', statut: 'Confirmé — Règle 14 ext.' },
-    { code: '__G__X!DMS', description: 'Géolocalisation geopoint (!DMS ou !DD)', statut: 'Confirmé — Règle 19' },
+    { code: '__G!DMS', description: 'Géolocalisation geopoint (!DMS ou !DD), variable générée par Kobo', statut: 'Confirmé — Règle 19' },
     { code: '__P!photo', description: 'Capture photo (type XLSForm "image") — aucune convention officielle antérieure', statut: "Proposition — à valider par l'équipe SPAD" },
   ];
   const numData = [
@@ -4372,10 +4403,11 @@ function _isSuspect(r) {
 // suivent un __1/__2 légitime sont exclues à dessein (une vraie unité de
 // période/mesure est toujours en MAJUSCULE : __1Y, __2K…), donc ce garde-
 // fou ne rejette aucun code valide.
-// __G__X est un marqueur COMPOSÉ (Règle 19 : Géolocalisation) — testé avant
-// __X seul, sinon le radical engloberait à tort le "__G" (ex.
-// "Etablissement__Coordonnees__G" au lieu de "Etablissement__Coordonnees").
-const PHAKTS_TYPE_RX = /^(.+?)(__G__X(?![a-z]).*|__(?:B|X|1|2|Z|A|P|SRC)(?![a-z]).*)$/;
+// __G__X (ancienne écriture du GPS) est un marqueur COMPOSÉ — testé avant
+// __X seul, sinon le radical engloberait à tort le "__G". __C (triléen) et
+// __G (variable générée par Kobo) y figurent : sans eux, la vérification de
+// conformité recodait ces questions valides à partir du libellé.
+const PHAKTS_TYPE_RX = /^(.+?)(__G__X(?![a-z]).*|__(?:B|C|G|X|1|2|Z|A|P|SRC)(?![a-z]).*)$/;
 
 function sanitizePhaktsItemClient(item) {
   if (!item || !item.pf_question || typeof item.pf_question !== 'string') return item;
@@ -4395,11 +4427,15 @@ function sanitizePhaktsItemClient(item) {
     .replace(/^Pourquoi_/i, '').replace(/^Comment_/i, '').replace(/^Quand_/i, '')
     .replace(/^Ou_/i, '').replace(/^Avez_Vous_/i, '').replace(/^Est_Ce_Que_/i, '')
     .replace(/_Trouvez?_/gi, '_').replace(/_Se_Trouve(_|$)/gi, '$1')
-    .split('_').filter(s => s.length >= 2 || /^\d/.test(s)).join('_')
+    // « __ » sépare radical et déterminants : nettoyé partie par partie,
+    // sinon Entretien__Debut devenait Entretien_Debut.
+    .split('__').map(part => part.split('_').filter(s => s.length >= 2 || /^\d/.test(s)).join('_')).filter(Boolean).join('__')
     .replace(/^_+|_+$/g, '');
   if (!radical) radical = oldRadical;
   const lm = rest.match(/^(__X!\d+\*(?:\d+)?)([A-Za-z][A-Za-z0-9_]*?_)$/);
-  if (lm && !lm[2].startsWith('Admin_')) {
+  // Liste du catalogue DPF (Combustible_Cuisson_…) : nom officiel, jamais raccourci
+  const isDpfList = lm && dpfListes.some(l => PHAKTS_CORE.dpfListKey(l.identifiant) === PHAKTS_CORE.dpfListKey(lm[2]));
+  if (lm && !lm[2].startsWith('Admin_') && !isDpfList) {
     // Une liste "Admin_" (Règle 16) référence intentionnellement le
     // référentiel administratif partagé — son nom ne doit jamais être
     // recalé sur le radical local comme une liste normale, même s'il est
@@ -4762,7 +4798,7 @@ function detectGpsField(libelle, normalized, existingModalites) {
   }
   const radical = _extractRadical(libelle, 4) || 'Question';
   const hasCoord = /coordon|geolocalisation/i.test(radical);
-  return { pf_question: (hasCoord ? radical : radical + '_Coordonnees') + '__G__X!DMS', pf_modalites: 'GPS (DMS)' };
+  return { pf_question: (hasCoord ? radical : radical + '_Coordonnees') + '__G!DMS', pf_modalites: 'GPS (DMS)' };
 }
 
 function detectPhotoField(libelle, normalized, existingModalites) {
@@ -5658,7 +5694,18 @@ function buildXLSForm() {
     // Type lu sur l'affixe (dernier segment "__") par le noyau partagé : avant,
     // un test par sous-chaîne laissait en « text » les réels (__2K, __2T…),
     // __1U, __1Q et __C, et lisait 2025__AS__Population__1 comme une date.
-    const kind = PHAKTS_CORE.classifyCode(pf_question).kind;
+    const codeInfo = PHAKTS_CORE.classifyCode(pf_question);
+    const kind = codeInfo.kind;
+    if (kind === 'metadata') {
+      // __G!start, !end, !today, !deviceid… : variable remplie par Kobo, ni
+      // posée ni saisie — pas de libellé, d'obligation ni de condition.
+      surveyRows.push({
+        type: codeInfo.metadata, name: xlsName, 'label::French (fr)': '', required: '',
+        'required message::French (fr)': '', relevant: '', choice_filter: '', constraint: '',
+        'constraint message::French (fr)': '', 'hint::French (fr)': ''
+      });
+      continue;
+    }
     if (kind === 'boolean') {
       type = 'select_one yes_no';
     } else if (kind === 'trilean') {
@@ -5670,7 +5717,7 @@ function buildXLSForm() {
       }
       type = 'select_one ' + listKey;
     } else if (kind === 'geopoint') {
-      // Règle 19 : Géolocalisation geopoint (__G__X!DMS / !DD)
+      // Règle 19 : Géolocalisation geopoint (__G!DMS / !DD ; ancienne écriture __G__X)
       type = 'geopoint';
     } else if (kind === 'select') {
       const adminListName = adminListNameOf(currentMeta);
@@ -5980,9 +6027,14 @@ function verifyXlsformPhaktsCompliance() {
     // Admin_/GPS/Photo sont vérifiés INCONDITIONNELLEMENT, avant de faire
     // confiance à un pf_question qui a déjà l'air d'un type PHAKTS valide —
     // sinon un champ mal codé par une version antérieure de l'app (ex.
-    // "Geolocalisation_Point_Vente__Z" au lieu de "__G__X!DMS") passe par
+    // "Geolocalisation_Point_Vente__Z" au lieu de "__G!DMS") passe par
     // sanitizePhaktsItemClient() au lieu d'être re-dérivé, et le type reste
     // faux indéfiniment malgré des ré-importations répétées (cas réel).
+    // Variable générée par Kobo déjà codée __G (GPS, start, deviceid…) : gardée
+    // telle quelle — « Coordonnées de l'établissement » était sinon recodé en
+    // liste d'établissements Admin_, et Coordonnees_GPS__G renommé.
+    const currentKind = PHAKTS_CORE.classifyCode(item.pf_question).kind;
+    if (currentKind === 'geopoint' || currentKind === 'metadata') return sanitizePhaktsItemClient(item);
     const adminField = detectAdminReferenceField(item.libelle, normalizedLib);
     if (adminField) {
       return { ...item, pf_question: adminField.pf_question, pf_modalites: adminField.pf_modalites };
@@ -6149,6 +6201,9 @@ function guidanceForSurveyType(type) {
   }
   if (type === 'geopoint') {
     return "Capturer la position GPS sur place, en extérieur, et attendre une précision suffisante avant d'enregistrer.";
+  }
+  if (['start', 'end', 'today', 'deviceid', 'username', 'phonenumber', 'audit', 'start-geopoint'].includes(type)) {
+    return 'Rempli automatiquement par Kobo — rien à saisir.';
   }
   if (type === 'date') {
     return 'Saisir la date au format JJ/MM/AAAA. Vérifier avec un document officiel si disponible.';
@@ -7185,6 +7240,11 @@ function verifyQcodifCodification() {
     // le libellé identifie clairement un champ Établissement) — vérifié
     // avant toute autre logique, pas seulement en repli.
     const normalizedLib = normalizeText(item.libelle || '');
+    // Variable générée par Kobo déjà codée __G (GPS, start, deviceid…) : gardée
+    // telle quelle — « Coordonnées de l'établissement » était sinon recodé en
+    // liste d'établissements Admin_, et Coordonnees_GPS__G renommé.
+    const currentKind = PHAKTS_CORE.classifyCode(item.pf_question).kind;
+    if (currentKind === 'geopoint' || currentKind === 'metadata') return sanitizePhaktsItemClient(item);
     const adminField = detectAdminReferenceField(item.libelle, normalizedLib);
     if (adminField) {
       return { ...item, pf_question: adminField.pf_question, pf_modalites: adminField.pf_modalites };

@@ -5,7 +5,7 @@
 //  (<script src="./phakts-core.js">, moteur hors-ligne + générateur XLSForm)
 //  ET par le serveur (api/grammar.js → prompt envoyé au LLM, api/xlsform.js).
 //  Avant, le prompt existait en deux copies éditées séparément, qui avaient
-//  divergé : le LLM en ligne ignorait les Règles 11 ext.–20 (__C, __G, __E,
+//  divergé : le LLM en ligne ignorait les Règles 11 ext.–20 (__C, __G,
 //  __1Q, __2P/V/F/I, Admin_…) connues du seul moteur hors-ligne.
 // ─────────────────────────────────────────────────────────────────────────────
 (function (root, factory) {
@@ -38,10 +38,11 @@ B. TYPES CHOIX (MULTIPLE CHOICES):
     POSITION : le nombre de choix s'écrit APRÈS l'astérisque, précédé de 1 → __X!1*3Sport_ (jamais __X!3*Sport_)
     Exemple : "Quels sports pratiquez-vous ? (au moins 3)" → Sport__X!1*3Sport_            Sport_=[Football|Course|Natation|Tennis]
 
-C. TYPES TEXTE LIBRE & IDENTIFIANT:
+C. TYPES TEXTE LIBRE:
 6.  __Z!1*Expression  → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
 6b. __Z!1*Tel         → Numéro de téléphone (texte validé regex ^+?[0-9 ]{8,20}$ — JAMAIS __1 pour un tel)
-7.  __E               → Identifiant externe alphanumérique fixe (ID DHIS2, ID Kobo, code unique) [Règle 11 ext.]
+7.  Identifiant SAISI par l'enquêteur (code DHIS2, code établissement, n° alphanumérique) → __Z!1*Expression
+    (l'ancien affixe __E n'existe plus : une variable produite par Kobo s'écrit __G, voir G)
 
 D. TYPES NUMÉRIQUES ENTIERS (__1):
 8.  __1               → Entier pur (sans unité) : Score__1, Nb_Contacts__1
@@ -67,9 +68,14 @@ E. TYPES NUMÉRIQUES RÉELS (__2):
 F. SOURCE D'INFORMATION:
 25. __SRC!1*Source_   → Source d'information (choix multiple)
 
-G. TYPE GÉOGRAPHIQUE:
-26. __G__X!DMS        → Géolocalisation geopoint — format !DMS (degrés-min-sec) ou !DD (degrés décimaux) [Règle 19]
-    Exemple : Etablissement__Coordonnees__G__X!DMS
+G. VARIABLES GÉNÉRÉES AUTOMATIQUEMENT PAR KOBO (__G):
+26. __G!<variable>    → Variable générée automatiquement par Kobo (aucune saisie de l'enquêteur) ; la contrainte précise laquelle :
+    !DMS ou !DD       → position GPS de l'appareil (geopoint ; DMS = degrés-min-sec, DD = degrés décimaux) [Règle 19] : Etablissement__Coordonnees__G!DMS
+    !start / !end     → date et heure de début / de fin du questionnaire : Entretien__Debut__G!start, Entretien__Fin__G!end
+    !today            → date du jour de l'enquête : Enquete__Date__G!today
+    !deviceid         → identifiant de l'appareil (IMEI) : Appareil__G!deviceid
+    !username         → compte Kobo de l'enquêteur : Enqueteur__Compte__G!username
+    !phonenumber, !audit, !start-geopoint (position GPS prise automatiquement à l'ouverture du questionnaire)
 
 CONTRAINTES DE PLAGE (après !):
 - N = type entier, R = type réel décimal, A = date
@@ -87,8 +93,8 @@ RÈGLES STRICTES DE FORMAT:
 - Texte libre: TOUJOURS écrire __Z!1*Expression (jamais __Z seul)
 - Téléphone: TOUJOURS écrire __Z!1*Tel (jamais __Z!1*Expression ni __1 — un numéro de tél commence souvent par 0 ou + et est un TEXTE, pas un entier). pf_modalites = "Numéro de téléphone (ex: 0XXXXXXXXX)"
 - Cohérence séparateur ↔ multiplicité: virgule ',' ↔ *1 (select_one) ; pipe '|' ↔ * ou *N (select_multiple, N = nombre minimum de choix). JAMAIS __X!1*1 avec des '|', JAMAIS __X!1* avec des ','.
-- Identifiant externe: utiliser __E (pas __Z) pour les codes ID DHIS2, Kobo, etc.
-- Géolocalisation: utiliser __G__X!DMS ou __G__X!DD (jamais __Z pour les coordonnées GPS)
+- Variable générée par Kobo (GPS, début/fin, date du jour, appareil, compte enquêteur): __G!<variable> — jamais une question à saisir (__Z, __A, __X)
+- Géolocalisation: utiliser __G!DMS ou __G!DD (jamais __Z pour les coordonnées GPS)
 - Série chronologique: préfixer par l'année → 2025__Expression__type (Règle 15)
 - Référentiel admin. externe: Admin_Radical_ (jamais de liste inline pour les unités admin.) (Règle 16)
 - Bornes inclusives: utiliser <= pour inclure les bornes → 0<=N<=10 (Règle 14 ext.)
@@ -110,7 +116,7 @@ EXTENSIONS PHAKTS v2025.10.22 (Règles 15–20):
 - Règle 18 — Champ composite répété (matrice M2): _<Radical>__1<Mot>__2<Mot>__M2!<liste>><Type1>|<Type2>
   →  _Service__PCIME__1Activite__2Cout__M2!PCIME_Activite_>Expression|Number
   (XLSForm = begin_repeat à 2 colonnes ; M2 et non L2 pour éviter collision avec xType Longueur)
-- Règle 19 — Géolocalisation: <Expr>__G__X!DMS ou !DD  →  Etablissement__Coordonnees__G__X!DMS
+- Règle 19 — Géolocalisation: <Expr>__G!DMS ou !DD  →  Etablissement__Coordonnees__G!DMS (cas particulier de __G, variable générée par Kobo)
 - Règle 20 — Trimestre Q: Period Q ajouté  →  2025__CPN1__1Q!0<N<5
 
 RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le type):
@@ -135,8 +141,8 @@ RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le ty
 - __2V = pour les VOLUMES de liquide (doses, capacités) — préciser l'unité dans la contrainte
 - __2F = pour les MONTANTS FINANCIERS (coûts, tarifs, budgets) — préciser la devise dans la contrainte
 - __2I = pour les INDICES et SCORES composites (z-scores, indices nutritionnels, DEA) — peut être négatif
-- __E = pour les IDENTIFIANTS EXTERNES fixes (codes DHIS2, numéros Kobo, codes établissements) — JAMAIS __Z
-- __G__X!DMS = pour les COORDONNÉES GPS — JAMAIS __Z ni __X standard
+- __G = pour toute VARIABLE GÉNÉRÉE AUTOMATIQUEMENT par Kobo (position GPS, heure de début/fin, date du jour, appareil, compte enquêteur) — JAMAIS pour une valeur que l'enquêteur saisit
+- __G!DMS = pour les COORDONNÉES GPS — JAMAIS __Z ni __X
 - __1Q = pour les DONNÉES TRIMESTRIELLES — préférer __1Q à __1M/4 ou __1 avec note
 - "Oui / Non / Ne sait pas" → TOUJOURS __C!trilean, JAMAIS __B!boolean ni __X
 - IGNORER les préfixes "Selon vous", "Si oui", "D'après vous" — ils ne changent PAS le type. Analyser le MOT-CLÉ principal: quel/quels/combien/comment/pourquoi/où
@@ -167,9 +173,9 @@ CONVENTIONS SYNTAXIQUES:
 MÉTHODE DE CODAGE EN 5 ÉTAPES:
 1. Partir de la question terrain
 2. Identifier le sens métier central (radical abstrait, sans accents)
-3. Choisir le type de réponse (B, C, A, X, Z, E, G, 1, 2)
+3. Choisir le type de réponse (B, C, A, X, Z, G, 1, 2)
 4. Ajouter période/unité utile (Y, M, W, D, H, U, S, Q, K, T, L, P, V, F, I)
-5. Poser la contrainte de qualité (!plage, !<=bornes, !liste, !DMS/DD)
+5. Poser la contrainte de qualité (!plage, !<=bornes, !liste, !DMS/DD, !start/!end… pour __G)
 
 EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Quel est votre âge ?"                          → Age__1Y!0<N<120
@@ -421,21 +427,54 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     return 'text';
   }
 
+  // __G : variable générée automatiquement par Kobo, sans saisie. La contrainte
+  // dit laquelle (!DMS, !start, !today…) ; à défaut, les mots du code
+  // (Coordonnees_GPS__G → GPS, Entretien__Debut__G → start).
+  const KOBO_METADATA = ['start', 'end', 'today', 'deviceid', 'username', 'phonenumber', 'audit', 'start-geopoint'];
+  const GENERATED_WORDS = [
+    ['geopoint', /^(gps|coordonnees?|coordonees?|geolocalisation|geoloc|position|localisation|geopoint)$/],
+    ['start', /^(debut|start|commencement)$/],
+    ['end', /^(fin|end)$/],
+    ['deviceid', /^(appareil|device|deviceid|imei|terminal|tablette)$/],
+    ['phonenumber', /^(telephone|phonenumber)$/],
+    ['username', /^(utilisateur|username|compte|login)$/],
+    ['audit', /^audit$/],
+    ['today', /^(date|jour|today)$/],
+  ];
+
+  function generatedVariable(codePart, constraintPart) {
+    const c = constraintPart.trim().toLowerCase();
+    if (/^(dms|dd|ddm|utm|uts)$/.test(c)) return { kind: 'geopoint', metadata: '' };
+    if (KOBO_METADATA.includes(c)) return { kind: 'metadata', metadata: c };
+    const words = normalizeLabel(codePart).split(' ');
+    for (const [target, re] of GENERATED_WORDS) {
+      if (words.some(w => re.test(w))) {
+        return target === 'geopoint' ? { kind: 'geopoint', metadata: '' } : { kind: 'metadata', metadata: target };
+      }
+    }
+    return { kind: 'generated', metadata: '' };
+  }
+
   // L'affixe est le DERNIER segment "__" du code (Radical__Déterminant__Affix).
   // kind : boolean | trilean | date | select | geopoint | text | phone | image
-  //        | integer | decimal — unit : lettre de période/unité (Y, U, Q, K, P…).
+  //        | integer | decimal | metadata (variable Kobo, voir metadata)
+  //        | generated (__G sans précision) — unit : lettre de période/unité.
   function classifyCode(pfQuestion) {
     const { codePart, constraintPart, segments } = splitCode(pfQuestion);
     const affix = segments.length >= 2 ? segments[segments.length - 1] : '';
     const prev = segments.length >= 3 ? segments[segments.length - 2] : '';
     let kind = null;
     let unit = '';
+    let metadata = '';
     let m;
     if (constraintPart === 'boolean' || affix === 'B') kind = 'boolean';
     else if (affix === 'C') kind = 'trilean';
     else if (affix === 'A') kind = 'date';
+    else if (affix === 'G') ({ kind, metadata } = generatedVariable(codePart, constraintPart));
+    // __G__X!DMS : ancienne écriture du GPS (Règle 19), toujours acceptée
     else if (affix === 'X') kind = prev === 'G' ? 'geopoint' : 'select';
     else if (affix === 'SRC') kind = 'select';
+    // __E : ancien affixe d'identifiant externe, lu comme du texte
     else if (affix === 'Z' || affix === 'E') kind = 'text';
     else if (affix === 'P') kind = 'image';
     else if ((m = affix.match(/^([12])([A-Z]?)$/))) {
@@ -444,7 +483,7 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     }
     if (!kind) kind = legacyKind(String(pfQuestion || ''));
     if (kind === 'text' && isPhoneConstraint(constraintPart)) kind = 'phone';
-    return { codePart, constraintPart, affix, kind, unit };
+    return { codePart, constraintPart, affix, kind, unit, metadata };
   }
 
   // Multiplicité d'un choix (!1*3Liste_) = nombre après "*" : 1 = un seul
@@ -609,7 +648,8 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
   function formatDpfSection(catalogue) {
     const lists = ((catalogue && catalogue.lists) || []).filter(l => l && l.identifiant && l.valeurs);
     const abbreviations = ((catalogue && catalogue.abbreviations) || []).filter(a => a && a.code && a.sens);
-    if (!lists.length && !abbreviations.length) return '';
+    const rules = ((catalogue && catalogue.rules) || []).filter(r => r && (r.code || r.description));
+    if (!lists.length && !abbreviations.length && !rules.length) return '';
     let out = DPF_SECTION_HEADER + ' (vocabulaire contrôlé — à RÉUTILISER):\n' +
       "- Quand une liste ci-dessous correspond au sens de la question, la réutiliser telle quelle (même identifiant, mêmes valeurs) au lieu d'en inventer une nouvelle.\n" +
       '- pf_modalites garde TOUJOURS la forme Identifiant_=[valeur1,valeur2,…] (ex. Combustible_Cuisson_=[Bois,Charbon,Gaz,Electricite,Kerosene,Mazout,0]).\n' +
@@ -621,6 +661,12 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     if (abbreviations.length) {
       out += '\nABRÉVIATIONS STANDARD DU DPF (forme courte à employer dans les radicaux et déterminants, ex. SS__Couverture__Assurance__C):\n';
       abbreviations.forEach(a => { out += '- ' + a.code + ' = ' + a.sens + '\n'; });
+    }
+    if (rules.length) {
+      out += '\nEXTENSIONS DE GRAMMAIRE PERSONNALISÉES (Section J):\n';
+      rules.forEach(r => {
+        out += '- ' + (r.code || '') + ' → ' + (r.description || '') + (r.exemple ? ' | Exemple: ' + r.exemple : '') + '\n';
+      });
     }
     return out;
   }
@@ -748,8 +794,20 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     const out = [];
     const q = String((item && item.pf_question) || '');
     const { codePart, constraintPart } = splitCode(q);
-    const kind = classifyCode(q).kind;
+    const { kind, affix } = classifyCode(q);
     const warn = (anomalie, action) => out.push({ n, variable: codePart, anomalie, action });
+
+    if (affix === 'E') {
+      warn("Affixe __E supprimé de la grammaire",
+        "Variable produite par Kobo → __G!<variable> ; identifiant saisi par l'enquêteur → __Z!1*Expression");
+    }
+    if (kind === 'generated') {
+      warn('Variable générée __G sans précision : Kobo ne peut pas savoir laquelle produire',
+        'Préciser la contrainte : !DMS ou !DD (GPS), !start, !end, !today, !deviceid, !username, !phonenumber, !audit');
+    }
+    if (kind === 'geopoint' && affix === 'X') {
+      warn('Ancienne écriture du GPS (__G__X)', 'Écrire …__G!DMS ou …__G!DD, comme le DPF (Règle 19)');
+    }
 
     if (kind === 'select') {
       const misplaced = constraintPart.match(/^\s*(\d+)\s*\*\s*(?=[A-Za-z]|$)/);

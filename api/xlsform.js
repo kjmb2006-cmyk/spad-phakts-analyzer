@@ -155,8 +155,12 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
       type = "select_one " + listKey;
 
     } else if (cls.kind === "geopoint") {
-      // ── Géolocalisation (__G__X!DMS / !DD, Règle 19)
+      // ── Géolocalisation (__G!DMS / !DD, Règle 19 ; ancienne écriture __G__X)
       type = "geopoint";
+
+    } else if (cls.kind === "metadata") {
+      // ── Variable générée par Kobo (__G!start, !end, !today, !deviceid…)
+      type = cls.metadata;
 
     } else if (cls.kind === "select" && codePart.includes("__SRC")) {
       // ── Source d'information (select_multiple)
@@ -233,6 +237,13 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
 
     // Incrémenter le numéro de question
     questionNumber++;
+
+    // Une métadonnée Kobo n'est ni posée ni saisie : pas de libellé,
+    // d'obligation ni de condition d'affichage.
+    if (cls.kind === "metadata") {
+      surveyRows.push({ type, name: xlsName, "_question_no": questionNumber });
+      continue;
+    }
 
     surveyRows.push({
       type,
