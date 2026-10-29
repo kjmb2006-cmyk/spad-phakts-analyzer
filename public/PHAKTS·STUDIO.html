@@ -4760,6 +4760,13 @@ function inferModalites(code) {
 function detectAdminReferenceField(libelle, normalized) {
   const rawWordCount = String(libelle || '').trim().split(/\s+/).filter(Boolean).length;
   if (rawWordCount > 10) return null;
+  // Une valeur SAISIE au sujet de l'unité (code DHIS2, téléphone, nombre…)
+  // n'est pas le choix de l'unité dans le référentiel : elle se code __Z
+  // (ou __Z!1*Tel, __1…), jamais Admin_ — ex. « Code DHIS2 de
+  // l'établissement », « Téléphone de l'enquêteur ».
+  if (/\b(code|codes|identifiant|id|dhis2|numero|telephone|tel|contact|whatsapp|portable|mobile|nombre|combien|age|date|heure|coordonnees|gps|geolocalisation|email|courriel|adresse|saisie?s?)\b/.test(normalized)) {
+    return null;
+  }
   // Vérifié AVANT "district" : le libellé réel observé est "Commune
   // (district d'Abidjan)" — contient les deux mots, mais désigne la commune
   // administrative d'Abidjan (référentiel séparé), pas le district sanitaire.

@@ -94,6 +94,7 @@ RÈGLES STRICTES DE FORMAT:
 - Téléphone: TOUJOURS écrire __Z!1*Tel (jamais __Z!1*Expression ni __1 — un numéro de tél commence souvent par 0 ou + et est un TEXTE, pas un entier). pf_modalites = "Numéro de téléphone (ex: 0XXXXXXXXX)"
 - Cohérence séparateur ↔ multiplicité: virgule ',' ↔ *1 (select_one) ; pipe '|' ↔ * ou *N (select_multiple, N = nombre minimum de choix). JAMAIS __X!1*1 avec des '|', JAMAIS __X!1* avec des ','.
 - Variable générée par Kobo (GPS, début/fin, date du jour, appareil, compte enquêteur): __G!<variable> — jamais une question à saisir (__Z, __A, __X)
+- Valeur SAISIE par l'enquêteur (code, identifiant, code DHIS2, numéro alphanumérique) → TOUJOURS __Z!1*Expression, jamais __G
 - Géolocalisation: utiliser __G!DMS ou __G!DD (jamais __Z pour les coordonnées GPS)
 - Série chronologique: préfixer par l'année → 2025__Expression__type (Règle 15)
 - Référentiel admin. externe: Admin_Radical_ (jamais de liste inline pour les unités admin.) (Règle 16)
@@ -111,6 +112,7 @@ RÈGLES DE MODALITÉS (CRITIQUE — à respecter STRICTEMENT):
 EXTENSIONS PHAKTS v2025.10.22 (Règles 15–20):
 - Règle 15 — Préfixe année: <AAAA>__<expression>  →  2025__AS__Population__1!0<N<1000000
 - Règle 16 — Référentiels admin.: Admin_<Radical>_  →  Admin_District_Sanitaire_, Admin_Region_Sanitaire_
+  ⚠ Uniquement pour CHOISIR l'unité (région, district, établissement, enquêteur…). Une valeur saisie à son sujet n'est pas une liste Admin_ : « Code DHIS2 de l'établissement » → __Z!1*Expression, « Téléphone de l'enquêteur » → __Z!1*Tel, « Nombre d'établissements » → __1.
   ⚠ Ces listes pointent vers un référentiel externe (Dictionnaire Genesis) via pulldata/select_one_external en XLSForm, jamais en dur.
 - Règle 17 — Skip Logic: <lexia> = <valeur> -> @<lexia>  →  PCIME_Offert__B = Oui -> @PCIME_Activites__B
 - Règle 18 — Champ composite répété (matrice M2): _<Radical>__1<Mot>__2<Mot>__M2!<liste>><Type1>|<Type2>
