@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["api/server.js"],
       "port": 8080
+    },
+    {
+      "name": "SPAD Analyzer (Flask)",
+      "runtimeExecutable": "analyzer/venv/bin/python3",
+      "runtimeArgs": ["analyzer/app.py"],
+      "port": 5050
     }
   ]
 }

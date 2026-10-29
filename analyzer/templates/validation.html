@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Validation des données — SPAD Analyzer{% endblock %}
+{% block page_title %}Validation des données{% endblock %}
+
+{% block content %}
+<style>
+.val-kpis { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+.val-kpi { flex:1; min-width:150px; background:#fff; border-radius:12px; padding:14px 18px;
+           box-shadow:0 1px 8px rgba(0,0,0,.07); border-top:3px solid #1A5276; }
+.val-kpi .kv { font-size:1.6rem; font-weight:800; color:#1A5276; line-height:1; }
+.val-kpi .kl { font-size:.72rem; color:#85929E; text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+.val-kpi.is-err { border-top-color:#C0392B; } .val-kpi.is-err .kv { color:#C0392B; }
+.val-kpi.is-warn { border-top-color:#E67E22; } .val-kpi.is-warn .kv { color:#E67E22; }
+.val-kpi.is-ok { border-top-color:#17A589; } .val-kpi.is-ok .kv { color:#17A589; }
+.sev { display:inline-block; padding:2px 9px; border-radius:10px; font-size:.72rem; font-weight:700; white-space:nowrap; }
+.sev-erreur { background:#FADBD8; color:#922B21; }
+.sev-a_verifier { background:#FDEBD0; color:#A04000; }
+.sev-info { background:#EAECEE; color:#566573; }
+.val-lines { font-family:monospace; font-size:.78rem; color:#566573; }
+</style>
+
+{% set sev_labels = {'erreur': 'Erreur', 'a_verifier': 'À vérifier', 'info': 'Info'} %}
+
+<p class="text-muted small mb-3">
+  Contrôles du SPAD (« Règles de validation des données de collecte ») appliqués à
+  <strong>{{ dataset_name or 'jeu de données chargé' }}</strong> : doublons, cohérence des heures,
+  seuils PHAKTS, valeurs extrêmes, et règles propres à cette enquête.
+  Rien n'est modifié : les lignes signalées sont à vérifier avec les équipes de terrain.
+  Les numéros de ligne sont ceux du jeu de données (1 = première soumission).
+</p>
+
+<div class="val-kpis">
+  <div class="val-kpi"><div class="kv">{{ result.n_lignes }}</div><div class="kl">Lignes contrôlées</div></div>
+  <div class="val-kpi {{ 'is-warn' if result.n_signalees else 'is-ok' }}"><div class="kv">{{ result.n_signalees }}</div><div class="kl">Lignes signalées</div></div>
+  <div class="val-kpi is-ok"><div class="kv">{{ result.pct_sans_anomalie }} %</div><div class="kl">Lignes sans anomalie</div></div>
+  <div class="val-kpi {{ 'is-err' if result.n_erreurs else 'is-ok' }}"><div class="kv">{{ result.n_erreurs }}</div><div class="kl">Contrôles en erreur</div></div>
+  <div class="val-kpi {{ 'is-warn' if result.n_a_verifier else 'is-ok' }}"><div class="kv">{{ result.n_a_verifier }}</div><div class="kl">Points à vérifier</div></div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <h5 class="mb-0">Résultats des contrôles</h5>
+  {% if result.n_signalees %}
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('validation_export') }}">
+    <i class="bi bi-download"></i> Exporter les lignes à vérifier (.xlsx)
+  </a>
+  {% endif %}
+</div>
+
+{% if result.checks %}
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Gravité</th><th class="d-none d-md-table-cell">Catégorie</th><th>Contrôle</th><th>Lignes concernées</th></tr>
+      </thead>
+      <tbody>
+        {% for c in result.checks %}
+        <tr>
+          <td><span class="sev sev-{{ c.severite }}">{{ sev_labels[c.severite] }}</span></td>
+          <td class="small text-nowrap d-none d-md-table-cell">{{ c.categorie }}</td>
+          <td>
+            <div class="fw-semibold small">{{ c.titre }}</div>
+            <div class="text-muted small">{{ c.detail }}</div>
+          </td>
+          <td>
+            {% if c.lignes %}
+            <span class="fw-bold">{{ c.lignes|length }}</span>
+            <span class="val-lines">· {{ c.lignes[:15]|join(', ') }}{% if c.lignes|length > 15 %}…{% endif %}</span>
+            {% else %}<span class="text-muted small">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-success">Aucune anomalie détectée sur les {{ result.n_lignes }} lignes contrôlées.</div>
+{% endif %}
+
+<h5 class="mt-4">Règles propres à cette enquête</h5>
+<p class="text-muted small">
+  Exemples : « Date de notification ≥ Date d'apparition », « Âge au premier rapport ≤ Âge »,
+  « Nombre de cas ≥ 0 ». Elles sont enregistrées pour cette enquête et appliquées à chaque contrôle.
+</p>
+
+{% if rules %}
+<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light"><tr><th>Règle</th><th>Libellé</th><th>Ajoutée par</th><th></th></tr></thead>
+      <tbody>
+        {% for r in rules %}
+        <tr>
+          <td class="font-monospace small">{{ r.gauche }} {{ symboles[r.operateur] }} {% if r.droite_est_variable %}{{ r.droite }}{% else %}« {{ r.droite }} »{% endif %}</td>
+          <td class="small">{{ r.libelle or '—' }}</td>
+          <td class="small text-muted">{{ r.created_by or '—' }} · {{ r.created_at }}</td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('validation_regle_supprimer', rule_id=r.id) }}" onsubmit="return confirm('Supprimer cette règle ?');">
+              <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('validation_regle_ajouter') }}" class="card card-body mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small mb-1">Variable</label>
+      <select name="gauche" class="form-select form-select-sm" required>
+        {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label small mb-1">Condition</label>
+      <select name="operateur" class="form-select form-select-sm">
+        {% for op, sym in symboles.items() %}<option value="{{ op }}">{{ sym }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Comparée à</label>
+      <select name="type_droite" id="typeDroite" class="form-select form-select-sm">
+        <option value="variable">une autre variable</option>
+        <option value="valeur">une valeur</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small mb-1">Variable ou valeur</label>
+      <select name="droite_variable" id="droiteVariable" class="form-select form-select-sm">
+        {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+      <input name="droite_valeur" id="droiteValeur" class="form-control form-control-sm d-none" placeholder="ex. 0, 2026-01-01, oui">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Libellé (facultatif)</label>
+      <input name="libelle" class="form-control form-control-sm" maxlength="200" placeholder="ex. Notification après apparition">
+    </div>
+    <div class="col-md-1">
+      <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg"></i> Ajouter</button>
+    </div>
+  </div>
+</form>
+
+<script>
+document.getElementById('typeDroite').addEventListener('change', function () {
+  const variable = this.value === 'variable';
+  document.getElementById('droiteVariable').classList.toggle('d-none', !variable);
+  document.getElementById('droiteValeur').classList.toggle('d-none', variable);
+});
+</script>
+{% endblock %}

@@ -134,6 +134,9 @@
     <a href="{{ url_for('raw_data') }}" class="nav-item {% if request.endpoint == 'raw_data' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-database-fill"></i> — Analyse brute
     </a>
+    <a href="{{ url_for('validation_donnees') }}" class="nav-item {% if request.endpoint == 'validation_donnees' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-shield-check"></i> — Validation des données
+    </a>
     <a href="{{ url_for('descriptive') }}" class="nav-item {% if request.endpoint == 'descriptive' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-clipboard-data-fill"></i> — Statistiques descriptives
     </a>

@@ -53,6 +53,7 @@ from modules import form_mapping
 from modules import accounts
 from modules import activity_log
 from modules import forms_registry
+from modules import validation_rules
 from modules import ai_form_assist
 from modules.collecte_monitor import load_state, save_state, append_sync_event, build_dashboard_metrics, build_collecte_views
 
@@ -1427,6 +1428,67 @@ def raw_data():
                            sys_analysis=sys_analysis,
                            desc_analysis=desc_analysis,
                            meta=session.get('data_meta', {}))
+
+
+def _validation_survey_key():
+    """Enquête à laquelle se rattachent les règles de validation : le formulaire
+    Kobo chargé, sinon le fichier importé."""
+    meta = session.get('data_meta') or {}
+    if meta.get('source') == 'KoboToolbox' and session.get('kobo_uid'):
+        return 'kobo:' + session['kobo_uid']
+    return 'fichier:' + (session.get('original_filename') or '')
+
+
+@app.route('/qualite/validation')
+def validation_donnees():
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+        return redirect(url_for('upload'))
+    rules = validation_rules.list_rules(_validation_survey_key())
+    return render_template('validation.html',
+                           result=validation_rules.run_validation(df, rules),
+                           rules=rules,
+                           columns=list(df.columns),
+                           symboles=validation_rules.OPERATEUR_SYMBOLES,
+                           dataset_name=(session.get('data_meta') or {}).get('name') or session.get('original_filename') or '')
+
+
+@app.route('/qualite/validation/regles', methods=['POST'])
+def validation_regle_ajouter():
+    form = request.form
+    droite_est_variable = form.get('type_droite') == 'variable'
+    ok, err = validation_rules.add_rule(
+        _validation_survey_key(), form.get('gauche'), form.get('operateur'),
+        form.get('droite_variable') if droite_est_variable else form.get('droite_valeur'),
+        droite_est_variable, form.get('libelle'), session.get('username') or '')
+    flash('Règle ajoutée : elle est maintenant appliquée à chaque contrôle de cette enquête.' if ok else err,
+          'success' if ok else 'danger')
+    return redirect(url_for('validation_donnees'))
+
+
+@app.route('/qualite/validation/regles/<int:rule_id>/supprimer', methods=['POST'])
+def validation_regle_supprimer(rule_id):
+    if validation_rules.delete_rule(rule_id, _validation_survey_key()):
+        flash('Règle supprimée.', 'info')
+    return redirect(url_for('validation_donnees'))
+
+
+@app.route('/qualite/validation/export.xlsx')
+def validation_export():
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+        return redirect(url_for('upload'))
+    result = validation_rules.run_validation(df, validation_rules.list_rules(_validation_survey_key()))
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        validation_rules.flagged_rows(df, result).to_excel(writer, index=False, sheet_name='Lignes à vérifier')
+    buf.seek(0)
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    return send_file(buf, as_attachment=True,
+                     download_name=f'{fname}_lignes_a_verifier.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @app.route('/map')
