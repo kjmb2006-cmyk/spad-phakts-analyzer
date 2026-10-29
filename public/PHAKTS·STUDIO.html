@@ -34,6 +34,7 @@
 <script src="./vendor/exceljs.min.js"></script>
 <script src="./vendor/mammoth.browser.min.js"></script>
 <script src="./vendor/ocrad.js"></script>
+<script src="./phakts-core.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -1211,8 +1212,8 @@
             <tr><td class="gd">Si oui, à quel point êtes-vous d'accord que fumer et vapoter est dangereux pendant l'allaitement ?</td><td class="gc">Dangereux_Niveau_Daccord__X!1*1Niveau_Daccord_</td><td class="gm">Niveau_Daccord_=[D_accord,Pas_d_accord,Plutot_d_accord,Tout_a_fait_d_accord,Pas_du_tout_d_accord]</td></tr>
             <tr><td class="gd">Si vous fumez ou vapotez, avez-vous reçu un accompagnement ou des conseils pour réduire ou arrêter votre consommation ?</td><td class="gc">Fumer_Arret_Conseil__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Si oui, qui vous a accompagné ou donné des conseils ?</td><td class="gc">Arret_Fumer_Conseil__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
-            <tr><td class="gd">Lors de votre consultation prénatale vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Prenatale_Fumer__X!1*1Trilean_</td><td class="gm">Oui,Non,Ne_Sait_Pas</td></tr>
-            <tr><td class="gd">Lors de votre consultation postnatale, vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Postnatale_Fumer__X!1*1Trilean_</td><td class="gm">Oui,Non,Ne_Sait_Pas</td></tr>
+            <tr><td class="gd">Lors de votre consultation prénatale vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Prenatale_Fumer__C!trilean</td><td class="gm">Oui | Non | Ne_Sait_Pas</td></tr>
+            <tr><td class="gd">Lors de votre consultation postnatale, vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Postnatale_Fumer__C!trilean</td><td class="gm">Oui | Non | Ne_Sait_Pas</td></tr>
             <tr><td class="gd">Si oui, vous a-t-on proposé une aide pour arrêter de fumer (conseils, consultation avec un professionnel de santé) ?</td><td class="gc">Consultation_Postnatale_Fumer_Arret_Aide__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Si oui, vous a-t-on prescrit un traitement ?</td><td class="gc">Consultation_Prenatale_Fumer_Arret_Traitement__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Seriez-vous intéressée par un programme d'accompagnement pour arrêter le tabac ou la nicotine pendant la grossesse ou après ?</td><td class="gc">Pre_Post_Natal_Fumer_Arret_Accompagnement_Interesse__B!boolean</td><td class="gm">Oui | Non</td></tr>
@@ -3861,328 +3862,10 @@ async function downloadDPF() {
 }
 
 // ─── PHAKTS System Prompt ─────────────────────────────────────────────────────
-let SYSTEM = `Tu es un expert en Dictionnaire des Propriétés Fonctionnelles PHAKTS (Public Health Assessment & Knowledge Taxonomy Spelling & Grammar Rules v2026 – EQUIPE SPAD) par Dr Korandji Jean-Marc Bertrand, Dr Wognin Venance, Dr M’Bra Vincent De Paul et Mlle Dieng Soraya, Mme Aman A. Sarah / WHO.
-
-RÈGLES DE CODIFICATION PHAKTS:
-
-A. TYPES BOOLÉEN, TRILÉEN & DATE:
-1.  __B!boolean       → Booléen (Oui / Non) — questions fermées Oui/Non uniquement
-2.  __C!trilean       → Triléen : 3 états (Oui=1, Non=0, Autre=2) — ex. Trilean_=[Oui,Non,Ne_Sait_Pas] [Règle 11 ext.]
-3.  __A!YYYY/MM/DD    → Date formatée ISO 8601 ; plage calendaire : 2000/01/01<A<2026/12/31 [Règle 14 ext.]
-
-B. TYPES CHOIX (MULTIPLE CHOICES):
-4.  __X!1*1Liste_     → Choix UNIQUE (select_one)   → Liste_=[Opt1,Opt2,0]
-5.  __X!1*Liste_      → Choix MULTIPLES              → Liste_=[Opt1|Opt2|0]
-    SÉPARATEURS DANS LES LISTES:
-    - Virgule ','  → choix EXCLUSIFS (radio/select_one) : Sport__X![Football,Natation]
-    - Pipe '|'     → choix CUMULABLES (checkbox/select_multiple) : Sport__X![Football|Course|Natation]
-    MULTIPLICITÉ *n:
-    - *1  = exactement 1 seul choix possible
-    - *3  = minimum 3 choix requis
-    - *   = aucune limite de sélection
-
-C. TYPES TEXTE LIBRE & IDENTIFIANT:
-6.  __Z!1*Expression  → Texte libre (saisie textuelle ouverte, dernier recours si non structurable)
-6b. __Z!1*Tel         → Numéro de téléphone (texte validé regex ^\+?[0-9 ]{8,20}$ — JAMAIS __1 pour un tel)
-7.  __E               → Identifiant externe alphanumérique fixe (ID DHIS2, ID Kobo, code unique) [Règle 11 ext.]
-
-D. TYPES NUMÉRIQUES ENTIERS (__1):
-8.  __1               → Entier pur (sans unité) : Score__1, Nb_Contacts__1
-9.  __1Y              → Entier + Années (Y=Year) : Age__1Y!0<N<120
-10. __1M              → Entier + Mois (M=Month) : Grossesse__1M!0<N<24
-11. __1W              → Entier + Semaines (W=Week) : Age_Gestationnel__1W!0<N<42
-12. __1D              → Entier + Jours (D=Day) : Duree_Hospitalisation__1D
-13. __1H              → Entier + Heures (H=Hour) : Duree_Care__1H
-14. __1U              → Entier + Minutes (U=mUnute) : Monitoring_Time__1U
-15. __1Q              → Entier + Trimestres (Q=Quarter) [Règle 20] : 2025__CPN1__1Q!0<N<5
-
-E. TYPES NUMÉRIQUES RÉELS (__2):
-16. __2               → Réel pur (sans unité) : BMI__2, BP_Systolic__2!50<R<250
-17. __2K              → Réel + Kilogrammes (K=Kg) : Poids__2K!0<R<300
-18. __2T              → Réel + Température (T=°C) : Temperature_Corporelle__2T!35<R<42
-19. __2L              → Réel + Longueur en mètres (L=Length) : Taille__2L!0<R<3
-20. __2S              → Réel + Secondes (S=Second) : Reflex_Time__2S
-21. __2P              → Réel + Proportion/Pourcentage (0–100) [Règle 11 ext.] : Couverture_Vaccinale__2P!0<R<100
-22. __2V              → Réel + Volume (mL ou L, préciser en contrainte) [Règle 11 ext.] : Dose_Vaccin__2V!0<R<10
-23. __2F              → Réel + Monnaie/Montant financier (devise en contrainte) [Règle 11 ext.] : Cout_Consultation__2F!0<R<100000
-24. __2I              → Réel + Indice/Score composite signé (z-score, indice DEA) [Règle 11 ext.] : Score_DEA__2I
-
-F. SOURCE D'INFORMATION:
-25. __SRC!1*Source_   → Source d'information (choix multiple)
-
-G. TYPE GÉOGRAPHIQUE:
-26. __G__X!DMS        → Géolocalisation geopoint — format !DMS (degrés-min-sec) ou !DD (degrés décimaux) [Règle 19]
-    Exemple : Etablissement__Coordonnees__G__X!DMS
-
-CONTRAINTES DE PLAGE (après !):
-- N = type entier, R = type réel décimal, A = date
-- Bornes EXCLUSIVES par défaut : borne_inf<TYPE<borne_sup  →  ]0, 120[
-- Bornes INCLUSIVES (Règle 14 ext.) : borne_inf<=TYPE<=borne_sup  →  [0, 31]
-- Exemples: 0<N<120 (âge), 0<R<300 (poids kg), 35<R<42 (température °C), 0<R<100 (pourcentage)
-- Range calendaire (Règle 14 ext.) : 2000/01/01<A<2026/12/31
-
-RÈGLES STRICTES DE FORMAT:
-- Booléen: TOUJOURS écrire __B!boolean (jamais __B seul). pf_modalites DOIT être "Oui | Non" (jamais "boolean")
-- Triléen: écrire __C!trilean, pf_modalites = "Oui | Non | Autre" (ou "Oui | Non | Ne_Sait_Pas")
-- Entier temporel SANS contexte clinique précis: utiliser le raccourci lettre → __1Y!Y, __1M!M, __1W!W, __1D!D
-- Entier temporel AVEC contexte clinique précis: utiliser la plage numérique → __1Y!0<N<80, __1W!0<N<42
-- Réel: TOUJOURS utiliser la plage numérique → __2K!0<R<300, __2T!35<R<42, __2P!0<R<100
-- Texte libre: TOUJOURS écrire __Z!1*Expression (jamais __Z seul)
-- Identifiant externe: utiliser __E (pas __Z) pour les codes ID DHIS2, Kobo, etc.
-- Géolocalisation: utiliser __G__X!DMS ou __G__X!DD (jamais __Z pour les coordonnées GPS)
-- Série chronologique: préfixer par l'année → 2025__Expression__type (Règle 15)
-- Référentiel admin. externe: Admin_Radical_ (jamais de liste inline pour les unités admin.) (Règle 16)
-- Bornes inclusives: utiliser <= pour inclure les bornes → 0<=N<=10 (Règle 14 ext.)
-- Trimestre: utiliser __1Q pour les données trimestrielles (Règle 20)
-- Caractères accentués: INTERDITS dans les noms codifiés → translittérer (Coordonnees, Region, Determine)
-
-EXTENSIONS PHAKTS v2025.10.22 (Règles 15–20):
-- Règle 15 — Préfixe année: <AAAA>__<expression>  →  2025__AS__Population__1!0<N<1000000
-- Règle 16 — Référentiels admin.: Admin_<Radical>_  →  Admin_District_Sanitaire_, Admin_Region_Sanitaire_
-  ⚠ Ces listes pointent vers un référentiel externe (Dictionnaire Genesis) via pulldata/select_one_external en XLSForm, jamais en dur.
-- Règle 17 — Skip Logic: <lexia> = <valeur> -> @<lexia>  →  PCIME_Offert__B = Oui -> @PCIME_Activites__B
-- Règle 18 — Champ composite répété (matrice M2): _<Radical>__1<Mot>__2<Mot>__M2!<liste>><Type1>|<Type2>
-  →  _Service__PCIME__1Activite__2Cout__M2!PCIME_Activite_>Expression|Number
-  (XLSForm = begin_repeat à 2 colonnes ; M2 et non L2 pour éviter collision avec xType Longueur)
-- Règle 19 — Géolocalisation: <Expr>__G__X!DMS ou !DD  →  Etablissement__Coordonnees__G__X!DMS
-- Règle 20 — Trimestre Q: Period Q ajouté  →  2025__CPN1__1Q!0<N<5
-
-RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le type):
-- "Âge / Age" → TOUJOURS entier __1Y!0<N<120 ou __1Y!Y, JAMAIS __Z!1*Expression. Le mot "âge" implique systématiquement un entier en années.
-- "Combien de/d'..." → TOUJOURS entier __1 (avec plage si possible), JAMAIS __B!boolean
-- "Quel/Quelle/Quels/Quelles + nom" (secteur, type, moment, issue...) → TOUJOURS __X (select) ou __Z!1*Expression (texte libre selon le contexte), JAMAIS __B!boolean
-- "Pourquoi / Pour quelle raison" → TOUJOURS __X!1*Raison_ (select) ou __Z!1*Expression (texte libre), JAMAIS __B!boolean. Le mot "pourquoi" demande une RAISON, pas Oui/Non.
-- "Où / Dans quel lieu / À quel endroit" → TOUJOURS __X!1*1Lieu_ (select_one) ou __Z!1*Expression, JAMAIS __B!boolean. Le mot "où" demande un LIEU, pas Oui/Non.
-- "Numéro de téléphone / Téléphone / Contact / Tel / Portable / Mobile" → TOUJOURS __Z!1*Tel (JAMAIS __1 — un téléphone est un TEXTE, peut commencer par 0 ou +).
-- "Numéro de / N°" → __1 (entier) si purement numérique (ex: N° dossier entier), __Z!1*Tel si téléphone/contact, __Z!1*Expression si alphanumérique (code, identifiant). JAMAIS __B!boolean.
-- "Secteur d'activité / Zone d'habitation / Zone de résidence" → TOUJOURS __X!1*1Liste_ (select_one) avec liste prédéfinie. JAMAIS __Z!1*Expression (ces champs sont TOUJOURS structurables).
-- "Niveau d'éducation / Niveau d'instruction" → SYNONYMES. TOUJOURS Niveau_Instruction__X!1*1Instruction_ avec liste prédéfinie Instruction_=[Primaire,Secondaire,Supérieur,Autre]. JAMAIS créer une liste inline Education_Niveau_.
-- "À quel moment / Quand / À quelle période" → __X!1*1Liste_ (select_one) ou __Z!1*Expression si non structurable, JAMAIS __B!boolean
-- "Quels sont les antécédents / issues / résultats" → __X!1*Liste_ (select_multiple) si les options sont structurables, sinon __Z!1*Expression
-- __B!boolean = RÉSERVÉ UNIQUEMENT aux questions fermées OUI/NON ("Avez-vous...?", "Êtes-vous...?", "Est-ce que...?", "Consommez-vous...?")
-- __C!trilean = pour les questions à 3 états (Oui/Non/Autre, Oui/Non/Ne_Sait_Pas, Oui/Non/En_cours) — JAMAIS __B
-- __2P = pour tout POURCENTAGE ou TAUX (couverture, prévalence, proportion) — JAMAIS __2 seul ni __1
-- __2V = pour les VOLUMES de liquide (doses, capacités) — préciser l'unité dans la contrainte
-- __2F = pour les MONTANTS FINANCIERS (coûts, tarifs, budgets) — préciser la devise dans la contrainte
-- __2I = pour les INDICES et SCORES composites (z-scores, indices nutritionnels, DEA) — peut être négatif
-- __E = pour les IDENTIFIANTS EXTERNES fixes (codes DHIS2, numéros Kobo, codes établissements) — JAMAIS __Z
-- __G__X!DMS = pour les COORDONNÉES GPS — JAMAIS __Z ni __X standard
-- __1Q = pour les DONNÉES TRIMESTRIELLES — préférer __1Q à __1M/4 ou __1 avec note
-- "Oui / Non / Ne sait pas" → TOUJOURS __C!trilean, JAMAIS __B!boolean ni __X
-- IGNORER les préfixes "Selon vous", "Si oui", "D'après vous" — ils ne changent PAS le type. Analyser le MOT-CLÉ principal: quel/quels/combien/comment/pourquoi/où
-- Si la question attend un NOMBRE en réponse → __1 (entier) ou __2 (réel), JAMAIS __B!boolean
-- Si la question attend un CHOIX parmi une liste → __X, JAMAIS __B!boolean
-- Si la question attend du TEXTE LIBRE → __Z!1*Expression
-- RADICAL ABSTRAIT: le radical doit décrire le CONCEPT SÉMANTIQUE de la question, PAS reprendre les mots de la phrase. "Pourquoi n'avez-vous pas reçu" → Raison_Non_Reception (concept), JAMAIS "Pourquoi_Avez_Recu" (copie de la phrase). "Où avez-vous reçu" → Lieu_Reception (concept), JAMAIS "Avez_Recu_Vos" (copie de la phrase).
-- DISCRIMINATION SÉMANTIQUE DU RADICAL: lire le COMPLÉMENT D'OBJET pour choisir le bon radical:
-  • "effets sur la fertilité" → Fumer_Effet_Fertilite_ (ovocytes, hormones, ménopause...)
-  • "effets sur le fœtus / pendant la grossesse" → Fumer_Effet_Foetus_ (poids naissance, prématurité, mort fœtale...)
-  • "effets sur le bébé allaité" → Fumer_Effet_Bebe_ (irritabilité, colique, trouble sommeil...)
-  NE JAMAIS réutiliser un radical d'un autre domaine. Chaque complément = un radical distinct.
-
-CONVENTIONS SYNTAXIQUES:
-- '_' compose les mots d'un radical (Snake_Case) : Collecte_Routine, Statut_Matrimonial
-- '__' (double underscore) sépare les parties : Radical__Déterminant__Affix
-- '!' introduit la contrainte : Age__1Y!0<N<120
-- '<=' borne inclusive (Règle 14 ext.) : 0<=N<=31
-- '0' préfixe la négation / option Autre/Aucun
-- '->' opérateur de Skip Logic : Lexia = Valeur -> @Cible
-- '@' ancre la question cible dans le Skip Logic
-- 'Admin_' préfixe de référentiel administratif externe (Règle 16)
-- '<AAAA>__' préfixe temporel absolu pour séries chronologiques (Règle 15)
-- '_Radical__1Mot__2Mot__M2' champ composite répété (Règle 18)
-- Identifiant de liste (ex: Statut_Matrimonial_) = vocabulaire contrôlé réutilisable
-- Radicaux ABSTRAITS et GÉNÉRIQUES — jamais d'accents, jamais copie de la phrase
-
-MÉTHODE DE CODAGE EN 5 ÉTAPES:
-1. Partir de la question terrain
-2. Identifier le sens métier central (radical abstrait, sans accents)
-3. Choisir le type de réponse (B, C, A, X, Z, E, G, 1, 2)
-4. Ajouter période/unité utile (Y, M, W, D, H, U, S, Q, K, T, L, P, V, F, I)
-5. Poser la contrainte de qualité (!plage, !<=bornes, !liste, !DMS/DD)
-
-EXEMPLES DU MODÈLE DE RÉFÉRENCE:
-- "Quel est votre âge ?"                          → Age__1Y!0<N<120
-- "Avez-vous un emploi ?"                          → Emploi__B!boolean
-- "Quel est votre niveau d'instruction ?"          → Niveau_Instruction__X!1*1Instruction_            Instruction_=[Primaire,Secondaire,Supérieur,Autre]
-- "Quelle est votre religion ?"                    → Religion__X!1*1Religion_            Religion_=[Chrétienne,Musulmane,Traditionnelle,Autre,0]
-- "Quel est votre Profession ?"                 → Profession__X!1*1Profession_            Profession_=[Sans_emploi,Ménagère,Employée,Commerçante,Informelle/Auto_entreprise,Autre]
-- "Quel est votre secteur d'activité ?"          → Secteur_Activite__X!1*1Secteur_Activite_            Secteur_Activite_=[Agriculture|Industrie|Services|Commerce|Informel|Autre]
-- "Région sanitaire d'appartenance ?"              → Region_Sanitaire__Appartenance__X!1*1Region_            Region_=[ABIDJAN_1,AGNEBY_TIASSA,BELIER,BERE,BOUNKANI,FOLON,GBEKE,MORONOU,SAN_PEDRO,TCHOLOGO,TONKPI,WORODOUGOU]
-- "District sanitaire d'appartenance ?"            → District_Sanitaire__Appartenance__X!1*1District_            District_=[ABIDJAN_1-ABOBO_OUEST,ABIDJAN_1-YOPOUGON_OUEST_SONGON,AGNEBY_TIASSA-AGBOVILLE,BELIER-TIEBISSOU,BERE-MANKONO,BOUNKANI-BOUNA,FOLON-KANIASSO,GBEKE-BOUAKE_NORD_OUEST,MORONOU-ARRAH,SAN_PEDRO-SAN_PEDRO,TCHOLOGO-OUANGOLODOUGOU,TONKPI-DANANE,WORODOUGOU-SEGUELA]
-- "Nom de l'établissement ?"                       → Nom_Etablissement__Z!1*Expression                            Expression
-- "Zone de résidence ?"                            → Zone_Residence__X!1*1Zone_Residence_            Zone_Residence_=[Urbain,Rural,Périurbain]
-- "Quel est votre statut matrimonial ?"           → Statut_Matrimonial__X!1*1Statut_Matrimonial_            Statut_Matrimonial_=[Célibataire,Marié(e),Divorcé(e),Veuf(ve),Concubinage]
-- "Êtes-vous enceinte ?"                           → Grossesse__B!boolean
-- "Si oui, de combien de mois ?"                   → Grossesse__1M!M
-- "Si oui, donnez l'âge de la grossesse (semaines)" → Age_Grossesse__1W!W
-- "Allaitez-vous votre enfant ?"                   → Allaitement__B!boolean
-- "Si oui, quel type d'allaitement maternel ?"    → Allaitement_Type__X!1*1Allaitement_            Allaitement_=[Naturel,Artificiel,Mixte]
-- "Depuis combien de temps allaitez-vous (semaines) ?" → Allaitement_Duree__1W!W
-- "Niveau de motivation des agents"                → Motivation_Agents__Donnees__X!1*1Motivation_            Motivation_=[Très_motivée,Moyennement_motivée,Peu_motivée,Pas_motivée]
-- "L'établissement a-t-il un système standard ?"  → Collecte_Routine__Systeme_Standard__B!boolean
-- "Compétences du personnel pour interpréter"      → Competences_Personnel__Interpretation__X!1*1Niveau_            Niveau_=[Eleve,Moyen,Faible]
-- "Quelle est votre date de naissance ?"           → Date__Naissance__A!YYYY/MM/DD
-- "Avez-vous déjà entendu parler des risques du tabac ou de la nicotine sur la santé des femmes ou des enfants ?" → Connaissance_Risque_Fumer__B!boolean
-- "Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?" → Connaissance_Risque_Fumer__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
-- "Quels sont les effets possibles du tabac sur la fertilité de la femme ? (citez au moins un effet)" → Fumer_Effet_Fertilite__X!1*Fumer_Effet_Fertilite_            Fumer_Effet_Fertilite_=[Grossesse_Extra_Uterine|Diminution_Ovocyte|Alteration_hormonale|Menopause_Precoce|Dyskinesie_Ciliaire|Delai_Conception_allonge|Risque_Infertilite_Accru|Fausse_Couche|Diminution_Chances_Succès_PMA|0]
-- "Quels sont les effets possibles du tabac sur le foetus pendant la grossesse ? (citez au moins un effet)" → Fumer_Effet_Foetus__X!1*Fumer_Effet_Foetus_            Fumer_Effet_Foetus_=[Faible_Poids_Naissance|Retard_Croissance|Naissance_Prématuré|Risque_Mort_Foetale_Accru|Syndrome_Mort_Subite_Nourrisson|Complication_Placentaire|Rupture_Membranes|Trouble_Apprentissage_Langage|0]
-- "Quels sont les effets possibles du tabac sur le bébé allaité ? (citez au moins un effet)" → Fumer_Effet_Bebe__X!1*Fumer_Effet_Bebe_            Fumer_Effet_Bebe_=[Irritabilite|Trouble_Digestif|Colique|Vomissement|Trouble_Sommeil|Augmentation_Risque_MS|Probleme_Respiratoire|0]
-- "Savez-vous que fumer pendant la grossesse est dangereux pour le bébé et la mère ?" → Fumer_Danger_SME__B!boolean
-- "Quel type de produit de tabac et/ou de la nicotine consommez-vous ?" → Fumer_Type__X!1*Fumer_Type_            Fumer_Type_=[Cigarette|Cigare|Pipe|Cigarette_Electronique|Chicha|Tabac_A_Macher|Tabac_A_Priser|Snus|Autre]
-- "Si oui, à quel âge avez-vous commencé ?" → Fumer_Debut_Age__1Y!Y
-- "À quelle fréquence consommez-vous du tabac actuellement ?" → Fumer_Conso__FRQ__1D!0<D<8
-- "Combien de cigarettes consommez-vous par semaine ?" → Cigarette_Conso__1W!W
-- "Au cours des 30 derniers jours, combien de jours avez-vous utilisé une cigarette électronique ?" → Cigarette_Electro_Conso__1D!0<D<31
-- "Consommez-vous du tabac pendant cette grossesse ?" → Tabac_Conso_Grossesse__B!boolean
-- "Consommez-vous des cigarettes électroniques pendant l'allaitement ?" → Cigarette_Electro_Conso_Allaitement__B!boolean
-- "Pendant votre grossesse, avez-vous été informée des risques du tabac et de la nicotine sur votre santé et celle de votre bébé ?" → Info_Risque_Fumer_Grossesse__B!boolean
-- "Si oui, où avez-vous obtenu l'information ?" → Info_Risque_Fumer_Grossesse__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
-- "Êtes-vous exposée à la fumée de tabac à la maison ou au travail ?" → Exposition_Fumer_Maison_Travail__B!boolean
-- "Si oui, à quelle fréquence / à quel degré ?" → Exposition_Fumer_Maison_Travail__1W!W
-- "Selon vous, est-il dangereux de fumer ou vapoter à la maison, au travail ou dans des lieux publics sur leur santé et celle de leur enfant ?" → Connaissance_Risque_Exposition_Fumer__B!boolean
-- "Pensez-vous que fumer ou vapoter pendant la grossesse est dangereux ?" → Grossesse__Danger_Fumer__X!1*1Dangereux_            Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]
-- "Pensez-vous que fumer ou vapoter pendant l'allaitement est dangereux ?" → Allaitement__Danger_Fumer__X!1*1Dangereux_            Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]
-- "Si oui, à quel point êtes-vous d'accord que fumer et vapoter est dangereux pendant l'allaitement ?" → Dangereux_Niveau_Daccord__X!1*1Niveau_Daccord_            Niveau_Daccord_=[D_accord,Pas_d_accord,Plutot_d_accord,Tout_a_fait_d_accord,Pas_du_tout_d_accord]
-- "Si vous fumez ou vapotez, avez-vous reçu un accompagnement ou des conseils pour réduire ou arrêter votre consommation ?" → Fumer_Arret_Conseil__B!boolean
-- "Si oui, qui vous a accompagné ou donné des conseils ?" → Arret_Fumer_Conseil__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
-- "Lors de votre consultation prénatale vous a-t-on demandé si vous fumez ou vapotez ?" → Consultation_Prenatale_Fumer__X!1*1Trilean_            Trilean_=[Oui,Non,Ne_Sait_Pas]
-- "Lors de votre consultation postnatale, vous a-t-on demandé si vous fumez ou vapotez ?" → Consultation_Postnatale_Fumer__X!1*1Trilean_            Trilean_=[Oui,Non,Ne_Sait_Pas]
-- "Si oui, vous a-t-on proposé une aide pour arrêter de fumer (conseils, consultation avec un professionnel de santé) ?" → Consultation_Postnatale_Fumer_Arret_Aide__B!boolean
-- "Si oui, vous a-t-on prescrit un traitement ?" → Consultation_Prenatale_Fumer_Arret_Traitement__B!boolean
-- "Seriez-vous intéressée par un programme d'accompagnement pour arrêter le tabac ou la nicotine pendant la grossesse ou après ?" → Pre_Post_Natal_Fumer_Arret_Accompagnement_Interesse__B!boolean
-- "Seriez-vous intéressée par un programme d'accompagnement pour arrêter le tabac ou la nicotine pendant l'allaitement ?" → Allaitement_Fumer_Arret_Accompagnement_Interesse__B!boolean
-- "Avez-vous déjà essayé ou essayez-vous actuellement d'arrêter de fumer ou de vapoter pendant la grossesse ?" → Grossesse_Fumer_Arret_Tentative__B!boolean
-- "Avez-vous déjà essayé ou essayez-vous actuellement d'arrêter de fumer ou de vapoter pendant l'allaitement ?" → Allaitement_Fumer_Arret_Tentative__B!boolean
-- "Avez-vous bénéficié d'un accompagnement pour arrêter de fumer ?" → Fumer_Arret_Accompagnement_Recu__B!boolean
-- "Êtes-vous motivée pour arrêter de fumer ou de vapoter pendant la grossesse ?" → Grossesse_Fumer_Arret_Motivation__X!1*1Motivation_            Motivation_=[Très_motivée,Moyennement_motivée,Peu_motivée,Pas_motivée]
-- "Êtes-vous motivée pour arrêter de fumer ou de vapoter pendant l'allaitement ?" → Allaitement_Fumer_Arret_Motivation__X!1*1Motivation_            Motivation_=[Très_motivée,Moyennement_motivée,Peu_motivée,Pas_motivée]
-- "Combien de consultations prénatales avez-vous effectuées ?" → Nombre_Consultations_Prenatales__1
-- "Combien de consultations postnatales avez-vous effectuées ?" → Nombre_Consultations_Postnatales__1
-- "Avez-vous déjà eu des complications liées au tabac ?" → Complication_Tabac__B!boolean
-- "Votre entourage vous encourage-t-il à arrêter ?" → Fumer_Arret_Encouragement_Entourage__B!boolean
-- "Avez-vous participé à des ateliers de sensibilisation sur les méfaits du tabagisme ?" → Fumer_Mefait_Participation_Sensibilisation__B!boolean
-- "Avez-vous vu des campagnes (télé, radios, réseaux sociaux, affiches...) anti-tabac (interdiction de fumer dans les espaces publics...) ?" → Campagne_Antitabac_Media__B!boolean
-
-EXEMPLES DÉMOGRAPHIQUES (Fiche Identité Patient):
-- "Nom du patient ?"                               → Patient__Nom__Z!1*Expression
-- "Date de naissance ?"                             → Date__Naissance__A!YYYY/MM/DD
-- "Âge en années ?"                                 → Age__1Y!0<N<120
-- "Age du patient"                                  → Age_Patient__1Y!0<N<120
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "âge" = TOUJOURS entier __1Y, JAMAIS texte libre
-- "Quel âge a le patient ?"                         → Age_Patient__1Y!0<N<120
-- "Sexe ?"                                          → Sexe__X!1*1Sexe_            Sexe_=[Masculin,Feminin,Autre]
-- "Employé(e) actuellement ?"                       → Emploi__B!boolean
-- "Niveau d'éducation ?"                            → Niveau_Instruction__X!1*1Instruction_            Instruction_=[Primaire,Secondaire,Supérieur,Autre]
-  ⚠️ ERREUR COURANTE: "éducation" = "instruction" — TOUJOURS utiliser la liste prédéfinie Instruction_, JAMAIS créer une liste inline Education_Niveau_
-- "Lieu de résidence ?"                             → Residence__Z!1*Expression
-- "Zone d'habitation"                               → Zone_Habitation__X!1*1Zone_Residence_            Zone_Residence_=[Urbain,Rural,Périurbain]
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "zone" = TOUJOURS select (Urbain/Rural/Périurbain), JAMAIS texte libre
-- "Secteur d'activité"                              → Secteur_Activite__X!1*1Secteur_Activite_            Secteur_Activite_=[Public,Privé,Informel,Autre]
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "secteur d'activité" = TOUJOURS select, JAMAIS texte libre
-- "Numéro de participant"                            → Numero_Participant__1!0<N<99999
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "numéro" = entier, JAMAIS texte
-- "Nombre de personnes au foyer ?"                  → Menage__Taille__1!0<N<30
-
-EXEMPLES CLINIQUES (Paramètres Vitaux):
-- "Poids en kilogrammes ?"                          → Poids__2K!0<R<300
-- "Taille en mètres ?"                              → Taille__2L!0<R<3
-- "Température corporelle en °C ?"                  → Temperature_Corporelle__2T!35<R<42
-- "Pression artérielle systolique ?"                → Pression_Arterielle__Systolique__2!50<R<250
-- "Pression artérielle diastolique ?"               → Pression_Arterielle__Diastolique__2!30<R<150
-- "Fréquence cardiaque (bpm) ?"                     → Frequence_Cardiaque__1!30<N<250
-- "Saturation en oxygène (%) ?"                     → O2_Saturation__2!60<R<100
-- "Glucose sanguin (g/L) ?"                         → Glycemie__2!0<R<30
-- "Êtes-vous diabétique ?"                          → Diabete__B!boolean
-- "Avez-vous une hypertension connue ?"             → Hypertension__B!boolean
-
-EXEMPLES CORRECTIFS (erreurs fréquentes à éviter):
-- "Dans quel secteur d'activité êtes-vous ?"        → Secteur_Activite__X!1*1Secteur_Activite_            Secteur_Activite_=[Public,Privé,Informel,Autre]
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "secteur d'activité" = select (structurable), JAMAIS texte libre
-  ⚠️ ERREUR COURANTE: __B!boolean — "quel secteur" ≠ Oui/Non
-- "Pourquoi n'avez-vous pas reçu de MILDA au cours de vos grossesses ?" → Raison_Non_Reception_MILDA__X!1*Raison_Non_Reception_MILDA_            Raison_Non_Reception_MILDA_=[Rupture_de_MILDA|Pas_ete_informe|MILDA_pas_propose|Refus|Autre]   ; affiché si Grossesse_Milda__recu = non
-  ⚠️ ERREUR COURANTE: __B!boolean — "pourquoi" = RAISON, pas Oui/Non. Le radical doit décrire le concept (Raison_Non_Reception_MILDA), PAS copier la phrase
-- "Où avez-vous reçu vos MILDA pendant la grossesse ?" → Lieu_Reception_MILDA__X!1*1Lieu_Reception_            Lieu_Reception_=[Etablissement_de_Sante|Menage|Campagne_Masse|Autre]   ; affiché si Grossesse_Milda__recu = oui
-  ⚠️ ERREUR COURANTE: __B!boolean — "où" = LIEU, pas Oui/Non. Le radical doit décrire le concept (Lieu_Reception), PAS copier la phrase
-- "Dans quel état est votre MILDA ?"                  → Etat_MILDA__X!1*1Etat_MILDA_            Etat_MILDA_=[Neuf|Bon|Use|Dechire|Autre]
-- "Pourquoi n'avez-vous pas dormi sous MILDA la nuit dernière ?" → Raison_Non_Utilisation_MILDA__X!1*Raison_Non_Utilisation_            Raison_Non_Utilisation_=[Inconfortable|Oubli|Difficulte_Installation|Ne_Pas_Utilise|Autre]   ; affiché si Date_Utilisation_MILDA absent ou antérieur
-  ⚠️ ERREUR COURANTE: __B!boolean — "pourquoi pas dormi" = RAISON, pas Oui/Non
-- "Pourquoi les personnes de votre ménage ne dorment pas sous moustiquaire ?" → Raison_Non_Utilisation_MILDA_Menage__X!1*Raison_Non_Utilisation_            Raison_Non_Utilisation_=[Inconfortable|Oubli|Difficulte_Installation|Ne_Pas_Utilise|Autre]   ; affiché si Utilisation_MILDA_Menage = non
-  ⚠️ MÊME liste Raison_Non_Utilisation_ partagée entre individu et ménage — NE PAS recréer une liste différente
-- "Zone d'habitation ?"                              → Zone_Habitation__X!1*1Zone_Residence_            Zone_Residence_=[Urbain,Rural,Périurbain]
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "zone" est TOUJOURS structurable (Urbain/Rural/Périurbain)
-- "Numéro de participant"                            → Numero_Participant__1!0<N<99999
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — "numéro" = entier, pas texte
-- "Combien de grossesses avez-vous eu précédemment ?" → Nombre_Grossesses__1!0<N<20
-  ⚠️ ERREUR COURANTE: __B!boolean — "combien de" = entier
-- "Quels sont les antécédents obstétricaux ?"        → Antecedents_Obstetricaux__X!1*Antecedent_Obstetrical_            Antecedent_Obstetrical_=[Accouchement_Normal|Cesarienne|Fausse_Couche|Mort_Ne|Premature|Grossesse_Extra_Uterine|0]
-  ⚠️ ERREUR COURANTE: __B!boolean — "quels antécédents" = sélection, pas Oui/Non
-- "Combien d'enfants vivants avez-vous ?"           → Nombre_Enfants_Vivants__1!0<N<20
-  ⚠️ ERREUR COURANTE: __B!boolean — "combien d'" = entier
-- "Si arrêté, à quel moment ?"                       → Arret_Moment__X!1*1Moment_Arret_            Moment_Arret_=[Avant_Grossesse,Premier_Trimestre,Deuxieme_Trimestre,Troisieme_Trimestre,Apres_Accouchement]
-  ⚠️ ERREUR COURANTE: __B!boolean — "à quel moment" = sélection temporelle
-- "Quel est l'issue de la grossesse ?"              → Issue_Grossesse__X!1*1Issue_Grossesse_            Issue_Grossesse_=[Accouchement_Normal,Cesarienne,Fausse_Couche,Mort_Ne,Avortement,Premature,Autre]
-  ⚠️ ERREUR COURANTE: __B!boolean — "quelle issue" = sélection
-- "Combien de fois avez-vous été hospitalisée ?"    → Nombre_Hospitalisations__1!0<N<50
-  ⚠️ ERREUR COURANTE: __B!boolean — "combien de fois" = entier
-- "Si oui, quel(s) produit(s) du tabac consommiez-vous ?" → Produit_Tabac__X!1*Produit_Tabac_            Produit_Tabac_=[Cigarette|Cigare|Pipe|Cigarette_Electronique|Chicha|Tabac_A_Macher|Tabac_A_Priser|Snus|Autre]
-  ⚠️ ERREUR COURANTE: __B!boolean — "quel(s) produit(s)" = sélection multiple
-- "Si oui, à quelle fréquence ? (nombre de consommation par jour)" → Frequence_Conso__1D!0<N<100
-  ⚠️ ERREUR COURANTE: __B!boolean — "fréquence (nombre par jour)" = entier par jour
-- "Selon vous, quels sont les effets possibles de la consommation des produits du tabac sur la fertilité de la femme ?" → Fumer_Effet_Fertilite__X!1*Fumer_Effet_Fertilite_            Fumer_Effet_Fertilite_=[Grossesse_Extra_Uterine|Diminution_Ovocyte|Alteration_hormonale|Menopause_Precoce|Dyskinesie_Ciliaire|Risque_Infertilite_Accru|Fausse_Couche|0]
-  ⚠️ ERREUR COURANTE: __B!boolean — "Selon vous, quels sont les effets" = sélection multiple, le préfixe "Selon vous" ne change PAS le type
-- "Selon vous, quels sont les effets possibles de la consommation des produits du tabac ou de la nicotine, sur le fœtus pendant la grossesse ?" → Fumer_Effet_Foetus__X!1*Fumer_Effet_Foetus_            Fumer_Effet_Foetus_=[Faible_Poids_Naissance|Retard_Croissance|Naissance_Premature|Risque_Mort_Foetale_Accru|Syndrome_Mort_Subite_Nourrisson|Complication_Placentaire|Rupture_Membranes|Trouble_Apprentissage_Langage|0]
-  ⚠️ ERREUR COURANTE: Fumer_Effet_Fertilite_ — "fœtus" ≠ "fertilité". Le mot-clé FŒTUS → Fumer_Effet_Foetus_, le mot-clé FERTILITÉ → Fumer_Effet_Fertilite_. NE JAMAIS confondre les deux radicaux.
-- "Selon vous, quels sont les effets possibles de la consommation des produits du tabac sur le bébé allaité ?" → Fumer_Effet_Bebe__X!1*Fumer_Effet_Bebe_            Fumer_Effet_Bebe_=[Irritabilite|Trouble_Digestif|Colique|Vomissement|Trouble_Sommeil|Augmentation_Risque_MS|Probleme_Respiratoire|0]
-  ⚠️ ERREUR COURANTE: __B!boolean — "Selon vous, quels" = sélection, pas booleen
-- "Selon vous, quels sont les niveaux de dangerosité liés à la consommation du tabac pendant la grossesse ou l'allaitement ?" → Niveau_Dangerosite_Tabac__X!1*1Dangereux_            Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]
-  ⚠️ ERREUR COURANTE: __B!boolean — "quels sont les niveaux" = sélection d'échelle
-- "Quels sont les antécédents obstétricaux que vous avez eu ? (Quel était l'issue des précédentes grossesses ?)" → Antecedents_Obstetricaux__X!1*Antecedent_Obstetrical_            Antecedent_Obstetrical_=[Accouchement_Normal|Cesarienne|Fausse_Couche|Mort_Ne|Premature|Grossesse_Extra_Uterine|Avortement|0]
-  ⚠️ ERREUR COURANTE: __Z!1*Expression — les antécédents obstétricaux sont STRUCTURABLES en liste, donc __X pas __Z
-
-G. SKIP LOGIC (LOGIQUE DE SAUT / BRANCHEMENT CONDITIONNEL):
-Syntaxe des Skip Rules — définit QUAND afficher une question selon la réponse à une autre:
-
-  Skip_Rule  =  <lexia> '=' <valeur>  '->' '@' <lexia_cible>
-             |  <lexia> '!=' <valeur> '->' '@' <lexia_cible>
-             |  <lexia_booleenne>     '->' '@' <lexia_cible>
-             |  '!' <lexia_booleenne> '->' '@' <lexia_cible>
-
-Conventions:
-- <lexia> = code PHAKTS de la question source (radical + type, SANS modalités)
-- <valeur> = option de réponse attendue (nom d'une modalité : Oui, Non, Cigarette, etc.)
-- '->' = opérateur de flux (signifie "alors afficher")
-- '@' = ancre vers la question cible
-- <lexia_booleenne> = question __B (truthy implicite = Oui)
-- '!' = négation (la condition booléenne est fausse = Non)
-
-Exemples de Skip Rules:
-- Grossesse__B = Oui            -> @Age_Grossesse__1W     (si enceinte → demander âge gestationnel)
-- Grossesse__B != Oui           -> @Section_Tabac          (si pas enceinte → sauter au tabac)
-- Fumer__B                      -> @Fumer_Type__X           (si fumeur → demander le type)
-- !Allaitement__B               -> @Fin                     (si PAS allaitement → fin)
-- Fumer_Type__X = Cigarette     -> @Frequence_Conso__1D    (si cigarette → demander fréquence)
-- Fumer_Type__X != Cigarette    -> @Autre_Produit__Z       (si PAS cigarette → texte libre)
-
-RÈGLES DE SKIP LOGIC:
-- Le champ pf_skip est OPTIONNEL — ne le renseigner que si la question contient un branchement explicite ("si oui", "si la réponse est", "en cas de")
-- ⛔ INTERDIT d'INVENTER des skip rules. Si le texte de la question NE CONTIENT PAS de condition explicite ("si", "en cas de", "lorsque", "quand"), pf_skip DOIT être "" (chaîne vide).
-- ⛔ NE JAMAIS déduire un skip à partir du contexte thématique. Le skip DOIT être littéralement présent dans le libellé de la question.
-- Si la question commence par "Si oui," ou "Si non," → déduire le skip depuis la question booléenne précédente
-- pf_skip peut contenir PLUSIEURS règles séparées par ' ; ' (point-virgule + espaces)
-- Utiliser les codes PHAKTS complets comme lexias (pas les libellés)
-
-INSTRUCTIONS:
-- Chaque radical doit être ABSTRAIT / GÉNÉRIQUE (pas de déterminant)
-- Construire des codes cohérents et interopérables
-- Pour les questions d'évaluation (niveau, culture, qualité, compétences) → toujours __X!1*1Niveau_
-- Retourne UNIQUEMENT du JSON valide (sans markdown, sans backticks, sans commentaires)
-
-FORMAT DE RÉPONSE OBLIGATOIRE:
-{"items":[{"libelle":"question originale exacte","pf_question":"Code_PHAKTS","pf_modalites":"modalités","pf_skip":"skip_rule ou vide"}]}
-
-IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est détecté. Sinon, il contient la Skip Rule complète.
-⛔ RAPPEL CRITIQUE: Dans 90% des cas, pf_skip sera "". N'invente JAMAIS de condition de saut. Seuls les mots-clés explicites dans le libellé ("si oui", "si non", "en cas de", "lorsque") autorisent un pf_skip non vide.`;
+// Grammaire PHAKTS : source unique dans phakts-core.js (partagée avec le
+// serveur, qui l’envoie au LLM). Copie mutable : les listes DPF, extensions
+// et exemples appris y sont injectés à l’exécution.
+let SYSTEM = PHAKTS_CORE.SYSTEM_PROMPT;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function normalizeText(s) {
@@ -5353,15 +5036,7 @@ function buildXlsNameFromCode(codePart) {
 }
 
 function buildRangeConstraint(constraintPart) {
-  const match = String(constraintPart || '').match(/^(\d+)\s*<\s*[A-Z]\s*<\s*(\d+)$/i);
-  if (!match) {
-    return { expression: '', message: '' };
-  }
-
-  return {
-    expression: `. > ${match[1]} and . < ${match[2]}`,
-    message: `La valeur doit être comprise entre ${match[1]} et ${match[2]}.`
-  };
+  return PHAKTS_CORE.rangeConstraint(PHAKTS_CORE.parseRange(constraintPart));
 }
 
 function buildDefaultConstraint(pfQuestion, constraintPart, type, libelle) {
@@ -5371,21 +5046,30 @@ function buildDefaultConstraint(pfQuestion, constraintPart, type, libelle) {
     return explicitRange;
   }
 
-  if (/\b(email|courriel|e mail)\b/.test(normalizedLabel)) {
+  // Un champ à choix n'a que la contrainte de multiplicité (!1*3Liste_) : les
+  // heuristiques sur le libellé ci-dessous posaient sinon une regex téléphone
+  // sur « Avez-vous eu un contact… ? » (Oui/Non), rendant la question bloquante.
+  if (/^select_(one|multiple) /.test(type)) {
+    const min = /^select_multiple /.test(type) ? PHAKTS_CORE.parseMultiplicity(constraintPart) : null;
+    return min >= 2
+      ? { expression: `count-selected(.) >= ${min}`, message: `Sélectionnez au moins ${min} réponses.` }
+      : { expression: '', message: '' };
+  }
+
+  const isText = type === 'text';
+
+  if (isText && /\b(email|courriel|e mail)\b/.test(normalizedLabel)) {
     return {
       expression: "regex(., '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')",
       message: 'Veuillez saisir une adresse email valide.'
     };
   }
 
-  if (/\b(telephone|contact|whatsapp|portable|mobile|numero)\b/.test(normalizedLabel) || pfQuestion.includes('__Z!1*Tel')) {
-    return {
-      expression: "regex(., '^\\+?[0-9 ]{8,20}$')",
-      message: 'Veuillez saisir un numero de telephone valide (8 a 20 chiffres).'
-    };
+  if ((isText && /\b(telephone|contact|whatsapp|portable|mobile|numero)\b/.test(normalizedLabel)) || PHAKTS_CORE.classifyCode(pfQuestion).kind === 'phone') {
+    return PHAKTS_CORE.PHONE_CONSTRAINT;
   }
 
-  if (/\b(date de naissance|naissance|ne le)\b/.test(normalizedLabel)) {
+  if (type === 'date' && /\b(date de naissance|naissance|ne le)\b/.test(normalizedLabel)) {
     return {
       expression: ". >= date('1900-01-01') and . <= today()",
       message: 'Veuillez saisir une date de naissance valide.'
@@ -5420,7 +5104,8 @@ function buildDefaultConstraint(pfQuestion, constraintPart, type, libelle) {
     };
   }
 
-  if (/__1\b/.test(pfQuestion) || /^(integer|decimal)$/.test(type)) {
+  // __2I (indice / z-score) peut être négatif : pas de plancher à 0
+  if ((/__1\b/.test(pfQuestion) || /^(integer|decimal)$/.test(type)) && PHAKTS_CORE.classifyCode(pfQuestion).unit !== 'I') {
     return {
       expression: '. >= 0',
       message: 'La valeur doit etre superieure ou egale a 0.'
@@ -5537,6 +5222,10 @@ function parseSingleSkipRule(rule, fieldMetas) {
     const xlsName = skipLexiaToXlsName(neqMatch[1], fieldMetas);
     const val = neqMatch[2].trim();
     if (!xlsName) return '';
+    const meta = fieldMetas && fieldMetas.find(m => m.xlsName === xlsName);
+    if (meta && meta.isSelectMultiple) {
+      return "not(selected(${" + xlsName + "}, '" + sanitizeName(val.toLowerCase()) + "'))";
+    }
     return "${" + xlsName + "} != '" + sanitizeName(val.toLowerCase()) + "'";
   }
 
@@ -5572,19 +5261,20 @@ function buildSurveyFieldMeta(item) {
   const xlsName = buildXlsNameFromCode(codePart);
   const listDefinition = parseListDefinition(item.pf_modalites);
   const labelMetadata = parseLabelMetadata(item.libelle);
-  const isBoolean = item.pf_question.includes('__B') || constraintPart === 'boolean';
-  const isSelect = item.pf_question.includes('__X');
-  const isSelectMultiple = isSelect && !constraintPart.includes('1*1');
+  const kind = PHAKTS_CORE.classifyCode(item.pf_question).kind;
+  // Un triléen (Oui/Non/…) déclenche aussi les « Si oui / Si non » suivants.
+  const isBoolean = kind === 'boolean' || kind === 'trilean';
+  const isSelect = kind === 'select';
   const hasOtherOption = Boolean(listDefinition && listDefinition.options.some(option => option.value === 'autre'));
 
-  return {
+  const meta = {
     item,
     xlsName,
     constraintPart,
     listDefinition,
     isBoolean,
     isSelect,
-    isSelectMultiple,
+    isSelectMultiple: false,
     hasOtherOption,
     skipRule: item.pf_skip || '',
     referenceAlias: item.phakts_ref || labelMetadata.referenceAlias,
@@ -5593,6 +5283,19 @@ function buildSurveyFieldMeta(item) {
     cleanLabel: labelMetadata.cleanLabel,
     normalizedLabel: normalizeText(labelMetadata.cleanLabel)
   };
+  meta.isSelectMultiple = isSelect && selectIsMultiple(meta);
+  return meta;
+}
+
+// select_one ou select_multiple — même décision pour le type du champ
+// (buildXLSForm) et pour la logique de saut (selected()). Une liste Admin_
+// n'a pas de valeurs dans les modalités (référentiel) : seul *1 la rend unique.
+function selectIsMultiple(meta) {
+  const q = meta.item.pf_question;
+  if (adminListNameOf(meta)) {
+    return q.includes('__SRC') || PHAKTS_CORE.parseMultiplicity(meta.constraintPart) !== 1;
+  }
+  return PHAKTS_CORE.selectCardinality(q, meta.item.pf_modalites).multiple;
 }
 
 function findPreviousField(fieldMetas, currentIndex, predicate) {
@@ -5805,13 +5508,24 @@ function buildXLSForm() {
     let type = 'text', constraint = '', constraintMsg = '', hint = pf_modalites;
     let relevant = inferRelevantExpression(currentMeta, index, fieldMetas, regionFieldName), choiceFilter = '';
 
-    if (pf_question.includes('__B') || constraintPart === 'boolean') {
+    // Type lu sur l'affixe (dernier segment "__") par le noyau partagé : avant,
+    // un test par sous-chaîne laissait en « text » les réels (__2K, __2T…),
+    // __1U, __1Q et __C, et lisait 2025__AS__Population__1 comme une date.
+    const kind = PHAKTS_CORE.classifyCode(pf_question).kind;
+    if (kind === 'boolean') {
       type = 'select_one yes_no';
-    } else if (pf_question.includes('__G__X')) {
-      // Règle 19 : Géolocalisation geopoint — testé AVANT la branche __X
-      // générique, sinon __G__X serait traité comme un select_one standard.
+    } else if (kind === 'trilean') {
+      // Règle 11 ext. : noms oui/non conservés pour les logiques de saut
+      const options = PHAKTS_CORE.trileanChoices(pf_modalites);
+      const listKey = 'trilean_' + sanitizeName(options[2].toLowerCase());
+      if (!choicesMap[listKey]) {
+        choicesMap[listKey] = options.map(o => ({ name: sanitizeName(o.toLowerCase()), label: o, region_code: '' }));
+      }
+      type = 'select_one ' + listKey;
+    } else if (kind === 'geopoint') {
+      // Règle 19 : Géolocalisation geopoint (__G__X!DMS / !DD)
       type = 'geopoint';
-    } else if (pf_question.includes('__X') || pf_question.includes('__SRC')) {
+    } else if (kind === 'select') {
       const adminListName = adminListNameOf(currentMeta);
       if (adminListName) {
         // Règle 16 : liste résolue depuis le référentiel administratif réel
@@ -5831,8 +5545,7 @@ function buildXLSForm() {
               district_code: r.district_code ? sanitizeName(r.district_code.toLowerCase()) : '',
             }));
         }
-        const isOne = !pf_question.includes('__SRC') && constraintPart.includes('1*1');
-        type = (isOne ? 'select_one ' : 'select_multiple ') + listKey;
+        type = (currentMeta.isSelectMultiple ? 'select_multiple ' : 'select_one ') + listKey;
 
         const cascade = ADMIN_CASCADE[adminListName];
         if (cascade) {
@@ -5859,10 +5572,7 @@ function buildXLSForm() {
               return choice;
             });
           }
-          const rawList = m[2];
-          const usesComma = !rawList.includes('|');
-          const isOne = !pf_question.includes('__SRC') && (usesComma || constraintPart.includes('1*1'));
-          type = (isOne ? 'select_one ' : 'select_multiple ') + listKey;
+          type = (currentMeta.isSelectMultiple ? 'select_multiple ' : 'select_one ') + listKey;
           if (/district/i.test(listKey) && regionFieldName) {
             choiceFilter = `region_code=\${${regionFieldName}}`;
           }
@@ -5870,16 +5580,8 @@ function buildXLSForm() {
           type = 'select_one yes_no';
         }
       }
-    } else if (/__1[YMWDH]/.test(pf_question)) {
-      type = 'integer';
-    } else if (pf_question.includes('__Z')) {
-      type = 'text';
-    } else if (pf_question.includes('__A')) {
-      type = 'date';
-    } else if (pf_question.includes('__P')) {
-      type = 'image';
-    } else if (/__1\b/.test(pf_question)) {
-      type = 'integer';
+    } else if (kind === 'integer' || kind === 'decimal' || kind === 'date' || kind === 'image') {
+      type = kind;
     }
 
     const computedConstraint = buildDefaultConstraint(pf_question, constraintPart, type, currentMeta.cleanLabel || libelle);
@@ -6293,6 +5995,12 @@ function guidanceForSurveyType(type) {
   }
   if (type === 'integer') {
     return 'Saisir un nombre entier uniquement. Respecter la plage de validité indiquée en contrainte.';
+  }
+  if (type === 'decimal') {
+    return 'Saisir un nombre (décimales autorisées) dans l\'unité indiquée. Respecter la plage de validité indiquée en contrainte.';
+  }
+  if (type === 'geopoint') {
+    return "Capturer la position GPS sur place, en extérieur, et attendre une précision suffisante avant d'enregistrer.";
   }
   if (type === 'date') {
     return 'Saisir la date au format JJ/MM/AAAA. Vérifier avec un document officiel si disponible.';

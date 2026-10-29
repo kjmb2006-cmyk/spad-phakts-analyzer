@@ -1,6 +1,7 @@
-const CACHE_NAME = 'phakts-studio-v36';
+const CACHE_NAME = 'phakts-studio-v37';
 const APP_SHELL = [
   './PHAKTS\u00b7STUDIO.html',
+  './phakts-core.js',
   './manifest.webmanifest',
   './icons/icon-192.svg',
   './icons/icon-512.svg',
@@ -59,6 +60,18 @@ self.addEventListener('fetch', event => {
         return cached
           || cache.match('./PHAKTS\u00b7STUDIO.html')
           || cache.match('./PHAKTS%C2%B7STUDIO.html');
+      }
+    }
+
+    // Grammaire PHAKTS : network-first comme la page, sinon une grammaire mise
+    // \u00e0 jour sur le serveur resterait masqu\u00e9e par l'ancienne copie en cache.
+    if (url.pathname.endsWith('/phakts-core.js')) {
+      try {
+        const resp = await fetch(event.request);
+        if (resp.ok) cache.put(event.request, resp.clone());
+        return resp;
+      } catch {
+        return cached || Response.error();
       }
     }
 

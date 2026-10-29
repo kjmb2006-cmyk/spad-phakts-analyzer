@@ -18,30 +18,31 @@ const crypto = require("crypto");
 const pdf = require("pdf-parse");
 const mammoth = require("mammoth");
 
-let { PHAKTS_SYSTEM_PROMPT, PHAKTS_MODEL, PHAKTS_MAX_TOKENS } = require("./grammar");
+let { PHAKTS_SYSTEM_PROMPT, PHAKTS_MODEL, PHAKTS_MAX_TOKENS, GRAMMAR_VERSION } = require("./grammar");
 const { buildXLSForm } = require("./xlsform");
 
-// ── Hot-reload grammar.js on file change (dev-only; asar-packaged files
-// can't be watched by fs.watch, so we silently skip it in production) ──
-const GRAMMAR_PATH = path.join(__dirname, "grammar.js");
-try {
-  fs.watch(GRAMMAR_PATH, { persistent: false }, (eventType) => {
-    if (eventType === "change") {
+// ── Hot-reload de la grammaire (grammar.js + le noyau partagé qui contient le
+// prompt) — dev uniquement : fs.watch échoue dans un bundle asar, ignoré. ──
+const GRAMMAR_PATHS = [path.join(__dirname, "grammar.js"), path.join(__dirname, "../public/phakts-core.js")];
+for (const grammarPath of GRAMMAR_PATHS) {
+  try {
+    fs.watch(grammarPath, { persistent: false }, (eventType) => {
+      if (eventType !== "change") return;
       try {
-        delete require.cache[require.resolve("./grammar")];
+        for (const p of GRAMMAR_PATHS) delete require.cache[require.resolve(p)];
         const reloaded = require("./grammar");
         PHAKTS_SYSTEM_PROMPT = reloaded.PHAKTS_SYSTEM_PROMPT;
         PHAKTS_MODEL = reloaded.PHAKTS_MODEL;
         PHAKTS_MAX_TOKENS = reloaded.PHAKTS_MAX_TOKENS;
+        GRAMMAR_VERSION = reloaded.GRAMMAR_VERSION;
         console.log("[grammar] ✅ Grammaire rechargée automatiquement");
       } catch (err) {
         console.error("[grammar] ❌ Erreur de rechargement:", err.message);
       }
-    }
-  });
-} catch (err) {
-  // Expected when running from inside an asar bundle
-  console.log("[grammar] hot-reload disabled (packaged mode)");
+    });
+  } catch (err) {
+    console.log("[grammar] hot-reload disabled (packaged mode)");
+  }
 }
 
 // ── Storage for learned codification examples ──
@@ -241,7 +242,7 @@ function sanitizePhaktsItem(item) {
   let pf = item.pf_question;
   let modal = String(item.pf_modalites || '');
 
-  const TYPE_RX = /^(.+?)(__(?:B|X|1|2|Z|A|SRC).*)$/;
+  const TYPE_RX = /^(.+?)(__(?:B|C|E|X|1|2|Z|A|SRC).*)$/;
   const m = pf.match(TYPE_RX);
   if (!m) return item;
 
@@ -680,6 +681,7 @@ app.get("/api/health", (req, res) => {
     version: "1.0.0",
     service: "PHAKTS·STUDIO API",
     model: PHAKTS_MODEL,
+    grammar: GRAMMAR_VERSION,
     host: HOST,
     port: Number(PORT),
     accessible_urls: ACCESSIBLE_URLS,

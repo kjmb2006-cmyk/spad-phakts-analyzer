@@ -3,6 +3,11 @@
 //  Convertit les items codifiés PHAKTS → structure XLSForm (KoboToolbox)
 // ─────────────────────────────────────────────────────────────────────────────
 
+const {
+  classifyCode, selectCardinality, parseRange, rangeConstraint,
+  PHONE_CONSTRAINT, trileanChoices,
+} = require("../public/phakts-core.js");
+
 function sanitizeName(str) {
   return (str || "")
     .normalize("NFD")
@@ -53,7 +58,10 @@ function parseSingleRule(rule, itemsIndex) {
     if (/^\d+$/.test(val)) {
       return "${" + xlsName + "} > 0";
     }
-    return "${" + xlsName + "} != '" + sanitizeName(val.toLowerCase()) + "'";
+    const v = sanitizeName(val.toLowerCase());
+    return isMultipleSource(neqMatch[1], itemsIndex)
+      ? "not(selected(${" + xlsName + "}, '" + v + "'))"
+      : "${" + xlsName + "} != '" + v + "'";
   }
 
   // Equality: Lexia__X = Value
@@ -62,7 +70,9 @@ function parseSingleRule(rule, itemsIndex) {
     const xlsName = resolveXlsName(eqMatch[1], itemsIndex);
     if (!xlsName) return "";
     const val = sanitizeName(eqMatch[2].trim().toLowerCase());
-    return "${" + xlsName + "} = '" + val + "'";
+    return isMultipleSource(eqMatch[1], itemsIndex)
+      ? "selected(${" + xlsName + "}, '" + val + "')"
+      : "${" + xlsName + "} = '" + val + "'";
   }
 
   // Bare boolean: Lexia__B
@@ -70,16 +80,24 @@ function parseSingleRule(rule, itemsIndex) {
   return xlsName ? "${" + xlsName + "} = 'oui'" : "";
 }
 
-function resolveXlsName(lexia, itemsIndex) {
+function findSkipSource(lexia, itemsIndex) {
   const clean = lexia.replace(/^!/, "").trim();
-  if (itemsIndex) {
-    const found = itemsIndex.find(entry => {
-      const codePart = entry.pf_question.split("!")[0];
-      return codePart === clean || entry.pf_question === clean;
-    });
-    if (found) return buildXlsName(found.pf_question.split("!")[0]);
-  }
-  return buildXlsName(clean);
+  return (itemsIndex || []).find(entry => {
+    const codePart = entry.pf_question.split("!")[0];
+    return codePart === clean || entry.pf_question === clean;
+  }) || null;
+}
+
+// Sur un select_multiple, « = » ne teste pas l'appartenance : seul selected() est valide.
+function isMultipleSource(lexia, itemsIndex) {
+  const item = findSkipSource(lexia, itemsIndex);
+  return Boolean(item) && classifyCode(item.pf_question).kind === "select"
+    && selectCardinality(item.pf_question, item.pf_modalites).multiple;
+}
+
+function resolveXlsName(lexia, itemsIndex) {
+  const found = findSkipSource(lexia, itemsIndex);
+  return buildXlsName(found ? found.pf_question.split("!")[0] : lexia.replace(/^!/, "").trim());
 }
 
 /**
@@ -116,43 +134,36 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
 
     const xlsName = buildXlsName(codePart);
 
+    const cls = classifyCode(pf_question);
     let type = "text";
     let constraint = "";
     let constraintMsg = "";
     let choiceFilter = "";
     const hint = pf_modalites;
 
-    // Extraction de la plage numérique (ex: "0<N<120", "35<R<42")
-    // CORRECTION E-01/E-02: Utiliser integer quand il y a contrainte numérique
-    // CORRECTION E-08/E-10: Utiliser >= 0 pour inclure zéro (enfants non vaccinés)
-    const rangeMatch = constraintPart.match(
-      /(\d+(?:\.\d+)?)\s*<\s*[A-Za-z]\s*<\s*(\d+(?:\.\d+)?)/
-    );
-    if (rangeMatch) {
-      const lower = parseFloat(rangeMatch[1]);
-      const upper = parseFloat(rangeMatch[2]);
-      // CORRECTION: Utiliser >= pour inclure zéro, sauf si lower > 0 explicitement
-      const op = lower === 0 ? ". >= " : ". > ";
-      constraint = op + lower + " and . < " + upper;
-      constraintMsg = `Valeur entre ${lower} et ${upper}`;
-      // Type numérique avec contrainte → integer
-      type = "integer";
-    }
-
-    if (codePart.includes("__B") || constraintPart === "boolean") {
-      // ── Booléen
+    if (cls.kind === "boolean") {
       type = "select_one yes_no";
-      constraint = "";
-      constraintMsg = "";
 
-    } else if (codePart.includes("__SRC")) {
+    } else if (cls.kind === "trilean") {
+      // ── Triléen (__C!trilean, Règle 11 ext.)
+      const options = trileanChoices(pf_modalites);
+      const listKey = "trilean_" + sanitizeName(options[2].toLowerCase());
+      if (!choicesMap[listKey]) {
+        choicesMap[listKey] = options.map(o => ({ name: sanitizeName(o.toLowerCase()), label: o }));
+        listsMeta[listKey] = { hasRegionCode: false };
+      }
+      type = "select_one " + listKey;
+
+    } else if (cls.kind === "geopoint") {
+      // ── Géolocalisation (__G__X!DMS / !DD, Règle 19)
+      type = "geopoint";
+
+    } else if (cls.kind === "select" && codePart.includes("__SRC")) {
       // ── Source d'information (select_multiple)
       const listKey = buildSelectList(pf_modalites, choicesMap, listsMeta, false);
       type = listKey ? "select_multiple " + listKey : "text";
-      constraint = "";
-      constraintMsg = "";
 
-    } else if (codePart.includes("__X")) {
+    } else if (cls.kind === "select") {
       // ── Choix (select_one ou select_multiple)
       const match = (pf_modalites || "").match(/(\w+_)\s*=\s*\[([^\]]+)\]/);
       if (match) {
@@ -185,8 +196,7 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
             }));
             listsMeta[rawListKey] = { hasRegionCode: false };
           }
-          const usesComma = !rawList.includes("|");
-          const isOne = usesComma || constraintPart.includes("1*1");
+          const isOne = !selectCardinality(pf_question, pf_modalites).multiple;
           type = (isOne ? "select_one " : "select_multiple ") + rawListKey;
 
           if (isRegionList) {
@@ -196,30 +206,27 @@ function buildXLSForm(items, formTitle = "Questionnaire") {
       } else {
         type = "select_one yes_no";
       }
-      constraint = "";
-      constraintMsg = "";
 
-    } else if (/__2[A-Z]?$/.test(codePart)) {
-      // ── Réel (decimal)
-      type = "decimal";
+    } else if (cls.kind === "integer" || cls.kind === "decimal") {
+      // CORRECTION E-08/E-10 (borne basse 0 inclusive) : voir rangeConstraint()
+      type = cls.kind;
+      ({ expression: constraint, message: constraintMsg } = rangeConstraint(parseRange(constraintPart)));
 
-    } else if (/__1[YMWDHU]/.test(codePart)) {
-      // ── Entier temporel
-      type = "integer";
+    } else if (cls.kind === "date" || cls.kind === "image") {
+      type = cls.kind;
 
-    } else if (codePart.includes("__Z")) {
-      type = "text";
-      constraint = "";
-      constraintMsg = "";
+    } else if (cls.kind === "phone") {
+      constraint = PHONE_CONSTRAINT.expression;
+      constraintMsg = PHONE_CONSTRAINT.message;
+    }
 
-    } else if (codePart.includes("__A")) {
-      type = "date";
-      constraint = "";
-      constraintMsg = "";
-
-    } else if (/__1(?:[^A-Za-z]|$)/.test(codePart)) {
-      // ── Entier pur
-      type = "integer";
+    // Multiplicité *N (ex. !1*3Liste_) : au moins N choix cochés
+    if (type.startsWith("select_multiple ")) {
+      const { min } = selectCardinality(pf_question, pf_modalites);
+      if (min) {
+        constraint = `count-selected(.) >= ${min}`;
+        constraintMsg = `Sélectionnez au moins ${min} réponses.`;
+      }
     }
 
     const relevant = parseSkipRule(pf_skip || "", items);
