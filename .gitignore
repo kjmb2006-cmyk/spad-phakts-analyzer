@@ -54,6 +54,12 @@ analyzer/data/projets/
 analyzer/data/completude_historique.jsonl
 # Noms réels enquêteurs/superviseurs — données personnelles, jamais commitées (dépôt public)
 analyzer/data/reference/*.local.json
+# SQLite (forms_registry/form_mapping/accounts — voir modules/forms_registry.py) :
+# données de production propres à chaque déploiement, jamais commitées, même
+# principe que les *.local.json ci-dessus (migrés dedans au premier accès).
+analyzer/data/reference/*.db
+analyzer/data/reference/*.db-wal
+analyzer/data/reference/*.db-shm
 # Comptes Data (identifiants + mots de passe hashés) et journal d'activité —
 # données de production propres à chaque déploiement, jamais commitées
 analyzer/data/activity_log.jsonl

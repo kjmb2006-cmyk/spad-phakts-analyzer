@@ -9,9 +9,22 @@ formulaires uniquement... possibilité que d'autres formulaires soient
 ajoutés et aussi retirer les 7 formulaires de kobo ».
 
 Les 7 formulaires SPAD officiels sont le jeu de données par défaut (seed),
-recréé au premier lancement si le fichier n'existe pas encore — comportement
-strictement identique à avant (voir reference_data.py) tant que rien n'est
-modifié depuis l'écran admin.
+recréé au premier lancement si la base n'a pas encore d'enregistrement —
+comportement strictement identique à avant (voir reference_data.py) tant
+que rien n'est modifié depuis l'écran admin.
+
+Persisté en SQLite (même base que modules/form_mapping.py et
+modules/accounts.py — voir DB_PATH), pas en JSON : ce registre est relu à
+CHAQUE appel (all_forms()/get(), aucun cache en mémoire — voir plus bas),
+par exemple une fois par formulaire mappé à chaque calcul de Complétude
+nationale. Un fichier JSON relu/réécrit en entier à chaque fois n'offrait
+aucune atomicité ; SQLite (mode WAL) le fait nativement, sans dépendance
+supplémentaire (sqlite3 est dans la bibliothèque standard).
+
+Migration : au tout premier accès après mise à jour, si spad.db n'a pas
+encore de formulaires mais que l'ancien forms_registry.local.json existe,
+son contenu est importé automatiquement (sinon le seed des 7 formulaires
+officiels, comme avant). L'ancien fichier n'est jamais supprimé.
 
 Types de règle de cible pris en charge génériquement (aucun code à écrire
 pour ajouter un formulaire qui suit l'un de ces motifs) :
@@ -61,14 +74,22 @@ répondu. Pour ce grain, 'reçu' compte les valeurs DISTINCTES de
 identity_field parmi les lignes où role_filter[field] == role_filter[value]
 — jamais un décompte par établissement/district, qui n'aurait pas de sens
 ici (une même personne répond une seule fois, pas une fois par
-établissement). Voir modules/completeness.py::roster_completeness()."""
+établissement). Voir modules/completeness.py::roster_completeness().
+
+region_fallback_field : pour un acteur RÉGIONAL (motif DRS, RAA Phase 1)
+dont le formulaire ne demande district_field qu'aux acteurs de niveau
+district (skip logic XLSForm) — un champ texte libre compagnon capture
+alors sa région de rattachement, résolue vers l'unique district de cette
+région dans le référentiel. Voir modules/completeness.py::roster_by_district()."""
 import os
 import json
 import copy
+import sqlite3
 
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ANALYZER_DIR = os.path.dirname(_MODULE_DIR)
-REGISTRY_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'forms_registry.local.json')
+DB_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'spad.db')
+_LEGACY_JSON_PATH = os.path.join(_ANALYZER_DIR, 'data', 'reference', 'forms_registry.local.json')
 
 RULE_TYPES = (
     'fixed_per_etablissement',
@@ -91,6 +112,12 @@ RULE_TYPE_LABELS = {
     'floor_sum_district_field': "Somme d'un champ du référentiel par district (plancher)",
     'by_etablissement_type': "Selon le type d'établissement (réservé F6)",
 }
+
+# Colonnes JSON (forme variable selon le type de règle / nullable) à part des
+# colonnes scalaires — voir _row_to_dict()/_dict_to_row().
+_JSON_FIELDS = ('target_rule', 'role_filter')
+_SCALAR_FIELDS = ('code', 'label', 'name_hint', 'grain', 'actor',
+                   'etab_field', 'district_field', 'identity_field', 'region_fallback_field')
 
 _SEED = [
     {'code': 'F5', 'label': 'Tabac — Femmes enceintes/allaitantes', 'name_hint': '5_',
@@ -124,20 +151,105 @@ _SEED = [
 ]
 
 
-def _save_raw(forms):
-    os.makedirs(os.path.dirname(REGISTRY_PATH), exist_ok=True)
-    with open(REGISTRY_PATH, 'w', encoding='utf-8') as f:
-        json.dump(forms, f, ensure_ascii=False, indent=2)
+def _connect():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('PRAGMA journal_mode=WAL')
+    # Attend plutôt que d'échouer immédiatement avec "database is locked" si
+    # un autre process (scripts/kobo_completude_refresh.py, un autre thread
+    # gunicorn) détient une écriture au même instant.
+    conn.execute('PRAGMA busy_timeout=30000')
+    conn.execute('''CREATE TABLE IF NOT EXISTS forms (
+        code                  TEXT PRIMARY KEY,
+        label                 TEXT,
+        name_hint             TEXT,
+        grain                 TEXT,
+        actor                 TEXT,
+        etab_field            TEXT,
+        district_field        TEXT,
+        target_rule           TEXT,
+        active                INTEGER NOT NULL DEFAULT 1,
+        role_filter           TEXT,
+        identity_field        TEXT,
+        region_fallback_field TEXT
+    )''')
+    _bootstrap(conn)
+    return conn
+
+
+def _bootstrap(conn):
+    """Si la table est vide : importe l'ancien forms_registry.local.json s'il
+    existe, sinon réinstalle le seed des 7 formulaires officiels — même
+    comportement qu'avant (recréation depuis _SEED au premier lancement).
+
+    INSERT OR IGNORE (pas le _INSERT_SQL ordinaire d'add_form(), qui doit
+    lever une erreur sur un doublon) : au tout premier déploiement après
+    migration, ce bootstrap peut s'exécuter depuis deux process à la fois
+    (ce worker gunicorn fraîchement redémarré ET, dans la même fenêtre,
+    scripts/kobo_completude_refresh.py relancé par le timer systemd) — les
+    deux verraient la table vide et tenteraient le même seed ; ignorer un
+    doublon plutôt que planter dessus le rend inoffensif. Le script
+    scripts/migrate_to_sqlite.py, lancé à la main avant le redémarrage des
+    services, est le vrai filet de sécurité qui évite ce scénario en
+    production — ceci n'est qu'une seconde ligne de défense."""
+    cur = conn.execute('SELECT COUNT(*) FROM forms')
+    if cur.fetchone()[0] > 0:
+        return
+    source = None
+    if os.path.exists(_LEGACY_JSON_PATH):
+        try:
+            with open(_LEGACY_JSON_PATH, 'r', encoding='utf-8') as f:
+                source = json.load(f)
+        except Exception:
+            source = None
+    if not source:
+        source = copy.deepcopy(_SEED)
+    with conn:
+        for form in source:
+            conn.execute(_BOOTSTRAP_INSERT_SQL, _dict_to_row(form))
+
+
+_BOOTSTRAP_INSERT_SQL = '''INSERT OR IGNORE INTO forms
+    (code, label, name_hint, grain, actor, etab_field, district_field,
+     target_rule, active, role_filter, identity_field, region_fallback_field)
+    VALUES (:code, :label, :name_hint, :grain, :actor, :etab_field, :district_field,
+            :target_rule, :active, :role_filter, :identity_field, :region_fallback_field)'''
+
+_INSERT_SQL = '''INSERT INTO forms
+    (code, label, name_hint, grain, actor, etab_field, district_field,
+     target_rule, active, role_filter, identity_field, region_fallback_field)
+    VALUES (:code, :label, :name_hint, :grain, :actor, :etab_field, :district_field,
+            :target_rule, :active, :role_filter, :identity_field, :region_fallback_field)'''
+
+
+def _dict_to_row(form):
+    row = {k: form.get(k) for k in _SCALAR_FIELDS}
+    row['active'] = 1 if form.get('active', True) else 0
+    for k in _JSON_FIELDS:
+        v = form.get(k)
+        row[k] = json.dumps(v, ensure_ascii=False) if v is not None else None
+    return row
+
+
+def _row_to_dict(row):
+    """row : sqlite3.Row (voir _connect(), row_factory réglé juste avant
+    chaque SELECT qui en a besoin)."""
+    form = {k: row[k] for k in _SCALAR_FIELDS}
+    form['active'] = bool(row['active'])
+    for k in _JSON_FIELDS:
+        raw = row[k]
+        form[k] = json.loads(raw) if raw is not None else None
+    return form
 
 
 def _load_raw():
-    if not os.path.exists(REGISTRY_PATH):
-        _save_raw(copy.deepcopy(_SEED))
+    conn = _connect()
     try:
-        with open(REGISTRY_PATH, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return copy.deepcopy(_SEED)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute('SELECT * FROM forms ORDER BY rowid').fetchall()
+        return [_row_to_dict(r) for r in rows]
+    finally:
+        conn.close()
 
 
 def all_forms(include_inactive=True):
@@ -152,10 +264,13 @@ def active_codes():
 
 
 def get(code):
-    for f in _load_raw():
-        if f['code'] == code:
-            return f
-    return None
+    conn = _connect()
+    try:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute('SELECT * FROM forms WHERE code = ?', (code,)).fetchone()
+    finally:
+        conn.close()
+    return _row_to_dict(row) if row else None
 
 
 def labels():
@@ -167,47 +282,53 @@ def name_hints():
 
 
 def set_active(code, active):
-    forms = _load_raw()
-    for f in forms:
-        if f['code'] == code:
-            f['active'] = bool(active)
-            _save_raw(forms)
-            return True
-    return False
+    conn = _connect()
+    try:
+        with conn:
+            cur = conn.execute('UPDATE forms SET active = ? WHERE code = ?', (1 if active else 0, code))
+        return cur.rowcount > 0
+    finally:
+        conn.close()
 
 
 def add_form(code, label, name_hint, grain, actor, etab_field, district_field, target_rule,
-             role_filter=None, identity_field=None):
+             role_filter=None, identity_field=None, region_fallback_field=None):
     code = (code or '').strip()
     if not code:
         return False, "Code obligatoire."
-    forms = _load_raw()
-    if any(f['code'] == code for f in forms):
-        return False, f"Le code « {code} » existe déjà."
     if grain not in GRAINS:
         return False, "Grain invalide (établissement, district, enquêteur ou superviseur)."
     if actor not in ('enqueteur', 'superviseur'):
         return False, "Acteur invalide (enquêteur ou superviseur)."
     if not isinstance(target_rule, dict) or target_rule.get('type') not in RULE_TYPES:
         return False, "Type de règle de cible invalide."
-    forms.append({
+    form = {
         'code': code, 'label': label or code, 'name_hint': name_hint or '',
         'grain': grain, 'actor': actor,
         'etab_field': etab_field or None, 'district_field': district_field or None,
         'target_rule': target_rule, 'active': True,
         'role_filter': role_filter or None, 'identity_field': identity_field or None,
-    })
-    _save_raw(forms)
+        'region_fallback_field': region_fallback_field or None,
+    }
+    conn = _connect()
+    try:
+        with conn:
+            conn.execute(_INSERT_SQL, _dict_to_row(form))
+    except sqlite3.IntegrityError:
+        return False, f"Le code « {code} » existe déjà."
+    finally:
+        conn.close()
     return True, None
 
 
 def delete_form(code):
-    forms = _load_raw()
-    remaining = [f for f in forms if f['code'] != code]
-    if len(remaining) == len(forms):
-        return False
-    _save_raw(remaining)
-    return True
+    conn = _connect()
+    try:
+        with conn:
+            cur = conn.execute('DELETE FROM forms WHERE code = ?', (code,))
+        return cur.rowcount > 0
+    finally:
+        conn.close()
 
 
 # ─── Calcul de cible générique, par type de règle ──────────────────────────
