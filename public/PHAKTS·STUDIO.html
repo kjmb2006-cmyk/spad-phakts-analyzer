@@ -456,6 +456,23 @@
     flex-direction: column; gap: 16px;
   }
   .loading-overlay.show { display: flex; }
+
+  /* ── Factum de l'étude ── */
+  .factum-badge { font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 12px; border: 1px solid var(--border2); color: var(--text2); white-space: nowrap; cursor: default; }
+  .factum-badge.ok { color: #22c55e; border-color: #22c55e66; }
+  .factum-badge.warn { color: #f59e0b; border-color: #f59e0b66; }
+  .factum-badge.err { color: #ef4444; border-color: #ef444466; }
+  .factum-overlay { display: none; position: fixed; inset: 0; background: #070b14aa; backdrop-filter: blur(4px); z-index: 210; align-items: center; justify-content: center; padding: 16px; }
+  .factum-overlay.show { display: flex; }
+  .factum-dialog { width: min(640px, 100%); max-height: 90vh; overflow: auto; background: var(--bg1); border: 1px solid var(--border2); border-radius: 14px; padding: 22px; color: var(--text); }
+  .factum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .factum-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
+  .factum-grid input { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 13px; font-family: var(--sans); }
+  .factum-grid .wide { grid-column: 1 / -1; }
+  .factum-preview { margin-top: 14px; font-family: var(--mono); font-size: 12px; word-break: break-all; padding: 10px 12px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border2); }
+  .factum-notes { margin: 8px 0 0; padding-left: 18px; font-size: 12px; }
+  @media (max-width: 560px) { .factum-grid { grid-template-columns: 1fr; } }
+  #dpfLearnedBody td { overflow-wrap: anywhere; white-space: normal; }
   .spinner {
     width: 48px; height: 48px; border: 3px solid var(--border2);
     border-top-color: var(--accent2); border-radius: 50%;
@@ -746,6 +763,33 @@
   <div class="loading-text">CODIFICATION PHAKTS EN COURS…</div>
 </div>
 
+<!-- ── FACTUM DE L'ÉTUDE ── -->
+<div class="factum-overlay" id="factumOverlay" onclick="if (event.target === this) closeFactumBuilder()">
+  <div class="factum-dialog" role="dialog" aria-modal="true" aria-labelledby="factumDialogTitle">
+    <h3 id="factumDialogTitle" style="margin:0 0 4px;font-size:16px;color:var(--accent2)">Factum de l'étude</h3>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--text2)">
+      Identifiant universel de l'étude. Il est repris dans le XLSForm (champ calculé Factum__G de chaque soumission),
+      dans l'export DPF-genesis et dans la base centrale de l'Analyzer.
+    </p>
+    <div class="factum-grid">
+      <label>Entête (programme, objectif, résultat)<input id="fqEntete" placeholder="PGT14_OS2_RC2_2" oninput="updateFactumPreview()"></label>
+      <label>Juridiction (pays, institution)<input id="fqJuridiction" placeholder="CIV_MS" oninput="updateFactumPreview()"></label>
+      <label>Collecte n°<input id="fqN" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
+      <label>Nombre de collectes prévues<input id="fqM" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
+      <label class="wide">Sujet de l'étude<input id="fqSujet" placeholder="Etude CAP Personnel Santé PEC Tabac" oninput="updateFactumPreview()"></label>
+      <label>Date de référence (AAAA-MM ou AAAA-MM-JJ)<input id="fqDate" placeholder="2025-09" oninput="updateFactumPreview()"></label>
+      <label>Domaine de définition<input id="fqDomaine" list="fqDomaines" placeholder="ES" oninput="updateFactumPreview()"></label>
+    </div>
+    <datalist id="fqDomaines"></datalist>
+    <div class="factum-preview" id="fqPreview"></div>
+    <ul class="factum-notes" id="fqNotes"></ul>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+      <button class="btn-ghost" onclick="closeFactumBuilder()">Annuler</button>
+      <button class="btn-primary" id="fqApply" onclick="applyFactumBuilder()">Utiliser ce Factum</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── HEADER ── -->
 <header>
   <div class="logo-wrap">
@@ -776,6 +820,11 @@
     <input class="title-input" id="apiTokenInput" type="password" style="width:140px;display:none" placeholder="Bearer token" onblur="saveApiToken()" onkeydown="if(event.key==='Enter')this.blur()"/>
     <span class="label-sm" style="margin-left:6px">Formulaire</span>
     <input class="title-input" id="formTitle" value="" placeholder="Nom du formulaire"/>
+    <span class="label-sm" style="margin-left:6px">Factum</span>
+    <input class="title-input" id="studyFactum" style="width:240px" placeholder="Factum de l'étude" oninput="onFactumChange()"
+           title="Identifiant universel de l'étude : Entête__Juridiction__nCm_Sujet__AAAAMMJJ__Domaine"/>
+    <span class="factum-badge" id="factumBadge">—</span>
+    <button class="btn-ghost" onclick="openFactumBuilder()" title="Composer le Factum champ par champ" style="padding:4px 8px;font-size:13px;min-width:0">⚙</button>
     <button class="btn-ghost" onclick="newQuestionnaire()" title="Effacer le questionnaire courant (le DPF reste intact)"
             style="padding:8px 14px;border-color:#f87171;color:#fca5a5;gap:6px;align-items:center;display:inline-flex">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -972,6 +1021,9 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           XLSForm (KoboToolbox)
         </button>
+        <button class="btn-ghost" onclick="exportDpfGenesis('questionnaire')" title="Variables de ce questionnaire au format de la feuille DPF-2, avec Factum et code court, pour soumission au Comité DPF">
+          ⬇ DPF-genesis
+        </button>
         <button class="btn-purple" onclick="switchTabById('xlsform')" title="Voir le fichier XLSForm généré pour KoboToolbox avant de le télécharger ou de le déployer">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
           🔄 Transformation XLSForm
@@ -1036,6 +1088,7 @@
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <button class="btn-green" onclick="downloadCoded()">📗 XLSX Codifié</button>
         <button class="btn-purple" onclick="downloadXLSForm()">📘 XLSForm KoboToolbox</button>
+        <button class="btn-ghost" onclick="exportDpfGenesis('questionnaire')">⬇ DPF-genesis</button>
       </div>
     </div>
   </div>
@@ -1437,11 +1490,18 @@
       <!-- ═══ I. CODIFICATIONS APPRISES PAR L'AGENT IA (DPF dynamique) ═══ -->
       <div class="grammar-card" id="dpfCardLearned" style="border:1px solid #22c55e44">
         <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>I. Codifications apprises par l'Agent IA</span>
+          <span>I. Codifications apprises · Comité DPF</span>
           <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfLearnedCount">0</span> entrée(s)</span>
+          <span class="stat-badge" id="dpfReviewSummary" style="font-size:10px;padding:3px 9px"></span>
           <span style="flex:1"></span>
+          <select id="dpfReviewFilter" onchange="renderLearnedDPF()" style="padding:5px 8px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            <option value="">Tous les statuts</option>
+            <option value="propose">Proposées</option>
+            <option value="valide">Validées</option>
+            <option value="rejete">Rejetées</option>
+          </select>
           <button class="btn-ghost" onclick="refreshLearnedDPF()" style="padding:5px 10px;font-size:10.5px">↻ Rafraîchir</button>
-          <button class="btn-ghost" onclick="exportLearnedDPF()" style="padding:5px 10px;font-size:10.5px">⬇ Exporter XLSX</button>
+          <button class="btn-ghost" onclick="exportDpfGenesis('registre')" style="padding:5px 10px;font-size:10.5px" title="Registre au format de la feuille DPF-2 (filtre de statut appliqué)">⬇ DPF-genesis</button>
           <button class="btn-reset" onclick="clearLearnedDPF()" style="padding:5px 10px;font-size:10.5px" title="Supprimer toutes les codifications apprises">✕ Vider</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
@@ -1450,20 +1510,29 @@
           « Sauvegarder automatiquement dans le DPF » est cochée dans l'onglet Agent).
           Vous pouvez aussi les ajouter manuellement depuis l'onglet <em>Résultats</em>
           via le bouton <em>Mémoriser</em>.
+          <strong>Circuit du Comité DPF</strong> : chaque codification entre « proposée » ; le Comité la
+          <strong>valide</strong> (elle devient une référence pour l'IA) ou la <strong>rejette</strong> avec un motif
+          (elle n'est plus jamais proposée en exemple). Le code court (Transcode) est calculé selon la règle des
+          3 lettres ; cliquez dessus pour en imposer un autre (ex. BZV).
         </p>
+        <div style="overflow-x:auto">
         <table class="grammar-table">
           <thead><tr>
-            <th style="width:40%">Question / Libellé</th>
-            <th style="width:30%">Code PHAKTS</th>
-            <th style="width:22%">Modalités</th>
-            <th style="width:8%;text-align:center">Action</th>
+            <th style="width:22%">Question / Libellé</th>
+            <th style="width:20%">Code PHAKTS</th>
+            <th style="width:12%">Transcode</th>
+            <th style="width:14%">Modalités</th>
+            <th style="width:14%">Factum</th>
+            <th style="width:8%">Statut</th>
+            <th style="width:10%;text-align:center">Décision</th>
           </tr></thead>
           <tbody id="dpfLearnedBody">
-            <tr><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">
               Aucune codification apprise pour le moment.
             </td></tr>
           </tbody>
         </table>
+        </div>
       </div>
 
     </div>
@@ -1711,58 +1780,218 @@ function refreshAgentDpfCount() {
       }
       // Synchroniser localStorage avec ce que le serveur a (source unique de vérité)
       if (Array.isArray(d.items)) {
-        try {
-          const local = JSON.parse(localStorage.getItem('phakts_learned') || '[]');
-          const localKeys = new Set(local.map(e => e.pf_question));
-          let merged = local.slice();
-          d.items.forEach(it => {
-            if (it.pf_question && !localKeys.has(it.pf_question)) {
-              merged.push({ libelle: it.libelle, pf_question: it.pf_question,
-                            pf_modalites: it.pf_modalites, pf_skip: it.pf_skip || '' });
-              localKeys.add(it.pf_question);
-            }
-          });
-          localStorage.setItem('phakts_learned', JSON.stringify(merged));
-          renderLearnedDPF();
-        } catch (_) {}
+        mergeServerLearned(d.items);
+        renderLearnedDPF();
       }
     }).catch(() => {});
   }
 }
 
+/** Fusionne le registre du serveur dans localStorage : nouvelles entrées
+ * ajoutées, décisions du Comité (statut, motif, transcode, Factum) reprises
+ * pour les entrées déjà connues. Renvoie le nombre d'entrées ajoutées. */
+const REVIEW_FIELDS = ['statut', 'motif', 'transcode', 'decided_by', 'decided_at', 'factum'];
+function mergeServerLearned(serverItems) {
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem('phakts_learned') || '[]'); } catch (_) {}
+  const byKey = new Map(local.map(e => [e.pf_question, e]));
+  let added = 0;
+  (serverItems || []).forEach(it => {
+    if (!it.pf_question) return;
+    const mine = byKey.get(it.pf_question);
+    if (mine) {
+      REVIEW_FIELDS.forEach(k => { if (it[k] !== undefined && (k !== 'factum' || it[k])) mine[k] = it[k]; });
+    } else {
+      const entry = { libelle: it.libelle, pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip || '' };
+      REVIEW_FIELDS.forEach(k => { if (it[k] !== undefined) entry[k] = it[k]; });
+      local.push(entry);
+      byKey.set(it.pf_question, entry);
+      added++;
+    }
+  });
+  try { localStorage.setItem('phakts_learned', JSON.stringify(local)); } catch (_) {}
+  return added;
+}
+
+const REVIEW_LABELS = { propose: 'Proposée', valide: 'Validée', rejete: 'Rejetée' };
+const REVIEW_COLORS = { propose: '#f59e0b', valide: '#22c55e', rejete: '#ef4444' };
+
+function learnedRegistry() {
+  try { return JSON.parse(localStorage.getItem('phakts_learned') || '[]'); } catch (_) { return []; }
+}
+
+/** Transcodes du registre : homonymies résolues sur tout le registre, codes
+ * imposés par le Comité prioritaires. */
+function registryTranscodes(items) {
+  const overrides = {};
+  items.forEach(it => { if (it.transcode) overrides[it.pf_question] = it.transcode; });
+  return PHAKTS_CORE.buildTranscodes(items.map(it => it.pf_question), overrides);
+}
+
 /**
- * Rendu du tableau « I. Codifications apprises » dans l'onglet DPF.
+ * Rendu du tableau « I. Codifications apprises · Comité DPF » dans l'onglet DPF.
  * Source : localStorage.phakts_learned (synchronisé avec /api/learned).
  */
 function renderLearnedDPF() {
   const tbody = document.getElementById('dpfLearnedBody');
   const cntEl = document.getElementById('dpfLearnedCount');
   if (!tbody) return;
-  let items = [];
-  try { items = JSON.parse(localStorage.getItem('phakts_learned') || '[]'); } catch (_) {}
+  const items = learnedRegistry();
   if (cntEl) cntEl.textContent = items.length;
-  if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">'
-      + 'Aucune codification apprise pour le moment.</td></tr>';
+  const counts = { propose: 0, valide: 0, rejete: 0 };
+  items.forEach(it => { counts[it.statut || 'propose'] += 1; });
+  const summary = document.getElementById('dpfReviewSummary');
+  if (summary) summary.textContent = `${counts.valide} validée(s) · ${counts.propose} proposée(s) · ${counts.rejete} rejetée(s)`;
+  const filter = (document.getElementById('dpfReviewFilter') || {}).value || '';
+  const shown = items.map((it, idx) => ({ it, idx })).filter(({ it }) => !filter || (it.statut || 'propose') === filter);
+  if (!shown.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">'
+      + (items.length ? 'Aucune codification avec ce statut.' : 'Aucune codification apprise pour le moment.') + '</td></tr>';
     return;
   }
-  // Affiche en ordre inverse (plus récent en premier)
-  const esc = (s) => String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  tbody.innerHTML = items.slice().reverse().map((it, idx) => {
-    // idx inversé pour pouvoir retirer la bonne entrée
-    const realIdx = items.length - 1 - idx;
+  const codes = registryTranscodes(items);
+  // Plus récent en premier ; idx = position réelle dans le registre
+  tbody.innerHTML = shown.reverse().map(({ it, idx }) => {
+    const statut = it.statut || 'propose';
+    const decided = it.decided_by || it.decided_at
+      ? `${_esc(it.decided_by || '')}${it.decided_at ? ' · ' + _esc(String(it.decided_at).slice(0, 10)) : ''}` : '';
+    const factum = it.factum ? PHAKTS_CORE.parseFactum(it.factum).parts : null;
     return `
-      <tr>
-        <td class="gd">${esc(it.libelle || '')}</td>
-        <td class="gc">${esc(it.pf_question || '')}</td>
-        <td class="gm">${esc(it.pf_modalites || '')}</td>
-        <td style="text-align:center">
-          <button class="btn-icon btn-delete" onclick="removeLearnedDPFEntry(${realIdx})" title="Retirer cette codification du DPF">✕</button>
+      <tr${statut === 'rejete' ? ' style="opacity:.6"' : ''}>
+        <td class="gd">${_esc(it.libelle || '')}</td>
+        <td class="gc">${_esc(it.pf_question || '')}</td>
+        <td class="gc" style="cursor:pointer" onclick="editLearnedTranscode(${idx})" title="${it.transcode ? 'Code imposé par le Comité' : 'Calculé (règle des 3 lettres)'} — cliquer pour modifier">
+          ${_esc(codes.get(it.pf_question) || '')}${it.transcode ? ' 🔒' : ''}</td>
+        <td class="gm">${_esc(it.pf_modalites || '')}</td>
+        <td class="gm" title="${_esc(it.factum || 'Aucun Factum')}">${factum ? _esc(factum.sujet_lisible) + ' · ' + _esc(factum.date_lisible) : '<span style="color:var(--text3)">—</span>'}</td>
+        <td><span style="color:${REVIEW_COLORS[statut]};font-weight:600;font-size:11px">${REVIEW_LABELS[statut]}</span>
+          ${decided ? `<div style="font-size:10px;color:var(--text3)">${decided}</div>` : ''}
+          ${it.motif ? `<div style="font-size:10px;color:var(--text2)" title="${_esc(it.motif)}">${_esc(it.motif.slice(0, 60))}</div>` : ''}</td>
+        <td style="text-align:center;white-space:nowrap">
+          ${statut !== 'valide' ? `<button class="btn-icon btn-edit" onclick="reviewLearned(${idx}, 'valide')" title="Valider (Comité DPF)">✓</button>` : ''}
+          ${statut !== 'rejete' ? `<button class="btn-icon btn-delete" onclick="reviewLearned(${idx}, 'rejete')" title="Rejeter avec un motif">✗</button>` : ''}
+          ${statut !== 'propose' ? `<button class="btn-icon" onclick="reviewLearned(${idx}, 'propose')" title="Remettre en proposition">↺</button>` : ''}
+          <button class="btn-icon btn-delete" onclick="removeLearnedDPFEntry(${idx})" title="Retirer définitivement du registre">🗑</button>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+/** Nom du membre du Comité qui décide (mémorisé sur ce poste). */
+function reviewerName() {
+  let name = '';
+  try { name = localStorage.getItem('phakts_reviewer') || ''; } catch (_) {}
+  if (!name) {
+    name = (prompt('Votre nom (membre du Comité DPF), enregistré avec chaque décision :') || '').trim();
+    if (name) { try { localStorage.setItem('phakts_reviewer', name); } catch (_) {} }
+  }
+  return name;
+}
+
+/** Envoie des décisions au serveur, puis applique localement ce qu'il renvoie. */
+async function sendLearnedReview(changes) {
+  const items = learnedRegistry();
+  const byKey = new Map(items.map(e => [e.pf_question, e]));
+  const reviewer = changes.some(c => c.statut !== undefined) ? reviewerName() : '';
+  changes.forEach(c => {
+    const e = byKey.get(c.pf_question);
+    if (!e) return;
+    if (c.statut !== undefined && c.statut !== (e.statut || 'propose')) {
+      e.statut = c.statut; e.decided_by = reviewer; e.decided_at = new Date().toISOString();
+    }
+    if (c.motif !== undefined) e.motif = c.motif;
+    if (c.transcode !== undefined) e.transcode = c.transcode;
+  });
+  try { localStorage.setItem('phakts_learned', JSON.stringify(items)); } catch (_) {}
+  renderLearnedDPF();
+  if (!isApiAvailable) { showStatus('Décision enregistrée sur ce poste (serveur injoignable : elle sera perdue au prochain rafraîchissement).', 'warning'); return; }
+  try {
+    const resp = await apiFetch('/api/learned/review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: changes, reviewer })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    mergeServerLearned(data.items);
+    renderLearnedDPF();
+    showStatus(`${data.updated} décision(s) enregistrée(s) au registre du Comité DPF.`, 'success');
+  } catch (e) {
+    showStatus('Décision non enregistrée sur le serveur : ' + e.message, 'error');
+  }
+}
+
+function reviewLearned(idx, statut) {
+  const it = learnedRegistry()[idx];
+  if (!it) return;
+  const change = { pf_question: it.pf_question, statut };
+  if (statut === 'rejete') {
+    const motif = prompt(`Motif du rejet de ${it.pf_question} :`, it.motif || '');
+    if (motif === null) return;
+    change.motif = motif.trim();
+  } else if (statut === 'propose') {
+    change.motif = '';
+  }
+  sendLearnedReview([change]);
+}
+
+function editLearnedTranscode(idx) {
+  const items = learnedRegistry();
+  const it = items[idx];
+  if (!it) return;
+  const computed = registryTranscodes(items.map(e => (e === it ? { ...e, transcode: '' } : e))).get(it.pf_question);
+  const value = prompt(`Code court (Transcode) de ${it.pf_question}\nCalculé : ${computed}\nLaisser vide pour revenir au calcul automatique.`, it.transcode || computed);
+  if (value === null) return;
+  const clean = value.trim().replace(/[^A-Za-z0-9_]/g, '');
+  sendLearnedReview([{ pf_question: it.pf_question, transcode: clean === computed ? '' : clean }]);
+}
+
+/**
+ * Export au format de la feuille DPF-2 du DPF-genesis : même colonnes, même
+ * position (A vide, en-têtes en ligne 2), plus Transcode, Statut Comité et
+ * Modalités en fin de ligne. source = 'questionnaire' (variables du
+ * questionnaire courant, Factum en haut de page) ou 'registre' (registre du
+ * Comité, filtre de statut appliqué).
+ */
+async function exportDpfGenesis(source) {
+  let rows;
+  if (source === 'questionnaire') {
+    if (!results.length) { showStatus('Aucune variable codifiée à exporter.', 'warning'); return; }
+    const factum = currentFactum();
+    if (!factum && !confirm("Aucun Factum valide pour ce questionnaire : la colonne FACTUM restera vide.\n\nExporter quand même ?")) return;
+    const registry = new Map(learnedRegistry().map(e => [e.pf_question, e]));
+    rows = withCanonicalModalites(results).map(r => ({ ...r, factum, statut: (registry.get(r.pf_question) || {}).statut || '',
+                                                     transcode: (registry.get(r.pf_question) || {}).transcode || '' }));
+  } else {
+    const filter = (document.getElementById('dpfReviewFilter') || {}).value || '';
+    rows = learnedRegistry().filter(it => !filter || (it.statut || 'propose') === filter);
+    if (!rows.length) { showStatus('Aucune codification à exporter avec ce filtre.', 'warning'); return; }
+  }
+  await ensureExcelJsReady();
+  const overrides = {};
+  rows.forEach(r => { if (r.transcode) overrides[r.pf_question] = r.transcode; });
+  const codes = PHAKTS_CORE.buildTranscodes(rows.map(r => r.pf_question), overrides);
+  const series = new Map(), perStudy = new Map();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PHAKTS STUDIO';
+  const ws = wb.addWorksheet('DPF-2');
+  ws.addRow([]);
+  ws.addRow(['', 'Index(Study)', 'PF Normalisée | Variable | Question', 'Libellé', 'FACTUM | Study Reference', 'Index(serie)',
+             'Transcode', 'Statut Comité', 'Modalités']);
+  rows.forEach(r => {
+    const key = r.factum || '';
+    if (!series.has(key)) series.set(key, series.size + 1);
+    perStudy.set(key, (perStudy.get(key) || 0) + 1);
+    ws.addRow(['', perStudy.get(key), r.pf_question, r.libelle, r.factum || '', series.get(key),
+               codes.get(r.pf_question) || '', r.statut ? REVIEW_LABELS[r.statut] : '', r.pf_modalites || '']);
+  });
+  ws.getRow(2).font = { bold: true };
+  [3, 28, 45, 55, 70, 12, 24, 14, 45].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  ws.views = [{ state: 'frozen', ySplit: 2 }];
+  const name = source === 'questionnaire'
+    ? `${sanitizeKoboName(document.getElementById('formTitle').value || 'Questionnaire')}_DPF-genesis.xlsx`
+    : 'Registre_Comite_DPF_DPF-genesis.xlsx';
+  if (await saveWorkbook(wb, name)) showStatus(`Export DPF-genesis prêt (${rows.length} variable(s)).`, 'success');
 }
 
 function refreshLearnedDPF() {
@@ -1802,35 +2031,6 @@ function clearLearnedDPF() {
   renderLearnedDPF();
   refreshAgentDpfCount();
   showStatus('DPF vidé.', 'info');
-}
-
-async function exportLearnedDPF() {
-  let items = [];
-  try { items = JSON.parse(localStorage.getItem('phakts_learned') || '[]'); } catch (_) {}
-  if (!items.length) { showStatus('Aucune codification apprise à exporter.', 'warning'); return; }
-  if (typeof ExcelJS === 'undefined' || !ExcelJS.Workbook) {
-    showStatus('Bibliothèque Excel non disponible.', 'error'); return;
-  }
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'PHAKTS STUDIO — Agent IA';
-  const ws = wb.addWorksheet('DPF_Codifications_Apprises');
-  ws.columns = [
-    { header: '#',              key: 'idx',         width: 5  },
-    { header: 'Question / Libellé', key: 'libelle', width: 60 },
-    { header: 'Code PHAKTS',    key: 'pf_question', width: 45 },
-    { header: 'Modalités',      key: 'pf_modalites', width: 40 },
-    { header: 'Skip Logic',     key: 'pf_skip',     width: 30 },
-  ];
-  items.forEach((it, i) => ws.addRow({ idx: i + 1, ...it }));
-  ws.getRow(1).font = { bold: true };
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'DPF_Codifications_Apprises.xlsx';
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  showStatus(`Export DPF (${items.length} entrée(s))`, 'success');
 }
 
 function resetAgentChat() {
@@ -2138,7 +2338,7 @@ async function sendToAgent() {
     const resp = await apiFetch('/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: agentMessages, autoSave }),
+      body: JSON.stringify({ messages: agentMessages, autoSave, factum: currentFactum() }),
     });
     if (!resp.ok) {
       let data = {};
@@ -3079,14 +3279,15 @@ function learnSelectedResults() {
   // Persist learned examples to localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('phakts_learned') || '[]');
-    toLearn.forEach(r => saved.push({ libelle: r.libelle, pf_question: r.pf_question, pf_modalites: r.pf_modalites, pf_skip: r.pf_skip || '' }));
+    toLearn.forEach(r => saved.push({ libelle: r.libelle, pf_question: r.pf_question, pf_modalites: r.pf_modalites, pf_skip: r.pf_skip || '',
+                                      factum: currentFactum(), statut: 'propose' }));
     localStorage.setItem('phakts_learned', JSON.stringify(saved));
   } catch (_) {}
 
   // Sync with server API to update PHAKTS Grammar
   syncLearnedToServer(toLearn.map(r => ({
     libelle: r.libelle, pf_question: r.pf_question,
-    pf_modalites: r.pf_modalites, pf_skip: r.pf_skip || ''
+    pf_modalites: r.pf_modalites, pf_skip: r.pf_skip || '', factum: currentFactum()
   })));
 
   renderTable();
@@ -3123,18 +3324,8 @@ async function syncLearnedFromServer() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (!data.items || !data.items.length) return;
-    const local = JSON.parse(localStorage.getItem('phakts_learned') || '[]');
-    const localKeys = new Set(local.map(e => e.pf_question));
-    let added = 0;
-    data.items.forEach(r => {
-      if (!localKeys.has(r.pf_question)) {
-        local.push({ libelle: r.libelle, pf_question: r.pf_question, pf_modalites: r.pf_modalites, pf_skip: r.pf_skip || '' });
-        localKeys.add(r.pf_question);
-        added++;
-      }
-    });
+    const added = mergeServerLearned(data.items);
     if (added) {
-      localStorage.setItem('phakts_learned', JSON.stringify(local));
       // Re-inject into SYSTEM prompt
       loadLearnedExamples();
       console.log('[syncLearnedFromServer] +' + added + ' exemples importés du serveur');
@@ -3146,7 +3337,8 @@ async function syncLearnedFromServer() {
 
 function loadLearnedExamples() {
   try {
-    const saved = JSON.parse(localStorage.getItem('phakts_learned') || '[]');
+    const saved = JSON.parse(localStorage.getItem('phakts_learned') || '[]')
+      .filter(r => r.statut !== 'rejete');
     if (!saved.length) return;
     const newExamples = saved.map(r => {
       let line = '- "' + r.libelle.replace(/"/g, "'") + '" → ' + r.pf_question;
@@ -4186,9 +4378,94 @@ function newQuestionnaire() {
   if (bvr) bvr.style.display = 'none';
   const banner = document.getElementById('restoreBanner');
   if (banner) banner.remove();
+  const factumInput = document.getElementById('studyFactum');
+  if (factumInput) { factumInput.value = ''; onFactumChange(); }
   switchTabById('input');
   showStatus('Nouveau questionnaire prêt.', 'info');
 }
+
+// ─── Factum de l'étude ───────────────────────────────────────────────────────
+// Règle partagée avec l'Analyzer : PHAKTS_CORE.parseFactum / buildFactum.
+
+/** Factum valide (forme normalisée) du questionnaire courant, sinon ''. */
+function currentFactum() {
+  const r = PHAKTS_CORE.parseFactum(document.getElementById('studyFactum')?.value);
+  return r.valid ? r.normalized : '';
+}
+
+function renderFactumBadge() {
+  const input = document.getElementById('studyFactum');
+  const badge = document.getElementById('factumBadge');
+  if (!input || !badge) return;
+  if (!input.value.trim()) {
+    badge.className = 'factum-badge';
+    badge.textContent = '—';
+    badge.title = "Aucun Factum : les soumissions ne seront pas rattachées à l'étude.";
+    return;
+  }
+  const r = PHAKTS_CORE.parseFactum(input.value);
+  badge.className = 'factum-badge ' + (!r.valid ? 'err' : r.warnings.length ? 'warn' : 'ok');
+  badge.textContent = !r.valid ? '✗ invalide' : r.warnings.length ? '⚠ valide' : '✓ valide';
+  badge.title = [...r.errors, ...r.warnings].join('\n') || 'Factum conforme.';
+}
+
+function onFactumChange() {
+  try { localStorage.setItem('phakts_factum', document.getElementById('studyFactum').value.trim()); } catch (_) {}
+  renderFactumBadge();
+}
+
+const FACTUM_FIELDS = ['fqEntete', 'fqJuridiction', 'fqN', 'fqM', 'fqSujet', 'fqDate', 'fqDomaine'];
+
+function factumBuilderValue() {
+  const v = id => document.getElementById(id).value;
+  return PHAKTS_CORE.buildFactum({ entete: v('fqEntete'), juridiction: v('fqJuridiction'), n: v('fqN'), m: v('fqM'),
+                                   sujet: v('fqSujet'), date: v('fqDate'), domaine: v('fqDomaine') });
+}
+
+function updateFactumPreview() {
+  const value = factumBuilderValue();
+  const r = PHAKTS_CORE.parseFactum(value);
+  document.getElementById('fqPreview').textContent = value;
+  document.getElementById('fqPreview').style.borderColor = r.valid ? '#22c55e66' : '#ef444466';
+  document.getElementById('fqNotes').innerHTML =
+    r.errors.map(e => `<li style="color:#ef4444">${_esc(e)}</li>`).join('') +
+    r.warnings.map(w => `<li style="color:#f59e0b">${_esc(w)}</li>`).join('');
+  document.getElementById('fqApply').disabled = !r.valid;
+}
+
+function openFactumBuilder() {
+  const r = PHAKTS_CORE.parseFactum(document.getElementById('studyFactum').value);
+  const p = r.valid ? r.parts : {};
+  const date = p.date ? p.date.slice(0, 4) + '-' + p.date.slice(4, 6) + (p.date.slice(6) !== '00' ? '-' + p.date.slice(6) : '') : '';
+  const values = [p.entete || '', p.juridiction || '', p.collecte || 1, p.collectes || 1, p.sujet || '', date, p.domaine || ''];
+  FACTUM_FIELDS.forEach((id, i) => { document.getElementById(id).value = values[i]; });
+  document.getElementById('fqDomaines').innerHTML = Object.entries(PHAKTS_CORE.FACTUM_DOMAINS)
+    .map(([k, label]) => `<option value="${_esc(k)}">${_esc(label)}</option>`).join('');
+  updateFactumPreview();
+  document.getElementById('factumOverlay').classList.add('show');
+  document.getElementById('fqEntete').focus();
+}
+
+function closeFactumBuilder() {
+  document.getElementById('factumOverlay').classList.remove('show');
+}
+
+function applyFactumBuilder() {
+  const r = PHAKTS_CORE.parseFactum(factumBuilderValue());
+  if (!r.valid) return;
+  document.getElementById('studyFactum').value = r.normalized;
+  onFactumChange();
+  closeFactumBuilder();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('studyFactum');
+  if (input) {
+    try { input.value = localStorage.getItem('phakts_factum') || ''; } catch (_) {}
+    renderFactumBadge();
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFactumBuilder(); });
+});
 
 // ─── API Communication ───────────────────────────────────────────────────────
 function getApiBase() {
@@ -5824,6 +6101,16 @@ function buildXLSForm() {
     }
   }
 
+  // Factum de l'étude : constante calculée, rattache chaque soumission à l'étude
+  const factum = currentFactum();
+  if (factum) {
+    surveyRows.unshift({
+      type: 'calculate', name: 'Factum__G', 'label::French (fr)': '', required: '',
+      'required message::French (fr)': '', relevant: '', choice_filter: '', constraint: '',
+      'constraint message::French (fr)': '', 'hint::French (fr)': '', parameters: '', calculation: `'${factum}'`
+    });
+  }
+
   const title = document.getElementById('formTitle').value || 'Questionnaire';
   const fid = normalizeUnicode(title.toLowerCase()).replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_');
   const settingsRow = { form_title: title, form_id: fid, version: new Date().toISOString().split('T')[0].replace(/-/g,''), default_language: 'French (fr)', style: 'pages' };
@@ -6272,6 +6559,12 @@ function addReferencePhaktsWorksheet(workbook) {
 function phaktsQualityWarnings(items) {
   items = withCanonicalModalites(items);
   const warnings = [];
+  const factumCheck = PHAKTS_CORE.parseFactum(document.getElementById('studyFactum')?.value);
+  if (!factumCheck.valid) {
+    warnings.push({ n: '—', variable: 'Factum',
+      anomalie: document.getElementById('studyFactum')?.value.trim() ? 'Factum invalide : ' + factumCheck.errors[0] : "Aucun Factum : les soumissions ne seront pas rattachées à l'étude",
+      action: 'Renseigner le Factum en haut de page (bouton ⚙)' });
+  }
   const codeParts = items.map(it => String(it.pf_question || '').split('!')[0]);
   const officialLists = (dpfListes || []).filter(l => l.source === 'DPF');
   items.forEach((it, i) => {
@@ -6406,7 +6699,8 @@ async function downloadXLSForm() {
     { header: 'constraint', key: 'constraint', width: 30 },
     { header: 'constraint message::French (fr)', key: 'constraint message::French (fr)', width: 40 },
     { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 },
-    { header: 'parameters', key: 'parameters', width: 36 }
+    { header: 'parameters', key: 'parameters', width: 36 },
+    { header: 'calculation', key: 'calculation', width: 40 }
   ]);
 
   addObjectWorksheet(workbook, 'choices', choicesRows, [
@@ -6481,7 +6775,8 @@ async function buildXLSFormBuffer() {
     { header: 'constraint', key: 'constraint', width: 30 },
     { header: 'constraint message::French (fr)', key: 'constraint message::French (fr)', width: 40 },
     { header: 'hint::French (fr)', key: 'hint::French (fr)', width: 40 },
-    { header: 'parameters', key: 'parameters', width: 36 }
+    { header: 'parameters', key: 'parameters', width: 36 },
+    { header: 'calculation', key: 'calculation', width: 40 }
   ]);
   addObjectWorksheet(workbook, 'choices', choicesRows, [
     { header: 'list_name', key: 'list_name', width: 20 },

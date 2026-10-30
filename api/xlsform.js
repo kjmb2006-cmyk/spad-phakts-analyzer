@@ -5,7 +5,7 @@
 
 const {
   classifyCode, selectCardinality, parseRange, rangeConstraint,
-  multiplicityConstraint, GEOPOINT_PARAMETERS, PHONE_CONSTRAINT, trileanChoices,
+  multiplicityConstraint, GEOPOINT_PARAMETERS, PHONE_CONSTRAINT, trileanChoices, parseFactum,
 } = require("../public/phakts-core.js");
 
 function sanitizeName(str) {
@@ -105,10 +105,16 @@ function resolveXlsName(lexia, itemsIndex) {
  * Gère le filtrage hiérarchique Région → District via choice_filter.
  * @param {Array}  items     - [{libelle, pf_question, pf_modalites, pf_skip}]
  * @param {string} formTitle - Titre du formulaire
+ * @param {string} factum    - Factum de l'étude (facultatif) : repris dans un
+ *                             champ calculé Factum__G de chaque soumission
  * @returns {{ survey, choices, settings }}
  */
-function buildXLSForm(items, formTitle = "Questionnaire") {
+function buildXLSForm(items, formTitle = "Questionnaire", factum = "") {
   const surveyRows = [];
+  const parsedFactum = parseFactum(factum);
+  if (parsedFactum.valid) {
+    surveyRows.push({ type: "calculate", name: "Factum__G", calculation: `'${parsedFactum.normalized}'` });
+  }
   const choicesMap = {
     yes_no: [
       { name: "oui", label: "Oui" },

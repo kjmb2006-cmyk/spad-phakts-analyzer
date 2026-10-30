@@ -889,9 +889,139 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     return out;
   }
 
+  // ── Factum : identifiant universel d'une Étude ────────────────────────────
+  // <entête>__<juridiction>__<n>C<m>_<sujet>__<AAAAMMJJ>__<domaine>, d'après le
+  // rapport final SPAD-CIV (2025) et les Factums du DPF-genesis. Même règle que
+  // analyzer/modules/factum.py : les deux doivent rester alignées.
+
+  const FACTUM_EXAMPLE = 'PGT14_OS2_RC2_2__CIV_MS__1C1_Etude_CAP_Personnel_Sante_PEC_Tabac__20250900__ES';
+  const FACTUM_PART = '[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*';
+  const FACTUM_RE = new RegExp(`^(${FACTUM_PART})__(${FACTUM_PART})__(\\d+)C(\\d+)_(${FACTUM_PART}?)(__|_)(\\d{8})__(${FACTUM_PART})$`);
+  const FACTUM_DOMAINS = { ES: 'Établissement de santé', ESP: 'Établissement scolaire / public', Menage: 'Ménage', Communaute: 'Communauté' };
+
+  const factumPart = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+  function factumDate(s) {
+    let d = String(s || '').replace(/\D/g, '');
+    if (d.length === 6) d += '00';
+    return d;
+  }
+
+  function buildFactum({ entete, juridiction, n, m, sujet, date, domaine }) {
+    return `${factumPart(entete)}__${factumPart(juridiction)}__${parseInt(n, 10) || 1}C${parseInt(m, 10) || 1}_`
+      + `${factumPart(sujet)}__${factumDate(date)}__${factumPart(domaine)}`;
+  }
+
+  // { valid, errors, warnings, parts, normalized } — les avertissements
+  // n'empêchent pas d'utiliser le Factum.
+  function parseFactum(factum) {
+    const s = String(factum || '').trim();
+    const res = { valid: false, errors: [], warnings: [], parts: {}, normalized: s };
+    if (!s) { res.errors.push('Factum vide.'); return res; }
+    const bad = [...new Set(s.replace(/[A-Za-z0-9_]/g, ''))].sort();
+    if (bad.length) {
+      res.errors.push(`Caractères interdits : ${bad.map(c => `'${c}'`).join(' ')} (lettres sans accent, chiffres et « _ » uniquement).`);
+      return res;
+    }
+    const m = s.match(FACTUM_RE);
+    if (!m) {
+      res.errors.push(`Structure attendue : Entête__Juridiction__nCm_Sujet__AAAAMMJJ__Domaine (exemple : ${FACTUM_EXAMPLE}).`);
+      return res;
+    }
+    const [, entete, juridiction, nRaw, mRaw, sujet, sep, date, domaine] = m;
+    const n = parseInt(nRaw, 10), total = parseInt(mRaw, 10);
+    if (n < 1 || total < 1 || n > total) res.errors.push(`Collecte « ${n}C${total} » : n doit être compris entre 1 et m.`);
+    const year = +date.slice(0, 4), month = +date.slice(4, 6), day = +date.slice(6);
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day > 31) {
+      res.errors.push(`Date de référence « ${date} » invalide (AAAAMMJJ, JJ = 00 si le jour n'est pas fixé).`);
+    } else if (day && new Date(Date.UTC(year, month - 1, day)).getUTCDate() !== day) {
+      res.errors.push(`Date de référence « ${date} » inexistante.`);
+    }
+    if (!sujet) res.errors.push("Sujet de l'étude manquant.");
+    if (sep === '_') res.warnings.push('Séparateur « __ » attendu avant la date, comme dans le DPF.');
+    if (!/^[A-Z]{3}(_|$)/.test(juridiction)) res.warnings.push(`Juridiction « ${juridiction} » : le pays devrait être un code à 3 lettres majuscules (CIV, COG…).`);
+    if (!/^PGT\d+_OS\d+_RC\d+/.test(entete)) res.warnings.push(`Entête « ${entete} » inhabituel (forme attendue : PGT14_OS2_RC2_2).`);
+    res.parts = {
+      entete, juridiction, collecte: n, collectes: total, sujet, date, domaine,
+      date_lisible: day ? `${date.slice(6)}/${date.slice(4, 6)}/${date.slice(0, 4)}` : `${date.slice(4, 6)}/${date.slice(0, 4)}`,
+      domaine_lisible: FACTUM_DOMAINS[domaine] || domaine,
+      sujet_lisible: sujet.replace(/_/g, ' '),
+    };
+    res.normalized = `${entete}__${juridiction}__${n}C${total}_${sujet}__${date}__${domaine}`;
+    res.valid = !res.errors.length;
+    return res;
+  }
+
+  // ── Transcode : code court d'une variable ─────────────────────────────────
+  // « Concepts & Fonctionnalités », Fig-21 : 3 premières lettres de chaque
+  // particule alphabétique, numériques et séparateurs conservés. En cas
+  // d'homonymie, la particule la plus fréquente garde ses 3 lettres (« usage
+  // le plus courant ») et les autres prennent la 4e lettre ou la suivante
+  // (LOUTETE → LOT). Les sigles d'un code en casse mixte (VIH, PEC, WASH) et
+  // l'affixe (__X, __1Y) restent entiers ; la directive (après « ! ») ne fait
+  // pas partie du code.
+
+  const asciiUpper = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  // Dans un code tout en majuscules (BRAZZAVILLE__DJIRI), rien n'est un sigle.
+  const isSigle = (t, code) => /[a-z]/.test(code) && /^[A-Z][A-Z0-9]{1,4}$/.test(t);
+
+  function codeTokens(code) {
+    const codePart = String(code || '').split('!')[0];
+    let cut = codePart.lastIndexOf('__');
+    if (cut > 0 && codePart.length - cut - 2 > 3) cut = -1;   // dernier segment trop long : pas un affixe
+    const body = cut > 0 ? codePart.slice(0, cut) : codePart;
+    const affix = cut > 0 ? codePart.slice(cut) : '';
+    return { tokens: body.split(/(_+)/).filter(Boolean), affix };
+  }
+
+  const isParticle = (t, code) => /[A-Za-z]/.test(t) && !isSigle(t, code) && asciiUpper(t).length > 3;
+
+  // Map code → transcode, homonymies résolues sur l'ensemble des codes.
+  // overrides : { code: transcode } fixés par le Comité DPF (ex. BZV).
+  function buildTranscodes(codes, overrides) {
+    const freq = new Map();
+    for (const code of codes) {
+      for (const t of codeTokens(code).tokens) {
+        if (isParticle(t, code)) { const p = asciiUpper(t); freq.set(p, (freq.get(p) || 0) + 1); }
+      }
+    }
+    const short = new Map(), taken = new Map();
+    const ordered = [...freq.keys()].sort((a, b) => (freq.get(b) - freq.get(a)) || a.localeCompare(b));
+    for (const p of ordered) {
+      let pick = null;
+      for (let k = 2; k < p.length && !pick; k++) {
+        const cand = p.slice(0, 2) + p[k];
+        if (/^[A-Z0-9]{3}$/.test(cand) && !taken.has(cand)) pick = cand;
+      }
+      if (!pick) { let i = 2; while (taken.has(p.slice(0, 3) + i)) i++; pick = p.slice(0, 3) + i; }
+      taken.set(pick, p);
+      short.set(p, pick);
+    }
+    const out = new Map();
+    for (const code of codes) {
+      if (overrides && overrides[code]) { out.set(code, overrides[code]); continue; }
+      const { tokens, affix } = codeTokens(code);
+      out.set(code, tokens.map(t => {
+        if (/^_+$/.test(t) || /^\d+$/.test(t) || isSigle(t, code)) return t;
+        const u = asciiUpper(t).replace(/[^A-Z0-9]/g, '');
+        return u.length <= 3 ? u : short.get(u) || u.slice(0, 3);
+      }).join('') + affix);
+    }
+    return out;
+  }
+
+  const transcode = code => buildTranscodes([code]).get(code);
+
   return {
     GRAMMAR_VERSION,
     SYSTEM_PROMPT,
+    FACTUM_EXAMPLE,
+    FACTUM_DOMAINS,
+    buildFactum,
+    parseFactum,
+    buildTranscodes,
+    transcode,
     splitCode,
     classifyCode,
     parseMultiplicity,

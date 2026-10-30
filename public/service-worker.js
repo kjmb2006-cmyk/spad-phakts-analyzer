@@ -1,4 +1,4 @@
-const CACHE_NAME = 'phakts-studio-v37';
+const CACHE_NAME = 'phakts-studio-v38';
 const APP_SHELL = [
   './PHAKTS\u00b7STUDIO.html',
   './phakts-core.js',

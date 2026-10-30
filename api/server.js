@@ -20,7 +20,7 @@ const mammoth = require("mammoth");
 
 let { PHAKTS_SYSTEM_PROMPT, PHAKTS_MODEL, PHAKTS_MAX_TOKENS, GRAMMAR_VERSION } = require("./grammar");
 const { buildXLSForm } = require("./xlsform");
-const { DEFAULT_DPF_CATALOGUE, formatDpfSection, insertBeforeInstructions, dpfListKey, canonicalListModalites } = require("../public/phakts-core.js");
+const { DEFAULT_DPF_CATALOGUE, formatDpfSection, insertBeforeInstructions, dpfListKey, canonicalListModalites, parseFactum } = require("../public/phakts-core.js");
 
 // ── Hot-reload de la grammaire (grammar.js + le noyau partagé qui contient le
 // prompt) — dev uniquement : fs.watch échoue dans un bundle asar, ignoré. ──
@@ -55,9 +55,36 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function loadLearned() {
   try {
-    if (fs.existsSync(LEARNED_FILE)) return JSON.parse(fs.readFileSync(LEARNED_FILE, "utf8"));
+    if (fs.existsSync(LEARNED_FILE)) {
+      return JSON.parse(fs.readFileSync(LEARNED_FILE, "utf8"))
+        .map(r => ({ ...r, statut: REVIEW_STATUSES.includes(r.statut) ? r.statut : "propose" }));
+    }
   } catch (_) {}
   return [];
+}
+
+// ── Circuit du Comité DPF ──
+// Toute codification mémorisée entre « proposée » ; le Comité la valide ou la
+// rejette. Une codification rejetée ne sert plus d'exemple au LLM ni au moteur
+// hors ligne ; elle reste au registre avec son motif.
+const REVIEW_STATUSES = ["propose", "valide", "rejete"];
+
+/** Entrée du registre nettoyée : champs de codification + Factum + revue. */
+function learnedEntry(r, defaults = {}) {
+  const factum = parseFactum(r.factum || defaults.factum || "");
+  return {
+    libelle: String(r.libelle || "").slice(0, 500),
+    pf_question: String(r.pf_question || "").slice(0, 200),
+    pf_modalites: String(r.pf_modalites || "").slice(0, 1000),
+    pf_skip: String(r.pf_skip || "").slice(0, 300),
+    factum: factum.valid ? factum.normalized : "",
+    statut: REVIEW_STATUSES.includes(r.statut) ? r.statut : "propose",
+    motif: String(r.motif || "").slice(0, 500),
+    transcode: String(r.transcode || "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 80),
+    decided_by: String(r.decided_by || "").slice(0, 100),
+    decided_at: r.decided_at ? String(r.decided_at).slice(0, 40) : "",
+    learned_at: r.learned_at ? String(r.learned_at).slice(0, 40) : new Date().toISOString(),
+  };
 }
 
 // ── Référentiel Administratif (Règle 16 : Région/District/Établissement/
@@ -109,13 +136,15 @@ function saveDpfCatalogue(cat) {
 function buildAugmentedPrompt() {
   let prompt = insertBeforeInstructions(PHAKTS_SYSTEM_PROMPT, formatDpfSection(loadDpfCatalogue()));
   const learned = loadLearned();
-  if (!learned.length) return prompt;
-  const lines = learned.map(r => {
+  const lines = statut => learned.filter(r => r.statut === statut).map(r => {
     let line = '- "' + (r.libelle || '').replace(/"/g, "'") + '" → ' + (r.pf_question || '');
     if (r.pf_modalites && r.pf_modalites.trim()) line += '            ' + r.pf_modalites.trim();
     return line;
   }).join('\n');
-  return insertBeforeInstructions(prompt, '\n\nEXEMPLES MÉMORISÉS (codifications validées par l\'utilisateur):\n' + lines);
+  const valides = lines("valide"), proposes = lines("propose");
+  if (valides) prompt = insertBeforeInstructions(prompt, '\n\nEXEMPLES VALIDÉS PAR LE COMITÉ DPF (référence à suivre):\n' + valides);
+  if (proposes) prompt = insertBeforeInstructions(prompt, '\n\nEXEMPLES MÉMORISÉS (proposés, pas encore validés par le Comité DPF):\n' + proposes);
+  return prompt;
 }
 
 // ── Helper : map une erreur Anthropic vers une réponse HTTP avec un CODE
@@ -748,13 +777,7 @@ app.post("/api/learn", (req, res) => {
     return res.status(400).json({ error: "Le champ 'items' doit être un tableau non vide." });
   }
   // Validate & sanitize
-  const cleaned = items.map(r => ({
-    libelle: String(r.libelle || '').slice(0, 500),
-    pf_question: String(r.pf_question || '').slice(0, 200),
-    pf_modalites: String(r.pf_modalites || '').slice(0, 1000),
-    pf_skip: String(r.pf_skip || '').slice(0, 300),
-    learned_at: new Date().toISOString(),
-  }));
+  const cleaned = items.map(r => learnedEntry(r));
 
   const existing = loadLearned();
   // Deduplicate by pf_question
@@ -767,6 +790,41 @@ app.post("/api/learn", (req, res) => {
   saveLearned(updated);
   console.log(`[/api/learn] +${newItems.length} codification(s) mémorisée(s) (total: ${updated.length})`);
   return res.json({ count: updated.length, added: newItems.length, items: updated });
+});
+
+/**
+ * POST /api/learned/review
+ * Corps: { items: [{pf_question, statut?, motif?, transcode?}], reviewer?: string }
+ * Décision du Comité DPF sur des codifications du registre : statut
+ * (propose | valide | rejete), motif, code court (Transcode) imposé.
+ */
+app.post("/api/learned/review", (req, res) => {
+  const { items, reviewer } = req.body || {};
+  if (!Array.isArray(items) || !items.length) {
+    return res.status(400).json({ error: "Le champ 'items' doit être un tableau non vide." });
+  }
+  const bad = items.find(it => it.statut !== undefined && !REVIEW_STATUSES.includes(it.statut));
+  if (bad) return res.status(400).json({ error: `Statut inconnu : ${bad.statut}` });
+  const byKey = new Map(items.map(it => [String(it.pf_question || ""), it]));
+  const now = new Date().toISOString();
+  let updated = 0;
+  const all = loadLearned().map(r => {
+    const d = byKey.get(r.pf_question);
+    if (!d) return r;
+    updated += 1;
+    const next = { ...r };
+    if (d.statut !== undefined && d.statut !== r.statut) {
+      next.statut = d.statut;
+      next.decided_by = String(reviewer || "").slice(0, 100);
+      next.decided_at = now;
+    }
+    if (d.motif !== undefined) next.motif = d.motif;
+    if (d.transcode !== undefined) next.transcode = d.transcode;
+    return learnedEntry(next);
+  });
+  saveLearned(all);
+  console.log(`[/api/learned/review] ${updated} codification(s) mise(s) à jour`);
+  return res.json({ updated, count: all.length, items: all });
 });
 
 /**
@@ -1202,14 +1260,14 @@ app.post("/api/codify", async (req, res) => {
 /**
  * POST /api/agent
  * Agent IA conversationnel expert en codification PHAKTS.
- * Corps: { messages: [{role:"user"|"assistant", content:string}], autoSave?: boolean }
+ * Corps: { messages: [{role:"user"|"assistant", content:string}], autoSave?: boolean, factum?: string }
  * Réponse: { reply: string, items?: [...], saved?: number }
  *
  * - Si la réponse contient un bloc JSON `{"items":[...]}`, ils sont extraits.
  * - Si autoSave === true, les items extraits sont écrits dans le DPF (learned).
  */
 app.post("/api/agent", async (req, res) => {
-  const { messages, autoSave } = req.body;
+  const { messages, autoSave, factum } = req.body;
   if (!Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: "Le champ 'messages' doit être un tableau non vide." });
   }
@@ -1305,13 +1363,7 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
       const existingKeys = new Set(existing.map(e => e.pf_question));
       const toAdd = items
         .filter(it => it.pf_question && !existingKeys.has(it.pf_question))
-        .map(it => ({
-          libelle: String(it.libelle || '').slice(0, 500),
-          pf_question: String(it.pf_question || '').slice(0, 200),
-          pf_modalites: String(it.pf_modalites || '').slice(0, 1000),
-          pf_skip: String(it.pf_skip || '').slice(0, 300),
-          learned_at: new Date().toISOString(),
-        }));
+        .map(it => learnedEntry({ ...it, statut: "propose" }, { factum }));
       if (toAdd.length) {
         saveLearned(existing.concat(toAdd));
         saved = toAdd.length;
@@ -1337,13 +1389,13 @@ select_multiple). N'invente jamais de syntaxe hors grammaire.`;
 
 /**
  * POST /api/xlsform
- * Corps: { items: [{libelle, pf_question, pf_modalites}], formTitle?: string }
+ * Corps: { items: [{libelle, pf_question, pf_modalites}], formTitle?: string, factum?: string }
  * Réponse: { survey: [], choices: [], settings: [] }
  *
  * Convertit des items PHAKTS codifiés en structure XLSForm pour KoboToolbox.
  */
 app.post("/api/xlsform", (req, res) => {
-  const { items, formTitle } = req.body;
+  const { items, formTitle, factum } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Le champ 'items' doit être un tableau non vide." });
@@ -1362,7 +1414,7 @@ app.post("/api/xlsform", (req, res) => {
     const lists = loadDpfCatalogue().lists;
     const xlsform = buildXLSForm(
       items.map(it => ({ ...it, pf_modalites: canonicalListModalites(it.pf_question, it.pf_modalites, lists) })),
-      formTitle || "Questionnaire");
+      formTitle || "Questionnaire", factum || "");
     return res.json({
       formTitle: formTitle || "Questionnaire",
       sheets: { survey: xlsform.survey.length, choices: xlsform.choices.length },
