@@ -201,6 +201,11 @@ def compare_categorical_by_survey(merged: pd.DataFrame, variable: str, order=Non
     pct = ct.div(ct.sum(axis=0), axis=1).mul(100).round(1)
     ct.columns.name = pct.columns.name = 'Enquête'
     fig = _categorical_chart(ct, pct, variable)
+    stats_by_survey = []
+    for name in ct.columns:
+        col = ct[name]
+        top = col.idxmax()
+        stats_by_survey.append({'name': name, 'n': int(col.sum()), 'top': str(top), 'top_pct': float(pct.loc[top, name])})
 
     return {
         'variable': variable,
@@ -211,6 +216,7 @@ def compare_categorical_by_survey(merged: pd.DataFrame, variable: str, order=Non
                                  float_format=lambda x: f'{x:.1f}'),
         'chart': fig.to_json(),
         'n_total': int(ct.values.sum()),
+        'stats': {'surveys': stats_by_survey, 'n_modalites': int(len(ct))},
     }
 
 
@@ -246,6 +252,10 @@ def compare_continuous_by_survey(merged: pd.DataFrame, variable: str, order=None
                                           border=0, na_rep='—'),
         'chart': fig.to_json(),
         'n_total': int(summary['Effectif'].sum()),
+        'stats': {'surveys': [{'name': name, 'n': int(row['Effectif']), 'mean': float(row['Moyenne']),
+                               'median': float(row['Médiane']),
+                               'std': None if pd.isna(row['Écart-type']) else float(row['Écart-type'])}
+                              for name, row in summary.iterrows()]},
     }
 
 
@@ -405,9 +415,13 @@ def _categorical_cross_survey_test(merged: pd.DataFrame, radical: str):
     ct = pd.crosstab(sub[radical], sub['__survey__'])
     if ct.shape[0] < 2 or ct.shape[1] < 2:
         return None
-    chi2, p, dof, _ = stats.chi2_contingency(ct)
+    chi2, p, dof, expected = stats.chi2_contingency(ct)
+    n = int(ct.values.sum())
+    v = math.sqrt(chi2 / (n * (min(ct.shape) - 1))) if n else 0.0
     return {'test': 'χ² (indépendance)', 'stat': round(float(chi2), 2),
-            'p_value': round(float(p), 4), 'dof': int(dof), 'n': int(ct.values.sum())}
+            'p_value': round(float(p), 4), 'dof': int(dof), 'n': n,
+            'cramers_v': round(float(v), 3),                              # intensité de l'écart, indépendante de l'effectif
+            'low_expected_pct': round(100 * float((expected < 5).mean()), 1)}  # % de cases à effectif théorique < 5
 
 
 def _continuous_cross_survey_test(merged: pd.DataFrame, radical: str):
@@ -428,6 +442,28 @@ def _continuous_cross_survey_test(merged: pd.DataFrame, radical: str):
         test = 'Kruskal-Wallis'
     return {'test': test, 'stat': round(float(stat), 2), 'p_value': round(float(p), 4),
             'n': int(sum(len(g) for g in groups))}
+
+
+def cross_survey_test(merged: pd.DataFrame, variable: str, kind: str):
+    """Test d'écart entre enquêtes pour une variable : 'categorical' (χ²) ou 'continuous'
+    (ANOVA / Kruskal-Wallis). None si les données ne le permettent pas."""
+    try:
+        if kind == 'categorical':
+            return _categorical_cross_survey_test(merged, variable)
+        return _continuous_cross_survey_test(merged, variable)
+    except Exception:
+        return None
+
+
+def apply_fdr(results: list) -> list:
+    """Correction des tests multiples (Benjamini-Hochberg, FDR 5 %) sur l'ensemble des
+    comparaisons d'une liste : ajoute q_value et significant_fdr à chaque test."""
+    pvalues = [r['test']['p_value'] if r.get('test') else None for r in results]
+    for r, q in zip(results, benjamini_hochberg(pvalues)):
+        if r.get('test'):
+            r['test']['q_value'] = q
+            r['test']['significant_fdr'] = q < 0.05
+    return results
 
 
 def auto_analyze(surveys: dict, mode: str = 'phakts', min_surveys: int = 2, order=None) -> list:
@@ -464,9 +500,4 @@ def auto_analyze(surveys: dict, mode: str = 'phakts', min_surveys: int = 2, orde
 
     # Correction des tests multiples (Benjamini-Hochberg, FDR 5 %) sur
     # l'ensemble des indicateurs testés.
-    pvalues = [r['test']['p_value'] if r.get('test') else None for r in out]
-    for r, q in zip(out, benjamini_hochberg(pvalues)):
-        if r.get('test'):
-            r['test']['q_value'] = q
-            r['test']['significant_fdr'] = q < 0.05
-    return out
+    return apply_fdr(out)

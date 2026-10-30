@@ -118,6 +118,11 @@ ms = c.get('/multi-survey').get_data(as_text=True)
 say('Base centrale (GDB)' in ms and 'Ajouter à la pile' in ms, "multi-enquête : import depuis la base centrale")
 say(c.get('/multi-survey/export.xlsx').status_code == 302, "multi-enquête : export du jeu fusionné en place (sans enquêtes : renvoi)")
 say('.csv' in ms, "multi-enquête : import CSV accepté")
+from modules import multi_comments
+lecture = multi_comments.interpret({'kind': 'categorical', 'variable': 'X', 'evolution': [],
+    'stats': {'surveys': [{'name': 'A', 'n': 80, 'top': 'OUI', 'top_pct': 55.0}, {'name': 'B', 'n': 90, 'top': 'OUI', 'top_pct': 70.0}], 'n_modalites': 2},
+    'test': {'test': 'χ² (indépendance)', 'p_value': 0.01, 'q_value': 0.01, 'cramers_v': 0.2}})
+say('diffèrent' in lecture and 'V de Cramér' in lecture and 'faible' in lecture, "multi-enquête : lecture automatique sous chaque comparaison (écart, intensité)")
 import pandas as pd
 from modules import choice_labels
 shown = choice_labels.relabel_frame(pd.DataFrame({'Sexe__X': ['femme', 'homme']}),

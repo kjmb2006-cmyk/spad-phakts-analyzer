@@ -14,7 +14,8 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     compare_categorical_by_survey,
                                     compare_continuous_by_survey, is_hidden_column,
                                     evolution_categorical, evolution_continuous,
-                                    auto_analyze)
+                                    auto_analyze, cross_survey_test, apply_fdr)
+from modules import multi_comments
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
@@ -2460,9 +2461,21 @@ def _compute_ms_comparison(merged, variable, order=None):
             r['kind'] = 'categorical'
             r['evolution'] = evolution_categorical(merged, variable, order)
         r['variable'] = variable
+        r['test'] = cross_survey_test(merged, variable, r['kind'])
         return r
     except Exception as e:
         return {'variable': variable, 'error': str(e)}
+
+
+def _ms_interpret(results, order, cross_checks=()):
+    """Ajoute à chaque comparaison sa lecture automatique et le commentaire libre déjà saisi,
+    et renvoie la synthèse. La correction des tests multiples n'a de sens qu'à partir de deux tests."""
+    corrected = sum(1 for r in results if r.get('test')) >= 2
+    for r in results:
+        r['interpretation'] = multi_comments.interpret(r, corrected)
+        r['user_comment'] = _get_user_comment('multi_survey', r.get('variable') or r.get('radical') or '')
+    n_errors = sum(1 for c in cross_checks if c.get('severite') == 'erreur')
+    return multi_comments.synthese(results, order, corrected, n_errors)
 
 
 def _ms_build_xlsx(mv_result: dict, mv_method: str) -> bytes:
@@ -2841,6 +2854,7 @@ def multi_survey():
             compared_vars = kept
             session['ms_compared_vars'] = kept
 
+    synthese_text = ''
     if len(surveys) >= 1:
         try:
             cov = variable_coverage(surveys, mode=mode)
@@ -2875,6 +2889,7 @@ def multi_survey():
                     auto_results = auto_analyze(surveys, mode=mode, order=order)
                     for r in auto_results:
                         r['label'] = var_labels.get(r.get('variable') or r.get('radical'))
+                    synthese_text = _ms_interpret(auto_results, order, cross_checks)
                 except Exception as e:
                     auto_results = []
                     flash(f"Erreur d'analyse automatique : {e}", 'danger')
@@ -2882,6 +2897,8 @@ def multi_survey():
                 for v in compared_vars:
                     results.append(_compute_ms_comparison(merged, v, order))
                     results[-1]['label'] = var_labels.get(v)
+                apply_fdr(results)
+                synthese_text = _ms_interpret(results, order, cross_checks)
 
     # Variables proposées (union + variables PHAKTS)
     candidate_vars = []
@@ -2944,6 +2961,7 @@ def multi_survey():
                             auto_results=auto_results,
                             merged_meta=merged_meta,
                             pile=pile, order=order, cross_checks=cross_checks, var_labels=var_labels,
+                            synthese_text=synthese_text,
                             gdb_enquetes=[dict(e, in_pile=any(m.get('source') == 'gdb' and m.get('factum') == e['factum']
                                                               for m in surveys_meta)) for e in gdb.enquetes()],
                             kobo_connected=bool(session.get('kobo_token')),
@@ -3191,7 +3209,8 @@ def report():
             multi_survey_meta = None
             if 'multi_survey' in selected_analyses:
                 compared = list(session.get('ms_compared_vars', []) or [])
-                surveys  = _load_multi_surveys()
+                st = _ms_state()
+                surveys, order = st['surveys'], st['order']
                 if compared and len(surveys) >= 2:
                     try:
                         mode = session.get('ms_mode', 'phakts')
@@ -3203,7 +3222,10 @@ def report():
                             'mode': mode,
                         }
                         for v in compared:
-                            multi_survey_results.append(_compute_ms_comparison(merged, v))
+                            multi_survey_results.append(_compute_ms_comparison(merged, v, order))
+                        apply_fdr(multi_survey_results)
+                        multi_survey_meta['synthese'] = _ms_interpret(
+                            multi_survey_results, order, _ms_cross_checks(surveys, st['entries'], st['factums']))
                     except Exception as e:
                         flash(f"Erreur multi-enquête dans le rapport : {e}", 'warning')
                 elif not compared:

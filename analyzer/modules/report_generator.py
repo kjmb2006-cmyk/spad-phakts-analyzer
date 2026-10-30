@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import plotly.io as pio
 import tempfile
+from xml.sax.saxutils import escape as _xml_escape
 
 # Contournement bug Kaleido : son script shell fait `cd $DIR` sans guillemets,
 # ce qui plante quand le chemin contient des espaces ("Consultance 2026").
@@ -533,6 +534,10 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 f"<b>{multi_survey_meta['n_obs']}</b> observations, "
                 f"<b>{multi_survey_meta['n_vars']}</b> variables alignées.", S['Body']))
             story.append(Spacer(1, 0.3*cm))
+            if multi_survey_meta.get('synthese'):
+                story.append(Paragraph('<b>Synthèse de la comparaison</b>', S['Body']))
+                story.append(Paragraph(_xml_escape(multi_survey_meta['synthese']).replace('\n', '<br/>'), S['CommentAuto']))
+                story.append(Spacer(1, 0.3*cm))
 
         for idx, r in enumerate(multi_survey_results, start=1):
             story.append(Paragraph(
@@ -567,6 +572,9 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 story.append(Paragraph(
                     f"Figure : Comparaison de <b>{r.get('variable', '?')}</b> entre enquêtes",
                     S['Caption']))
+            _add_comment(story,
+                         _xml_escape(r.get('interpretation') or '').replace('\n', '<br/>'),
+                         _xml_escape(user_comments.get(f"multi_survey:{r.get('variable')}", '')).replace('\n', '<br/>'))
             story.append(Spacer(1, 0.4*cm))
         section += 1
         story.append(PageBreak())
@@ -1038,6 +1046,9 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                 f"« {multi_survey_meta['mode']} » — {multi_survey_meta['n_obs']} observations, "
                 f"{multi_survey_meta['n_vars']} variables alignées."
             )
+            if multi_survey_meta.get('synthese'):
+                doc.add_paragraph().add_run('Synthèse de la comparaison').bold = True
+                doc.add_paragraph(multi_survey_meta['synthese'])
         for idx, r in enumerate(multi_survey_results, start=1):
             doc.add_heading(f"{section}.{idx} Variable « {r.get('variable', '?')} »", level=2)
             if r.get('error'):
@@ -1067,6 +1078,8 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                 doc.add_paragraph(
                     f"Figure : Comparaison de « {r.get('variable', '?')} » entre enquêtes"
                 )
+            _add_comment_word(doc, r.get('interpretation') or '',
+                              user_comments.get(f"multi_survey:{r.get('variable')}", ''))
         section += 1
         doc.add_page_break()
 
@@ -1465,6 +1478,10 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 f"{multi_survey_meta['n_surveys']} enquête(s) fusionnée(s) selon le mode "
                 f"« {multi_survey_meta['mode']} » — {multi_survey_meta['n_obs']} observations, "
                 f"{multi_survey_meta['n_vars']} variables alignées."), row)
+            if multi_survey_meta.get('synthese'):
+                row = _write_note(ws, 'Synthèse de la comparaison', row)
+                for line in multi_survey_meta['synthese'].split('\n'):
+                    row = _write_note(ws, line, row)
         for idx, r in enumerate(multi_survey_results, start=1):
             row = _write_subheading(ws, f"{section}.{idx} Variable « {r.get('variable', '?')} »", row)
             if r.get('error'):
@@ -1490,6 +1507,13 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
             if chart_img:
                 tmp_imgs.append(chart_img)
                 row = _write_image(ws, chart_img, row)
+            if r.get('interpretation'):
+                row = _write_note(ws, 'Lecture automatique :', row)
+                for line in r['interpretation'].split('\n'):
+                    row = _write_note(ws, line, row)
+            user = user_comments.get(f"multi_survey:{r.get('variable')}", '')
+            if user:
+                row = _write_note(ws, f"Commentaire de l'analyste : {user}", row, italic=True)
         section += 1
 
     if output_path:
