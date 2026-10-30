@@ -921,7 +921,7 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
     if (!s) { res.errors.push('Factum vide.'); return res; }
     const bad = [...new Set(s.replace(/[A-Za-z0-9_]/g, ''))].sort();
     if (bad.length) {
-      res.errors.push(`Caractères interdits : ${bad.map(c => `'${c}'`).join(' ')} (lettres sans accent, chiffres et « _ » uniquement).`);
+      res.errors.push(`Caractères interdits : ${bad.map(c => (c === ' ' ? 'espace' : `'${c}'`)).join(' ')} (lettres sans accent, chiffres et « _ » uniquement).`);
       return res;
     }
     const m = s.match(FACTUM_RE);

@@ -28,6 +28,7 @@ import unicodedata
 import pandas as pd
 
 from modules import factum as study_factum
+from modules.phakts_codes import alignment_key
 from modules.form_mapping import DB_PATH
 
 MAX_CELLS = 3_000_000
@@ -69,17 +70,8 @@ def _connect():
 
 
 def radical_of(column):
-    """Clé d'alignement d'une colonne : son code PHAKTS sans la directive ni
-    le chemin de groupe Kobo — 'groupe/Age__1Y!0<N<120' → 'Age__1Y' ; une
-    case de choix multiple garde son option ('Sport__X/Football'). Une
-    colonne non codifiée garde son nom (sans chemin de groupe)."""
-    parts = str(column).split('/')
-    first = next((i for i, p in enumerate(parts) if '__' in p), None)
-    if first is None:
-        return parts[-1].strip() or str(column)
-    parts = parts[first:]
-    parts[0] = parts[0].split('!', 1)[0]
-    return '/'.join(parts).strip()
+    """Clé d'alignement d'une colonne (voir modules/phakts_codes.py)."""
+    return alignment_key(column)
 
 
 def _fold(text):
@@ -174,6 +166,31 @@ def enquetes():
         e['parts'] = study_factum.parse(e['factum'])['parts']
         out.append(e)
     return sorted(out, key=lambda e: (e['parts'].get('date', ''), e['factum']), reverse=True)
+
+
+def dataframe(fac):
+    """Reconstruit une enquête versée sous forme de tableau (une ligne par
+    répondant, une colonne par code d'origine) — pour la rouvrir dans
+    l'analyse multi-enquête sans recharger le fichier. Les colonnes
+    entièrement numériques redeviennent numériques ; les valeurs manquantes
+    (non versées) restent vides."""
+    conn = _connect()
+    try:
+        rows = conn.execute('SELECT repondant, code, valeur, valeur_num FROM gdb_valeurs WHERE factum = ? '
+                            'ORDER BY rowid', (fac,)).fetchall()
+        variables = conn.execute('SELECT code, n_valeurs, n_num FROM gdb_variables WHERE factum = ? '
+                                 'ORDER BY rowid', (fac,)).fetchall()
+    finally:
+        conn.close()
+    if not rows:
+        return None
+    respondents = list(dict.fromkeys(r[0] for r in rows))
+    numeric = {code for code, n, n_num in variables if n and n == n_num}
+    data = {code: {} for code, _, _ in variables}
+    for resp, code, text, num in rows:
+        data[code][resp] = num if code in numeric else text
+    return pd.DataFrame({c: pd.Series(v, dtype='float64' if c in numeric else 'object') for c, v in data.items()},
+                        index=respondents)
 
 
 def supprimer(fac):

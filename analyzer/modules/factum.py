@@ -74,7 +74,7 @@ def parse(factum):
         return res
     bad = sorted(set(re.sub(r'[A-Za-z0-9_]', '', s)))
     if bad:
-        res['errors'].append('Caractères interdits : ' + ' '.join(repr(c) for c in bad)
+        res['errors'].append('Caractères interdits : ' + ' '.join('espace' if c == ' ' else repr(c) for c in bad)
                              + ' (lettres sans accent, chiffres et « _ » uniquement).')
         return res
     m = FACTUM_RE.match(s)
@@ -149,6 +149,15 @@ def set_for_survey(survey_key, factum, user=''):
         finally:
             conn.close()
     return res
+
+
+def clear_for_survey(survey_key):
+    conn = _connect()
+    try:
+        with conn:
+            conn.execute('DELETE FROM survey_factums WHERE survey_key = ?', (survey_key,))
+    finally:
+        conn.close()
 
 
 def from_dataframe(df):
