@@ -21,6 +21,56 @@
     </a>
   </div>
 
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="fw-semibold small mb-1"><i class="bi bi-tag me-1 text-primary"></i>Libellés des modalités</div>
+        {% if labels_n %}
+        <p class="small text-muted mb-2">{{ labels_n }} question(s) à choix lue(s) dans le formulaire : les analyses affichent
+          « Sage-femme », « Infirmier »… au lieu des noms internes.</p>
+        {% else %}
+        <p class="small text-muted mb-2">Sans formulaire joint, les modalités s'affichent sous leur nom interne mis en forme
+          (« sage_femme » → « Sage femme »). Joignez l'<strong>XLSForm</strong> pour lire les vrais libellés
+          (celui de PHAKS Studio, ou « Télécharger XLS » dans KoboToolbox).</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('data_labels') }}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+          <input type="file" name="xlsform" accept=".xlsx,.xls" class="form-control form-control-sm" style="max-width:260px" required>
+          <button class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip me-1"></i>{{ 'Remplacer' if labels_n else 'Joindre l\'XLSForm' }}</button>
+        </form>
+        {% if labels_n %}
+        <form method="post" action="{{ url_for('data_labels_clear') }}" class="mt-2">
+          <button class="btn btn-sm btn-link text-muted p-0">Retirer les libellés</button>
+        </form>
+        {% endif %}
+      </div></div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="fw-semibold small mb-1"><i class="bi bi-sliders2 me-1 text-primary"></i>Lignes et variables ajoutées</div>
+        <p class="small text-muted mb-2">
+          {% if excluded_n %}<strong>{{ excluded_n }}</strong> ligne(s) écartée(s) de l'analyse depuis la
+          <a href="{{ url_for('validation_donnees') }}">validation des données</a>.
+          {% else %}Aucune ligne écartée : toutes les soumissions sont analysées.{% endif %}
+        </p>
+        {% if excluded_n %}
+        <form method="post" action="{{ url_for('data_exclusions_clear') }}" class="mb-2">
+          <button class="btn btn-sm btn-outline-secondary">Rétablir toutes les lignes</button>
+        </form>
+        {% endif %}
+        {% if derived %}
+        <div class="small text-muted mb-1">Variables calculées (issues d'une classification) :</div>
+        {% for name in derived %}
+        <form method="post" action="{{ url_for('data_derived_delete') }}" class="d-inline-flex align-items-center gap-1 me-2">
+          <input type="hidden" name="name" value="{{ name }}">
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ name }}</span>
+          <button class="btn btn-sm btn-link text-danger p-0" title="Supprimer cette variable"><i class="bi bi-x-circle"></i></button>
+        </form>
+        {% endfor %}
+        {% endif %}
+      </div></div>
+    </div>
+  </div>
+
   <span class="section-label d-block mb-3"><i class="bi bi-grid-1x2 me-1"></i>Analyses disponibles</span>
   <div class="row g-3 mb-4">
     <div class="col-md-6 col-lg-4">

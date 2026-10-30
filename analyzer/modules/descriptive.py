@@ -108,6 +108,8 @@ def tris_a_plat(df: pd.DataFrame, variable: str) -> dict:
         })
 
     tbl = pd.DataFrame(rows)
+    summary_rows = [{'modalite': r['Modalité'], 'n': r['Effectif (n)'], 'pct': r['% valides'],
+                     'ic_lo': r['IC 95% bas'], 'ic_hi': r['IC 95% haut']} for r in rows]
     mode_val = counts.index[0] if n_cats else '—'
     mode_pct = round(counts.iloc[0] / n_valid * 100, 1) if n_valid else 0
     props = counts.values / n_valid if n_valid else np.zeros(1)
@@ -209,6 +211,7 @@ def tris_a_plat(df: pd.DataFrame, variable: str) -> dict:
         'mode_val': mode_val,
         'mode_pct': mode_pct,
         'hhi': hhi,
+        'rows': summary_rows,
         'table_html': tbl.to_html(
             classes='table table-sm table-bordered table-hover align-middle text-center',
             border=0, index=False),
@@ -239,6 +242,10 @@ def statistiques_continues(df: pd.DataFrame, variable: str) -> dict:
     std_v = float(series.std())
     cv = round(std_v / mean_v * 100, 1) if mean_v != 0 else None
     stat_n, p_n, test_name, is_normal = _normality_test(series)
+    sem = std_v / np.sqrt(n_valid) if n_valid > 1 else 0.0
+    t_crit = stats.t.ppf(0.975, n_valid - 1) if n_valid > 1 else 0.0
+    ic_lo, ic_hi = mean_v - t_crit * sem, mean_v + t_crit * sem
+    skew_v = float(series.skew()) if n_valid > 2 else None
 
     stats_rows = [
         ('N valides', n_valid),
@@ -247,6 +254,7 @@ def statistiques_continues(df: pd.DataFrame, variable: str) -> dict:
         ('Maximum', round(float(series.max()), 3)),
         ('Étendue', round(float(series.max() - series.min()), 3)),
         ('Moyenne', round(mean_v, 3)),
+        ('IC 95 % de la moyenne', f'[{round(ic_lo, 3)} ; {round(ic_hi, 3)}]'),
         ('Médiane', round(float(series.median()), 3)),
         ('Écart-type', round(std_v, 3)),
         ('Coeff. de variation (%)', cv),
@@ -347,6 +355,8 @@ def statistiques_continues(df: pd.DataFrame, variable: str) -> dict:
         'median': round(float(series.median()), 2),
         'std': round(std_v, 2),
         'cv': cv,
+        'ic_lo': round(ic_lo, 3), 'ic_hi': round(ic_hi, 3), 'skew': None if skew_v is None or np.isnan(skew_v) else round(skew_v, 3),
+        'q1': round(q1, 3), 'q3': round(q3, 3), 'fence_low': round(fence_low, 3), 'fence_high': round(fence_hi, 3),
         'n_outliers': n_out,
         'normality_test': test_name,
         'normality_p': p_n,
@@ -364,11 +374,16 @@ def statistiques_continues(df: pd.DataFrame, variable: str) -> dict:
 
 def analyse_binaire_groupe(df: pd.DataFrame, variables: list,
                             label_1='Oui', label_0='Non') -> dict:
-    """Taux de sélection par modalité avec IC Wilson et graphique à barres horizontales."""
-    n_total = len(df)
+    """Taux de sélection par modalité avec IC Wilson et graphique à barres horizontales. La base est celle des
+    RÉPONDANTS à la question (au moins une case renseignée) : une personne à qui la question n'a pas été posée
+    ne compte pas comme n'ayant rien coché."""
+    flags = df[variables].apply(pd.to_numeric, errors='coerce')
+    answered = flags.notna().any(axis=1)
+    n_total = int(answered.sum())
+    flags = flags[answered].fillna(0)
     rows = []
     for var in variables:
-        col = pd.to_numeric(df[var], errors='coerce').fillna(0)
+        col = flags[var]
         n_oui = int(col.sum())
         pct = round(n_oui / n_total * 100, 1) if n_total else 0
         ci_lo, ci_hi = _wilson_ci(n_oui, n_total)
@@ -380,6 +395,9 @@ def analyse_binaire_groupe(df: pd.DataFrame, variables: list,
             'IC 95% bas': ci_lo,
             'IC 95% haut': ci_hi,
         })
+    mean_choices = round(float(flags.sum(axis=1).mean()), 2) if n_total else None
+    summary_rows = sorted(({'option': r['Modalité'], 'n': r['Effectif'], 'pct': r['% sélection'],
+                            'ic_lo': r['IC 95% bas'], 'ic_hi': r['IC 95% haut']} for r in rows), key=lambda x: -x['pct'])
 
     tbl = pd.DataFrame(rows).sort_values('% sélection', ascending=True).reset_index(drop=True)
 
@@ -429,9 +447,78 @@ def analyse_binaire_groupe(df: pd.DataFrame, variables: list,
         'top_modal': tbl.iloc[-1]['Modalité'] if n else '—',
         'top_pct': tbl.iloc[-1]['% sélection'] if n else 0,
         'avg_pct': avg,
+        'rows': summary_rows,
+        'mean_choices': mean_choices,
         'table_html': tbl.sort_values('% sélection', ascending=False).to_html(
             classes='table table-sm table-bordered table-hover align-middle text-center',
             border=0, index=False),
         'chart': fig.to_json(engine='json'),
         'analyse_type': 'binaire_groupe',
     }
+
+
+# ── Variable décomposée par un sous-groupe ────────────────────────────────────
+
+MAX_GROUPS = 15
+
+
+def par_groupe(df: pd.DataFrame, variable: str, group_var: str, kind: str) -> dict:
+    """Une variable décrite séparément pour chaque modalité de `group_var` (district, profession…) :
+    - catégorielle : répartition en % dans chaque groupe + test d'association (χ²) ;
+    - continue     : effectif, moyenne, médiane et écart-type par groupe + test d'écart (ANOVA de Welch / Kruskal-Wallis).
+    Les groupes sont limités aux MAX_GROUPS plus nombreux."""
+    from modules import crosstabs
+    sub = df[[variable, group_var]].dropna()
+    sizes = sub[group_var].astype(str).value_counts()
+    keep = sizes.head(MAX_GROUPS).index
+    sub = sub[sub[group_var].astype(str).isin(keep)]
+    sub = sub.assign(**{group_var: sub[group_var].astype(str)})
+    if sub[group_var].nunique() < 2:
+        raise ValueError(f"« {group_var} » n'a qu'une modalité parmi les réponses à « {variable} » : rien à décomposer.")
+    base = {'variable': variable, 'group': group_var, 'kind': kind, 'n': int(len(sub)),
+            'n_groups_total': int(sizes.size), 'shown': int(len(keep))}
+
+    if kind == 'continuous':
+        sub[variable] = pd.to_numeric(sub[variable], errors='coerce')
+        sub = sub.dropna()
+        g = sub.groupby(group_var)[variable].agg(['count', 'mean', 'median', 'std']).reindex(list(keep)).dropna(subset=['count'])
+        groups = [{'name': i, 'n': int(r['count']), 'mean': float(r['mean']), 'median': float(r['median']),
+                   'std': None if pd.isna(r['std']) else float(r['std'])} for i, r in g.iterrows()]
+        samples = [sub.loc[sub[group_var] == name, variable].values for name in g.index]
+        samples = [x for x in samples if len(x) >= 3]
+        test = None
+        if len(samples) >= 2:
+            normal = all(len(x) < 5000 and stats.shapiro(x)[1] >= 0.05 for x in samples)
+            if normal:
+                stat, p = stats.f_oneway(*samples)
+                test = {'test': 'ANOVA', 'p_value': float(p)}
+            else:
+                stat, p = stats.kruskal(*samples)
+                test = {'test': 'Kruskal-Wallis', 'p_value': float(p)}
+        table = g.round(2).rename(columns={'count': 'Effectif', 'mean': 'Moyenne', 'median': 'Médiane', 'std': 'Écart-type'})
+        table.index.name = str(group_var).split('/')[-1]
+        fig = px.box(sub, x=group_var, y=variable, color=group_var, color_discrete_sequence=px.colors.qualitative.Set2,
+                     category_orders={group_var: list(g.index)}, title=f'{str(variable).split("/")[-1]} selon {str(group_var).split("/")[-1]}')
+        fig.update_layout(**_LAYOUT, height=400, showlegend=False)
+        fig.update_xaxes(title='')
+        return {**base, 'groups': groups, 'test': test, 'table_html': table.to_html(
+            classes='table table-sm table-bordered text-center', border=0), 'chart': fig.to_json(engine='json')}
+
+    sub = sub.assign(**{variable: sub[variable].astype(str)})
+    ct = pd.crosstab(sub[variable], sub[group_var])[list(keep)]
+    ct = ct.loc[:, ct.sum(axis=0) > 0]
+    pct = ct.div(ct.sum(axis=0), axis=1).mul(100).round(1)
+    a = crosstabs.association(ct)
+    groups = [{'name': c, 'n': int(ct[c].sum())} for c in ct.columns]
+    test = None if a is None else {k: a[k] for k in ('chi2', 'p_val', 'dof', 'cramers_v', 'assoc_label', 'warning', 'low_expected_pct')}
+    melt = pct.reset_index().melt(id_vars=variable, var_name=group_var, value_name='%')
+    fig = px.bar(melt, x=group_var, y='%', color=variable, barmode='stack', color_discrete_sequence=px.colors.qualitative.Set2,
+                 title=f'{str(variable).split("/")[-1]} (% du groupe) selon {str(group_var).split("/")[-1]}')
+    fig.update_layout(**_LAYOUT, height=420, legend_title_text='')
+    fig.update_xaxes(title='')
+    shown = pct.copy()
+    shown.loc['Effectif du groupe'] = ct.sum(axis=0)
+    shown.index.name = str(variable).split('/')[-1]
+    return {**base, 'groups': groups, 'test': test, 'table_html': shown.to_html(
+        classes='table table-sm table-bordered text-center', border=0, float_format=lambda x: f'{x:.1f}'),
+        'chart': fig.to_json(engine='json')}

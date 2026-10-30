@@ -3,18 +3,23 @@
 {% block page_title %}Analyse Croisée Dynamique{% endblock %}
 
 {% block content %}
+{% macro opt(v, selected) %}<option value="{{ v }}" {% if selected %}selected{% endif %} title="{{ v }}">{{ labels.get(v) or (v|varname) }}{% if labels.get(v) %}  ({{ v.split('/')[-1] | truncate(28) }}){% endif %}</option>{% endmacro %}
 <div class="container-fluid px-4 py-3">
+
+  {% include "_excluded_banner.html" %}
 
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-grid-3x3-gap-fill fs-3"></i>
     <div>
       <strong>Tableau croisé dynamique</strong> — façon Excel.
-      Glissez plusieurs variables en <em>Lignes</em>, <em>Colonnes</em>, choisissez une <em>Valeur</em>
-      et l'<em>Agrégation</em> (somme, moyenne, comptage…). Ajoutez des filtres au besoin.
+      Choisissez des variables en <em>Lignes</em> et en <em>Colonnes</em>, une <em>Valeur</em>
+      et l'<em>Agrégation</em> (somme, moyenne, comptage…). Pour deux variables, le test d'association est calculé et lu pour vous ;
+      une 3<sup>e</sup> variable de <em>stratification</em> vérifie que l'association ne vient pas d'un facteur de confusion.
     </div>
   </div>
 
   <form method="POST" id="pivotForm">
+    <input type="hidden" name="kind" value="pivot">
     <div class="row g-3">
 
       <!-- ═══════════ Pivot fields ═══════════ -->
@@ -37,19 +42,19 @@
                 {% for v, opts in filter_options.items() %}
                 <details class="mb-1">
                   <summary class="small fw-semibold" style="cursor:pointer">
-                    {{ v }}
+                    {{ labels.get(v) or (v|varname) }}
                     {% if filters.get(v) %}<span class="badge bg-primary ms-1">{{ filters[v]|length }}</span>{% endif %}
                   </summary>
                   <div class="ps-3 pt-2" style="max-height:140px;overflow-y:auto">
-                    {% for opt in opts %}
+                    {% for o in opts %}
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox"
-                             name="filter_{{ v }}" value="{{ opt }}"
+                             name="filter_{{ v }}" value="{{ o }}"
                              id="f_{{ loop.index0 }}_{{ v|replace('/', '_')|replace(' ', '_') }}"
-                             {% if filters.get(v) and opt in filters[v] %}checked{% endif %}>
+                             {% if filters.get(v) and o in filters[v] %}checked{% endif %}>
                       <label class="form-check-label small"
                              for="f_{{ loop.index0 }}_{{ v|replace('/', '_')|replace(' ', '_') }}">
-                        {{ opt }}
+                        {{ o }}
                       </label>
                     </div>
                     {% endfor %}
@@ -65,9 +70,7 @@
                 <i class="bi bi-arrows-vertical me-1"></i>Lignes (≥ 1)
               </label>
               <select name="rows" class="form-select form-select-sm" multiple size="6" required>
-                {% for v in cat_vars %}
-                <option value="{{ v }}" {% if v in rows %}selected{% endif %}>{{ v }}</option>
-                {% endfor %}
+                {% for v in cat_vars %}{{ opt(v, v in rows) }}{% endfor %}
               </select>
               <small class="text-muted">Ctrl/Cmd-clic pour choisir plusieurs niveaux.</small>
             </div>
@@ -78,10 +81,20 @@
                 <i class="bi bi-arrows me-1"></i>Colonnes (optionnel)
               </label>
               <select name="cols" class="form-select form-select-sm" multiple size="6">
-                {% for v in cat_vars %}
-                <option value="{{ v }}" {% if v in cols %}selected{% endif %}>{{ v }}</option>
-                {% endfor %}
+                {% for v in cat_vars %}{{ opt(v, v in cols) }}{% endfor %}
               </select>
+            </div>
+
+            <!-- Layer -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted" for="layerSel">
+                <i class="bi bi-layers me-1"></i>Stratifier par (optionnel)
+              </label>
+              <select name="layer" id="layerSel" class="form-select form-select-sm">
+                <option value="">— Aucune —</option>
+                {% for v in cat_vars %}{{ opt(v, v == layer) }}{% endfor %}
+              </select>
+              <small class="text-muted">Pour 1 ligne × 1 colonne en comptage : le croisement est refait dans chaque strate.</small>
             </div>
 
             <!-- Value -->
@@ -91,9 +104,7 @@
               </label>
               <select name="value_var" class="form-select form-select-sm" id="valueVarSel">
                 <option value="">— Comptage des observations —</option>
-                {% for v in num_vars %}
-                <option value="{{ v }}" {% if v == value_var %}selected{% endif %}>{{ v }}</option>
-                {% endfor %}
+                {% for v in num_vars %}{{ opt(v, v == value_var) }}{% endfor %}
               </select>
             </div>
 
@@ -125,6 +136,7 @@
                 <option value="col"   {% if pct_type=='col' %}selected{% endif %}>% colonnes</option>
                 <option value="total" {% if pct_type=='total' %}selected{% endif %}>% total</option>
               </select>
+              <small class="text-muted">Pour un nombre ou une somme.</small>
             </div>
 
             <button type="submit" class="btn btn-primary w-100 mt-3">
@@ -143,6 +155,10 @@
           <p class="small">Choisissez au moins une variable en <strong>Ligne</strong>, puis cliquez sur <strong>Calculer</strong>.</p>
         </div>
         {% else %}
+
+        <div class="d-flex justify-content-end mb-2">
+          <a class="btn btn-sm btn-outline-success" href="{{ url_for('crosstabs_export') }}"><i class="bi bi-file-earmark-excel me-1"></i>Exporter en Excel</a>
+        </div>
 
         <!-- Stats banner -->
         {% if result.chi2 is not none %}
@@ -172,16 +188,22 @@
             <span class="status-pill {{ 'status-pill--cible' if not result.sig_label.startswith('non') else 'status-pill--zero' }}">
               {{ result.sig_label }}
             </span>
+            {% if result.fisher_p is not none %}<span class="small opacity-75">· Fisher exact p = {{ result.fisher_p }}</span>{% endif %}
+            {% if result.odds_ratio is not none %}<span class="small opacity-75">· odds ratio {{ result.odds_ratio }} [{{ result.or_ci[0] }} ; {{ result.or_ci[1] }}]</span>{% endif %}
           </div>
         </div>
+        {% if result.warning %}
+        <div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ result.warning }}</div>
+        {% endif %}
         {% else %}
         <div class="alert alert-info py-2 small mb-3">
           <i class="bi bi-info-circle me-1"></i>
           Agrégation : <strong>{{ result.agg_label }}</strong>
-          {% if result.value_var %} sur <strong>{{ result.value_var }}</strong>{% endif %}
+          {% if result.value_var %} sur <strong>{{ labels.get(result.value_var) or result.value_var }}</strong>{% endif %}
           · {{ result.n }} observation(s)
         </div>
         {% endif %}
+        {% if result.pct_note %}<div class="alert alert-light border small py-2">{{ result.pct_note }}</div>{% endif %}
 
         <!-- Pivot table -->
         <div class="card border-0 shadow-sm mb-3">
@@ -199,6 +221,13 @@
                 </button>
               </li>
               {% endif %}
+              {% if result.residuals_html %}
+              <li class="nav-item">
+                <button class="nav-link small" type="button" data-bs-toggle="tab" data-bs-target="#tab-res">
+                  <i class="bi bi-bullseye me-1"></i>Résidus ajustés
+                </button>
+              </li>
+              {% endif %}
             </ul>
           </div>
           <div class="card-body tab-content p-3">
@@ -210,6 +239,14 @@
               <div class="table-responsive">{{ result.pct_html | safe }}</div>
             </div>
             {% endif %}
+            {% if result.residuals_html %}
+            <div class="tab-pane fade" id="tab-res">
+              <p class="small text-muted mb-2">Écart de chaque case à l'indépendance, en écarts-types (résidu standardisé ajusté). Au-delà de ±1,96, la case s'écarte nettement de ce que le hasard donnerait :
+                <span class="badge" style="background:#d4edda;color:#155724">sur-représentée</span>
+                <span class="badge" style="background:#f8d7da;color:#721c24">sous-représentée</span></p>
+              <div class="table-responsive">{{ result.residuals_html | safe }}</div>
+            </div>
+            {% endif %}
           </div>
         </div>
 
@@ -218,20 +255,12 @@
         <div class="row g-3">
           {% if result.chart_heat %}
           <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <div id="chart-heat" class="plotly-chart"></div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm h-100"><div class="card-body"><div id="chart-heat" class="plotly-chart"></div></div></div>
           </div>
           {% endif %}
           {% if result.chart_bar %}
           <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <div id="chart-bar" class="plotly-chart"></div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm h-100"><div class="card-body"><div id="chart-bar" class="plotly-chart"></div></div></div>
           </div>
           {% endif %}
         </div>
@@ -244,10 +273,99 @@
           {% include "_comment_block.html" %}
         {% endwith %}
 
+        <!-- Stratification -->
+        {% if result.strata %}
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-layers me-2 text-primary"></i>Strates de « {{ labels.get(result.strata.layer) or (result.strata.layer|varname) }} »</h6>
+          </div>
+          <div class="card-body">
+            {% if result.strata.mh %}
+            <div class="alert {{ 'alert-warning' if result.strata.confounding else 'alert-light border' }} small py-2">
+              Odds ratio brut : <strong>{{ result.strata.crude_or }}</strong> · commun de Mantel-Haenszel :
+              <strong>{{ result.strata.mh[0] }}</strong> [{{ result.strata.mh[1][0] }} ; {{ result.strata.mh[1][1] }}] (p = {{ result.strata.mh[2] }}).
+              {% if result.strata.confounding %}Les deux diffèrent de plus de 20 % : la variable de stratification est probablement un facteur de confusion.{% endif %}
+            </div>
+            {% endif %}
+            <div class="row g-3">
+              {% for b in result.strata.levels %}
+              <div class="col-md-6">
+                <div class="border rounded p-2 h-100">
+                  <div class="fw-semibold small mb-1">{{ b.level }} <span class="text-muted fw-normal">· n = {{ b.n }}
+                    {% if b.p_val is not none %}· χ² p = {{ b.p_val }}{% endif %}{% if b.cramers_v is not none %} · V = {{ b.cramers_v }}{% endif %}</span></div>
+                  <div class="table-responsive small">{{ b.counts_html | safe }}</div>
+                  {% if b.warning %}<div class="small text-warning-emphasis">{{ b.warning }}</div>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% with section='crosstabs_strata', var=(result.rows | join('|')) ~ '||' ~ (result.cols | join('|')) ~ '||' ~ result.strata.layer,
+                    auto=result.strata_comment, user='' %}
+              {% include "_comment_block.html" %}
+            {% endwith %}
+          </div>
+        </div>
+        {% endif %}
+
         {% endif %}
       </div>
     </div>
   </form>
+
+  <!-- ═══════════ Questions à choix multiples ═══════════ -->
+  <div class="card border-0 shadow-sm mt-4" id="multi">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-check2-square me-2 text-primary"></i>Question à choix multiples × variable</h6>
+    </div>
+    <div class="card-body">
+      {% if multi_groups %}
+      <form method="POST" class="row g-2 align-items-end mb-3">
+        <input type="hidden" name="kind" value="multi">
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold mb-1">Question à choix multiples</label>
+          <select name="group" class="form-select form-select-sm" required>
+            <option value="">—</option>
+            {% for g in multi_groups %}
+            <option value="{{ g.parent }}" {% if g.parent == multi_form.get('group') %}selected{% endif %}>{{ (labels.get(g.parent) or (g.parent|varname)) | truncate(60) }} ({{ g.vars|length }} choix)</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold mb-1">Croisée avec</label>
+          <select name="var" class="form-select form-select-sm" required>
+            <option value="">—</option>
+            {% for v in cat_vars %}{{ opt(v, v == multi_form.get('var')) }}{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-grid"><button class="btn btn-sm btn-primary"><i class="bi bi-play-fill me-1"></i>Croiser</button></div>
+      </form>
+      <p class="small text-muted mb-0">Pour chaque choix : la part des répondants de chaque catégorie qui le citent, et un test d'association corrigé des tests multiples entre choix.</p>
+      {% else %}
+      <p class="small text-muted mb-0">Aucune question à choix multiples détectée dans ces données (colonnes 0/1 « Question/Choix », ou réponses « a b c » dans une même colonne). Joignez l'XLSForm depuis
+        <a href="{{ url_for('analyse_donnees') }}">Analyse de données</a> pour qu'elles soient reconnues avec leurs libellés.</p>
+      {% endif %}
+
+      {% if multi_result %}
+      <hr>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="fw-semibold small">{{ multi_result.n_respondents }} répondants · {{ multi_result.n_options }} choix · {{ multi_result.n_significant }} différence(s) nette(s)</div>
+        <a class="btn btn-sm btn-outline-success" href="{{ url_for('crosstabs_export', kind='multi') }}"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small fw-semibold text-muted mb-1">% des répondants de chaque catégorie citant le choix</p>
+          <div class="table-responsive" style="max-height:420px;overflow-y:auto">{{ multi_result.pct_html | safe }}</div>
+        </div>
+        <div class="col-lg-6"><div id="chart-multi"></div></div>
+      </div>
+      <p class="small fw-semibold text-muted mt-3 mb-1">Tests par choix (q : corrigé des tests multiples, Benjamini-Hochberg)</p>
+      <div class="table-responsive" style="max-height:340px;overflow-y:auto">{{ multi_result.summary_html | safe }}</div>
+      {% with section='crosstabs_multi', var=multi_result.group ~ '|' ~ multi_result.var, auto=multi_result.auto_comment, user=multi_result.user_comment %}
+        {% include "_comment_block.html" %}
+      {% endwith %}
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -262,14 +380,12 @@
     if (aggSel.value === 'count' || aggSel.value === 'nunique') {
       // count: valeur ignorée — ok
     } else if (!valSel.value) {
-      // bascule auto sur count si pas de valeur
       aggSel.value = 'count';
     }
   }
   if (aggSel && valSel) {
     aggSel.addEventListener('change', () => {
       if (['sum','mean','median','min','max','std'].includes(aggSel.value) && !valSel.value) {
-        // visuel : signaler à l'utilisateur de choisir une variable numérique
         valSel.style.borderColor = '#dc3545';
         setTimeout(()=> valSel.style.borderColor = '', 1500);
       }
@@ -277,20 +393,12 @@
     valSel.addEventListener('change', sync);
   }
 })();
-</script>
-{% if result and (result.chart_heat or result.chart_bar) %}
-<script>
+
 const cfg = { responsive: true, displaylogo: false };
-(function(){
-  {% if result.chart_heat %}
-  var h = {{ result.chart_heat | safe }};
-  Plotly.newPlot('chart-heat', h.data, h.layout, cfg);
-  {% endif %}
-  {% if result.chart_bar %}
-  var b = {{ result.chart_bar | safe }};
-  Plotly.newPlot('chart-bar', b.data, b.layout, cfg);
-  {% endif %}
-})();
+whenPlotly(function () {
+  {% if result and result.chart_heat %}var h = {{ result.chart_heat | safe }}; Plotly.newPlot('chart-heat', h.data, h.layout, cfg);{% endif %}
+  {% if result and result.chart_bar %}var b = {{ result.chart_bar | safe }}; Plotly.newPlot('chart-bar', b.data, b.layout, cfg);{% endif %}
+  {% if multi_result %}var m = {{ multi_result.chart_heat | safe }}; Plotly.newPlot('chart-multi', m.data, m.layout, cfg);{% endif %}
+});
 </script>
-{% endif %}
 {% endblock %}

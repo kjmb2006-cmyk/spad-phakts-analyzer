@@ -130,7 +130,22 @@ rapport, _ = multi_report.generate({'title': 'Audit', 'author': 'Audit', 'mode':
     'stats': {'surveys': []}, 'test': None, 'frames': {'counts': pd.DataFrame({'A': [1]}, index=['oui']), 'pct': pd.DataFrame({'A': [100.0]}, index=['oui'])}}]}, 'docx')
 say(rapport[:2] == b'PK' and any(r.rule.startswith('/multi-survey/report.') for r in m.app.url_map.iter_rules()),
     "multi-enquête : rapport d'analyse (PDF, Word, Excel) disponible")
-import pandas as pd
+import numpy as np
+from modules import multivariate, crosstabs, xlsform_expr, validation_rules as vrules
+_d = pd.DataFrame({'a': [1., 2, 3, 4, 5, 6, 7, 8], 'b': [2., 4, 5, 4, 5, 7, 8, 9], 'c': [5., 3, 6, 1, 2, 8, 4, 3]})
+_p = multivariate.run_pca(_d, list('abc'), 2)
+say(np.allclose(_p['loadings']['F1'].abs().values, [abs(np.corrcoef(_d[k], _p['scores']['F1'].values)[0, 1]) for k in 'abc'], atol=.01),
+    "ACP : les saturations sont de vraies corrélations variable-axe")
+_c = pd.DataFrame({'a': list('xyxyzzxyxy') * 6, 'b': list('uvwuvwuvwu') * 6})
+say(abs(multivariate.run_mca(_c, ['a', 'b'], 2)['eigenvalues'][0] - (1 + np.sqrt(multivariate.run_ca(_c, 'a', 'b')['eigenvalues'][0])) / 2) < 2e-4,
+    "ACM : le premier axe est conservé (identité avec l'AFC)")
+_g = pd.DataFrame({'g': list('ab') * 20, 'h': list('cd') * 20, 'x': np.arange(40.)})
+_t = crosstabs.tableau_croise_dynamique(_g, ['g'], ['h'], value_var='x', agg='mean')['frames']['Tableau']
+say(abs(_t.loc['Total', 'Total'] - _g['x'].mean()) < 1e-9, "croisé dynamique : le total d'une moyenne est la vraie moyenne")
+_v = vrules.run_validation(pd.DataFrame({'p': list(np.random.default_rng(1).normal(60, 5, 60)) + [900.]}))
+say(_v['n_atypiques'] >= 1 and _v['pct_sans_anomalie'] == 100.0, "validation : une valeur extrême est comptée à part, pas comme défaut de collecte")
+say(xlsform_expr.evaluate("${a} > 1 and selected(${b}, 'x')", lambda k: {'a': pd.Series([1, 2]), 'b': pd.Series(['x y', 'z'])}.get(k), pd.RangeIndex(2)).tolist() == [False, False],
+    "validation : expressions XLSForm (sauts de logique, contraintes) évaluées")
 from modules import choice_labels
 shown = choice_labels.relabel_frame(pd.DataFrame({'Sexe__X': ['femme', 'homme']}),
                                     {'questions': {}, 'choices': {'Sexe__X': {'femme': 'Femme', 'homme': 'Homme'}}, 'multiple': []})

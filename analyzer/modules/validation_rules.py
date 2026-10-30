@@ -36,6 +36,10 @@ SKEW_LIMIT = 2
 KURTOSIS_LIMIT = 7      # aplatissement en excès (0 pour une loi normale)
 MIN_VALUES_FOR_STATS = 20
 MIN_COLUMNS_FOR_IDENTICAL = 10   # en dessous, deux réponses identiques sont banales
+RELATIVE_SHORT = 0.3             # entretien plus court que 30 % de la durée médiane
+MIN_ROWS_FOR_RELATIVE = 20
+ATYPICAL = 'Valeurs extrêmes'    # constats statistiques : à regarder, mais pas des erreurs de collecte
+MAX_DUPLICATE_SHARE = 0.05       # au-delà, une « clé » devinée n'en est pas une (des répétitions légitimes)
 
 # Colonnes techniques Kobo / ODK : ni des réponses, ni des variables d'analyse
 _TECH_COLUMNS = {
@@ -59,7 +63,7 @@ OPERATEURS = {
     '=': lambda a, b: a == b,
     '!=': lambda a, b: a != b,
 }
-OPERATEUR_SYMBOLES = {'<': '<', '<=': '≤', '>': '>', '>=': '≥', '=': '=', '!=': '≠'}
+OPERATEUR_SYMBOLES = {'<': '<', '<=': '≤', '>': '>', '>=': '≥', '=': '=', '!=': '≠', 'unique': 'unique'}
 
 
 def _check(categorie, titre, detail, severite, variables, mask=None):
@@ -129,6 +133,29 @@ def _duplicate_checks(df):
     return out
 
 
+_ORDER_COLUMN = re.compile(r'(^|[_/ ])(numero|num|n)[_ ]?(d[_ ])?ordre|(^|[_/ ])ordre([_ ]|$)|(^|[_/ ])rang([_ ]|$)', re.IGNORECASE)
+_SITE_COLUMN = re.compile(r'etablissement|site|menage|village|ecole|formation[_ ]sanitaire|centre', re.IGNORECASE)
+
+
+def _key_checks(df):
+    """Deux colonnes qui ressemblent à une clé : le site (établissement, ménage…) et un numéro d'ordre. Deux soumissions
+    ayant les deux identiques sont suspectes. Une clé devinée qui ne l'est pas (trop de répétitions) est ignorée."""
+    order_cols = [c for c in df.columns if _ORDER_COLUMN.search(str(c).split('/')[-1]) and str(c).lower() not in _TECH_COLUMNS]
+    site_cols = [c for c in df.columns if _SITE_COLUMN.search(str(c).split('/')[-1]) and 2 <= df[c].nunique() < 0.9 * len(df)]
+    out = []
+    if not (order_cols and site_cols) or len(df) < 10:
+        return out
+    site = max(site_cols, key=lambda c: df[c].nunique())
+    for order in order_cols[:1]:
+        mask = df[site].notna() & df[order].notna() & df.duplicated(subset=[site, order], keep=False)
+        if 0 < mask.sum() <= MAX_DUPLICATE_SHARE * len(df):
+            out.append(_check('Doublons', f'Même « {str(site).split("/")[-1]} » et même « {str(order).split("/")[-1]} »',
+                              'Deux soumissions décrivent peut-être le même enregistrement. Si ce couple de variables n\'est pas une clé '
+                              "(une personne peut y figurer plusieurs fois), l'ignorer ; sinon l'enregistrer comme règle « clé d'unicité ».",
+                              A_VERIFIER, [site, order], mask))
+    return out
+
+
 def _time_checks(df):
     out = []
     start_col, end_col = _find_time_column(df, 'start'), _find_time_column(df, 'end')
@@ -145,6 +172,15 @@ def _time_checks(df):
         out.append(_check('Cohérence des heures', f'Questionnaire resté ouvert plus de {MAX_INTERVIEW_HOURS} h',
                           'Questionnaire laissé ouvert, repris plus tard, ou horloge déréglée.',
                           A_VERIFIER, [start_col, end_col], both & (minutes > MAX_INTERVIEW_HOURS * 60)))
+        valid = both & (minutes >= 0)
+        if valid.sum() >= MIN_ROWS_FOR_RELATIVE:
+            median = float(minutes[valid].median())
+            if median >= 5:
+                out.append(_check('Cohérence des heures', "Entretien très court par rapport à la durée habituelle",
+                                  f"Moins de {int(RELATIVE_SHORT * 100)} % de la durée médiane ({median:.0f} min) : questionnaire bâclé "
+                                  "ou rempli sans l'enquêté ? À rapprocher des autres entretiens du même enquêteur.",
+                                  A_VERIFIER, [start_col, end_col],
+                                  valid & (minutes >= MIN_INTERVIEW_MINUTES) & (minutes < RELATIVE_SHORT * median)))
         if '_submission_time' in df.columns:
             sent = _as_datetime(df['_submission_time'])
             ahead = end.notna() & sent.notna() & (end > sent + pd.Timedelta(hours=1))
@@ -236,6 +272,15 @@ def _comparable(left, right):
 
 
 def evaluate_rule(df, rule):
+    if rule['operateur'] == 'unique':
+        cols = [c for c in rule['gauche'].split('|') if c]
+        titre = rule.get('libelle') or "Clé d'unicité : " + ' + '.join(c.split('/')[-1] for c in cols)
+        missing = [c for c in cols if c not in df.columns]
+        if missing:
+            return _check("Règles de l'enquête", titre, f"Règle non appliquée : variable absente ({', '.join(missing)}).", INFO, cols)
+        mask = df[cols].notna().all(axis=1) & df.duplicated(subset=cols, keep=False)
+        return _check("Règles de l'enquête", titre, 'Plusieurs soumissions portent la même combinaison de valeurs (clé non respectée).',
+                      ERREUR, cols, mask)
     sym = OPERATEUR_SYMBOLES.get(rule['operateur'], rule['operateur'])
     titre = rule.get('libelle') or f"{rule['gauche']} {sym} {rule['droite']}"
     if rule['gauche'] not in df.columns or (rule['droite_est_variable'] and rule['droite'] not in df.columns):
@@ -257,20 +302,87 @@ def evaluate_rule(df, rule):
 _SEVERITY_ORDER = {ERREUR: 0, A_VERIFIER: 1, INFO: 2}
 
 
-def run_validation(df, rules=()):
-    checks = (_duplicate_checks(df) + _time_checks(df) + _phakts_range_checks(df)
-              + _outlier_checks(df) + [evaluate_rule(df, r) for r in rules])
+def run_validation(df, rules=(), extra_checks=()):
+    """Tous les contrôles. `extra_checks` : contrôles déjà calculés ailleurs (formulaire XLSForm). Les constats
+    STATISTIQUES (valeurs extrêmes, distributions) sont comptés à part : ils ne font pas baisser le « % sans anomalie »,
+    qui ne mesure que des défauts de collecte (doublons, heures, seuils, règles, formulaire)."""
+    checks = (_duplicate_checks(df) + _key_checks(df) + _time_checks(df) + _phakts_range_checks(df)
+              + _outlier_checks(df) + [evaluate_rule(df, r) for r in rules] + list(extra_checks))
     checks.sort(key=lambda c: (_SEVERITY_ORDER[c['severite']], c['categorie'], -len(c['lignes'])))
-    flagged = {line for c in checks for line in c['lignes']}
+    core = {line for c in checks if c['categorie'] != ATYPICAL for line in c['lignes']}
+    atypical = {line for c in checks if c['categorie'] == ATYPICAL for line in c['lignes']}
     n = len(df)
     return {
         'n_lignes': n,
-        'n_signalees': len(flagged),
-        'pct_sans_anomalie': round(100 * (n - len(flagged)) / n, 1) if n else 100.0,
+        'n_signalees': len(core),
+        'n_atypiques': len(atypical - core),
+        'pct_sans_anomalie': round(100 * (n - len(core)) / n, 1) if n else 100.0,
         'n_erreurs': sum(1 for c in checks if c['severite'] == ERREUR and c['lignes']),
-        'n_a_verifier': sum(1 for c in checks if c['severite'] == A_VERIFIER),
+        'n_a_verifier': sum(1 for c in checks if c['severite'] == A_VERIFIER and c['categorie'] != ATYPICAL),
         'checks': checks,
     }
+
+
+def error_lines(result, severities=(ERREUR,)):
+    """Numéros de ligne signalés par un contrôle de gravité donnée (hors constats statistiques)."""
+    return sorted({line for c in result['checks'] if c['severite'] in severities and c['categorie'] != ATYPICAL for line in c['lignes']})
+
+
+# ── Qui fait quoi : synthèse par enquêteur, par district… ─────────────────────
+
+_ENUMERATOR = re.compile(r'enqueteur|enumerat|collecteur|agent|username|submitted_by|interviewer', re.IGNORECASE)
+_GEOGRAPHY = re.compile(r'region|district|etablissement|site|zone|village|commune|departement|aire', re.IGNORECASE)
+MAX_GROUPS = 80
+
+
+_STRONG_ENUMERATOR = re.compile(r'enqueteur|enumerat|interviewer', re.IGNORECASE)
+
+
+def group_candidates(df):
+    """Colonnes qui servent à regrouper les signalements, enquêteur d'abord puis géographie (2 à MAX_GROUPS valeurs). Parmi les
+    enquêteurs, le code ou le nom de l'enquêteur passe avant un simple profil (« Profil collecteur » : 2 valeurs), et le plus
+    détaillé avant le moins détaillé."""
+    out = []
+    for kind, pattern in (('enquêteur', _ENUMERATOR), ('lieu', _GEOGRAPHY)):
+        found = []
+        for col in df.columns:
+            name = str(col).split('/')[-1]
+            if str(col).lower() in _TECH_COLUMNS or not pattern.search(name):
+                continue
+            n = df[col].nunique()
+            if 2 <= n <= MAX_GROUPS and col not in [c for c, _ in out]:
+                found.append((0 if _STRONG_ENUMERATOR.search(name) else 1, -n, col))
+        out += [(col, kind) for _, _, col in sorted(found, key=lambda x: (x[0], x[1]))] if kind == 'enquêteur' else [(col, kind) for _, _, col in found]
+    return out
+
+
+def durations(df):
+    """Durée de chaque entretien en minutes (Series) ou None."""
+    start_col, end_col = _find_time_column(df, 'start'), _find_time_column(df, 'end')
+    if not (start_col and end_col):
+        return None
+    minutes = (_as_datetime(df[end_col]) - _as_datetime(df[start_col])).dt.total_seconds() / 60
+    return minutes.where(minutes >= 0)
+
+
+def summary_by(df, result, col):
+    """Pour chaque valeur de `col` : lignes, lignes signalées, part, lignes en erreur, durée médiane. Un groupe est
+    « à regarder » lorsque sa part de lignes signalées dépasse le double de la moyenne (au moins 3 lignes signalées)."""
+    core = {line for c in result['checks'] if c['categorie'] != ATYPICAL for line in c['lignes']}
+    errors = set(error_lines(result))
+    minutes = durations(df)
+    lines = pd.Series(np.arange(1, len(df) + 1), index=df.index)
+    overall = len(core) / len(df) * 100 if len(df) else 0
+    rows = []
+    for value, idx in df.groupby(col, dropna=True).groups.items():
+        ln = lines.loc[idx]
+        flagged = int(ln.isin(core).sum())
+        rows.append({'groupe': str(value), 'lignes': int(len(ln)), 'signalees': flagged,
+                     'pct': round(100 * flagged / len(ln), 1), 'en_erreur': int(ln.isin(errors).sum()),
+                     'duree_mediane': None if minutes is None or minutes.loc[idx].dropna().empty else round(float(minutes.loc[idx].median()), 1),
+                     'a_regarder': bool(flagged >= 3 and len(ln) >= 5 and 100 * flagged / len(ln) > 2 * max(overall, 1))})
+    rows.sort(key=lambda r: (-r['pct'], -r['signalees']))
+    return {'colonne': col, 'moyenne_pct': round(overall, 1), 'groupes': rows}
 
 
 def flagged_rows(df, result):
@@ -310,26 +422,40 @@ def _connect():
     return conn
 
 
+def _keys(survey_key):
+    return [k for k in ([survey_key] if isinstance(survey_key, str) else list(survey_key or [])) if k]
+
+
 def list_rules(survey_key):
+    """Règles d'une enquête. `survey_key` : une clé, ou une liste (l'enquête et son étude : une règle enregistrée pour
+    l'étude s'applique à toutes ses vagues)."""
+    keys = _keys(survey_key)
+    if not keys:
+        return []
     conn = _connect()
     try:
         rows = conn.execute(
-            '''SELECT id, gauche, operateur, droite, droite_est_variable, libelle, created_by, created_at
-               FROM validation_rules WHERE survey_key = ? ORDER BY id''', (survey_key,)).fetchall()
+            f'''SELECT id, gauche, operateur, droite, droite_est_variable, libelle, created_by, created_at, survey_key
+               FROM validation_rules WHERE survey_key IN ({','.join('?' * len(keys))}) ORDER BY id''', keys).fetchall()
     finally:
         conn.close()
-    keys = ('id', 'gauche', 'operateur', 'droite', 'droite_est_variable', 'libelle', 'created_by', 'created_at')
-    return [dict(zip(keys, row), droite_est_variable=bool(row[4])) for row in rows]
+    names = ('id', 'gauche', 'operateur', 'droite', 'droite_est_variable', 'libelle', 'created_by', 'created_at', 'survey_key')
+    return [dict(zip(names, row), droite_est_variable=bool(row[4]), portee='etude' if str(row[8]).startswith('etude:') else 'enquete')
+            for row in rows]
 
 
 def add_rule(survey_key, gauche, operateur, droite, droite_est_variable, libelle='', created_by=''):
-    """Renvoie (ok, erreur)."""
+    """Renvoie (ok, erreur). Opérateur « unique » : `gauche` = colonnes de la clé séparées par « | », pas de `droite`."""
     gauche, droite = (gauche or '').strip(), (droite or '').strip()
     if not survey_key:
         return False, "Aucune enquête chargée."
-    if not gauche or not droite:
+    if operateur == 'unique':
+        droite, droite_est_variable = '-', False
+        if not gauche:
+            return False, "Choisissez au moins une variable pour la clé d'unicité."
+    elif not gauche or not droite:
         return False, "Variable et valeur de comparaison requises."
-    if operateur not in OPERATEURS:
+    if operateur != 'unique' and operateur not in OPERATEURS:
         return False, "Opérateur invalide."
     conn = _connect()
     try:
@@ -338,7 +464,7 @@ def add_rule(survey_key, gauche, operateur, droite, droite_est_variable, libelle
                 '''INSERT INTO validation_rules
                    (survey_key, gauche, operateur, droite, droite_est_variable, libelle, created_by, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                (survey_key, gauche[:200], operateur, droite[:200], 1 if droite_est_variable else 0,
+                (survey_key, gauche[:400], operateur, droite[:200], 1 if droite_est_variable else 0,
                  (libelle or '').strip()[:200], (created_by or '')[:100],
                  datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     finally:
@@ -347,10 +473,13 @@ def add_rule(survey_key, gauche, operateur, droite, droite_est_variable, libelle
 
 
 def delete_rule(rule_id, survey_key):
+    keys = _keys(survey_key)
+    if not keys:
+        return False
     conn = _connect()
     try:
         with conn:
-            cur = conn.execute('DELETE FROM validation_rules WHERE id = ? AND survey_key = ?', (rule_id, survey_key))
+            cur = conn.execute(f'DELETE FROM validation_rules WHERE id = ? AND survey_key IN ({",".join("?" * len(keys))})', [rule_id] + keys)
         return cur.rowcount > 0
     finally:
         conn.close()

@@ -179,10 +179,12 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
             fontName='Helvetica-Oblique')
 
     def _add_comment(story, auto: str, user: str):
+        # La lecture contient des « < », des « & » et des retours à la ligne : texte échappé, une puce par ligne
+        para = lambda t: _xml_escape(str(t)).replace('\n', '<br/>')
         if auto:
-            story.append(Paragraph(f'<b>Lecture automatique :</b> {auto}', S['CommentAuto']))
+            story.append(Paragraph('<b>Lecture automatique :</b><br/>' + para(auto), S['CommentAuto']))
         if user:
-            story.append(Paragraph(f'<b>Commentaire de l\'analyste :</b> {user}', S['CommentUser']))
+            story.append(Paragraph('<b>Commentaire de l\'analyste :</b> ' + para(user), S['CommentUser']))
     # Activer l'analyse brute par défaut si l'utilisateur n'a rien précisé
     if selected_analyses is None:
         selected_analyses = ['raw']
@@ -572,9 +574,7 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 story.append(Paragraph(
                     f"Figure : Comparaison de <b>{r.get('variable', '?')}</b> entre enquêtes",
                     S['Caption']))
-            _add_comment(story,
-                         _xml_escape(r.get('interpretation') or '').replace('\n', '<br/>'),
-                         _xml_escape(user_comments.get(f"multi_survey:{r.get('variable')}", '')).replace('\n', '<br/>'))
+            _add_comment(story, r.get('interpretation') or '', user_comments.get(f"multi_survey:{r.get('variable')}", ''))
             story.append(Spacer(1, 0.4*cm))
         section += 1
         story.append(PageBreak())
@@ -1166,6 +1166,12 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
         ws.cell(row=row, column=1, value=text).font = ITALIC_FONT if italic else BODY_FONT
         return row + 1
 
+    def _write_lecture(ws, auto, row):
+        row = _write_note(ws, 'Lecture automatique :', row)
+        for line in str(auto).split('\n'):
+            row = _write_note(ws, line, row)
+        return row
+
     def _write_df(ws, df_in, row, max_rows=200):
         d = df_in.head(max_rows)
         for j, col in enumerate(d.columns, start=1):
@@ -1236,7 +1242,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 auto = auto_comment_binary_group({'parent': g['parent'], **r})
                 user = user_comments.get(f'descriptive_bin:{g["parent"]}', '')
                 if auto:
-                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                    row = _write_lecture(ws, auto, row)
                 if user:
                     row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
             except Exception as e:
@@ -1264,7 +1270,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 auto = auto_comment_categorical(r)
                 user = user_comments.get(f'descriptive_cat:{var}', '')
                 if auto:
-                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                    row = _write_lecture(ws, auto, row)
                 if user:
                     row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
             except Exception as e:
@@ -1291,7 +1297,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 auto = auto_comment_continuous(r)
                 user = user_comments.get(f'descriptive_num:{var}', '')
                 if auto:
-                    row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                    row = _write_lecture(ws, auto, row)
                 if user:
                     row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
             except Exception as e:
@@ -1324,7 +1330,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
             auto = auto_comment_crosstab(r)
             user = user_comments.get(f'crosstabs:{row_var}|{col_var}', '')
             if auto:
-                row = _write_note(ws, f'Lecture automatique : {auto}', row)
+                row = _write_lecture(ws, auto, row)
             if user:
                 row = _write_note(ws, f'Commentaire de l\'analyste : {user}', row, italic=True)
         except Exception as e:

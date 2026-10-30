@@ -499,6 +499,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
+<script>
+// Plotly est chargé à la demande depuis Internet : un graphique tracé trop tôt échouait en silence.
+// whenPlotly(fn) attend qu'il soit prêt ; un graphique placé dans un volet replié est redimensionné quand le volet s'ouvre.
+window.whenPlotly = function (callback, tries) {
+  tries = tries || 0;
+  if (typeof Plotly !== 'undefined') { callback(); return; }
+  if (tries < 300) setTimeout(function () { window.whenPlotly(callback, tries + 1); }, 50);
+};
+document.addEventListener('shown.bs.collapse', function (e) {
+  if (typeof Plotly === 'undefined') return;
+  e.target.querySelectorAll('.js-plotly-plot').forEach(function (plot) { Plotly.Plots.resize(plot); });
+});
+</script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 <script>

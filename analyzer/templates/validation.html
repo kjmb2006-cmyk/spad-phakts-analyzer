@@ -12,11 +12,13 @@
 .val-kpi.is-err { border-top-color:#C0392B; } .val-kpi.is-err .kv { color:#C0392B; }
 .val-kpi.is-warn { border-top-color:#E67E22; } .val-kpi.is-warn .kv { color:#E67E22; }
 .val-kpi.is-ok { border-top-color:#17A589; } .val-kpi.is-ok .kv { color:#17A589; }
+.val-kpi.is-muted { border-top-color:#AEB6BF; } .val-kpi.is-muted .kv { color:#566573; }
 .sev { display:inline-block; padding:2px 9px; border-radius:10px; font-size:.72rem; font-weight:700; white-space:nowrap; }
 .sev-erreur { background:#FADBD8; color:#922B21; }
 .sev-a_verifier { background:#FDEBD0; color:#A04000; }
 .sev-info { background:#EAECEE; color:#566573; }
 .val-lines { font-family:monospace; font-size:.78rem; color:#566573; }
+.grp-watch { background:#FDEBD0; }
 </style>
 
 {% set sev_labels = {'erreur': 'Erreur', 'a_verifier': 'À vérifier', 'info': 'Info'} %}
@@ -27,29 +29,102 @@
   <a class="btn btn-sm btn-outline-secondary" href="{{ back_url }}"><i class="bi bi-arrow-left me-1"></i>{{ back_label }}</a>
 </div>
 {% endif %}
+{% include "_excluded_banner.html" %}
 <p class="text-muted small mb-3">
   Contrôles du SPAD (« Règles de validation des données de collecte ») appliqués à
   <strong>{{ dataset_name or 'jeu de données chargé' }}</strong> : doublons, cohérence des heures,
-  seuils PHAKTS, valeurs extrêmes, et règles propres à cette enquête.
-  Rien n'est modifié : les lignes signalées sont à vérifier avec les équipes de terrain.
+  seuils PHAKTS, réponses contraires au formulaire, valeurs extrêmes, et règles propres à cette enquête ou à son étude.
+  Rien n'est corrigé ni supprimé : les lignes signalées sont à vérifier avec les équipes de terrain.
   Les numéros de ligne sont ceux du jeu de données (1 = première soumission).
 </p>
 
 <div class="val-kpis">
   <div class="val-kpi"><div class="kv">{{ result.n_lignes }}</div><div class="kl">Lignes contrôlées</div></div>
-  <div class="val-kpi {{ 'is-warn' if result.n_signalees else 'is-ok' }}"><div class="kv">{{ result.n_signalees }}</div><div class="kl">Lignes signalées</div></div>
+  <div class="val-kpi {{ 'is-warn' if result.n_signalees else 'is-ok' }}" title="Doublons, heures, seuils, règles, formulaire : défauts de collecte">
+    <div class="kv">{{ result.n_signalees }}</div><div class="kl">Lignes signalées</div></div>
   <div class="val-kpi is-ok"><div class="kv">{{ result.pct_sans_anomalie }} %</div><div class="kl">Lignes sans anomalie</div></div>
   <div class="val-kpi {{ 'is-err' if result.n_erreurs else 'is-ok' }}"><div class="kv">{{ result.n_erreurs }}</div><div class="kl">Contrôles en erreur</div></div>
   <div class="val-kpi {{ 'is-warn' if result.n_a_verifier else 'is-ok' }}"><div class="kv">{{ result.n_a_verifier }}</div><div class="kl">Points à vérifier</div></div>
+  <div class="val-kpi is-muted" title="Valeurs statistiquement extrêmes : à regarder, mais pas comptées comme des défauts de collecte">
+    <div class="kv">{{ result.n_atypiques }}</div><div class="kl">Lignes à valeurs atypiques</div></div>
 </div>
 
+<!-- ═══ Formulaire joint ═══ -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+    {% if has_form %}
+    <span class="small"><i class="bi bi-file-earmark-check text-success me-1"></i><strong>Formulaire pris en compte</strong> ({{ n_form_questions }} questions) :
+      les réponses hors liste, les questions obligatoires vides, les sauts de logique contournés et les contraintes non respectées sont contrôlés.</span>
+    {% else %}
+    <span class="small"><i class="bi bi-file-earmark-arrow-up text-primary me-1"></i><strong>Contrôler les réponses d'après le formulaire</strong> :
+      joignez l'XLSForm pour retrouver les réponses hors liste, les questions obligatoires vides, les sauts de logique contournés et les contraintes non respectées.</span>
+    {% if can_exclude %}
+    <form method="post" action="{{ url_for('data_labels') }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+      <input type="file" name="xlsform" accept=".xlsx,.xls" class="form-control form-control-sm" style="max-width:240px" required>
+      <button class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip me-1"></i>Joindre</button>
+    </form>
+    {% else %}<span class="small text-muted">(les données chargées pour analyse acceptent un XLSForm ; un formulaire Kobo suivi le lit directement)</span>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══ Qui fait quoi ═══ -->
+{% if candidates and summary %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-people me-2 text-primary"></i>Signalements par {{ par_kind }}</h6>
+    <form method="get" class="d-flex align-items-center gap-2 m-0">
+      {% for k, v in ctx_args.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <label class="small text-muted mb-0" for="parSel">Regrouper par</label>
+      <select name="par" id="parSel" class="form-select form-select-sm" style="max-width:300px" onchange="this.form.submit()">
+        {% for col, kind in candidates %}<option value="{{ col }}" {% if col == par %}selected{% endif %}>{{ (labels.get(col) or (col|varname)) }} ({{ kind }})</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive" style="max-height:340px;overflow-y:auto">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light"><tr><th>Groupe</th><th class="text-end">Lignes</th><th class="text-end">Signalées</th><th class="text-end">%</th>
+          <th class="text-end">En erreur</th>{% if summary.groupes and summary.groupes[0].duree_mediane is not none %}<th class="text-end">Durée médiane (min)</th>{% endif %}<th></th></tr></thead>
+        <tbody>
+          {% for g in summary.groupes %}
+          <tr class="{{ 'grp-watch' if g.a_regarder }}">
+            <td class="small">{{ g.groupe }}</td><td class="text-end small">{{ g.lignes }}</td><td class="text-end small">{{ g.signalees }}</td>
+            <td class="text-end small fw-semibold">{{ g.pct }} %</td><td class="text-end small">{{ g.en_erreur }}</td>
+            {% if summary.groupes[0].duree_mediane is not none %}<td class="text-end small">{{ g.duree_mediane if g.duree_mediane is not none else '—' }}</td>{% endif %}
+            <td class="small">{% if g.a_regarder %}<span class="sev sev-a_verifier">À regarder</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="small text-muted px-3 py-2 mb-0">Moyenne : {{ summary.moyenne_pct }} % de lignes signalées. « À regarder » : au moins 3 lignes signalées et plus du double de la moyenne
+      — un enquêteur ou un site à rappeler, plutôt qu'une série de fautes isolées.</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══ Résultats ═══ -->
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
   <h5 class="mb-0">Résultats des contrôles</h5>
-  {% if result.n_signalees %}
-  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('validation_export', **ctx_args) }}">
-    <i class="bi bi-download"></i> Exporter les lignes à vérifier (.xlsx)
-  </a>
-  {% endif %}
+  <div class="d-flex gap-2 flex-wrap">
+    {% if can_exclude and (result.n_erreurs or result.n_a_verifier) %}
+    <form method="post" action="{{ url_for('validation_exclure') }}" class="m-0" onsubmit="return confirm('Écarter de l\'analyse toutes les lignes en erreur ? Le fichier n\'est pas modifié.');">
+      <input type="hidden" name="mode" value="erreurs">
+      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-funnel me-1"></i>Écarter de l'analyse les lignes en erreur</button>
+    </form>
+    {% endif %}
+    {% if excluded_n %}
+    <form method="post" action="{{ url_for('data_exclusions_clear') }}" class="m-0">
+      <button class="btn btn-sm btn-outline-secondary">Rétablir les {{ excluded_n }} ligne(s) écartée(s)</button>
+    </form>
+    {% endif %}
+    {% if result.n_signalees or result.n_atypiques %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('validation_export', **ctx_args) }}">
+      <i class="bi bi-download"></i> Exporter les lignes à vérifier (.xlsx)
+    </a>
+    {% endif %}
+  </div>
 </div>
 
 {% if result.checks %}
@@ -57,7 +132,7 @@
   <div class="table-responsive">
     <table class="table table-sm mb-0 align-middle">
       <thead class="table-light">
-        <tr><th>Gravité</th><th class="d-none d-md-table-cell">Catégorie</th><th>Contrôle</th><th>Lignes concernées</th></tr>
+        <tr><th>Gravité</th><th class="d-none d-md-table-cell">Catégorie</th><th>Contrôle</th><th>Lignes concernées</th>{% if can_exclude %}<th></th>{% endif %}</tr>
       </thead>
       <tbody>
         {% for c in result.checks %}
@@ -74,6 +149,16 @@
             <span class="val-lines">· {{ c.lignes[:15]|join(', ') }}{% if c.lignes|length > 15 %}…{% endif %}</span>
             {% else %}<span class="text-muted small">—</span>{% endif %}
           </td>
+          {% if can_exclude %}
+          <td class="text-end">
+            {% if c.lignes and c.categorie != 'Valeurs extrêmes' %}
+            <form method="post" action="{{ url_for('validation_exclure') }}" class="m-0">
+              <input type="hidden" name="mode" value="controle"><input type="hidden" name="index" value="{{ loop.index0 }}">
+              <button class="btn btn-sm btn-outline-secondary py-0" title="Écarter ces lignes de l'analyse"><i class="bi bi-funnel"></i></button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -84,22 +169,29 @@
 <div class="alert alert-success">Aucune anomalie détectée sur les {{ result.n_lignes }} lignes contrôlées.</div>
 {% endif %}
 
+<!-- ═══ Règles ═══ -->
 <h5 class="mt-4">Règles propres à cette enquête</h5>
 <p class="text-muted small">
-  Exemples : « Date de notification ≥ Date d'apparition », « Âge au premier rapport ≤ Âge »,
-  « Nombre de cas ≥ 0 ». Elles sont enregistrées pour cette enquête et appliquées à chaque contrôle.
+  Exemples : « Date de notification ≥ Date d'apparition », « Âge au premier rapport ≤ Âge », « Nombre de cas ≥ 0 », ou une
+  <strong>clé d'unicité</strong> (un établissement et un numéro d'ordre ne figurent qu'une fois).
+  {% if study_key %}Une règle peut valoir pour <strong>toute l'étude</strong> : elle s'applique alors aussi aux autres vagues (même Factum d'étude).{% else %}
+  Avec un Factum valide, une règle peut valoir pour toute l'étude et se retrouver à chaque vague.{% endif %}
 </p>
 
 {% if rules %}
 <div class="card mb-3">
   <div class="table-responsive">
     <table class="table table-sm mb-0 align-middle">
-      <thead class="table-light"><tr><th>Règle</th><th>Libellé</th><th>Ajoutée par</th><th></th></tr></thead>
+      <thead class="table-light"><tr><th>Règle</th><th>Libellé</th><th>Portée</th><th>Ajoutée par</th><th></th></tr></thead>
       <tbody>
         {% for r in rules %}
         <tr>
-          <td class="font-monospace small">{{ r.gauche }} {{ symboles[r.operateur] }} {% if r.droite_est_variable %}{{ r.droite }}{% else %}« {{ r.droite }} »{% endif %}</td>
+          <td class="font-monospace small">
+            {% if r.operateur == 'unique' %}clé d'unicité : {{ r.gauche.replace('|', ' + ') }}
+            {% else %}{{ r.gauche }} {{ symboles[r.operateur] }} {% if r.droite_est_variable %}{{ r.droite }}{% else %}« {{ r.droite }} »{% endif %}{% endif %}
+          </td>
           <td class="small">{{ r.libelle or '—' }}</td>
+          <td class="small">{% if r.portee == 'etude' %}<span class="badge bg-primary-subtle text-primary border border-primary-subtle">toute l'étude</span>{% else %}cette enquête{% endif %}</td>
           <td class="small text-muted">{{ r.created_by or '—' }} · {{ r.created_at }}</td>
           <td class="text-end">
             <form method="post" action="{{ url_for('validation_regle_supprimer', rule_id=r.id, **ctx_args) }}" onsubmit="return confirm('Supprimer cette règle ?');">
@@ -114,7 +206,8 @@
 </div>
 {% endif %}
 
-<form method="post" action="{{ url_for('validation_regle_ajouter', **ctx_args) }}" class="card card-body mb-4">
+<form method="post" action="{{ url_for('validation_regle_ajouter', **ctx_args) }}" class="card card-body mb-3">
+  <div class="fw-semibold small mb-2"><i class="bi bi-plus-circle me-1 text-primary"></i>Comparer deux variables, ou une variable à une valeur</div>
   <div class="row g-2 align-items-end">
     <div class="col-md-3">
       <label class="form-label small mb-1">Variable</label>
@@ -125,7 +218,7 @@
     <div class="col-md-1">
       <label class="form-label small mb-1">Condition</label>
       <select name="operateur" class="form-select form-select-sm">
-        {% for op, sym in symboles.items() %}<option value="{{ op }}">{{ sym }}</option>{% endfor %}
+        {% for op, sym in symboles.items() if op != 'unique' %}<option value="{{ op }}">{{ sym }}</option>{% endfor %}
       </select>
     </div>
     <div class="col-md-2">
@@ -147,8 +240,34 @@
       <input name="libelle" class="form-control form-control-sm" maxlength="200" placeholder="ex. Notification après apparition">
     </div>
     <div class="col-md-1">
-      <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg"></i> Ajouter</button>
+      <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
     </div>
+  </div>
+  {% if study_key %}
+  <div class="form-check mt-2 small"><input class="form-check-input" type="checkbox" name="portee" value="etude" id="porteeCmp">
+    <label class="form-check-label" for="porteeCmp">Valable pour toute l'étude (toutes les vagues)</label></div>
+  {% endif %}
+</form>
+
+<form method="post" action="{{ url_for('validation_regle_ajouter', **ctx_args) }}" class="card card-body mb-4">
+  <input type="hidden" name="operateur" value="unique">
+  <div class="fw-semibold small mb-2"><i class="bi bi-key me-1 text-primary"></i>Clé d'unicité : ces variables réunies ne doivent apparaître qu'une fois</div>
+  <div class="row g-2 align-items-end">
+    <div class="col-md-6">
+      <label class="form-label small mb-1">Variables de la clé (Ctrl/Cmd-clic pour en choisir plusieurs)</label>
+      <select name="cles" class="form-select form-select-sm" multiple size="4" required>
+        {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small mb-1">Libellé (facultatif)</label>
+      <input name="libelle" class="form-control form-control-sm" maxlength="200" placeholder="ex. Un prestataire par établissement">
+      {% if study_key %}
+      <div class="form-check mt-2 small"><input class="form-check-input" type="checkbox" name="portee" value="etude" id="porteeKey">
+        <label class="form-check-label" for="porteeKey">Valable pour toute l'étude</label></div>
+      {% endif %}
+    </div>
+    <div class="col-md-2"><button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg"></i> Ajouter</button></div>
   </div>
 </form>
 

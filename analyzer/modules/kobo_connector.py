@@ -362,6 +362,9 @@ def get_asset_structure(token, uid, instance=None):
             list_name = q.get("select_from_list_name")
             if list_name:
                 entry["list_name"] = list_name
+            for key in ("required", "relevant", "constraint", "constraint_message"):      # contrôles du formulaire (xlsform_checks)
+                if q.get(key):
+                    entry[key] = q[key]
             survey.append(entry)
         choices = [
             {"list_name": c.get("list_name"), "name": c.get("name"),

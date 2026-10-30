@@ -17,8 +17,25 @@
         <div class="card-body p-3" style="max-height:calc(100vh - 200px);overflow-y:auto">
           <form method="POST" id="analysisForm">
 
-            {% if bin_groups %}
+            <input type="search" id="varSearch" class="form-control form-control-sm mb-2" placeholder="Rechercher une variable…" autocomplete="off">
+
+            {% if group_vars %}
             <div class="mb-3">
+              <label class="form-label small fw-semibold text-uppercase text-muted mb-1" for="group_var" style="font-size:.72rem;letter-spacing:.05em">
+                <i class="bi bi-diagram-2 me-1"></i>Décomposer par
+              </label>
+              <select name="group_var" id="group_var" class="form-select form-select-sm">
+                <option value="">— Aucune (ensemble) —</option>
+                {% for g in group_vars %}
+                <option value="{{ g }}" {% if g == group_var %}selected{% endif %} title="{{ labels.get(g, g) }}">{{ (labels.get(g) or (g|varname)) | truncate(46) }}</option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">Chaque variable est aussi décrite séparément pour chaque groupe (district, profession…).</small>
+            </div>
+            {% endif %}
+
+            {% if bin_groups %}
+            <div class="mb-3 var-block">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="section-label text-primary fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
                   <i class="bi bi-check2-square me-1"></i>Choix multiples
@@ -30,12 +47,12 @@
               </div>
               <div class="var-checklist">
                 {% for g in bin_groups %}
-                <div class="form-check">
+                <div class="form-check var-item" data-name="{{ (g.parent ~ ' ' ~ labels.get(g.parent, ''))|lower }}">
                   <input class="form-check-input" type="checkbox" name="bin_groups"
                          value="{{ g.parent }}" id="bg_{{ loop.index }}"
                          {% if g.parent in selected_bin_groups %}checked{% endif %}>
-                  <label class="form-check-label small" for="bg_{{ loop.index }}" title="{{ g.parent }}">
-                    {{ g.parent | truncate(42) }}
+                  <label class="form-check-label small" for="bg_{{ loop.index }}" title="{{ labels.get(g.parent, g.parent) }}">
+                    {{ (labels.get(g.parent) or (g.parent|varname)) | truncate(42) }}
                     <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.65rem">{{ g.vars|length }}</span>
                   </label>
                 </div>
@@ -45,34 +62,42 @@
             {% endif %}
 
             {% if cat_vars %}
-            <div class="mb-3">
+            <div class="mb-3 var-block">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="section-label text-warning-emphasis fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
-                  <i class="bi bi-tag me-1"></i>Catégorielles
+                  <i class="bi bi-tag me-1"></i>Catégorielles <span class="text-muted fw-normal">({{ cat_vars|length }})</span>
                 </span>
                 <span class="d-flex gap-1">
                   <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('cat_vars',true)">Tout</button>
                   <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('cat_vars',false)">Aucun</button>
                 </span>
               </div>
-              <div class="var-checklist">
-                {% for v in cat_vars %}
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="cat_vars"
-                         value="{{ v }}" id="cat_{{ loop.index }}"
-                         {% if v in selected_cat %}checked{% endif %}>
-                  <label class="form-check-label small" for="cat_{{ loop.index }}" title="{{ v }}">{{ v | truncate(40) }}</label>
+              {% for sec in cat_sections %}
+              <details class="mb-1 var-section" {% if cat_sections|length == 1 or sec.vars|select('in', selected_cat)|list %}open{% endif %}>
+                <summary class="small fw-semibold" style="cursor:pointer">
+                  {{ sec.name.split('/')[-1] | replace('_', ' ') | truncate(34) }}
+                  <span class="badge bg-light text-dark border">{{ sec.vars|length }}</span>
+                  <a href="#" class="small ms-1 text-muted" onclick="toggleSection(this, event)">section</a>
+                </summary>
+                <div class="var-checklist ps-2">
+                  {% for v in sec.vars %}
+                  <div class="form-check var-item" data-name="{{ (v ~ ' ' ~ labels.get(v, ''))|lower }}">
+                    <input class="form-check-input" type="checkbox" name="cat_vars" value="{{ v }}" id="cat_{{ loop.index }}_{{ sec.name|hash8 }}"
+                           {% if v in selected_cat %}checked{% endif %}>
+                    <label class="form-check-label small" for="cat_{{ loop.index }}_{{ sec.name|hash8 }}" title="{{ labels.get(v, v) }}">{{ (labels.get(v) or (v|varname)) | truncate(40) }}</label>
+                  </div>
+                  {% endfor %}
                 </div>
-                {% endfor %}
-              </div>
+              </details>
+              {% endfor %}
             </div>
             {% endif %}
 
             {% if num_vars %}
-            <div class="mb-3">
+            <div class="mb-3 var-block">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="section-label text-info-emphasis fw-semibold" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">
-                  <i class="bi bi-123 me-1"></i>Continues
+                  <i class="bi bi-123 me-1"></i>Continues <span class="text-muted fw-normal">({{ num_vars|length }})</span>
                 </span>
                 <span class="d-flex gap-1">
                   <button type="button" class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:.68rem" onclick="toggleAll('num_vars',true)">Tout</button>
@@ -81,11 +106,11 @@
               </div>
               <div class="var-checklist">
                 {% for v in num_vars %}
-                <div class="form-check">
+                <div class="form-check var-item" data-name="{{ (v ~ ' ' ~ labels.get(v, ''))|lower }}">
                   <input class="form-check-input" type="checkbox" name="num_vars"
                          value="{{ v }}" id="num_{{ loop.index }}"
                          {% if v in selected_num %}checked{% endif %}>
-                  <label class="form-check-label small" for="num_{{ loop.index }}" title="{{ v }}">{{ v | truncate(40) }}</label>
+                  <label class="form-check-label small" for="num_{{ loop.index }}" title="{{ labels.get(v, v) }}">{{ (labels.get(v) or (v|varname)) | truncate(40) }}</label>
                 </div>
                 {% endfor %}
               </div>
@@ -104,6 +129,16 @@
 
     <!-- ══ Zone de résultats ═════════════════════════════════════════════════ -->
     <div class="col-lg-9">
+
+      {% include "_excluded_banner.html" %}
+      {% if limited_default %}
+      <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 small">
+        <span><i class="bi bi-info-circle me-1"></i>Aperçu des premières variables : ce formulaire en compte
+          <strong>{{ cat_vars|length }}</strong> catégorielles et <strong>{{ bin_groups|length }}</strong> questions à choix multiples.
+          Choisissez les vôtres dans le panneau, ou analysez-les toutes.</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="analyseAll()">Tout analyser</button>
+      </div>
+      {% endif %}
 
       {% if not results_cat and not results_num and not results_bin %}
       <!-- État vide -->
@@ -140,17 +175,28 @@
         {% endif %}
       </div>
 
+      {% if (results_cat|length + results_num|length + results_bin|length) > 4 %}
+      <details class="card border-0 shadow-sm mb-4" id="toc">
+        <summary class="card-header bg-white py-2 small fw-semibold" style="cursor:pointer"><i class="bi bi-list-ul me-1"></i>Sommaire ({{ results_cat|length + results_num|length + results_bin|length }} analyses)</summary>
+        <div class="card-body py-2 small" style="columns:2 280px">
+          {% for r in results_bin %}<div><a href="#r-bin-{{ loop.index }}">{{ (r.label or (r.parent|varname)) | truncate(60) }}</a></div>{% endfor %}
+          {% for r in results_cat %}<div><a href="#r-cat-{{ loop.index }}">{{ (r.label or (r.variable|varname)) | truncate(60) }}</a></div>{% endfor %}
+          {% for r in results_num %}<div><a href="#r-num-{{ loop.index }}">{{ (r.label or (r.variable|varname)) | truncate(60) }}</a></div>{% endfor %}
+        </div>
+      </details>
+      {% endif %}
+
       <!-- ══ CHOIX MULTIPLES ════════════════════════════════════════════════ -->
       {% for r in results_bin %}
       {% set bi = loop.index %}
-      <div class="card border-0 shadow-sm mb-4">
+      <div class="card border-0 shadow-sm mb-4" id="r-bin-{{ bi }}">
         <div class="card-header border-bottom py-3"
              style="background:linear-gradient(135deg,#e8f0fe 0%,#f8f9ff 100%)">
           <div class="d-flex align-items-center flex-wrap gap-2">
             <span class="badge bg-primary text-white">
               <i class="bi bi-check2-square me-1"></i>Choix multiples
             </span>
-            <h6 class="mb-0 fw-semibold flex-fill">{{ r.parent }}</h6>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.label or (r.parent|varname) }}{% if r.label %}<div class="fw-normal text-muted" style="font-size:.72rem">{{ r.parent }}</div>{% endif %}</h6>
             <div class="d-flex gap-2 flex-wrap">
               <span class="badge bg-white text-dark border">N = {{ r.n_total }}</span>
               <span class="badge bg-white text-dark border">{{ r.n_vars }} modalités</span>
@@ -203,14 +249,14 @@
       <!-- ══ CATÉGORIELLES ═════════════════════════════════════════════════ -->
       {% for r in results_cat %}
       {% set ci = loop.index %}
-      <div class="card border-0 shadow-sm mb-4">
+      <div class="card border-0 shadow-sm mb-4" id="r-cat-{{ ci }}">
         <div class="card-header border-bottom py-3"
              style="background:linear-gradient(135deg,#fff8e8 0%,#fffdf8 100%)">
           <div class="d-flex align-items-center flex-wrap gap-2">
             <span class="badge bg-warning text-dark">
               <i class="bi bi-tag me-1"></i>Catégorielle
             </span>
-            <h6 class="mb-0 fw-semibold flex-fill">{{ r.variable }}</h6>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.label or (r.variable|varname) }}{% if r.label %}<div class="fw-normal text-muted" style="font-size:.72rem">{{ r.variable }}</div>{% endif %}</h6>
             <div class="d-flex gap-2 flex-wrap">
               <span class="badge bg-white text-dark border">N valides = {{ r.n_valid }}</span>
               <span class="badge bg-white text-dark border">{{ r.n_cats }} modalités</span>
@@ -291,6 +337,19 @@
           {% with section='descriptive_cat', var=r.variable, auto=r.auto_comment, user=r.user_comment %}
             {% include "_comment_block.html" %}
           {% endwith %}
+          {% if r.by_group %}
+          <details class="mt-3 border rounded p-2" open>
+            <summary class="small fw-semibold" style="cursor:pointer"><i class="bi bi-diagram-2 me-1 text-primary"></i>Selon « {{ labels.get(group_var) or (group_var|varname) }} »
+              <span class="text-muted fw-normal">— {{ r.by_group.groups|length }} groupe(s){% if r.by_group.n_groups_total > r.by_group.shown %}, {{ r.by_group.shown }} plus nombreux sur {{ r.by_group.n_groups_total }}{% endif %}</span></summary>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6"><div class="table-responsive">{{ r.by_group.table_html | safe }}</div></div>
+              <div class="col-md-6"><div id="chart-grp-cat-{{ ci }}" style="min-height:340px"></div></div>
+            </div>
+            {% with section='descriptive_grp', var=r.variable ~ '|' ~ group_var, auto=r.by_group.auto_comment, user=r.by_group.user_comment %}
+              {% include "_comment_block.html" %}
+            {% endwith %}
+          </details>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
@@ -298,14 +357,14 @@
       <!-- ══ CONTINUES ════════════════════════════════════════════════════ -->
       {% for r in results_num %}
       {% set ni = loop.index %}
-      <div class="card border-0 shadow-sm mb-4">
+      <div class="card border-0 shadow-sm mb-4" id="r-num-{{ ni }}">
         <div class="card-header border-bottom py-3"
              style="background:linear-gradient(135deg,#e8f4fd 0%,#f8fcff 100%)">
           <div class="d-flex align-items-center flex-wrap gap-2">
             <span class="badge bg-info text-white">
               <i class="bi bi-123 me-1"></i>Continue
             </span>
-            <h6 class="mb-0 fw-semibold flex-fill">{{ r.variable }}</h6>
+            <h6 class="mb-0 fw-semibold flex-fill">{{ r.label or (r.variable|varname) }}{% if r.label %}<div class="fw-normal text-muted" style="font-size:.72rem">{{ r.variable }}</div>{% endif %}</h6>
             <div class="d-flex gap-2 flex-wrap">
               <span class="badge bg-white text-dark border">N = {{ r.n_valid }}</span>
               {% if r.n_missing > 0 %}
@@ -396,6 +455,19 @@
           {% with section='descriptive_num', var=r.variable, auto=r.auto_comment, user=r.user_comment %}
             {% include "_comment_block.html" %}
           {% endwith %}
+          {% if r.by_group %}
+          <details class="mt-3 border rounded p-2" open>
+            <summary class="small fw-semibold" style="cursor:pointer"><i class="bi bi-diagram-2 me-1 text-primary"></i>Selon « {{ labels.get(group_var) or (group_var|varname) }} »
+              <span class="text-muted fw-normal">— {{ r.by_group.groups|length }} groupe(s){% if r.by_group.n_groups_total > r.by_group.shown %}, {{ r.by_group.shown }} plus nombreux sur {{ r.by_group.n_groups_total }}{% endif %}</span></summary>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6"><div class="table-responsive">{{ r.by_group.table_html | safe }}</div></div>
+              <div class="col-md-6"><div id="chart-grp-num-{{ ni }}" style="min-height:340px"></div></div>
+            </div>
+            {% with section='descriptive_grp', var=r.variable ~ '|' ~ group_var, auto=r.by_group.auto_comment, user=r.by_group.user_comment %}
+              {% include "_comment_block.html" %}
+            {% endwith %}
+          </details>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
@@ -410,38 +482,35 @@
 <script>
 const cfg = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['sendDataToCloud'] };
 
+whenPlotly(function () {
 {% for r in results_bin %}
-(function(){
-  var f = {{ r.chart | safe }};
-  Plotly.newPlot('chart-bin-{{ loop.index }}', f.data, f.layout, cfg);
-})();
+  (function(){ var f = {{ r.chart | safe }}; Plotly.newPlot('chart-bin-{{ loop.index }}', f.data, f.layout, cfg); })();
 {% endfor %}
-
 {% for r in results_cat %}
 {% set ci = loop.index %}
-(function(){
-  var bar = {{ r.chart_bar | safe }};
-  Plotly.newPlot('chart-bar-{{ ci }}', bar.data, bar.layout, cfg);
-  var pie = {{ r.chart_pie | safe }};
-  Plotly.newPlot('chart-pie-{{ ci }}', pie.data, pie.layout, cfg);
-})();
+  (function(){
+    var bar = {{ r.chart_bar | safe }}; Plotly.newPlot('chart-bar-{{ ci }}', bar.data, bar.layout, cfg);
+    var pie = {{ r.chart_pie | safe }}; Plotly.newPlot('chart-pie-{{ ci }}', pie.data, pie.layout, cfg);
+    {% if r.by_group %}var g = {{ r.by_group.chart | safe }}; Plotly.newPlot('chart-grp-cat-{{ ci }}', g.data, g.layout, cfg);{% endif %}
+  })();
 {% endfor %}
-
 {% for r in results_num %}
 {% set ni = loop.index %}
-(function(){
-  var hist = {{ r.chart_hist | safe }};
-  Plotly.newPlot('chart-hist-{{ ni }}', hist.data, hist.layout, cfg);
-  var vio = {{ r.chart_box | safe }};
-  Plotly.newPlot('chart-box-{{ ni }}', vio.data, vio.layout, cfg);
-})();
+  {% if not r.error %}
+  (function(){
+    var hist = {{ r.chart_hist | safe }}; Plotly.newPlot('chart-hist-{{ ni }}', hist.data, hist.layout, cfg);
+    var vio = {{ r.chart_box | safe }}; Plotly.newPlot('chart-box-{{ ni }}', vio.data, vio.layout, cfg);
+    {% if r.by_group %}var g = {{ r.by_group.chart | safe }}; Plotly.newPlot('chart-grp-num-{{ ni }}', g.data, g.layout, cfg);{% endif %}
+  })();
+  {% endif %}
 {% endfor %}
+});
 
 // Resize Plotly dans les onglets cachés au moment où ils deviennent visibles
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(btn) {
   btn.addEventListener('shown.bs.tab', function() {
     var id = btn.getAttribute('data-chart');
-    if (id) { var el = document.getElementById(id); if (el) Plotly.relayout(id, {autosize:true}); }
+    if (id && typeof Plotly !== 'undefined') { var el = document.getElementById(id); if (el) Plotly.relayout(id, {autosize:true}); }
   });
 });
 
@@ -449,5 +518,26 @@ document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(btn) {
 function toggleAll(name, check) {
   document.querySelectorAll('input[name="' + name + '"]').forEach(function(cb) { cb.checked = check; });
 }
+function toggleSection(link, ev) {
+  ev.preventDefault(); ev.stopPropagation();
+  var boxes = link.closest('details').querySelectorAll('input[type=checkbox]');
+  var all = Array.prototype.every.call(boxes, function (b) { return b.checked; });
+  boxes.forEach(function (b) { b.checked = !all; });
+}
+function analyseAll() {
+  if (!confirm('Analyser toutes les variables ? La page peut devenir longue (60 analyses au plus sont affichées).')) return;
+  toggleAll('cat_vars', true); toggleAll('num_vars', true); toggleAll('bin_groups', true);
+  document.getElementById('analysisForm').submit();
+}
+// Recherche dans la liste des variables
+document.getElementById('varSearch').addEventListener('input', function () {
+  var q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.var-item').forEach(function (el) { el.style.display = (!q || el.dataset.name.indexOf(q) >= 0) ? '' : 'none'; });
+  document.querySelectorAll('.var-section').forEach(function (d) {
+    var any = Array.prototype.some.call(d.querySelectorAll('.var-item'), function (el) { return el.style.display !== 'none'; });
+    d.style.display = any ? '' : 'none';
+    if (q && any) d.open = true;
+  });
+});
 </script>
 {% endblock %}

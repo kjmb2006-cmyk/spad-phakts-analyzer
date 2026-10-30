@@ -1,0 +1,10 @@
+{# Bandeau des pages d'analyse : des lignes ont été écartées depuis la validation des données #}
+{% if excluded_n %}
+<div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 small mb-3">
+  <span><i class="bi bi-funnel-fill me-1"></i><strong>{{ excluded_n }}</strong> ligne(s) écartée(s) de cette analyse
+    (<a href="{{ url_for('validation_donnees') }}">voir la validation</a>).</span>
+  <form method="post" action="{{ url_for('data_exclusions_clear') }}" class="m-0">
+    <button class="btn btn-sm btn-outline-secondary py-0">Rétablir toutes les lignes</button>
+  </form>
+</div>
+{% endif %}

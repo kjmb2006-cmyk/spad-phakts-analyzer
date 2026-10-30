@@ -6,8 +6,9 @@ from werkzeug.utils import secure_filename
 from config import Config
 from modules.data_loader import (load_excel, load_excel_sheets, load_csv, clean_kobo_dataframe,
                                   get_var_types, summarize_dataframe, get_filtered_vars)
-from modules.descriptive import tris_a_plat, statistiques_continues, analyse_binaire_groupe
-from modules.crosstabs import tableau_croise, tableau_croise_dynamique
+from modules.descriptive import tris_a_plat, statistiques_continues, analyse_binaire_groupe, par_groupe
+from modules.crosstabs import tableau_croise, tableau_croise_dynamique, croisement_choix_multiples
+from modules import crosstabs as crosstabs_module
 from modules.multi_survey import (merge_surveys, variable_coverage,
                                     common_variables, phakts_radical,
                                     is_phakts_coded,
@@ -15,11 +16,13 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     compare_continuous_by_survey, is_hidden_column,
                                     evolution_categorical, evolution_continuous,
                                     auto_analyze, cross_survey_test, apply_fdr)
-from modules import multi_comments, multi_report
+from modules import multi_comments, multi_report, dataset, xlsform_checks
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
-                              auto_comment_crosstab, auto_comment_binary_group)
+                              auto_comment_crosstab, auto_comment_binary_group, auto_comment_group,
+                              auto_comment_pivot, auto_comment_strata, auto_comment_choix_multiples,
+                              auto_comment_multivariate)
 from modules import ai_assistant
 from modules.raw_analysis import (systematic_analysis, descriptive_summary,
                                    data_quality_gauge, composition_chart,
@@ -474,11 +477,38 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
-def get_dataframe(sheet_key='data_path'):
+ANALYSIS_STATE_KEYS = ('descriptive_form', 'crosstabs_form', 'crosstabs_multi', 'multivariate_form', 'report_form')
+
+
+def _reset_analysis_state():
+    """De nouvelles données sont chargées : les variables choisies pour l'ancien jeu n'ont plus de sens (la page restait vide)."""
+    for key in ANALYSIS_STATE_KEYS:
+        session.pop(key, None)
+
+
+def get_dataframe(sheet_key='data_path', full=False, display=False):
+    """Jeu de données chargé. Par défaut : les variables calculées (classes) y sont jointes et les lignes écartées de
+    l'analyse (page « Validation des données ») en sont retirées. full=True rend le jeu complet (validation, exports,
+    suivi de collecte). display=True le rend comme l'analyste le lit : modalités sous leur vrai nom, questions à
+    choix multiples éclatées en une colonne par choix (voir modules/dataset.py)."""
     path = session.get(sheet_key)
-    if path and os.path.exists(path):
-        return pd.read_excel(path)
-    return None
+    if not (path and os.path.exists(path)):
+        return None
+    df = dataset.read_frame(path)
+    if df is None or sheet_key != 'data_path':
+        return df
+    df = dataset.attach_derived(df, path)
+    if not full:
+        df = dataset.apply_exclusions(df, path)
+    if display:
+        df = dataset.display_frame(df, dataset.load_labels(path), _ms_uid_names())
+    return df
+
+
+def _data_var_labels(df):
+    """{colonne: texte de la question} du jeu chargé (XLSForm ou structure Kobo joints)."""
+    path = session.get('data_path')
+    return dataset.column_labels(df.columns, dataset.load_labels(path)) if path else {}
 
 
 def _collecte_state_path():
@@ -656,7 +686,7 @@ def collecte_dashboard():
         # df transmis pour une répartition géographique RÉELLE (district/région/
         # établissement effectivement présents dans les données chargées) —
         # voir modules/collecte_monitor.py::real_geo_breakdown().
-        df = get_dataframe()
+        df = get_dataframe(full=True)
         # Priorité au contenu RÉEL du fichier plutôt qu'à data_meta (un
         # instantané pris à la dernière action explicite de CETTE session) —
         # la synchronisation automatique en tâche de fond (voir
@@ -962,12 +992,80 @@ def index():
 
 @app.route('/analyse-donnees')
 def analyse_donnees():
-    has_data = bool(session.get('data_path') and os.path.exists(session.get('data_path', '')))
+    path = session.get('data_path') or ''
+    has_data = bool(path and os.path.exists(path))
+    labels = dataset.load_labels(path) if has_data else None
     return render_template(
         'analyse_donnees.html',
         kobo_connected=bool(session.get('kobo_token')),
         has_data=has_data, meta=session.get('data_meta', {}),
+        labels_n=len(labels['choices']) if labels else 0,
+        excluded_n=len(dataset.excluded_rows(path)) if has_data else 0,
+        derived=dataset.derived_names(path) if has_data else [],
     )
+
+
+@app.route('/data/labels', methods=['POST'])
+def data_labels():
+    """Joint l'XLSForm du formulaire au jeu chargé : modalités et questions s'affichent avec leur vrai texte."""
+    path = session.get('data_path')
+    f = request.files.get('xlsform')
+    if not path or not os.path.exists(path):
+        flash("Chargez d'abord des données.", 'warning')
+    elif not f or not f.filename:
+        flash("Choisissez l'XLSForm du formulaire.", 'warning')
+    else:
+        tmp = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsform_' + uuid.uuid4().hex[:8] + '.xlsx')
+        f.save(tmp)
+        try:
+            labels = choice_labels.from_xlsform(tmp)
+            dataset.save_labels(path, labels)
+            form = xlsform_checks.parse_xlsform(tmp)
+            dataset.save_form(path, form)
+            n_rules = sum(1 for q in form['questions'] if q['required'] or q['relevant'] or q['constraint'])
+            flash(f"Formulaire lu dans « {f.filename} » : {len(labels['choices'])} question(s) à choix, {n_rules} question(s) avec "
+                  "règle (obligatoire, saut de logique, contrainte). Les analyses affichent les modalités avec leur vrai nom et la "
+                  "validation contrôle les réponses d'après le formulaire.", 'success')
+        except ValueError as e:
+            flash(str(e), 'danger')
+        finally:
+            try: os.remove(tmp)
+            except Exception: pass
+    return redirect(request.referrer or url_for('analyse_donnees'))
+
+
+@app.route('/data/labels/clear', methods=['POST'])
+def data_labels_clear():
+    if session.get('data_path'):
+        dataset.clear_labels(session['data_path'])
+        flash("Libellés retirés : les modalités reprennent leurs noms internes (mis en forme).", 'info')
+    return redirect(request.referrer or url_for('analyse_donnees'))
+
+
+@app.route('/data/exclusions/clear', methods=['POST'])
+def data_exclusions_clear():
+    if session.get('data_path'):
+        dataset.clear_excluded(session['data_path'])
+        flash("Toutes les lignes sont de nouveau prises en compte dans les analyses.", 'success')
+    return redirect(request.referrer or url_for('analyse_donnees'))
+
+
+@app.route('/data/derived/delete', methods=['POST'])
+def data_derived_delete():
+    name = request.form.get('name') or ''
+    if session.get('data_path') and dataset.delete_derived(session['data_path'], name):
+        flash(f"Variable « {name} » supprimée.", 'success')
+    return redirect(request.referrer or url_for('analyse_donnees'))
+
+
+@app.context_processor
+def _data_banner_context():
+    """Nombre de lignes écartées de l'analyse, pour le bandeau des pages d'analyse."""
+    path = session.get('data_path') if request else None
+    try:
+        return {'excluded_n': len(dataset.excluded_rows(path)) if path else 0}
+    except Exception:
+        return {'excluded_n': 0}
 
 
 # ─── UPLOAD ───────────────────────────────────────────────────────────────────
@@ -996,7 +1094,7 @@ def upload():
                 # Main sheet (first)
                 main_name = sheet_names[0]
                 df_raw = all_sheets[main_name]
-                df_clean = clean_kobo_dataframe(df_raw)
+                df_clean = clean_kobo_dataframe(df_raw, keep_meta_cols=MS_KEEP_COLS)      # _uuid : repérer une soumission en double
 
                 # Save cleaned main sheet
                 base = fname.rsplit('.', 1)[0]
@@ -1004,6 +1102,7 @@ def upload():
                     app.config['UPLOAD_FOLDER'], f'clean_{base}.xlsx')
                 df_clean.to_excel(clean_path, index=False, engine='openpyxl')
                 session['data_path'] = clean_path
+                _reset_analysis_state()
                 session['data_meta'] = summarize_dataframe(df_clean)
                 session['data_meta']['sheet_name'] = main_name
 
@@ -1152,7 +1251,7 @@ def save_var_label():
 
 @app.route('/data/preview')
 def data_preview():
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash('Veuillez d\'abord importer un fichier.', 'warning')
         return redirect(url_for('upload'))
@@ -1190,7 +1289,7 @@ def export_var_types_xlsx():
     Obs. valides / Manquantes / % manq.
     Feuille 2 « Métadonnées » : nom du fichier, taille, date d'export.
     """
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
@@ -1264,7 +1363,7 @@ def export_var_types_csv():
     """Même questionnaire reconstruit que export_var_types_xlsx(), au format
     CSV — demandé en plus du XLSX (certains outils/habitudes d'équipe
     préfèrent le CSV, ex. réimport dans un autre logiciel)."""
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
@@ -1291,7 +1390,7 @@ def export_data_xlsx():
     seulement l'aperçu des 20 premières affiché sur /data/preview) — par
     opposition à var-types.xlsx qui exporte le QUESTIONNAIRE reconstruit,
     pas les données."""
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
@@ -1308,7 +1407,7 @@ def export_data_xlsx():
 @app.route('/data/export.csv')
 def export_data_csv():
     """Export CSV du jeu de données chargé tel quel — voir export_data_xlsx()."""
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
@@ -1323,7 +1422,7 @@ def export_data_stat(fmt):
     """Export SPSS (.sav) ou Stata (.dta) avec libellés de variables et de
     modalités — voir modules/stat_export.py. Pour un formulaire Kobo, les
     libellés des questions et des choix sont relus dans le formulaire."""
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
         return redirect(url_for('analyse_donnees'))
@@ -1489,7 +1588,7 @@ def _kobo_df_for_validation(uid):
         hit = _KOBO_VALIDATION_CACHE.get(uid)
     if hit and now - hit[0] < _KOBO_VALIDATION_TTL:
         return hit[1]
-    res = kobo_load_data(token, uid, instance=session.get('kobo_instance') or None)
+    res = kobo_load_data(token, uid, instance=session.get('kobo_instance') or None, keep_meta_cols=MS_KEEP_COLS)
     if not res.get('success'):
         flash(f"Chargement KoboToolbox : {res.get('error', 'erreur')}", 'danger')
         return None
@@ -1516,7 +1615,7 @@ def _validation_context():
         tracked = next((t for t in kobo_track.list_tracked() if t.get('uid') == uid), None)
         return _kobo_df_for_validation(uid), 'kobo:' + uid, (tracked or {}).get('name') or uid, {'uid': uid}
     meta = session.get('data_meta') or {}
-    return (get_dataframe(), _validation_survey_key(),
+    return (get_dataframe(full=True), _validation_survey_key(),
             meta.get('name') or session.get('original_filename') or '', {})
 
 
@@ -1529,6 +1628,43 @@ def _validation_back(args):
     return url_for('analyse_donnees'), "Analyse de données"
 
 
+def _study_rule_key(df, key):
+    """Clé des règles qui valent pour TOUTES les vagues d'une étude (même entête, même juridiction, même sujet de Factum :
+    l'étude CAP Tabac de 2023 et celle de 2025 partagent leurs règles). None si l'enquête n'a pas de Factum valide."""
+    fac = study_factum.get_for_survey(key) or (study_factum.from_dataframe(df) if df is not None else '')
+    parsed = study_factum.parse(fac) if fac else None
+    if parsed and parsed['valid']:
+        p = parsed['parts']
+        return f"etude:{p['entete']}__{p['juridiction']}__{p['sujet']}"
+    return None
+
+
+def _validation_form(args):
+    """Définition du formulaire pour contrôler les réponses : jointe aux données chargées (XLSForm ou Kobo), ou lue sur
+    Kobo pour un formulaire suivi. None sans formulaire."""
+    if 'ms' in args:
+        return None
+    if 'uid' in args:
+        if not session.get('kobo_token'):
+            return None
+        try:
+            return xlsform_checks.from_structure(get_asset_structure(session['kobo_token'], args['uid'],
+                                                                      instance=session.get('kobo_instance') or None))
+        except Exception:
+            return None
+    path = session.get('data_path')
+    return dataset.load_form(path) if path else None
+
+
+def _validation_compute(df, key, args):
+    """(résultat, règles appliquées, clé d'étude, formulaire) : règles de l'enquête et de son étude, contrôles du formulaire."""
+    study = _study_rule_key(df, key)
+    rules = validation_rules.list_rules([key, study])
+    form = _validation_form(args)
+    extra = xlsform_checks.run_checks(df, form) if form else []
+    return validation_rules.run_validation(df, rules, extra), rules, study, form
+
+
 @app.route('/qualite/validation')
 def validation_donnees():
     df, key, name, args = _validation_context()
@@ -1537,37 +1673,82 @@ def validation_donnees():
             flash("La validation porte sur les données d'une enquête : chargez-les d'abord "
                   "(formulaire KoboToolbox ou fichier Excel).", 'warning')
         return redirect(_validation_back(args)[0])
-    rules = validation_rules.list_rules(key)
+    result, rules, study, form = _validation_compute(df, key, args)
+    candidates = validation_rules.group_candidates(df)
+    par = request.args.get('par') or (candidates[0][0] if candidates else None)
+    summary = validation_rules.summary_by(df, result, par) if par in df.columns else None
     back_url, back_label = _validation_back(args)
+    path = session.get('data_path')
     return render_template('validation.html',
-                           result=validation_rules.run_validation(df, rules),
-                           rules=rules,
-                           columns=list(df.columns),
+                           result=result, rules=rules, columns=list(df.columns),
                            symboles=validation_rules.OPERATEUR_SYMBOLES,
                            dataset_name=name, ctx_args=args,
-                           back_url=back_url if args else None, back_label=back_label)
+                           back_url=back_url if args else None, back_label=back_label,
+                           study_key=study, has_form=bool(form), n_form_questions=len(form['questions']) if form else 0,
+                           candidates=candidates, par=par, par_kind=next((k for c, k in candidates if c == par), 'lieu'), summary=summary, labels=_data_var_labels(df) if not args else {},
+                           can_exclude=not args and bool(path), excluded_n=len(dataset.excluded_rows(path)) if (path and not args) else 0)
 
 
 @app.route('/qualite/validation/regles', methods=['POST'])
 def validation_regle_ajouter():
-    _, key, _, args = _validation_context()
+    df, key, _, args = _validation_context()
     form = request.form
-    droite_est_variable = form.get('type_droite') == 'variable'
-    ok, err = validation_rules.add_rule(
-        key, form.get('gauche'), form.get('operateur'),
-        form.get('droite_variable') if droite_est_variable else form.get('droite_valeur'),
-        droite_est_variable, form.get('libelle'), session.get('username') or '')
-    flash('Règle ajoutée : elle est maintenant appliquée à chaque contrôle de cette enquête.' if ok else err,
+    operateur = form.get('operateur')
+    scope_key = _study_rule_key(df, key) if (form.get('portee') == 'etude' and df is not None) else None
+    target = scope_key or key
+    if operateur == 'unique':
+        ok, err = validation_rules.add_rule(target, '|'.join(form.getlist('cles')), 'unique', '', False,
+                                            form.get('libelle'), session.get('username') or '')
+    else:
+        droite_est_variable = form.get('type_droite') == 'variable'
+        ok, err = validation_rules.add_rule(
+            target, form.get('gauche'), operateur,
+            form.get('droite_variable') if droite_est_variable else form.get('droite_valeur'),
+            droite_est_variable, form.get('libelle'), session.get('username') or '')
+    where = "à toutes les vagues de cette étude" if scope_key else "à cette enquête"
+    flash(f'Règle ajoutée : elle est maintenant appliquée {where} à chaque contrôle.' if ok else err,
           'success' if ok else 'danger')
     return redirect(url_for('validation_donnees', **args))
 
 
 @app.route('/qualite/validation/regles/<int:rule_id>/supprimer', methods=['POST'])
 def validation_regle_supprimer(rule_id):
-    _, key, _, args = _validation_context()
-    if validation_rules.delete_rule(rule_id, key):
+    df, key, _, args = _validation_context()
+    if validation_rules.delete_rule(rule_id, [key, _study_rule_key(df, key)]):
         flash('Règle supprimée.', 'info')
     return redirect(url_for('validation_donnees', **args))
+
+
+@app.route('/qualite/validation/exclure', methods=['POST'])
+def validation_exclure():
+    """Écarte de l'analyse (statistiques, croisements, multivariées, rapports) les lignes signalées. Rien n'est supprimé :
+    le fichier reste intact et « Rétablir » remet toutes les lignes."""
+    df, key, _, args = _validation_context()
+    path = session.get('data_path')
+    if df is None or args or not path:
+        flash("L'écartement de lignes concerne les données chargées pour analyse.", 'warning')
+        return redirect(url_for('validation_donnees', **args))
+    result = _validation_compute(df, key, args)[0]
+    mode = request.form.get('mode')
+    if mode == 'erreurs':
+        lines = validation_rules.error_lines(result)
+    elif mode == 'toutes':
+        lines = validation_rules.error_lines(result, (validation_rules.ERREUR, validation_rules.A_VERIFIER))
+    elif mode == 'controle':
+        try:
+            lines = result['checks'][int(request.form.get('index', -1))]['lignes']
+        except (ValueError, IndexError):
+            lines = []
+    else:
+        lines = []
+    if not lines:
+        flash("Aucune ligne à écarter pour ce choix.", 'info')
+    else:
+        before = set(dataset.excluded_rows(path))
+        total = dataset.set_excluded(path, before | set(lines), note=mode)
+        flash(f"{len(set(lines) - before)} ligne(s) écartée(s) de l'analyse ({len(total)} au total). Le fichier n'est pas modifié : "
+              "« Rétablir » remet toutes les lignes.", 'success')
+    return redirect(url_for('validation_donnees'))
 
 
 @app.route('/qualite/validation/export.xlsx')
@@ -1577,7 +1758,7 @@ def validation_export():
         if not session.get('_flashes'):     # un message précis a déjà été posté (Kobo absent, échec de chargement)
             flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
         return redirect(_validation_back(args)[0])
-    result = validation_rules.run_validation(df, validation_rules.list_rules(key))
+    result = _validation_compute(df, key, args)[0]
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
         validation_rules.flagged_rows(df, result).to_excel(writer, index=False, sheet_name='Lignes à vérifier')
@@ -1620,7 +1801,7 @@ def factum_api():
 
 @app.route('/gdb')
 def gdb_index():
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     meta = session.get('data_meta') or {}
     terme = (request.args.get('q') or '').strip()
     tous = request.args.get('tous') == '1'
@@ -1639,7 +1820,7 @@ def gdb_index():
 
 @app.route('/gdb/verser', methods=['POST'])
 def gdb_verser():
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Aucune donnée chargée à verser dans la base centrale.", 'warning')
         return redirect(url_for('gdb_index'))
@@ -1695,7 +1876,7 @@ def gdb_variable_csv():
 @app.route('/map')
 def map_view():
     """Carte géographique interactive — points GPS avec infobulles."""
-    df = get_dataframe()
+    df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
@@ -2073,28 +2254,69 @@ def dashboard():
 
 # ─── DESCRIPTIVE ──────────────────────────────────────────────────────────────
 
+DESC_DEFAULT_CAT = 12       # première visite : ces variables d'abord, le reste à la demande
+DESC_DEFAULT_BIN = 5
+DESC_MAX_VARS = 60          # au-delà, la page devient illisible : on s'arrête là et on le dit
+DESC_MAX_GROUP_VARS = 30
+GROUP_MAX_LEVELS = 30
+
+
+import hashlib
+app.jinja_env.filters['hash8'] = lambda value: hashlib.md5(str(value).encode('utf-8')).hexdigest()[:6]
+
+
+def _varname(value):
+    return dataset.readable(value)
+
+
+app.jinja_env.filters['varname'] = _varname
+
+
+def _sections_of(variables):
+    """[{nom, variables}] : les variables rangées par section du formulaire (groupe Kobo), dans l'ordre d'apparition."""
+    out = {}
+    for v in variables:
+        out.setdefault(dataset.section_of(v) or 'Sans section', []).append(v)
+    return [{'name': k, 'vars': v} for k, v in out.items()]
+
+
+def _group_candidates(df, var_types):
+    """Variables qui servent à décomposer une analyse (district, profession…) : 2 à 30 modalités."""
+    out = []
+    for v, t in var_types.items():
+        if t in ('categorielle', 'identifiant', 'binaire') and 2 <= df[v].nunique() <= GROUP_MAX_LEVELS:
+            out.append(v)
+    return out
+
+
 @app.route('/descriptive', methods=['GET', 'POST'])
 def descriptive():
-    df = get_dataframe()
+    df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
-    var_types = get_var_types(df)
-    cat_vars  = [v for v, t in var_types.items() if t in ('categorielle',)]
+    var_types = dataset.analysis_var_types(df)
+    cat_vars  = [v for v, t in var_types.items() if t == 'categorielle']
     num_vars  = [v for v, t in var_types.items() if t == 'continue']
     bin_groups = detect_binary_groups(df)
+    group_vars = _group_candidates(df, var_types)
+    labels = _data_var_labels(df)
 
     results_cat, results_num, results_bin = [], [], []
     selected_cat, selected_num, selected_bin_groups = [], [], []
+    group_var = None
+    limited_default = False
 
     if request.method == 'POST':
         selected_cat = request.form.getlist('cat_vars')
         selected_num = request.form.getlist('num_vars')
         selected_bin_groups = request.form.getlist('bin_groups')
+        group_var = (request.form.get('group_var') or '').strip() or None
         # Persiste les sélections pour les retrouver au prochain GET
         session['descriptive_form'] = {
             'cat': selected_cat,
             'num': selected_num,
             'bin': selected_bin_groups,
+            'group': group_var,
         }
         # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
         # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
@@ -2105,132 +2327,165 @@ def descriptive():
             selected_cat = saved.get('cat', [])
             selected_num = saved.get('num', [])
             selected_bin_groups = saved.get('bin', [])
+            group_var = saved.get('group')
         else:
-            # Première visite (pas encore de sélection enregistrée) : calcule
-            # automatiquement sur toutes les variables plutôt que de laisser
-            # une page vide en attente d'une action manuelle — les stats
-            # descriptives par variable ne demandent aucun jugement quant au
-            # choix des variables, contrairement à un croisement ciblé.
-            selected_cat = cat_vars
-            selected_num = num_vars
-            selected_bin_groups = [g['parent'] for g in bin_groups]
+            # Première visite : un premier aperçu, pas les centaines de variables d'un formulaire (106 variables, c'était
+            # 138 graphiques d'un coup). Les premières variables de chaque type ; « Tout » reste à un clic.
+            selected_cat = cat_vars[:DESC_DEFAULT_CAT]
+            selected_num = num_vars[:DESC_MAX_VARS]
+            selected_bin_groups = [g['parent'] for g in bin_groups][:DESC_DEFAULT_BIN]
+            limited_default = len(cat_vars) > DESC_DEFAULT_CAT or len(bin_groups) > DESC_DEFAULT_BIN
+    if group_var not in df.columns:
+        group_var = None
 
-    # Recalcule à partir des sélections (qu'elles viennent du POST ou de la session)
-    for var in selected_cat:
-        if var in df.columns:
-            r = tris_a_plat(df, var)
-            r['auto_comment'] = auto_comment_categorical(r)
-            r['user_comment'] = _get_user_comment('descriptive_cat', var)
-            results_cat.append(r)
+    total = len(selected_cat) + len(selected_num) + len(selected_bin_groups)
+    if total > DESC_MAX_VARS:
+        flash(f"{total} analyses demandées : seules les {DESC_MAX_VARS} premières sont affichées (la page deviendrait illisible). "
+              "Choisissez-en moins, ou décomposez-les par groupes.", 'warning')
+    budget = DESC_MAX_VARS
+    n_grouped = 0
 
-    for var in selected_num:
-        if var in df.columns:
-            r = statistiques_continues(df, var)
-            r['auto_comment'] = auto_comment_continuous(r)
-            r['user_comment'] = _get_user_comment('descriptive_num', var)
-            results_num.append(r)
+    def decompose(r, var, kind):
+        nonlocal n_grouped
+        if not group_var or var == group_var or n_grouped >= DESC_MAX_GROUP_VARS:
+            return
+        try:
+            g = par_groupe(df, var, group_var, kind)
+            g['auto_comment'] = auto_comment_group(g)
+            g['user_comment'] = _get_user_comment('descriptive_grp', f'{var}|{group_var}')
+            r['by_group'] = g
+            n_grouped += 1
+        except ValueError:
+            r['by_group'] = None
 
     for parent in selected_bin_groups:
         group = next((g for g in bin_groups if g['parent'] == parent), None)
-        if group:
+        if group and budget > 0:
             r = {'parent': parent, **analyse_binaire_groupe(df, group['vars'])}
             r['auto_comment'] = auto_comment_binary_group(r)
             r['user_comment'] = _get_user_comment('descriptive_bin', parent)
+            r['label'] = labels.get(parent)
             results_bin.append(r)
+            budget -= 1
+
+    for var in selected_cat:
+        if var in df.columns and budget > 0:
+            r = tris_a_plat(df, var)
+            r['auto_comment'] = auto_comment_categorical(r)
+            r['user_comment'] = _get_user_comment('descriptive_cat', var)
+            r['label'] = labels.get(var)
+            decompose(r, var, 'categorical')
+            results_cat.append(r)
+            budget -= 1
+
+    for var in selected_num:
+        if var in df.columns and budget > 0:
+            r = statistiques_continues(df, var)
+            r['auto_comment'] = auto_comment_continuous(r)
+            r['user_comment'] = _get_user_comment('descriptive_num', var)
+            r['label'] = labels.get(var)
+            if 'error' not in r:
+                decompose(r, var, 'continuous')
+            results_num.append(r)
+            budget -= 1
 
     return render_template('descriptive.html',
                            cat_vars=cat_vars, num_vars=num_vars,
                            bin_groups=bin_groups,
+                           cat_sections=_sections_of(cat_vars), num_sections=_sections_of(num_vars),
+                           group_vars=group_vars, group_var=group_var, labels=labels,
                            results_cat=results_cat, results_num=results_num,
                            results_bin=results_bin,
                            selected_cat=selected_cat,
                            selected_num=selected_num,
-                           selected_bin_groups=selected_bin_groups)
+                           selected_bin_groups=selected_bin_groups,
+                           limited_default=limited_default)
 
 
 # ─── CROSSTABS ────────────────────────────────────────────────────────────────
 
+def _crosstabs_inputs(df):
+    """Variables proposées au croisement et libellés des questions."""
+    var_types = dataset.analysis_var_types(df)
+    cat_vars = [v for v, t in var_types.items() if t in ('categorielle', 'binaire', 'identifiant')]
+    num_vars = [v for v, t in var_types.items() if t == 'continue']
+    # Une question à choix multiples se reconnaît à ses colonnes 0/1 « Question/Choix »
+    groups = [g for g in detect_binary_groups(df)]
+    return var_types, cat_vars, num_vars, groups
+
+
+def _crosstabs_result(df, form, labels=None):
+    """Calcule le tableau croisé demandé (ou lève ValueError) et sa lecture automatique."""
+    names = {c: (labels.get(c) or _varname(c)) for c in df.columns} if labels is not None else None
+    result = tableau_croise_dynamique(df, rows=form['rows'], cols=form['cols'], value_var=form['value_var'], agg=form['agg'],
+                                      pct_type=form['pct_type'], filters=form['filters'], layer=form.get('layer'), names=names)
+    if result['chi2'] is not None:
+        result['auto_comment'] = auto_comment_crosstab(dict(result, row_var=form['rows'][0], col_var=form['cols'][0]))
+    else:
+        result['auto_comment'] = auto_comment_pivot(result)
+    result['strata_comment'] = auto_comment_strata(result['strata']) if result.get('strata') else ''
+    result['user_comment'] = _get_user_comment('crosstabs', '|'.join(form['rows']) + '||' + '|'.join(form['cols']))
+    return result
+
+
+def _crosstabs_multi_result(df, form, groups, labels=None):
+    group = next((g for g in groups if g['parent'] == form.get('group')), None)
+    if not group or form.get('var') not in df.columns:
+        raise ValueError("Choisissez une question à choix multiples et une variable de croisement.")
+    result = croisement_choix_multiples(df, group['vars'], form['var'], group['parent'],
+                                        var_name=(labels or {}).get(form['var']) or _varname(form['var']))
+    result['auto_comment'] = auto_comment_choix_multiples(result)
+    result['user_comment'] = _get_user_comment('crosstabs_multi', f"{group['parent']}|{form['var']}")
+    return result
+
+
 @app.route('/crosstabs', methods=['GET', 'POST'])
 def crosstabs():
-    """Analyse Croisée Dynamique (style tableau croisé dynamique Excel)."""
-    df = get_dataframe()
+    """Analyse Croisée Dynamique (style tableau croisé dynamique Excel) et croisement des questions à choix multiples."""
+    df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
-    var_types = get_var_types(df)
-    cat_vars = [v for v, t in var_types.items() if t in ('categorielle', 'binaire')]
-    num_vars = [v for v, t in var_types.items() if t == 'continue']
+    var_types, cat_vars, num_vars, multi_groups = _crosstabs_inputs(df)
     all_vars = list(df.columns)
-    result = None
-    rows = []
-    cols = []
-    value_var = None
-    agg = 'count'
-    pct_type = 'none'
-    filters = {}
+    labels = _data_var_labels(df)
 
     if request.method == 'POST':
-        rows = [r for r in request.form.getlist('rows') if r]
-        cols = [c for c in request.form.getlist('cols') if c]
-        value_var = (request.form.get('value_var') or '').strip() or None
-        agg = request.form.get('agg', 'count')
-        pct_type = request.form.get('pct_type', 'none')
-        # Filtres : 'filter_<var>' = liste de valeurs
-        for key in request.form.keys():
-            if key.startswith('filter_'):
-                var = key[len('filter_'):]
-                vals = [v for v in request.form.getlist(key) if v]
-                if vals:
-                    filters[var] = vals
-        session['crosstabs_form'] = {
-            'rows': rows, 'cols': cols, 'value_var': value_var,
-            'agg': agg, 'pct_type': pct_type, 'filters': filters,
-        }
+        if request.form.get('kind') == 'multi':
+            session['crosstabs_multi'] = {'group': request.form.get('group') or '', 'var': request.form.get('var') or ''}
+        else:
+            filters = {}
+            # Filtres : 'filter_<var>' = liste de valeurs
+            for key in request.form.keys():
+                if key.startswith('filter_'):
+                    vals = [v for v in request.form.getlist(key) if v]
+                    if vals:
+                        filters[key[len('filter_'):]] = vals
+            session['crosstabs_form'] = {
+                'rows': [r for r in request.form.getlist('rows') if r], 'cols': [c for c in request.form.getlist('cols') if c],
+                'value_var': (request.form.get('value_var') or '').strip() or None, 'agg': request.form.get('agg', 'count'),
+                'pct_type': request.form.get('pct_type', 'none'), 'filters': filters,
+                'layer': (request.form.get('layer') or '').strip() or None,
+            }
         # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
         # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
         return redirect(url_for('crosstabs'))
-    else:
-        saved = session.get('crosstabs_form') or {}
-        rows     = [r for r in saved.get('rows', []) if r in df.columns]
-        cols     = [c for c in saved.get('cols', []) if c in df.columns]
-        value_var = saved.get('value_var')
-        agg      = saved.get('agg', 'count')
-        pct_type = saved.get('pct_type', 'none')
-        filters  = saved.get('filters', {}) or {}
 
-    if rows:
+    saved = session.get('crosstabs_form') or {}
+    form = {'rows': [r for r in saved.get('rows', []) if r in df.columns], 'cols': [c for c in saved.get('cols', []) if c in df.columns],
+            'value_var': saved.get('value_var'), 'agg': saved.get('agg', 'count'), 'pct_type': saved.get('pct_type', 'none'),
+            'filters': saved.get('filters', {}) or {}, 'layer': saved.get('layer') if saved.get('layer') in df.columns else None}
+    multi_form = session.get('crosstabs_multi') or {}
+    result = multi_result = None
+    if form['rows']:
         try:
-            result = tableau_croise_dynamique(
-                df, rows=rows, cols=cols,
-                value_var=value_var, agg=agg,
-                pct_type=pct_type, filters=filters,
-            )
-            # Commentaire automatique seulement si comptage 2D simple
-            if agg == 'count' and len(rows) == 1 and len(cols) == 1:
-                # Construire un objet compatible avec auto_comment_crosstab
-                legacy = {
-                    'row_var': rows[0], 'col_var': cols[0],
-                    'n': result['n'], 'chi2': result['chi2'],
-                    'p_val': result['p_val'], 'dof': result['dof'],
-                    'cramers_v': result['cramers_v'],
-                    'sig_label': result['sig_label'],
-                    'assoc_label': result['assoc_label'],
-                    'pct_label': result['pct_label'] or '% ligne',
-                }
-                try:
-                    result['auto_comment'] = auto_comment_crosstab(legacy)
-                except Exception:
-                    result['auto_comment'] = ''
-            else:
-                result['auto_comment'] = (
-                    f"Tableau croisé dynamique : {agg} sur "
-                    f"{value_var or 'observations'} — "
-                    f"{' × '.join(rows)} vs {' × '.join(cols) if cols else '(aucune colonne)'}"
-                )
-            key = '|'.join(rows) + '||' + '|'.join(cols)
-            result['user_comment'] = _get_user_comment('crosstabs', key)
+            result = _crosstabs_result(df, form, labels)
         except Exception as e:
-            # Affiché à chaque affichage (le calcul se fait maintenant au rechargement qui suit le POST)
-            flash(f'Erreur : {str(e)}', 'danger')
+            flash(f'Erreur : {str(e)}', 'danger')       # affiché à chaque affichage (le calcul suit le POST)
+    if multi_form.get('group') and multi_form.get('var'):
+        try:
+            multi_result = _crosstabs_multi_result(df, multi_form, multi_groups, labels)
+        except Exception as e:
+            flash(f'Choix multiples : {str(e)}', 'danger')
 
     # Modalités disponibles pour le panneau de filtres (≤ 30 valeurs)
     filter_options = {}
@@ -2243,12 +2498,38 @@ def crosstabs():
             pass
 
     return render_template('crosstabs.html',
-                            cat_vars=cat_vars, num_vars=num_vars,
-                            all_vars=all_vars,
-                            filter_options=filter_options,
-                            result=result, rows=rows, cols=cols,
-                            value_var=value_var, agg=agg,
-                            pct_type=pct_type, filters=filters)
+                            cat_vars=cat_vars, num_vars=num_vars, all_vars=all_vars, labels=labels,
+                            multi_groups=multi_groups, multi_form=multi_form,
+                            filter_options=filter_options, result=result, multi_result=multi_result,
+                            rows=form['rows'], cols=form['cols'], value_var=form['value_var'], agg=form['agg'],
+                            pct_type=form['pct_type'], filters=form['filters'], layer=form['layer'])
+
+
+@app.route('/crosstabs/export.xlsx')
+def crosstabs_export():
+    """Classeur Excel du croisement affiché : tableaux, pourcentages, résidus, tests, strates et lecture automatique."""
+    df = get_dataframe(display=True)
+    if df is None:
+        return redirect(url_for('upload'))
+    kind = request.args.get('kind', 'pivot')
+    try:
+        if kind == 'multi':
+            result = _crosstabs_multi_result(df, session.get('crosstabs_multi') or {}, _crosstabs_inputs(df)[3], _data_var_labels(df))
+            result['n'] = result['n_respondents']
+        else:
+            saved = session.get('crosstabs_form') or {}
+            form = {'rows': [r for r in saved.get('rows', []) if r in df.columns], 'cols': [c for c in saved.get('cols', []) if c in df.columns],
+                    'value_var': saved.get('value_var'), 'agg': saved.get('agg', 'count'), 'pct_type': saved.get('pct_type', 'none'),
+                    'filters': saved.get('filters', {}) or {}, 'layer': saved.get('layer')}
+            if not form['rows']:
+                raise ValueError("Calculez d'abord un tableau croisé.")
+            result = _crosstabs_result(df, form, _data_var_labels(df))
+        content = crosstabs_module.export_workbook(result)
+    except Exception as e:
+        flash(f"Export impossible : {e}", 'warning')
+        return redirect(url_for('crosstabs'))
+    return send_file(io.BytesIO(content), as_attachment=True, download_name='croisement.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 # ─── MULTI-ENQUÊTE ────────────────────────────────────────────────────────────
@@ -2400,7 +2681,8 @@ def _ms_order(names, factums):
 def _ms_quality(entry, df):
     """Résumé des contrôles de validation d'une enquête de la pile (règles de
     validation_rules.py + règles saisies pour elle), mis en cache."""
-    rules = validation_rules.list_rules(_ms_key(entry))
+    key = _ms_key(entry)
+    rules = validation_rules.list_rules([key, _study_rule_key(df, key)])
     try:
         stamp = os.path.getmtime(entry['path'])
     except (KeyError, OSError):
@@ -2410,7 +2692,7 @@ def _ms_quality(entry, df):
         hit = _MS_QUALITY_CACHE.get(fingerprint)
     if hit is None:
         res = validation_rules.run_validation(df, rules)
-        hit = {k: res[k] for k in ('n_lignes', 'n_signalees', 'pct_sans_anomalie', 'n_erreurs', 'n_a_verifier')}
+        hit = {k: res[k] for k in ('n_lignes', 'n_signalees', 'pct_sans_anomalie', 'n_erreurs', 'n_a_verifier', 'n_atypiques')}
         _cache_put(_MS_QUALITY_CACHE, fingerprint, hit, limit=32)
     return hit
 
@@ -3127,106 +3409,150 @@ def multi_survey_download_xlsx():
 
 # ─── MULTIVARIATE ─────────────────────────────────────────────────────────────
 
+MV_METHOD_NAMES = {'pca': 'ACP', 'mca': 'ACM', 'ca': 'AFC', 'clustering': 'Classification'}
+
+
+def _mv_inputs(df):
+    var_types = dataset.analysis_var_types(df)
+    cat_vars = [v for v, t in var_types.items() if t == 'categorielle']
+    num_vars = [v for v, t in var_types.items() if t in ('continue', 'binaire')]
+    return cat_vars, num_vars
+
+
+def _mv_form():
+    saved = session.get('multivariate_form') or {}
+    return {'method': saved.get('method'), 'selected': saved.get('selected', []), 'n_components': int(saved.get('n_components', 2) or 2),
+            'n_clusters': saved.get('n_clusters', 3), 'ca_row': saved.get('ca_row'), 'ca_col': saved.get('ca_col'),
+            'cluster_method': saved.get('cluster_method', 'kmeans'), 'cluster_kind': saved.get('cluster_kind', 'numeric')}
+
+
+def _mv_run(df, form):
+    """Lance l'analyse décrite par `form` ; renvoie le résultat avec sa lecture automatique (ou None)."""
+    method, selected = form['method'], [v for v in form['selected'] if v in df.columns]
+    result = None
+    if method == 'pca' and len(selected) >= 2:
+        result = run_pca(df, selected, form['n_components'])
+    elif method == 'mca' and len(selected) >= 2:
+        result = run_mca(df, selected, form['n_components'])
+    elif method == 'ca' and form['ca_row'] in df.columns and form['ca_col'] in df.columns:
+        result = run_ca(df, form['ca_row'], form['ca_col'])
+    elif method == 'clustering' and len(selected) >= 2:
+        k = None if str(form['n_clusters']) in ('0', '', 'auto', 'None') else int(form['n_clusters'])
+        result = run_clustering(df, selected, k, method=form['cluster_method'], kind=form['cluster_kind'])
+    if result is not None:
+        result['auto_comment'] = auto_comment_multivariate(result)
+        result['user_comment'] = _get_user_comment('multivariate', method)
+    return result
+
+
 @app.route('/multivariate', methods=['GET', 'POST'])
 def multivariate():
-    df = get_dataframe()
+    df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
-    var_types = get_var_types(df)
-    cat_vars = [v for v, t in var_types.items() if t == 'categorielle']
-    num_vars = [v for v, t in var_types.items() if t == 'continue']
-    # Include binary numeric for PCA/clustering
-    bin_vars = [v for v, t in var_types.items() if t == 'binaire']
-    num_vars_all = num_vars + bin_vars
-
-    result = None
-    method = None
-    selected = []
-    n_components = 2
-    n_clusters = 3
-    ca_row = ca_col = None
+    cat_vars, num_vars_all = _mv_inputs(df)
+    labels = _data_var_labels(df)
 
     if request.method == 'POST':
-        method   = request.form.get('method')
-        selected = request.form.getlist('variables')
-        n_components = int(request.form.get('n_components', 2))
-        n_clusters   = int(request.form.get('n_clusters', 3))
-        ca_row = request.form.get('ca_row')
-        ca_col = request.form.get('ca_col')
-        # Persiste tous les paramètres pour le prochain GET
-        session['multivariate_form'] = {
-            'method': method, 'selected': selected,
-            'n_components': n_components, 'n_clusters': n_clusters,
-            'ca_row': ca_row, 'ca_col': ca_col,
-        }
-        usable = [v for v in selected if v in df.columns]
-        if not ((method in ('pca', 'mca', 'clustering') and len(usable) >= 2)
-                or (method == 'ca' and ca_row in df.columns and ca_col in df.columns)):
+        form = {'method': request.form.get('method'), 'selected': request.form.getlist('variables'),
+                'n_components': int(request.form.get('n_components', 2) or 2), 'n_clusters': request.form.get('n_clusters', '3'),
+                'ca_row': request.form.get('ca_row'), 'ca_col': request.form.get('ca_col'),
+                'cluster_method': request.form.get('cluster_method', 'kmeans'), 'cluster_kind': request.form.get('cluster_kind', 'numeric')}
+        session['multivariate_form'] = form                          # tous les paramètres sont conservés pour le prochain GET
+        usable = [v for v in form['selected'] if v in df.columns]
+        if not ((form['method'] in ('pca', 'mca', 'clustering') and len(usable) >= 2)
+                or (form['method'] == 'ca' and form['ca_row'] in df.columns and form['ca_col'] in df.columns)):
             flash('Sélectionnez au moins 2 variables.', 'warning')
         # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
         # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
         return redirect(url_for('multivariate'))
-    else:
-        saved = session.get('multivariate_form')
-        if saved:
-            method = saved.get('method')
-            selected = saved.get('selected', [])
-            n_components = saved.get('n_components', 2)
-            n_clusters = saved.get('n_clusters', 3)
-            ca_row = saved.get('ca_row')
-            ca_col = saved.get('ca_col')
+
+    form = _mv_form()
+    if not session.get('multivariate_form'):
+        # Première visite : ACP sur les variables numériques/binaires par défaut — un premier coup d'œil structurel ne demande
+        # pas de choix méthodologique préalable. select_viable_variables() écarte les variables qui, combinées, tomberaient à
+        # 0 ligne conjointement renseignée (variables mutuellement exclusives par logique de saut).
+        pca_vars = select_viable_variables(df, num_vars_all, min_rows=10) if len(num_vars_all) >= 2 else []
+        if len(pca_vars) >= 2:
+            form.update(method='pca', selected=pca_vars)
         else:
-            # Première visite : ACP sur les variables numériques/binaires par
-            # défaut — un premier coup d'œil structurel ne demande pas de
-            # choix méthodologique préalable (contrairement à l'AFC, qui croise
-            # 2 variables catégorielles précises et reste manuelle).
-            # select_viable_variables() écarte les variables qui, combinées,
-            # tomberaient à 0 ligne conjointement renseignée — cas fréquent
-            # avec des variables mutuellement exclusives par logique de saut
-            # (ex. « âge calculé » vs « âge saisi manuellement »), qui
-            # feraient sinon échouer l'ACP silencieusement sur un simple GET.
-            pca_vars = select_viable_variables(df, num_vars_all, min_rows=10) if len(num_vars_all) >= 2 else []
-            if len(pca_vars) >= 2:
-                method, selected = 'pca', pca_vars
-            else:
-                mca_vars = select_viable_variables(df, cat_vars, min_rows=10, numeric=False) if len(cat_vars) >= 2 else []
-                if len(mca_vars) >= 2:
-                    method, selected = 'mca', mca_vars
+            mca_vars = select_viable_variables(df, [v for v in cat_vars if 2 <= df[v].nunique() <= 12][:12], min_rows=10, numeric=False) \
+                if len(cat_vars) >= 2 else []
+            if len(mca_vars) >= 2:
+                form.update(method='mca', selected=mca_vars)
+    form['selected'] = [v for v in form['selected'] if v in df.columns]
 
-    # Filtre les variables qui n'existent plus dans le df actuel
-    selected = [v for v in selected if v in df.columns]
-
-    if method:
+    result = None
+    if form['method']:
         try:
-            if method == 'pca' and len(selected) >= 2:
-                result = run_pca(df, selected, n_components)
-            elif method == 'mca' and len(selected) >= 2:
-                result = run_mca(df, selected, n_components)
-            elif method == 'ca' and ca_row and ca_col and ca_row in df.columns and ca_col in df.columns:
-                result = run_ca(df, ca_row, ca_col)
-            elif method == 'clustering' and len(selected) >= 2:
-                result = run_clustering(df, selected, n_clusters)
+            result = _mv_run(df, form)
         except Exception as e:
-            # Affiché même sur GET (pas seulement POST) : sinon l'analyse
-            # automatique au premier chargement peut échouer sans qu'aucun
-            # message n'explique pourquoi la page reste vide.
-            flash(f'Erreur d\'analyse : {str(e)}', 'danger')
+            # Affiché même sur GET (pas seulement POST) : sinon l'analyse automatique au premier chargement peut échouer sans
+            # qu'aucun message n'explique pourquoi la page reste vide.
+            flash(f"Erreur d'analyse : {str(e)}", 'danger')
 
+    path = session.get('data_path')
     return render_template('multivariate.html',
-                           cat_vars=cat_vars,
-                           num_vars=num_vars_all,
-                           result=result, method=method,
-                           selected_vars=selected,
-                           n_components=n_components,
-                           n_clusters=n_clusters,
-                           ca_row=ca_row, ca_col=ca_col)
+                           cat_vars=cat_vars, num_vars=num_vars_all, labels=labels,
+                           result=result, method=form['method'], selected_vars=form['selected'],
+                           n_components=form['n_components'], n_clusters=form['n_clusters'],
+                           ca_row=form['ca_row'], ca_col=form['ca_col'],
+                           cluster_method=form['cluster_method'], cluster_kind=form['cluster_kind'],
+                           derived=dataset.derived_names(path) if path else [])
+
+
+@app.route('/multivariate/classes', methods=['POST'])
+def multivariate_save_classes():
+    """Enregistre la classe de chaque individu comme variable du jeu : elle devient disponible dans toutes les analyses
+    (tri à plat, croisements, décomposition par groupe) et dans les exports."""
+    path = session.get('data_path')
+    df = get_dataframe(display=True)
+    form = _mv_form()
+    if df is None or form['method'] != 'clustering':
+        flash("Lancez d'abord une classification.", 'warning')
+        return redirect(url_for('multivariate'))
+    name = re.sub(r'[^A-Za-z0-9_\- ]', '', (request.form.get('name') or '').strip())[:40] or \
+        ('Classe_CAH' if form['cluster_method'] == 'cah' else 'Classe_KMeans')
+    try:
+        result = _mv_run(df, form)
+        full = get_dataframe(full=True)
+        by_position = {int(i): lab for i, lab in zip(result['class_index'], result['class_labels'])}
+        dataset.save_derived(path, name, by_position, len(full))
+        flash(f"Variable « {name} » enregistrée ({result['n_clusters']} classes, {len(by_position)} individus classés). "
+              "Elle est maintenant proposée dans les analyses descriptives et croisées.", 'success')
+    except Exception as e:
+        flash(f"Enregistrement impossible : {e}", 'danger')
+    return redirect(url_for('multivariate'))
+
+
+@app.route('/multivariate/export.xlsx')
+def multivariate_export():
+    """Classeur Excel de l'analyse affichée : valeurs propres, contributions, coordonnées, classes."""
+    df = get_dataframe(display=True)
+    form = _mv_form()
+    try:
+        result = _mv_run(df, form) if df is not None else None
+        if result is None:
+            raise ValueError("Lancez d'abord une analyse.")
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            pd.DataFrame({'Indicateur': ['Méthode', 'Individus', 'Variables', 'Lecture automatique'],
+                          'Valeur': [result['method'], result.get('n_obs'), result.get('n_vars'), result.get('auto_comment', '')]}
+                         ).to_excel(writer, sheet_name='Synthèse', index=False)
+            for sheet, frame in (result.get('tables') or {}).items():
+                frame.to_excel(writer, sheet_name=sheet[:31], index=not isinstance(frame.index, pd.RangeIndex))
+        return send_file(io.BytesIO(buf.getvalue()), as_attachment=True, download_name=f"analyse_{MV_METHOD_NAMES.get(form['method'], 'multivariee')}.xlsx",
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        flash(f"Export impossible : {e}", 'warning')
+        return redirect(url_for('multivariate'))
 
 
 # ─── REPORT ───────────────────────────────────────────────────────────────────
 
 @app.route('/report', methods=['GET', 'POST'])
 def report():
-    df = get_dataframe()
+    df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
     var_types  = get_var_types(df)
@@ -3479,7 +3805,7 @@ def kobo_load():
         return redirect(url_for('kobo_assets'))
 
     kobo_sync.stop()  # un nouveau formulaire est chargé : le polling précédent ne s'applique plus
-    result = kobo_load_data(token, uid)
+    result = kobo_load_data(token, uid, keep_meta_cols=MS_KEEP_COLS)
     if not result['success']:
         flash(f"Erreur de chargement : {result['error']}", 'danger')
         return redirect(url_for('kobo_assets'))
@@ -3489,7 +3815,14 @@ def kobo_load():
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
     df.to_excel(save_path, index=False, engine='openpyxl')
 
+    try:                # libellés des modalités (« Sage-femme », pas « sage_femme ») et définition du formulaire (contrôles)
+        structure = get_asset_structure(token, uid, instance=session.get('kobo_instance') or None)
+        dataset.save_labels(save_path, choice_labels.from_kobo_structure(structure))
+        dataset.save_form(save_path, xlsform_checks.from_structure(structure))
+    except Exception:
+        pass
     session['data_path']           = save_path
+    _reset_analysis_state()
     session['data_meta']           = summarize_dataframe(df)
     session['data_meta']['source'] = 'KoboToolbox'
     session['data_meta']['name']   = name

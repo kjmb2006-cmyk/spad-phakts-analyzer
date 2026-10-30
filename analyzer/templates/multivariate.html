@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
+  {% include "_excluded_banner.html" %}
   <div class="row g-4">
 
     <!-- Controls -->
@@ -12,7 +13,7 @@
         <div class="card-header bg-white border-bottom py-3">
           <h6 class="mb-0 fw-semibold"><i class="bi bi-sliders me-2 text-primary"></i>Paramètres</h6>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="max-height:calc(100vh - 170px);overflow-y:auto">
           <form method="POST" id="multivForm">
 
             <!-- Method selector -->
@@ -20,65 +21,81 @@
               <label class="form-label small fw-semibold">Méthode d'analyse</label>
               <div class="d-flex flex-column gap-2">
                 {% for m, label, icon in [
-                  ('pca','ACP — Analyse en Composantes Principales','bi-graph-up'),
-                  ('mca','ACM — Analyse des Correspondances Multiples','bi-tag-fill'),
-                  ('ca','AFC — Analyse Factorielle des Correspondances','bi-grid-3x3'),
-                  ('clustering','Classification K-Means','bi-diagram-3-fill')
+                  ('pca','ACP — Composantes principales (variables numériques)','bi-graph-up'),
+                  ('mca','ACM — Correspondances multiples (variables catégorielles)','bi-tag-fill'),
+                  ('ca','AFC — Correspondances (2 variables catégorielles)','bi-grid-3x3'),
+                  ('clustering','Classification en classes','bi-diagram-3-fill')
                 ] %}
                 <label class="method-radio {% if method == m %}selected{% endif %}">
-                  <input type="radio" name="method" value="{{ m }}"
-                         {% if method == m %}checked{% endif %}
-                         onchange="updateMethodUI()">
+                  <input type="radio" name="method" value="{{ m }}" {% if method == m %}checked{% endif %}>
                   <i class="bi {{ icon }} me-2"></i>{{ label }}
                 </label>
                 {% endfor %}
               </div>
             </div>
 
-            <!-- Variables (PCA/Clustering → numeric; MCA → categorical; CA → both) -->
-            <div id="vars-pca" class="var-section {% if method not in ['pca','clustering'] and method %}d-none{% endif %}">
-              <label class="form-label small fw-semibold text-uppercase text-muted">Variables continues</label>
-              {% for v in num_vars %}
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="variables" value="{{ v }}"
-                       {% if v in (selected_vars or []) %}checked{% endif %}>
-                <label class="form-check-label small">{{ v }}</label>
-              </div>
-              {% endfor %}
+            <!-- Classification : algorithme et type de variables -->
+            <div id="opt-cluster-kind" class="mb-3 d-none">
+              <label class="form-label small fw-semibold">Algorithme</label>
+              <select name="cluster_method" class="form-select form-select-sm mb-2">
+                <option value="kmeans" {% if cluster_method == 'kmeans' %}selected{% endif %}>K-Means</option>
+                <option value="cah" {% if cluster_method == 'cah' %}selected{% endif %}>Classification hiérarchique (Ward) + dendrogramme</option>
+              </select>
+              <label class="form-label small fw-semibold">Variables à classer</label>
+              <select name="cluster_kind" id="clusterKind" class="form-select form-select-sm">
+                <option value="numeric" {% if cluster_kind == 'numeric' %}selected{% endif %}>Numériques (centrées-réduites)</option>
+                <option value="mca" {% if cluster_kind == 'mca' %}selected{% endif %}>Catégorielles (sur les axes de l'ACM)</option>
+              </select>
             </div>
 
-            <div id="vars-mca" class="var-section {% if method != 'mca' or not method %}d-none{% endif %}">
+            <input type="search" id="mvSearch" class="form-control form-control-sm mb-2" placeholder="Rechercher une variable…" autocomplete="off">
+
+            <!-- Variables -->
+            <div id="vars-num" class="var-section d-none">
+              <label class="form-label small fw-semibold text-uppercase text-muted">Variables numériques</label>
+              {% for v in num_vars %}
+              <div class="form-check mv-item" data-name="{{ (v ~ ' ' ~ labels.get(v, ''))|lower }}">
+                <input class="form-check-input" type="checkbox" name="variables" value="{{ v }}" data-kind="num"
+                       {% if v in (selected_vars or []) %}checked{% endif %}>
+                <label class="form-check-label small" title="{{ labels.get(v, v) }}">{{ (labels.get(v) or (v|varname)) | truncate(44) }}</label>
+              </div>
+              {% else %}<div class="small text-muted">Aucune variable numérique dans ces données.</div>{% endfor %}
+            </div>
+
+            <div id="vars-cat" class="var-section d-none">
               <label class="form-label small fw-semibold text-uppercase text-muted">Variables catégorielles</label>
               {% for v in cat_vars %}
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="variables" value="{{ v }}"
+              <div class="form-check mv-item" data-name="{{ (v ~ ' ' ~ labels.get(v, ''))|lower }}">
+                <input class="form-check-input" type="checkbox" name="variables" value="{{ v }}" data-kind="cat"
                        {% if v in (selected_vars or []) %}checked{% endif %}>
-                <label class="form-check-label small">{{ v }}</label>
+                <label class="form-check-label small" title="{{ labels.get(v, v) }}">{{ (labels.get(v) or (v|varname)) | truncate(44) }}</label>
               </div>
               {% endfor %}
             </div>
 
-            <div id="vars-ca" class="var-section {% if method != 'ca' or not method %}d-none{% endif %}">
+            <div id="vars-ca" class="var-section d-none">
               <label class="form-label small fw-semibold mt-2">Variable ligne (AFC)</label>
               <select name="ca_row" class="form-select form-select-sm mb-2">
-                {% for v in cat_vars %}<option value="{{ v }}" {% if ca_row == v %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                {% for v in cat_vars %}<option value="{{ v }}" {% if ca_row == v %}selected{% endif %}>{{ labels.get(v) or (v|varname) }}</option>{% endfor %}
               </select>
               <label class="form-label small fw-semibold">Variable colonne (AFC)</label>
               <select name="ca_col" class="form-select form-select-sm">
-                {% for v in cat_vars %}<option value="{{ v }}" {% if (ca_col and ca_col == v) or (not ca_col and loop.index == 2) %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                {% for v in cat_vars %}<option value="{{ v }}" {% if (ca_col and ca_col == v) or (not ca_col and loop.index == 2) %}selected{% endif %}>{{ labels.get(v) or (v|varname) }}</option>{% endfor %}
               </select>
             </div>
 
             <!-- Options -->
-            <div id="opt-components" class="mt-3 {% if method == 'ca' or method == 'clustering' %}d-none{% endif %}">
+            <div id="opt-components" class="mt-3 d-none">
               <label class="form-label small fw-semibold">Nombre d'axes</label>
-              <input type="number" name="n_components" class="form-control form-control-sm"
-                     value="{{ n_components or request.form.get('n_components', 3) }}" min="2" max="10">
+              <input type="number" name="n_components" class="form-control form-control-sm" value="{{ n_components or 2 }}" min="1" max="10">
+              <small class="text-muted">La lecture indique le nombre d'axes à retenir.</small>
             </div>
-            <div id="opt-clusters" class="mt-3 {% if method != 'clustering' or not method %}d-none{% endif %}">
+            <div id="opt-clusters" class="mt-3 d-none">
               <label class="form-label small fw-semibold">Nombre de classes</label>
-              <input type="number" name="n_clusters" class="form-control form-control-sm"
-                     value="{{ n_clusters or request.form.get('n_clusters', 3) }}" min="2" max="10">
+              <select name="n_clusters" class="form-select form-select-sm">
+                <option value="0" {% if n_clusters|string in ['0', 'auto', ''] %}selected{% endif %}>Automatique (silhouette maximale)</option>
+                {% for k in range(2, 11) %}<option value="{{ k }}" {% if n_clusters|string == k|string %}selected{% endif %}>{{ k }} classes</option>{% endfor %}
+              </select>
             </div>
 
             <button type="submit" class="btn btn-primary w-100 mt-3">
@@ -97,10 +114,10 @@
         <h5>Choisissez une méthode, sélectionnez vos variables et cliquez sur <strong>Lancer</strong></h5>
         <div class="row g-3 mt-3 justify-content-center">
           {% for title, desc in [
-            ('ACP','Variables continues, réduction de dimensions'),
+            ('ACP','Variables numériques, réduction de dimensions'),
             ('ACM','Variables catégorielles, nuage de modalités'),
             ('AFC','Deux variables catégorielles, plan de correspondance'),
-            ('K-Means','Segmentation automatique en classes homogènes')
+            ('Classification','K-Means ou hiérarchique : des classes décrites et enregistrables')
           ] %}
           <div class="col-sm-6 col-md-3">
             <div class="card border-0 bg-light h-100 text-start p-3">
@@ -115,12 +132,19 @@
       {% else %}
 
       <!-- Method badge -->
-      <div class="d-flex align-items-center mb-3">
+      <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
         <span class="badge bg-primary fs-6 px-3 py-2">{{ result.method }}</span>
         {% if result.get('n_obs') %}
-        <span class="text-muted small ms-3">{{ result.n_obs }} observations · {{ result.n_vars if result.get('n_vars') else '' }} variables</span>
+        <span class="text-muted small">{{ result.n_obs }} observations · {{ result.n_vars if result.get('n_vars') else '' }} variables</span>
         {% endif %}
+        <a class="btn btn-sm btn-outline-success ms-auto" href="{{ url_for('multivariate_export') }}"><i class="bi bi-file-earmark-excel me-1"></i>Exporter en Excel</a>
       </div>
+
+      <!-- Lecture automatique -->
+      {% with section='multivariate', var=method, auto=result.auto_comment, user=result.user_comment %}
+        {% include "_comment_block.html" %}
+      {% endwith %}
+      <div class="mb-4"></div>
 
       <!-- ACP results -->
       {% if method == 'pca' %}
@@ -128,26 +152,30 @@
         <div class="card-header bg-white border-bottom py-3">
           <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Valeurs propres et variance expliquée</h6>
         </div>
-        <div class="card-body">{{ result.eig_table | safe }}</div>
+        <div class="card-body">{{ result.eig_table | safe }}
+          <p class="small text-muted mb-0">Axes à retenir : <strong>{{ result.n_suggested }}</strong> (Kaiser : λ &gt; 1 → {{ result.n_kaiser }} ; 80 % de variance → {{ result.n_80 }}).</p>
+        </div>
       </div>
       <div class="row g-3 mb-4">
-        <div class="col-md-12"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-scree" class="plotly-chart"></div>
-        </div></div></div>
+        <div class="col-md-12"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-scree" class="plotly-chart"></div></div></div></div>
       </div>
       <div class="row g-3 mb-4">
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-biplot" class="plotly-chart"></div>
-        </div></div></div>
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-circle" class="plotly-chart"></div>
-        </div></div></div>
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-biplot" class="plotly-chart"></div></div></div></div>
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-circle" class="plotly-chart"></div></div></div></div>
       </div>
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white border-bottom py-3">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Coordonnées des variables (loadings)</h6>
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Variables : corrélation avec chaque axe, contribution et qualité</h6>
         </div>
-        <div class="card-body table-responsive">{{ result.loadings_table | safe }}</div>
+        <div class="card-body table-responsive">{{ result.var_table | safe }}
+          <p class="small text-muted mb-0">Corrélation : lien de la variable avec l'axe (de −1 à 1). Contribution : part de l'axe portée par la variable. Qualité : part de la variable représentée par les axes retenus (cos²).</p>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-person-lines-fill me-2"></i>Individus les plus contributifs à F1 (souvent des valeurs à vérifier)</h6>
+        </div>
+        <div class="card-body table-responsive">{{ result.ind_table | safe }}</div>
       </div>
       {% endif %}
 
@@ -155,36 +183,56 @@
       {% if method == 'mca' %}
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white border-bottom py-3">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Valeurs propres — Inertie</h6>
+          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Valeurs propres — inertie brute et taux de Benzécri</h6>
         </div>
-        <div class="card-body">{{ result.eig_table | safe }}</div>
+        <div class="card-body">{{ result.eig_table | safe }}
+          <p class="small text-muted mb-0">L'inertie brute d'une ACM sous-estime toujours l'information des premiers axes ; le taux de Benzécri (axes de valeur propre &gt; 1/{{ result.n_vars }}) est la mesure à citer.</p>
+        </div>
       </div>
       <div class="row g-3 mb-4">
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-rows" class="plotly-chart"></div>
-        </div></div></div>
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-cats" class="plotly-chart"></div>
-        </div></div></div>
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-rows" class="plotly-chart"></div></div></div></div>
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-cats" class="plotly-chart"></div></div></div></div>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-5">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">Contribution des variables aux axes</h6></div>
+            <div class="card-body table-responsive">{{ result.var_table | safe }}</div>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">Modalités les plus contributives (coordonnées, contribution, cos²)</h6></div>
+            <div class="card-body table-responsive" style="max-height:420px;overflow-y:auto">{{ result.cats_table | safe }}</div>
+          </div>
+        </div>
       </div>
       {% endif %}
 
       <!-- AFC results -->
       {% if method == 'ca' %}
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white border-bottom py-3">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Tableau de contingence</h6>
+      <div class="alert border-0 mb-4" style="background:#eef4fa">
+        <div class="row text-center g-2">
+          <div class="col-3"><div class="fw-bold fs-5">{{ result.chi2 }}</div><div class="small text-muted">χ² (ddl = {{ result.dof }})</div></div>
+          <div class="col-3"><div class="fw-bold fs-5">{{ result.p_value }}</div><div class="small text-muted">p-value</div></div>
+          <div class="col-3"><div class="fw-bold fs-5">{{ result.cramers_v }}</div><div class="small text-muted">V de Cramér</div></div>
+          <div class="col-3"><div class="fw-bold fs-5">{{ result.n_obs }}</div><div class="small text-muted">Observations</div></div>
         </div>
-        <div class="card-body table-responsive">{{ result.ct_html | safe }}</div>
-      </div>
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white border-bottom py-3">
-          <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Valeurs propres</h6>
-        </div>
-        <div class="card-body">{{ result.eig_table | safe }}</div>
       </div>
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-body"><div id="chart-biplot" class="plotly-chart"></div></div>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">Lignes</h6></div><div class="card-body table-responsive">{{ result.rows_table | safe }}</div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">Colonnes</h6></div><div class="card-body table-responsive">{{ result.cols_table | safe }}</div></div></div>
+      </div>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Valeurs propres</h6></div>
+        <div class="card-body">{{ result.eig_table | safe }}</div>
+      </div>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2"></i>Tableau de contingence</h6></div>
+        <div class="card-body table-responsive">{{ result.ct_html | safe }}</div>
       </div>
       {% endif %}
 
@@ -193,43 +241,86 @@
       <div class="alert border-0 mb-4"
            style="background:linear-gradient(135deg, var(--navy) 0%, #1a4a6e 60%, #0d3550 100%);color:white;border-radius:12px">
         <div class="row text-center">
-          <div class="col-4">
-            <div class="fw-bold fs-5">{{ result.n_clusters }}</div><div class="small opacity-75">Classes</div>
-          </div>
-          <div class="col-4">
-            <div class="fw-bold fs-5">{{ result.n_obs }}</div><div class="small opacity-75">Observations</div>
-          </div>
-          <div class="col-4">
-            <div class="fw-bold fs-5">{{ result.silhouette }}</div><div class="small opacity-75">Score silhouette</div>
-          </div>
+          <div class="col-4"><div class="fw-bold fs-5">{{ result.n_clusters }}</div><div class="small opacity-75">Classes{% if result.auto_k %} (auto){% endif %}</div></div>
+          <div class="col-4"><div class="fw-bold fs-5">{{ result.n_obs }}</div><div class="small opacity-75">Observations</div></div>
+          <div class="col-4"><div class="fw-bold fs-5">{{ result.silhouette }}</div><div class="small opacity-75">Silhouette</div></div>
         </div>
       </div>
-      <div class="row g-3 mb-4">
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-elbow" class="plotly-chart"></div>
-        </div></div></div>
-        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body">
-          <div id="chart-scatter" class="plotly-chart"></div>
-        </div></div></div>
-      </div>
+
+      <!-- Enregistrer les classes -->
       <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body"><div id="chart-radar" class="plotly-chart"></div></div>
+        <div class="card-body py-3">
+          <form method="post" action="{{ url_for('multivariate_save_classes') }}" class="d-flex flex-wrap gap-2 align-items-center">
+            <i class="bi bi-save2 text-primary"></i>
+            <span class="small fw-semibold">Enregistrer les classes comme variable</span>
+            <input name="name" class="form-control form-control-sm" style="max-width:220px" maxlength="40"
+                   value="{{ 'Classe_CAH' if cluster_method == 'cah' else 'Classe_KMeans' }}" aria-label="Nom de la variable">
+            <button class="btn btn-sm btn-primary">Enregistrer</button>
+            <span class="small text-muted">La variable apparaît dans les tris à plat, les croisements et les exports.</span>
+          </form>
+          {% if derived %}
+          <div class="small text-muted mt-2">Variables déjà enregistrées : {% for d in derived %}<span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">{{ d }}</span>{% endfor %}
+            — <a href="{{ url_for('analyse_donnees') }}">les gérer</a></div>
+          {% endif %}
+        </div>
       </div>
-      <div class="row g-3">
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-elbow" class="plotly-chart"></div></div></div></div>
+        <div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-scatter" class="plotly-chart"></div></div></div></div>
+      </div>
+      {% if result.chart_dendrogram %}
+      <div class="card border-0 shadow-sm mb-4"><div class="card-body"><div id="chart-dendro" class="plotly-chart"></div></div></div>
+      {% endif %}
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-people me-2"></i>Description des classes</h6></div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% for c in result.classes %}
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="fw-bold">{{ c.name }} <span class="text-muted fw-normal small">· {{ c.n }} ({{ c.pct }} %)</span></div>
+                {% if c.traits %}
+                <ul class="small mb-0 mt-2 ps-3">
+                  {% for t in c.traits %}
+                  <li>{{ t.label }}
+                    {% if t.part_classe is defined %}<span class="text-muted">— {{ t.part_classe }} % de la classe contre {{ t.part_totale }} % en tout</span>
+                    {% else %}<span class="text-muted">— {{ 'plus élevé' if t.sens == 'haut' else 'plus bas' }} que la moyenne (v = {{ t.v }})</span>{% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% else %}<div class="small text-muted mt-2">Proche de la moyenne, sans trait marquant.</div>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="small text-muted mt-3 mb-0">Valeur-test v : écart d'une classe à l'ensemble, en écarts-types ; au-delà de 2 en valeur absolue, l'écart est net.</p>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        {% if result.chart_radar and result.means_table %}
+        <div class="col-12"><div class="card border-0 shadow-sm"><div class="card-body"><div id="chart-radar" class="plotly-chart"></div></div></div></div>
+        {% endif %}
         <div class="col-md-5">
           <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom py-2">
-              <h6 class="mb-0 small fw-semibold">Effectifs par classe</h6>
-            </div>
+            <div class="card-header bg-white border-bottom py-2"><h6 class="mb-0 small fw-semibold">Effectifs par classe</h6></div>
             <div class="card-body">{{ result.counts_table | safe }}</div>
           </div>
         </div>
+        {% if result.means_table %}
         <div class="col-md-7">
           <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom py-2">
-              <h6 class="mb-0 small fw-semibold">Moyennes par classe</h6>
-            </div>
+            <div class="card-header bg-white border-bottom py-2"><h6 class="mb-0 small fw-semibold">Moyennes par classe</h6></div>
             <div class="card-body table-responsive">{{ result.means_table | safe }}</div>
+          </div>
+        </div>
+        {% endif %}
+        <div class="col-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-2"><h6 class="mb-0 small fw-semibold">Valeurs-tests</h6></div>
+            <div class="card-body table-responsive" style="max-height:380px;overflow-y:auto">{{ result.vtests_table | safe }}</div>
           </div>
         </div>
       </div>
@@ -243,50 +334,47 @@
 
 {% block scripts %}
 <script>
+function currentMethod() { var r = document.querySelector('input[name=method]:checked'); return r ? r.value : null; }
+
 function updateMethodUI() {
-  const m = document.querySelector('input[name=method]:checked')?.value;
-  document.querySelectorAll('.var-section').forEach(s => s.classList.add('d-none'));
-  document.getElementById('opt-components').classList.add('d-none');
-  document.getElementById('opt-clusters').classList.add('d-none');
-  if (m === 'pca') {
-    document.getElementById('vars-pca').classList.remove('d-none');
-    document.getElementById('opt-components').classList.remove('d-none');
-  } else if (m === 'mca') {
-    document.getElementById('vars-mca').classList.remove('d-none');
-    document.getElementById('opt-components').classList.remove('d-none');
-  } else if (m === 'ca') {
-    document.getElementById('vars-ca').classList.remove('d-none');
-  } else if (m === 'clustering') {
-    document.getElementById('vars-pca').classList.remove('d-none');
-    document.getElementById('opt-clusters').classList.remove('d-none');
-  }
+  var m = currentMethod();
+  var kind = document.getElementById('clusterKind').value;
+  var show = function (id, on) { document.getElementById(id).classList.toggle('d-none', !on); };
+  show('opt-cluster-kind', m === 'clustering');
+  show('vars-num', m === 'pca' || (m === 'clustering' && kind === 'numeric'));
+  show('vars-cat', m === 'mca' || (m === 'clustering' && kind === 'mca'));
+  show('vars-ca', m === 'ca');
+  show('opt-components', m === 'pca' || m === 'mca');
+  show('opt-clusters', m === 'clustering');
+  document.querySelectorAll('.method-radio').forEach(function (l) { l.classList.toggle('selected', l.querySelector('input').checked); });
+  // seules les variables du bon type sont envoyées
+  document.querySelectorAll('#multivForm input[name=variables]').forEach(function (cb) {
+    var wanted = (m === 'pca' || (m === 'clustering' && kind === 'numeric')) ? 'num' : 'cat';
+    cb.disabled = (cb.dataset.kind !== wanted);
+  });
 }
+document.querySelectorAll('input[name=method]').forEach(function (r) { r.addEventListener('change', updateMethodUI); });
+document.getElementById('clusterKind').addEventListener('change', updateMethodUI);
+document.getElementById('mvSearch').addEventListener('input', function () {
+  var q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.mv-item').forEach(function (el) { el.style.display = (!q || el.dataset.name.indexOf(q) >= 0) ? '' : 'none'; });
+});
 updateMethodUI();
 
-document.querySelectorAll('input[name=method]').forEach(r =>
-  r.addEventListener('change', updateMethodUI));
-
 const cfg = { responsive: true, displaylogo: false };
-{% if result and method == 'pca' %}
-  (function(){ var f;
-    f={{ result.chart_scree | safe }}; Plotly.newPlot('chart-scree',f.data,f.layout,cfg);
-    f={{ result.chart_biplot | safe }}; Plotly.newPlot('chart-biplot',f.data,f.layout,cfg);
-    f={{ result.chart_circle | safe }}; Plotly.newPlot('chart-circle',f.data,f.layout,cfg);
-  })();
-{% elif result and method == 'mca' %}
-  (function(){ var f;
-    f={{ result.chart_rows | safe }}; Plotly.newPlot('chart-rows',f.data,f.layout,cfg);
-    f={{ result.chart_cats | safe }}; Plotly.newPlot('chart-cats',f.data,f.layout,cfg);
-  })();
-{% elif result and method == 'ca' %}
-  (function(){ var f={{ result.chart_biplot | safe }};
-    Plotly.newPlot('chart-biplot',f.data,f.layout,cfg); })();
-{% elif result and method == 'clustering' %}
-  (function(){ var f;
-    f={{ result.chart_elbow | safe }}; Plotly.newPlot('chart-elbow',f.data,f.layout,cfg);
-    f={{ result.chart_scatter | safe }}; Plotly.newPlot('chart-scatter',f.data,f.layout,cfg);
-    f={{ result.chart_radar | safe }}; Plotly.newPlot('chart-radar',f.data,f.layout,cfg);
-  })();
-{% endif %}
+whenPlotly(function () {
+  function draw(id, fig) { var el = document.getElementById(id); if (el && fig) Plotly.newPlot(id, fig.data, fig.layout, cfg); }
+  {% if result and method == 'pca' %}
+  draw('chart-scree', {{ result.chart_scree | safe }}); draw('chart-biplot', {{ result.chart_biplot | safe }}); draw('chart-circle', {{ result.chart_circle | safe }});
+  {% elif result and method == 'mca' %}
+  draw('chart-rows', {{ result.chart_rows | safe }}); draw('chart-cats', {{ result.chart_cats | safe }});
+  {% elif result and method == 'ca' %}
+  draw('chart-biplot', {{ result.chart_biplot | safe }});
+  {% elif result and method == 'clustering' %}
+  draw('chart-elbow', {{ result.chart_elbow | safe }}); draw('chart-scatter', {{ result.chart_scatter | safe }});
+  {% if result.chart_dendrogram %}draw('chart-dendro', {{ result.chart_dendrogram | safe }});{% endif %}
+  {% if result.means_table %}draw('chart-radar', {{ result.chart_radar | safe }});{% endif %}
+  {% endif %}
+});
 </script>
 {% endblock %}
