@@ -132,6 +132,61 @@ def _ordered(columns, order):
     return order + [c for c in columns if c not in order]
 
 
+# ─── Graphique d'une variable catégorielle ───────────────────────────────────
+CHART_MAX_MODALITES = 12       # au-delà, les plus fréquentes sont tracées et le reste est regroupé
+CHART_HORIZONTAL_FROM = 7      # à partir de 7 modalités (ou de libellés longs), barres horizontales
+CHART_LONG_LABEL = 22
+CHART_LABEL_MAX = 42
+
+
+def _short(label, n=CHART_LABEL_MAX):
+    label = str(label)
+    return label if len(label) <= n else label[:n - 1] + '…'
+
+
+def _categorical_chart(ct: pd.DataFrame, pct: pd.DataFrame, variable: str):
+    """Barres groupées par enquête. Une variable à 120 modalités aux noms longs (établissements)
+    donnait des étiquettes verticales qui prenaient toute la place et effaçaient le graphique :
+    on trace au plus 12 modalités (les plus fréquentes, la part du reste étant indiquée dans le titre), en
+    barres horizontales dès que les libellés sont nombreux ou longs. Les tableaux, eux, restent complets."""
+    surveys = list(ct.columns)
+    n_mod = len(ct)
+    note = ''
+    plot = pct
+    if n_mod > CHART_MAX_MODALITES:
+        ranked = ct.sum(axis=1).sort_values(ascending=False).index[:CHART_MAX_MODALITES]
+        plot = pct.loc[list(ranked)].copy()
+        # Le reste n'est pas tracé : sa barre (souvent > 70 %) écraserait les autres. Sa part est dans le titre.
+        rest = (100 - plot.sum(axis=0)).clip(lower=0).round(1)
+        note = (f'{CHART_MAX_MODALITES} modalités les plus fréquentes sur {n_mod} ; les {n_mod - CHART_MAX_MODALITES} autres : '
+                + ' · '.join(f'{v:.1f} %' for v in rest) + ' (voir les tableaux)')
+    horizontal = len(plot) >= CHART_HORIZONTAL_FROM or any(len(str(i)) > CHART_LONG_LABEL for i in plot.index)
+
+    long = plot.copy()
+    long.index.name = 'Modalité'
+    long = long.reset_index().melt(id_vars='Modalité', var_name='Enquête', value_name='%')
+    shorts = {m: _short(m) for m in plot.index}
+    if len(set(shorts.values())) < len(shorts):           # deux libellés tronqués identiques : on garde les complets
+        shorts = {m: str(m) for m in plot.index}
+    long['Affiché'] = long['Modalité'].map(shorts)
+    labels = list(dict.fromkeys(shorts[m] for m in plot.index))
+    common = dict(color='Enquête', barmode='group', hover_name='Modalité', hover_data={'Affiché': False},
+                  category_orders={'Enquête': surveys, 'Affiché': labels},
+                  title=f'Comparaison de {variable} entre enquêtes' + (f'<br><sup>{note}</sup>' if note else ''),
+                  color_discrete_sequence=px.colors.qualitative.Set2, text_auto='.1f')
+    if horizontal:
+        fig = px.bar(long, y='Affiché', x='%', orientation='h', **common)
+        fig.update_yaxes(autorange='reversed', automargin=True, title=None)
+        height = int(min(1000, max(420, 130 + len(plot) * (14 + 16 * len(surveys)))))
+    else:
+        fig = px.bar(long, x='Affiché', y='%', **common)
+        fig.update_xaxes(automargin=True, title=None)
+        height = 420
+    fig.update_layout(height=height, plot_bgcolor='white', paper_bgcolor='white',
+                      font=dict(family='Inter, sans-serif'), margin=dict(t=90 if note else 60))
+    return fig
+
+
 def compare_categorical_by_survey(merged: pd.DataFrame, variable: str, order=None) -> dict:
     """
     Compare la distribution d'une variable catégorielle entre enquêtes.
@@ -144,17 +199,8 @@ def compare_categorical_by_survey(merged: pd.DataFrame, variable: str, order=Non
     ct = pd.crosstab(sub[variable], sub['__survey__'])
     ct = ct[_ordered(list(ct.columns), order)]
     pct = ct.div(ct.sum(axis=0), axis=1).mul(100).round(1)
-
-    fig = px.bar(
-        pct.reset_index().melt(id_vars=variable, var_name='Enquête', value_name='%'),
-        x=variable, y='%', color='Enquête', barmode='group',
-        category_orders={'Enquête': list(ct.columns)},
-        title=f'Comparaison de {variable} entre enquêtes',
-        color_discrete_sequence=px.colors.qualitative.Set2,
-        text_auto='.1f',
-    )
-    fig.update_layout(height=420, plot_bgcolor='white', paper_bgcolor='white',
-                      font=dict(family='Inter, sans-serif'))
+    ct.columns.name = pct.columns.name = 'Enquête'
+    fig = _categorical_chart(ct, pct, variable)
 
     return {
         'variable': variable,
