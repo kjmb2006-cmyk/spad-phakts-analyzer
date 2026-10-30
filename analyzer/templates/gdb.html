@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% from "_factum_field.html" import factum_field %}
+{% block title %}Base centrale — SPAD Analyzer{% endblock %}
+{% block page_title %}Base centrale (GDB){% endblock %}
+
+{% block content %}
+<style>
+.gdb-cube th.enq { font-size: .72rem; text-align: center; min-width: 7rem; max-width: 10rem; line-height: 1.25; }
+.gdb-cube td.n { text-align: center; font-variant-numeric: tabular-nums; }
+.gdb-cube td.has { background: #e8f8f5; color: #117a65; font-weight: 600; }
+.gdb-cube td.none { color: #d5d8dc; }
+</style>
+
+<p class="text-muted small mb-3">
+  Les données de chaque enquête versée sont conservées ici, identifiées par leur Factum et alignées sur les
+  radicaux PHAKTS : on peut voir quelles variables existent déjà, les suivre d'une collecte à l'autre et
+  remonter à l'enquête d'où vient chaque valeur.
+</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-semibold"><i class="bi bi-box-arrow-in-down me-1"></i>Verser l'enquête chargée</h6>
+        {% if has_data %}
+        <p class="small text-muted mb-2">
+          <strong>{{ dataset_name }}</strong> — {{ n_obs }} répondant(s). Verser à nouveau la même enquête
+          (même Factum) remplace ses données.
+        </p>
+        <form method="post" action="{{ url_for('gdb_verser') }}">
+          <label class="form-label small mb-1">Factum de l'étude</label>
+          {{ factum_field('factum', factum_courant, required=True) }}
+          <label class="form-label small mb-1 mt-2">Titre (facultatif)</label>
+          <input name="titre" class="form-control form-control-sm mb-2" maxlength="200" value="{{ dataset_name }}">
+          <button class="btn btn-sm btn-primary"><i class="bi bi-database-add me-1"></i>Verser dans la base centrale</button>
+        </form>
+        {% else %}
+        <p class="small text-muted mb-2">Chargez d'abord une enquête (formulaire KoboToolbox ou fichier Excel) pour la verser.</p>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('analyse_donnees') }}">Charger des données</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-semibold"><i class="bi bi-search me-1"></i>Ces données existent-elles déjà ?</h6>
+        <p class="small text-muted mb-2">Avant de lancer une collecte : cherchez une variable par son radical ou son code PHAKTS.</p>
+        <form method="get" action="{{ url_for('gdb_index') }}" class="input-group input-group-sm">
+          <input name="q" value="{{ terme }}" class="form-control" placeholder="ex. Age, Tabac, Allaitement">
+          <button class="btn btn-outline-primary">Chercher</button>
+        </form>
+        {% if resultats is not none %}
+          {% if resultats %}
+          <ul class="list-unstyled small mt-3 mb-0">
+            {% for r in resultats[:15] %}
+            <li class="mb-2">
+              <a href="{{ url_for('gdb_variable', radical=r.radical) }}" class="fw-semibold">{{ r.radical }}</a>
+              — {{ r.n_valeurs }} valeur(s) dans {{ r.enquetes|length }} enquête(s)
+              <div class="text-muted">
+                {% for f, n in r.enquetes.items() %}
+                  {% set e = enquetes_par_factum.get(f) %}
+                  {{ e.parts.sujet_lisible if e else f }} ({{ e.parts.date_lisible if e else '' }}){% if not loop.last %} · {% endif %}
+                {% endfor %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="small mt-3 mb-0">Aucune variable « {{ terme }} » dans la base centrale : cette donnée n'a pas encore été collectée.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<h5>Enquêtes versées <span class="badge bg-secondary">{{ enquetes|length }}</span></h5>
+{% if enquetes %}
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Étude</th><th>Date de réf.</th><th class="d-none d-md-table-cell">Domaine</th><th>Répondants</th>
+            <th>Variables</th><th class="d-none d-lg-table-cell">Source</th><th class="d-none d-lg-table-cell">Versée le</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in enquetes %}
+        <tr>
+          <td>
+            <div class="fw-semibold small">{{ e.titre }}</div>
+            <div class="font-monospace text-muted" style="font-size:.7rem;word-break:break-all">{{ e.factum }}</div>
+          </td>
+          <td class="small">{{ e.parts.date_lisible }}{% if e.parts.collectes > 1 %}<div class="text-muted">collecte {{ e.parts.collecte }}/{{ e.parts.collectes }}</div>{% endif %}</td>
+          <td class="small d-none d-md-table-cell">{{ e.parts.domaine_lisible }}</td>
+          <td class="small">{{ e.n_repondants }}</td>
+          <td class="small">{{ e.n_variables }}</td>
+          <td class="small d-none d-lg-table-cell">{{ e.source }}</td>
+          <td class="small text-muted d-none d-lg-table-cell">{{ e.versee_le }}{% if e.versee_par %} · {{ e.versee_par }}{% endif %}</td>
+          <td class="text-end">
+            {% if session.get('role') == 'admin' or not session.get('role') %}
+            <form method="post" action="{{ url_for('gdb_supprimer') }}" onsubmit="return confirm('Retirer cette enquête de la base centrale ? Ses données y seront effacées.');">
+              <input type="hidden" name="factum" value="{{ e.factum }}">
+              <button class="btn btn-sm btn-outline-danger" title="Retirer de la base centrale"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info small">La base centrale est vide : versez une première enquête.</div>
+{% endif %}
+
+{% if enquetes %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <h5 class="mb-0">Vue CUBE — variables × enquêtes</h5>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('gdb_index', tous='0' if tous else '1', q=terme or None) }}">
+    {{ 'Variables communes seulement' if tous else 'Toutes les variables' }}
+  </a>
+</div>
+<p class="small text-muted">
+  {{ 'Toutes les variables' if tous else 'Variables présentes dans au moins deux enquêtes' }}, enquêtes de la plus ancienne à
+  la plus récente ; chaque case donne le nombre de valeurs. Cliquez sur une variable pour la suivre d'une enquête à l'autre.
+</p>
+{% if lignes %}
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0 gdb-cube">
+      <thead class="table-light">
+        <tr>
+          <th>Variable (radical)</th>
+          {% for f in factums %}{% set e = enquetes_par_factum[f] %}
+          <th class="enq" title="{{ f }}">{{ e.titre|truncate(40, True, '…') }}<div class="fw-normal">{{ e.parts.date_lisible }}</div></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in lignes[:300] %}
+        <tr>
+          <td class="small"><a href="{{ url_for('gdb_variable', radical=l.radical) }}">{{ l.radical }}</a></td>
+          {% for f in factums %}
+          {% set n = l.counts.get(f) %}
+          <td class="n small {{ 'has' if n else 'none' }}">{{ n or '·' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if lignes|length > 300 %}<p class="small text-muted">300 premières variables affichées sur {{ lignes|length }} — utilisez la recherche.</p>{% endif %}
+{% else %}
+<div class="alert alert-light border small">Aucune variable commune à plusieurs enquêtes pour l'instant.</div>
+{% endif %}
+{% endif %}
+{% endblock %}

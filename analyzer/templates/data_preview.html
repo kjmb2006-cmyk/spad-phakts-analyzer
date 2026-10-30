@@ -353,6 +353,16 @@
            title="Télécharger les {{ shape[0] }} observations au format CSV">
           <i class="bi bi-filetype-csv me-1"></i>Données CSV
         </a>
+        <a href="{{ url_for('export_data_stat', fmt='sav') }}"
+           class="btn btn-sm btn-outline-primary"
+           title="Fichier SPSS avec libellés des variables et des modalités">
+          <i class="bi bi-file-earmark-binary me-1"></i>SPSS
+        </a>
+        <a href="{{ url_for('export_data_stat', fmt='dta') }}"
+           class="btn btn-sm btn-outline-primary"
+           title="Fichier Stata avec libellés des variables et des modalités">
+          <i class="bi bi-file-earmark-binary me-1"></i>Stata
+        </a>
       </div>
     </div>
     <div class="card-body p-0">

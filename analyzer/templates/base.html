@@ -153,6 +153,9 @@
     <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-collection-fill"></i> — Analyse multi-enquête
     </a>
+    <a href="{{ url_for('gdb_index') }}" class="nav-item {% if request.endpoint in ['gdb_index', 'gdb_variable'] %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-boxes"></i> — Base centrale (GDB)
+    </a>
 
     <!-- 🎨 - PHAKTS STUDIO -->
     <div class="nav-section-label mt-3">🎨 - PHAKTS STUDIO</div>
@@ -170,6 +173,12 @@
     <div class="nav-section-label mt-3">Export</div>
     <a href="{{ url_for('report') }}" class="nav-item {% if request.endpoint == 'report' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-file-earmark-pdf-fill"></i> — Rapport PDF
+    </a>
+    <a href="{{ url_for('export_data_stat', fmt='sav') }}" class="nav-item" style="padding-left:28px">
+      <i class="bi bi-file-earmark-binary"></i> — Données SPSS (.sav)
+    </a>
+    <a href="{{ url_for('export_data_stat', fmt='dta') }}" class="nav-item" style="padding-left:28px">
+      <i class="bi bi-file-earmark-binary"></i> — Données Stata (.dta)
     </a>
     <a href="{{ url_for('reset_data') }}"
        class="nav-item text-danger"

@@ -92,7 +92,8 @@ def validate_reference_file(path):
     return int(n_valid)
 
 
-def create_projet(nom, reference_file_storage, champ_unite, kobo_uid=None, kobo_name=None, kobo_instance=None):
+def create_projet(nom, reference_file_storage, champ_unite, kobo_uid=None, kobo_name=None, kobo_instance=None,
+                  factum=''):
     """Crée un projet à partir d'un fichier Excel uploadé (werkzeug FileStorage)."""
     projet_id = uuid.uuid4().hex[:10]
     projet_dir = os.path.join(PROJETS_DIR, projet_id)
@@ -113,6 +114,7 @@ def create_projet(nom, reference_file_storage, champ_unite, kobo_uid=None, kobo_
         'kobo_uid': kobo_uid,
         'kobo_name': kobo_name,
         'kobo_instance': kobo_instance,
+        'factum': factum,
         'n_unites': n_unites,
         'created_at': datetime.datetime.now().strftime('%d/%m/%Y %H:%M'),
         'computed_at': None,
@@ -133,6 +135,19 @@ def update_kobo_link(projet_id, kobo_uid, kobo_name, kobo_instance=None):
             p['kobo_name'] = kobo_name
             p['kobo_instance'] = kobo_instance
     _save_index(items)
+
+
+def set_factum(projet_id, factum):
+    """Factum de l'étude suivie par le projet (voir modules/factum.py)."""
+    items = _load_index()
+    found = False
+    for p in items:
+        if p['id'] == projet_id:
+            p['factum'] = factum
+            found = True
+    if found:
+        _save_index(items)
+    return found
 
 
 def delete_projet(projet_id):

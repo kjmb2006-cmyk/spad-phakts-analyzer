@@ -54,6 +54,9 @@ from modules import accounts
 from modules import activity_log
 from modules import forms_registry
 from modules import validation_rules
+from modules import factum as study_factum
+from modules import gdb
+from modules import stat_export
 from modules import ai_form_assist
 from modules.collecte_monitor import load_state, save_state, append_sync_event, build_dashboard_metrics, build_collecte_views
 
@@ -177,6 +180,7 @@ INVITE_ALLOWED_ENDPOINTS = {
 ADMIN_ONLY_ENDPOINTS = {
     'admin_users', 'admin_user_approve', 'admin_user_block', 'admin_activity', 'admin_activity_reset',
     'admin_forms', 'admin_form_activate', 'admin_form_deactivate', 'admin_form_add',
+    'gdb_supprimer',
 }
 
 
@@ -1309,6 +1313,31 @@ def export_data_csv():
     return resp
 
 
+@app.route('/data/export.<any(sav, dta):fmt>')
+def export_data_stat(fmt):
+    """Export SPSS (.sav) ou Stata (.dta) avec libellés de variables et de
+    modalités — voir modules/stat_export.py. Pour un formulaire Kobo, les
+    libellés des questions et des choix sont relus dans le formulaire."""
+    df = get_dataframe()
+    if df is None:
+        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+        return redirect(url_for('analyse_donnees'))
+    kobo = {}
+    meta = session.get('data_meta') or {}
+    if meta.get('source') == 'KoboToolbox' and session.get('kobo_uid') and session.get('kobo_token'):
+        kobo = stat_export.kobo_dictionary(get_asset_structure(
+            session['kobo_token'], session['kobo_uid'], instance=session.get('kobo_instance')))
+    try:
+        content = stat_export.export(df, fmt, kobo=kobo, user_labels=session.get('var_labels') or {},
+                                     note=_current_factum(df))
+    except ImportError:
+        flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
+        return redirect(url_for('data_preview'))
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    return send_file(io.BytesIO(content), as_attachment=True, download_name=f'{fname}.{fmt}',
+                     mimetype='application/x-spss-sav' if fmt == 'sav' else 'application/x-stata-dta')
+
+
 @app.route('/data/reset')
 def reset_data():
     # Ne purge que les fichiers propres à CETTE session (data_path,
@@ -1490,6 +1519,102 @@ def validation_export():
     return send_file(buf, as_attachment=True,
                      download_name=f'{fname}_lignes_a_verifier.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ─── Factum et base centrale (GDB) ───────────────────────────────────────────
+# Voir modules/factum.py (identifiant universel d'une étude) et modules/gdb.py
+# (données de toutes les enquêtes versées, alignées sur les radicaux PHAKTS).
+
+def _current_factum(df=None):
+    """Factum de l'enquête chargée : celui enregistré pour elle, sinon celui
+    du projet lié au même formulaire Kobo, sinon le champ Factum__G des
+    données (XLSForm généré par PHAKTS Studio). '' si aucun."""
+    stored = study_factum.get_for_survey(_validation_survey_key())
+    if stored:
+        return stored
+    if (session.get('data_meta') or {}).get('source') == 'KoboToolbox' and session.get('kobo_uid'):
+        for p in proj.list_projets():
+            if p.get('kobo_uid') == session['kobo_uid'] and p.get('factum'):
+                return p['factum']
+    return study_factum.from_dataframe(df) if df is not None else ''
+
+
+@app.route('/api/factum', methods=['POST'])
+def factum_api():
+    """Vérifie un Factum ({factum}) ou le compose à partir de ses parties
+    ({parts: {entete, juridiction, n, m, sujet, date, domaine}})."""
+    data = request.get_json(silent=True) or {}
+    parts = data.get('parts')
+    value = study_factum.build(**{k: parts.get(k, '') for k in ('entete', 'juridiction', 'n', 'm', 'sujet', 'date', 'domaine')}) \
+        if isinstance(parts, dict) else str(data.get('factum') or '').strip()
+    res = study_factum.parse(value) if value else {'valid': False, 'errors': [], 'warnings': [], 'parts': {}}
+    return jsonify({'factum': res.get('normalized', value) if res['valid'] else value, **res})
+
+
+@app.route('/gdb')
+def gdb_index():
+    df = get_dataframe()
+    meta = session.get('data_meta') or {}
+    terme = (request.args.get('q') or '').strip()
+    tous = request.args.get('tous') == '1'
+    factums, lignes = gdb.cube(1 if tous else 2)
+    enquetes = gdb.enquetes()
+    return render_template(
+        'gdb.html',
+        enquetes=enquetes, enquetes_par_factum={e['factum']: e for e in enquetes},
+        factums=factums, lignes=lignes, tous=tous,
+        terme=terme, resultats=gdb.rechercher(terme) if terme else None,
+        has_data=df is not None, dataset_name=meta.get('name') or session.get('original_filename') or '',
+        n_obs=len(df) if df is not None else 0,
+        factum_courant=_current_factum(df) if df is not None else '',
+    )
+
+
+@app.route('/gdb/verser', methods=['POST'])
+def gdb_verser():
+    df = get_dataframe()
+    if df is None:
+        flash("Aucune donnée chargée à verser dans la base centrale.", 'warning')
+        return redirect(url_for('gdb_index'))
+    fac = (request.form.get('factum') or '').strip()
+    res = study_factum.set_for_survey(_validation_survey_key(), fac, session.get('username') or '')
+    if not res['valid']:
+        flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
+        return redirect(url_for('gdb_index'))
+    meta = session.get('data_meta') or {}
+    kobo = meta.get('source') == 'KoboToolbox'
+    ok, msg = gdb.deposer(df, res['normalized'], titre=(request.form.get('titre') or '').strip(),
+                          source='KoboToolbox' if kobo else 'Fichier',
+                          source_ref=(session.get('kobo_uid') if kobo else session.get('original_filename')) or '',
+                          user=session.get('username') or '')
+    flash(msg, 'success' if ok else 'danger')
+    return redirect(url_for('gdb_index'))
+
+
+@app.route('/gdb/enquete/supprimer', methods=['POST'])
+def gdb_supprimer():
+    fac = request.form.get('factum') or ''
+    if gdb.supprimer(fac):
+        flash(f'Enquête {fac} retirée de la base centrale.', 'info')
+    return redirect(url_for('gdb_index'))
+
+
+@app.route('/gdb/variable/<path:radical>')
+def gdb_variable(radical):
+    serie = gdb.serie(radical)
+    if not serie:
+        flash(f'Aucune valeur pour la variable « {radical} » dans la base centrale.', 'warning')
+        return redirect(url_for('gdb_index'))
+    return render_template('gdb_variable.html', radical=radical, serie=serie)
+
+
+@app.route('/gdb/valeurs.csv')
+def gdb_variable_csv():
+    radical = request.args.get('radical') or ''
+    df = gdb.valeurs(radical)
+    resp = Response(df.to_csv(index=False), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="GDB_{secure_filename(radical) or "variable"}.csv"'
+    return resp
 
 
 @app.route('/map')
@@ -3827,12 +3952,16 @@ def projets_creer():
     champ_unite = (request.form.get('champ_unite') or '').strip()
     kobo_uid = (request.form.get('kobo_uid') or '').strip() or None
     kobo_name = (request.form.get('kobo_name') or '').strip() or None
+    fac = (request.form.get('factum') or '').strip()
 
     if not nom or not champ_unite:
         flash("Nom du projet et champ d'identification de l'unité obligatoires.", 'warning')
         return redirect(url_for('projets_liste'))
     if 'reference' not in request.files or request.files['reference'].filename == '':
         flash('Fichier de référence manquant (colonnes minimales : code, cible).', 'warning')
+        return redirect(url_for('projets_liste'))
+    if fac and not study_factum.parse(fac)['valid']:
+        flash('Factum invalide : ' + ' '.join(study_factum.parse(fac)['errors']), 'danger')
         return redirect(url_for('projets_liste'))
 
     f = request.files['reference']
@@ -3845,6 +3974,7 @@ def projets_creer():
             nom, f, champ_unite,
             kobo_uid=kobo_uid, kobo_name=kobo_name,
             kobo_instance=session.get('kobo_instance'),
+            factum=study_factum.parse(fac)['normalized'] if fac else '',
         )
     except ValueError as e:
         flash(str(e), 'danger')
@@ -3875,6 +4005,17 @@ def projets_detail(projet_id):
         analyse_resume=proj.load_analyse_resume(projet_id),
         rapport_disponible=bool(proj.rapport_path(projet_id)),
     )
+
+
+@app.route('/projets/<projet_id>/factum', methods=['POST'])
+def projets_factum(projet_id):
+    fac = (request.form.get('factum') or '').strip()
+    res = study_factum.parse(fac) if fac else {'valid': True, 'normalized': '', 'errors': []}
+    if not res['valid']:
+        flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
+    elif proj.set_factum(projet_id, res['normalized']):
+        flash('Factum du projet enregistré.' if fac else 'Factum du projet retiré.', 'success')
+    return redirect(url_for('projets_detail', projet_id=projet_id))
 
 
 @app.route('/projets/<projet_id>/lier', methods=['POST'])

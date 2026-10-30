@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ radical }} — Base centrale — SPAD Analyzer{% endblock %}
+{% block page_title %}Base centrale · {{ radical }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <p class="text-muted small mb-0">
+    La variable <strong>{{ radical }}</strong> dans {{ serie|length }} enquête(s), de la plus ancienne à la plus récente
+    (date de référence du Factum).
+  </p>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('gdb_variable_csv', radical=radical) }}"
+       title="Chaque valeur avec son Factum, son répondant et son code d'origine">
+      <i class="bi bi-download me-1"></i>Valeurs (.csv)
+    </a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('gdb_index') }}"><i class="bi bi-arrow-left me-1"></i>Base centrale</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Étude</th><th>Date de réf.</th><th>Valeurs</th><th>Résumé</th></tr>
+      </thead>
+      <tbody>
+        {% for i in serie %}
+        {% set p = i.enquete.parts or {} %}
+        <tr>
+          <td>
+            <div class="fw-semibold small">{{ i.enquete.titre or i.factum }}</div>
+            <div class="font-monospace text-muted" style="font-size:.7rem;word-break:break-all">{{ i.factum }}</div>
+            <div class="text-muted" style="font-size:.7rem">Code{{ 's' if i.codes|length > 1 }} : {{ i.codes|join(', ') }}
+              {% if i.enquete.source %}· Source : {{ i.enquete.source }}{% endif %}</div>
+          </td>
+          <td class="small">{{ p.date_lisible }}<div class="text-muted">{{ p.domaine_lisible }}</div></td>
+          <td class="small">{{ i.n }}</td>
+          <td class="small">
+            {% if i.type == 'numerique' %}
+              Moyenne <strong>{{ i.moyenne }}</strong> · médiane {{ i.mediane }}
+              <span class="text-muted">· min {{ i.minimum }} · max {{ i.maximum }}</span>
+            {% else %}
+              {% for m in i.modalites %}
+              <div class="d-flex align-items-center gap-2">
+                <span style="min-width:9rem">{{ m.valeur }}</span>
+                <div class="progress" style="height:6px;flex:0 0 140px">
+                  <div class="progress-bar" style="width: {{ m.pct }}%"></div>
+                </div>
+                <span class="text-muted">{{ m.pct }} % ({{ m.n }})</span>
+              </div>
+              {% endfor %}
+              {% if i.autres %}<div class="text-muted">+ {{ i.autres }} autre(s) valeur(s)</div>{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{# Champ « Factum de l'étude » : saisie libre ou composition champ par champ,
+   vérifiée en direct par /api/factum (même règle que PHAKTS Studio). #}
+{% macro factum_field(name='factum', value='', required=False) %}
+<div data-factum-field>
+  <div class="input-group input-group-sm">
+    <input type="text" name="{{ name }}" value="{{ value or '' }}" class="form-control font-monospace"
+           placeholder="PGT14_OS2_RC2_2__CIV_MS__1C1_Sujet__20250900__ES" autocomplete="off"
+           data-factum-input {% if required %}required{% endif %}>
+    <button class="btn btn-outline-secondary" type="button" data-factum-toggle>
+      <i class="bi bi-sliders me-1"></i>Composer
+    </button>
+  </div>
+  <div class="small mt-1" data-factum-status></div>
+  <div class="border rounded p-2 mt-2 d-none" data-factum-builder>
+    <div class="row g-2">
+      <div class="col-md-6"><label class="form-label small mb-0">Entête (programme, objectif, résultat)</label>
+        <input class="form-control form-control-sm" data-part="entete" placeholder="PGT14_OS2_RC2_2"></div>
+      <div class="col-md-6"><label class="form-label small mb-0">Juridiction (pays, institution)</label>
+        <input class="form-control form-control-sm" data-part="juridiction" placeholder="CIV_MS"></div>
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">Collecte n°</label>
+        <input type="number" min="1" value="1" class="form-control form-control-sm" data-part="n"></div>
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">Sur (collectes prévues)</label>
+        <input type="number" min="1" value="1" class="form-control form-control-sm" data-part="m"></div>
+      <div class="col-md-6"><label class="form-label small mb-0">Date de référence (AAAA-MM ou AAAA-MM-JJ)</label>
+        <input class="form-control form-control-sm" data-part="date" placeholder="2025-09"></div>
+      <div class="col-md-8"><label class="form-label small mb-0">Sujet de l'étude</label>
+        <input class="form-control form-control-sm" data-part="sujet" placeholder="Etude CAP Personnel Santé PEC Tabac"></div>
+      <div class="col-md-4"><label class="form-label small mb-0">Domaine de définition</label>
+        <input class="form-control form-control-sm" data-part="domaine" list="factumDomaines" placeholder="ES"></div>
+    </div>
+    <button type="button" class="btn btn-sm btn-primary mt-2" data-factum-compose>
+      <i class="bi bi-check2 me-1"></i>Utiliser ce Factum
+    </button>
+  </div>
+</div>
+<datalist id="factumDomaines">
+  <option value="ES">Établissement de santé</option>
+  <option value="ESP">Établissement scolaire / public</option>
+  <option value="Menage">Ménage</option>
+  <option value="Communaute">Communauté</option>
+</datalist>
+<script>
+(function () {
+  if (window.__factumFieldInit) return;
+  window.__factumFieldInit = true;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  async function check(body) {
+    const r = await fetch('{{ url_for("factum_api") }}', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    return r.ok ? r.json() : null;
+  }
+  function show(box, res) {
+    const status = box.querySelector('[data-factum-status]');
+    if (!res) { status.innerHTML = ''; return; }
+    if (!res.factum) { status.innerHTML = '<span class="text-muted">Aucun Factum.</span>'; return; }
+    const p = res.parts || {};
+    status.innerHTML = res.valid
+      ? '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Factum valide</span>'
+        + (p.sujet_lisible ? ` <span class="text-muted">— ${esc(p.sujet_lisible)} · ${esc(p.date_lisible)} · ${esc(p.domaine_lisible)} · collecte ${p.collecte}/${p.collectes}</span>` : '')
+        + res.warnings.map(w => `<div class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>${esc(w)}</div>`).join('')
+      : res.errors.map(e => `<div class="text-danger"><i class="bi bi-x-circle me-1"></i>${esc(e)}</div>`).join('');
+  }
+  function init(box) {
+    const input = box.querySelector('[data-factum-input]');
+    let timer = null;
+    const run = () => { clearTimeout(timer); timer = setTimeout(async () => show(box, await check({ factum: input.value })), 250); };
+    input.addEventListener('input', run);
+    if (input.value) run();
+    box.querySelector('[data-factum-toggle]').addEventListener('click', async () => {
+      const builder = box.querySelector('[data-factum-builder]');
+      builder.classList.toggle('d-none');
+      const res = await check({ factum: input.value });
+      if (res && res.valid) {
+        const p = res.parts, d = p.date;
+        const values = { entete: p.entete, juridiction: p.juridiction, n: p.collecte, m: p.collectes, sujet: p.sujet,
+                         domaine: p.domaine, date: d.slice(0, 4) + '-' + d.slice(4, 6) + (d.slice(6) !== '00' ? '-' + d.slice(6) : '') };
+        builder.querySelectorAll('[data-part]').forEach(el => { el.value = values[el.dataset.part] ?? el.value; });
+      }
+    });
+    box.querySelector('[data-factum-compose]').addEventListener('click', async () => {
+      const parts = {};
+      box.querySelectorAll('[data-part]').forEach(el => { parts[el.dataset.part] = el.value; });
+      const res = await check({ parts });
+      if (!res) return;
+      input.value = res.factum;
+      show(box, res);
+      if (res.valid) box.querySelector('[data-factum-builder]').classList.add('d-none');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('[data-factum-field]').forEach(init));
+})();
+</script>
+{% endmacro %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_factum_field.html" import factum_field %}
 {% block title %}{{ p.nom }} — SPAD Analyzer{% endblock %}
 {% block page_title %}{{ p.nom }}{% endblock %}
 
@@ -13,6 +14,21 @@
     <a href="{{ url_for('projets_liste') }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-arrow-left me-1"></i>Tous les projets
     </a>
+  </div>
+
+  <!-- ═══ Factum de l'étude ═══ -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-fingerprint me-2 text-primary"></i>Factum de l'étude</h6>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted mb-2">Identifiant universel de l'étude : il rattache les données du formulaire lié à ce projet
+        dans la base centrale et dans les exports SPSS/Stata.</p>
+      <form method="POST" action="{{ url_for('projets_factum', projet_id=p.id) }}">
+        {{ factum_field('factum', p.factum) }}
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save me-1"></i>Enregistrer le Factum</button>
+      </form>
+    </div>
   </div>
 
   <!-- ═══ Lien KoboToolbox ═══ -->
