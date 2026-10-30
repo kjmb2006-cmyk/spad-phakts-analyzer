@@ -9,9 +9,14 @@
       <h3 class="fw-bold mb-1">Qualité des données</h3>
       <p class="text-muted mb-0">Contrôle des manquants, des doublons et des anomalies de logique.</p>
     </div>
-    <a href="{{ url_for('collecte_dashboard') }}"
-       onclick="smartBack('{{ url_for('collecte_dashboard') }}'); return false;"
-       class="btn btn-outline-secondary btn-sm">Retour</a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('validation_donnees') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-shield-check me-1"></i>Validation détaillée
+      </a>
+      <a href="{{ url_for('collecte_dashboard') }}"
+         onclick="smartBack('{{ url_for('collecte_dashboard') }}'); return false;"
+         class="btn btn-outline-secondary btn-sm">Retour</a>
+    </div>
   </div>
 
   <div class="card border-0 shadow-sm">

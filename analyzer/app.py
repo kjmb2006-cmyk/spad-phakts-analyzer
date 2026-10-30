@@ -1443,8 +1443,9 @@ def _validation_survey_key():
 def validation_donnees():
     df = get_dataframe()
     if df is None:
-        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
-        return redirect(url_for('upload'))
+        flash("La validation porte sur les données d'une enquête : chargez-les d'abord "
+              "(formulaire KoboToolbox ou fichier Excel).", 'warning')
+        return redirect(url_for('analyse_donnees'))
     rules = validation_rules.list_rules(_validation_survey_key())
     return render_template('validation.html',
                            result=validation_rules.run_validation(df, rules),
@@ -1479,7 +1480,7 @@ def validation_export():
     df = get_dataframe()
     if df is None:
         flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
-        return redirect(url_for('upload'))
+        return redirect(url_for('analyse_donnees'))
     result = validation_rules.run_validation(df, validation_rules.list_rules(_validation_survey_key()))
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
