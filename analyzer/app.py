@@ -1029,6 +1029,7 @@ def upload():
                 flash(f'Erreur lors du chargement : {str(e)}', 'danger')
         else:
             flash('Format non supporté. Utilisez .xlsx ou .xls', 'danger')
+        return redirect(url_for('upload'))
     return render_template('upload.html')
 
 
@@ -2094,6 +2095,9 @@ def descriptive():
             'num': selected_num,
             'bin': selected_bin_groups,
         }
+        # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
+        # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
+        return redirect(url_for('descriptive'))
     else:
         saved = session.get('descriptive_form')
         if saved:
@@ -2180,6 +2184,9 @@ def crosstabs():
             'rows': rows, 'cols': cols, 'value_var': value_var,
             'agg': agg, 'pct_type': pct_type, 'filters': filters,
         }
+        # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
+        # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
+        return redirect(url_for('crosstabs'))
     else:
         saved = session.get('crosstabs_form') or {}
         rows     = [r for r in saved.get('rows', []) if r in df.columns]
@@ -2221,8 +2228,8 @@ def crosstabs():
             key = '|'.join(rows) + '||' + '|'.join(cols)
             result['user_comment'] = _get_user_comment('crosstabs', key)
         except Exception as e:
-            if request.method == 'POST':
-                flash(f'Erreur : {str(e)}', 'danger')
+            # Affiché à chaque affichage (le calcul se fait maintenant au rechargement qui suit le POST)
+            flash(f'Erreur : {str(e)}', 'danger')
 
     # Modalités disponibles pour le panneau de filtres (≤ 30 valeurs)
     filter_options = {}
@@ -3077,6 +3084,13 @@ def multivariate():
             'n_components': n_components, 'n_clusters': n_clusters,
             'ca_row': ca_row, 'ca_col': ca_col,
         }
+        usable = [v for v in selected if v in df.columns]
+        if not ((method in ('pca', 'mca', 'clustering') and len(usable) >= 2)
+                or (method == 'ca' and ca_row in df.columns and ca_col in df.columns)):
+            flash('Sélectionnez au moins 2 variables.', 'warning')
+        # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
+        # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
+        return redirect(url_for('multivariate'))
     else:
         saved = session.get('multivariate_form')
         if saved:
@@ -3117,8 +3131,6 @@ def multivariate():
                 result = run_ca(df, ca_row, ca_col)
             elif method == 'clustering' and len(selected) >= 2:
                 result = run_clustering(df, selected, n_clusters)
-            elif request.method == 'POST':
-                flash('Sélectionnez au moins 2 variables.', 'warning')
         except Exception as e:
             # Affiché même sur GET (pas seulement POST) : sinon l'analyse
             # automatique au premier chargement peut échouer sans qu'aucun
@@ -3163,6 +3175,9 @@ def report():
         selected_bin_grps  = request.form.getlist('bin_groups')
         crosstabs_row      = request.form.get('crosstabs_row')
         crosstabs_col      = request.form.get('crosstabs_col')
+        # Les choix faits sont conservés : si la génération échoue, la page rechargée les reprend
+        session['report_form'] = {'cat': selected_cat, 'num': selected_num, 'bin': selected_bin_grps,
+                                  'row': crosstabs_row or '', 'col': crosstabs_col or ''}
 
         extension = 'pdf' if format_type == 'pdf' else ('xlsx' if format_type == 'excel' else 'docx')
         report_path = os.path.join(
@@ -3242,6 +3257,7 @@ def report():
                              download_name=f'{title.replace(" ","_")}.{extension}')
         except Exception as e:
             flash(f'Erreur génération rapport : {str(e)}', 'danger')
+        return redirect(url_for('report'))
 
     # Pré-remplir le formulaire avec les sélections faites dans les onglets
     # descriptive / crosstabs (sinon : tout cocher par défaut, comportement précédent).
@@ -3252,6 +3268,11 @@ def report():
     default_bin = desc_state.get('bin') if desc_state else [g['parent'] for g in bin_groups]
     default_ct_row = ct_state.get('row_var', '') if ct_state else ''
     default_ct_col = ct_state.get('col_var', '') if ct_state else ''
+    saved_report = session.get('report_form')          # dernier rapport demandé (relu après un échec)
+    if saved_report:
+        default_cat, default_num, default_bin = saved_report['cat'], saved_report['num'], saved_report['bin']
+        default_ct_row = saved_report['row'] or default_ct_row
+        default_ct_col = saved_report['col'] or default_ct_col
 
     return render_template('report.html',
                            cat_vars=cat_vars, num_vars=num_vars,
@@ -3290,6 +3311,7 @@ def kobo_connect():
             return redirect(url_for('kobo_assets'))
         else:
             flash(f"Connexion échouée : {result['error']}", 'danger')
+            return redirect(url_for('kobo_connect'))
     already = bool(session.get('kobo_token'))
     return render_template('kobo_connect.html', already=already,
                            username=session.get('kobo_username', ''),
