@@ -289,11 +289,13 @@
                     <i class="bi bi-tags text-warning"></i>
                     <span class="text-warning">Libellés inconnus : noms internes mis en forme (« Faible poids naissance »)</span>
                   {% endif %}
+                  {% if not p.labels.n or p.labels.source == 'XLSForm' %}
                   <label class="text-primary ms-1" style="cursor:pointer;text-decoration:underline"
-                         title="XLSForm de l'enquête (feuilles survey et choices) : celui de PHAKTS Studio ou l'export XLSForm de KoboToolbox">
+                         title="XLSForm de l'enquête, c'est-à-dire le fichier du FORMULAIRE (feuilles survey et choices) : celui de PHAKTS Studio ou « Télécharger XLS » dans KoboToolbox — pas l'export des données">
                     {{ 'Remplacer par un XLSForm' if p.labels.n else "Joindre l'XLSForm" }}
                     <input type="file" name="xlsform" accept=".xlsx" hidden onchange="this.form.submit()">
                   </label>
+                  {% endif %}
                 </form>
                 {% endif %}
               </td>

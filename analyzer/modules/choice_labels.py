@@ -88,9 +88,14 @@ def from_xlsform(path):
     except Exception as e:
         raise ValueError(f'Classeur illisible : {e}')
     names = {k.strip().lower(): v for k, v in sheets.items()}
-    if 'survey' not in names or 'choices' not in names:
-        raise ValueError("Ce classeur n'est pas un XLSForm : feuilles « survey » et « choices » attendues.")
-    survey, choices = names['survey'], names['choices']
+    if 'survey' not in names:
+        found = ', '.join(f'« {k.strip()} »' for k in list(sheets)[:6]) or 'aucune'
+        raise ValueError("Ce classeur n'est pas un XLSForm : il lui faut une feuille « survey » (et « choices » s'il a des "
+                         f"questions à choix). Feuilles trouvées : {found}. L'XLSForm est le fichier du FORMULAIRE "
+                         "(celui de PHAKTS Studio, ou « Télécharger XLS » dans KoboToolbox), pas l'export des données.")
+    survey = names['survey']
+    # Un formulaire sans aucune question à choix n'a pas de feuille « choices » dans l'export de Kobo.
+    choices = names.get('choices', pd.DataFrame(columns=['list_name', 'name']))
 
     def label_column(df):
         cols = [c for c in df.columns if str(c).strip().lower().startswith('label')]
