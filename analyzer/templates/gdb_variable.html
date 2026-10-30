@@ -13,7 +13,8 @@
        title="Chaque valeur avec son Factum, son répondant et son code d'origine">
       <i class="bi bi-download me-1"></i>Valeurs (.csv)
     </a>
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('gdb_index') }}"><i class="bi bi-arrow-left me-1"></i>Base centrale</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('gdb_index') }}"
+       onclick="smartBack('{{ url_for('gdb_index') }}'); return false;"><i class="bi bi-arrow-left me-1"></i>Retour</a>
   </div>
 </div>
 
