@@ -71,7 +71,7 @@ check "service worker à jour (les navigateurs rechargeront la page)" "curl -sf 
 XLS=$(curl -sf "${AUTH[@]}" -H 'Content-Type: application/json' $S/api/xlsform -d '{
   "formTitle": "Audit", "factum": "PGT14_OS2_RC2_2__CIV_MS__1C1_Audit__20251000__ES",
   "items": [
-    {"libelle": "Sports pratiqués", "pf_question": "Sport__X!1*3Sport_", "pf_modalites": "Sport_=[Football|Basket|Tennis|Natation]"},
+    {"libelle": "Sports pratiqués", "pf_question": "Sport__X!2*3Sport_", "pf_modalites": "Sport_=[Football|Basket|Tennis|Natation]"},
     {"libelle": "Position GPS", "pf_question": "Coordonnees_GPS__G!DMS", "pf_modalites": "GPS"},
     {"libelle": "Début", "pf_question": "Entretien__Debut__G!start", "pf_modalites": "Automatique"}]}')
 echo "$XLS" | python3 -c '
@@ -79,7 +79,7 @@ import json, sys
 x = json.load(sys.stdin); s = x["survey"]
 def say(ok, msg): print(("  ✓ " if ok else "  ✗ ") + msg)
 say(any(r.get("name") == "Factum__G" and r.get("type") == "calculate" for r in s), "XLSForm : Factum__G de l’étude dans chaque soumission")
-say(any("count-selected(.) >= 1" in r.get("constraint", "") and "<= 3" in r.get("constraint", "") for r in s), "XLSForm : multiplicité N*M (1*3 = entre 1 et 3)")
+say(any("count-selected(.) >= 2" in r.get("constraint", "") and "<= 3" in r.get("constraint", "") for r in s), "XLSForm : multiplicité N*M (2*3 = entre 2 et 3)")
 say(any(r.get("type") == "geopoint" and "capture-accuracy=10" in r.get("parameters", "") for r in s), "XLSForm : précision GPS 10 m")
 say(any(r.get("type") == "start" for r in s), "XLSForm : __G!start = métadonnée Kobo")
 ' 2>/dev/null || ko "XLSForm : réponse invalide de /api/xlsform"
