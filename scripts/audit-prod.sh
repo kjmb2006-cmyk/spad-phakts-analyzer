@@ -117,6 +117,12 @@ say(phakts_radical('Age__1M') != phakts_radical('Age__1Y') and phakts_radical('A
 ms = c.get('/multi-survey').get_data(as_text=True)
 say('Base centrale (GDB)' in ms and 'Ajouter à la pile' in ms, "multi-enquête : import depuis la base centrale")
 say(c.get('/multi-survey/export.xlsx').status_code == 302, "multi-enquête : export du jeu fusionné en place (sans enquêtes : renvoi)")
+say('.csv' in ms, "multi-enquête : import CSV accepté")
+import pandas as pd
+from modules import choice_labels
+shown = choice_labels.relabel_frame(pd.DataFrame({'Sexe__X': ['femme', 'homme']}),
+                                    {'questions': {}, 'choices': {'Sexe__X': {'femme': 'Femme', 'homme': 'Homme'}}, 'multiple': []})
+say(shown['Sexe__X'].tolist() == ['Femme', 'Homme'], "multi-enquête : modalités affichées avec leur vrai nom (libellés du formulaire)")
 r = c.get('/qualite/validation?uid=audit', follow_redirects=False)
 say(r.status_code == 302, "suivi multi-formulaires : contrôle de qualité d'un formulaire (sans connexion Kobo : renvoi)")
 PY
