@@ -1,4 +1,4 @@
-import os, json, uuid, re, datetime, io, csv
+import os, json, uuid, re, datetime, io, csv, threading, time
 import pandas as pd
 from flask import (Flask, render_template, request, session,
                    redirect, url_for, jsonify, send_file, flash, Response)
@@ -13,6 +13,7 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     is_phakts_coded,
                                     compare_categorical_by_survey,
                                     compare_continuous_by_survey,
+                                    evolution_categorical, evolution_continuous,
                                     auto_analyze)
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
@@ -57,6 +58,7 @@ from modules import validation_rules
 from modules import factum as study_factum
 from modules import gdb
 from modules import stat_export
+from modules import multi_checks
 from modules import ai_form_assist
 from modules.collecte_monitor import load_state, save_state, append_sync_event, build_dashboard_metrics, build_collecte_views
 
@@ -1468,54 +1470,116 @@ def _validation_survey_key():
     return 'fichier:' + (session.get('original_filename') or '')
 
 
+_KOBO_VALIDATION_CACHE = {}     # uid -> (heure, DataFrame) : évite de recharger le formulaire à chaque règle ajoutée
+_KOBO_VALIDATION_TTL = 300
+
+
+def _kobo_df_for_validation(uid):
+    """Données d'un formulaire Kobo chargées à la demande (jamais en tâche de
+    fond : le suivi multi-formulaires ne lit que les compteurs)."""
+    token = session.get('kobo_token')
+    if not token:
+        flash("Connectez-vous à KoboToolbox pour contrôler ce formulaire.", 'warning')
+        return None
+    now = time.time()
+    with _MS_CACHE_LOCK:
+        hit = _KOBO_VALIDATION_CACHE.get(uid)
+    if hit and now - hit[0] < _KOBO_VALIDATION_TTL:
+        return hit[1]
+    res = kobo_load_data(token, uid, instance=session.get('kobo_instance') or None)
+    if not res.get('success'):
+        flash(f"Chargement KoboToolbox : {res.get('error', 'erreur')}", 'danger')
+        return None
+    _cache_put(_KOBO_VALIDATION_CACHE, uid, (now, res['df']), limit=3)
+    return res['df']
+
+
+def _validation_context():
+    """(données, clé d'enquête, nom, arguments d'URL) de la page de validation.
+    Trois sources : une enquête de la pile multi-enquête (?ms=N), un formulaire
+    KoboToolbox suivi (?uid=…) ou, sans paramètre, l'enquête chargée."""
+    ms = (request.values.get('ms') or '').strip()
+    uid = (request.values.get('uid') or '').strip()
+    if ms != '':
+        try:
+            idx = int(ms)
+            entry = (session.get('multi_surveys', []) or [])[idx]
+        except (ValueError, IndexError):
+            return None, None, '', {'ms': ms}
+        path = entry.get('path') or ''
+        df = _read_cached_excel(path) if os.path.exists(path) else None
+        return df, _ms_key(entry), entry.get('name') or '', {'ms': idx}
+    if uid:
+        tracked = next((t for t in kobo_track.list_tracked() if t.get('uid') == uid), None)
+        return _kobo_df_for_validation(uid), 'kobo:' + uid, (tracked or {}).get('name') or uid, {'uid': uid}
+    meta = session.get('data_meta') or {}
+    return (get_dataframe(), _validation_survey_key(),
+            meta.get('name') or session.get('original_filename') or '', {})
+
+
+def _validation_back(args):
+    """Page d'où l'on vient : pile multi-enquête, suivi multi-formulaires ou hub d'analyse."""
+    if 'ms' in args:
+        return url_for('multi_survey'), "Analyse multi-enquête"
+    if 'uid' in args:
+        return url_for('suivi'), 'Suivi multi-formulaires'
+    return url_for('analyse_donnees'), "Analyse de données"
+
+
 @app.route('/qualite/validation')
 def validation_donnees():
-    df = get_dataframe()
+    df, key, name, args = _validation_context()
     if df is None:
-        flash("La validation porte sur les données d'une enquête : chargez-les d'abord "
-              "(formulaire KoboToolbox ou fichier Excel).", 'warning')
-        return redirect(url_for('analyse_donnees'))
-    rules = validation_rules.list_rules(_validation_survey_key())
+        if not session.get('_flashes'):     # un message précis a déjà été posté (Kobo absent, échec de chargement)
+            flash("La validation porte sur les données d'une enquête : chargez-les d'abord "
+                  "(formulaire KoboToolbox ou fichier Excel).", 'warning')
+        return redirect(_validation_back(args)[0])
+    rules = validation_rules.list_rules(key)
+    back_url, back_label = _validation_back(args)
     return render_template('validation.html',
                            result=validation_rules.run_validation(df, rules),
                            rules=rules,
                            columns=list(df.columns),
                            symboles=validation_rules.OPERATEUR_SYMBOLES,
-                           dataset_name=(session.get('data_meta') or {}).get('name') or session.get('original_filename') or '')
+                           dataset_name=name, ctx_args=args,
+                           back_url=back_url if args else None, back_label=back_label)
 
 
 @app.route('/qualite/validation/regles', methods=['POST'])
 def validation_regle_ajouter():
+    _, key, _, args = _validation_context()
     form = request.form
     droite_est_variable = form.get('type_droite') == 'variable'
     ok, err = validation_rules.add_rule(
-        _validation_survey_key(), form.get('gauche'), form.get('operateur'),
+        key, form.get('gauche'), form.get('operateur'),
         form.get('droite_variable') if droite_est_variable else form.get('droite_valeur'),
         droite_est_variable, form.get('libelle'), session.get('username') or '')
     flash('Règle ajoutée : elle est maintenant appliquée à chaque contrôle de cette enquête.' if ok else err,
           'success' if ok else 'danger')
-    return redirect(url_for('validation_donnees'))
+    return redirect(url_for('validation_donnees', **args))
 
 
 @app.route('/qualite/validation/regles/<int:rule_id>/supprimer', methods=['POST'])
 def validation_regle_supprimer(rule_id):
-    if validation_rules.delete_rule(rule_id, _validation_survey_key()):
+    _, key, _, args = _validation_context()
+    if validation_rules.delete_rule(rule_id, key):
         flash('Règle supprimée.', 'info')
-    return redirect(url_for('validation_donnees'))
+    return redirect(url_for('validation_donnees', **args))
 
 
 @app.route('/qualite/validation/export.xlsx')
 def validation_export():
-    df = get_dataframe()
+    df, key, name, args = _validation_context()
     if df is None:
-        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
-        return redirect(url_for('analyse_donnees'))
-    result = validation_rules.run_validation(df, validation_rules.list_rules(_validation_survey_key()))
+        if not session.get('_flashes'):     # un message précis a déjà été posté (Kobo absent, échec de chargement)
+            flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+        return redirect(_validation_back(args)[0])
+    result = validation_rules.run_validation(df, validation_rules.list_rules(key))
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
         validation_rules.flagged_rows(df, result).to_excel(writer, index=False, sheet_name='Lignes à vérifier')
     buf.seek(0)
-    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    fname = secure_filename((name or 'donnees').rsplit('.', 1)[0]) or 'donnees'
     return send_file(buf, as_attachment=True,
                      download_name=f'{fname}_lignes_a_verifier.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -2172,35 +2236,139 @@ def crosstabs():
 
 # ─── MULTI-ENQUÊTE ────────────────────────────────────────────────────────────
 
-def _load_multi_surveys() -> dict:
-    """Charge les enquêtes enregistrées en session sous forme {nom: DataFrame}."""
-    surveys = {}
-    entries = session.get('multi_surveys', []) or []
-    for entry in entries:
+# Identifiant de soumission conservé dans la pile (le nettoyage Kobo le retire d'ordinaire) : il permet de
+# repérer une même soumission présente dans deux enquêtes. Jamais proposé comme variable à comparer.
+MS_KEEP_COLS = ('_uuid',)
+MS_HIDDEN_COLS = {'__survey__', '_uuid'}
+
+_MS_DF_CACHE = {}              # (chemin, date de modification) -> DataFrame (lecture seule)
+_MS_QUALITY_CACHE = {}         # empreinte -> résumé de validation
+_MS_CHECKS_CACHE = {}          # empreinte -> contrôles entre enquêtes
+_MS_CACHE_LOCK = threading.Lock()
+_MS_CACHE_MAX = 8
+
+
+def _cache_put(cache, key, value, limit=_MS_CACHE_MAX):
+    with _MS_CACHE_LOCK:
+        while len(cache) >= limit:
+            cache.pop(next(iter(cache)))
+        cache[key] = value
+
+
+def _read_cached_excel(path):
+    """Classeur de la pile multi-enquête, avec un petit cache (chemin + date de
+    modification) : la page relit chaque fichier à chaque action, et ses
+    comparaisons, contrôles de qualité et exports le consomment plusieurs fois.
+    Le DataFrame renvoyé est partagé : ne jamais le modifier sur place."""
+    try:
+        key = (path, os.path.getmtime(path))
+    except OSError:
+        return None
+    with _MS_CACHE_LOCK:
+        df = _MS_DF_CACHE.get(key)
+    if df is None:
+        df = pd.read_excel(path)
+        _cache_put(_MS_DF_CACHE, key, df)
+    return df
+
+
+def _load_multi_surveys(with_meta=False):
+    """Charge les enquêtes enregistrées en session sous forme {nom: DataFrame}.
+    Deux enquêtes de même nom reçoivent un suffixe (2), (3)… — avant, la
+    seconde écrasait la première. with_meta=True renvoie aussi {nom: entrée}
+    (avec son rang dans la pile, « idx »)."""
+    surveys, entries = {}, {}
+    for idx, entry in enumerate(session.get('multi_surveys', []) or []):
         path = entry.get('path')
-        name = entry.get('name') or os.path.basename(path or '')
-        if path and os.path.exists(path):
-            try:
-                surveys[name] = pd.read_excel(path)
-            except Exception:
-                pass
-    return surveys
+        if not (path and os.path.exists(path)):
+            continue
+        try:
+            df = _read_cached_excel(path)
+        except Exception:
+            continue
+        if df is None:
+            continue
+        base = name = entry.get('name') or os.path.basename(path)
+        k = 2
+        while name in surveys:
+            name, k = f'{base} ({k})', k + 1
+        surveys[name] = df
+        entries[name] = dict(entry, idx=idx)
+    return (surveys, entries) if with_meta else surveys
 
 
-def _compute_ms_comparison(merged, variable):
-    """Calcule la comparaison d'UNE variable entre enquêtes. Renvoie un dict
-    {kind: 'continuous'|'categorical', ...} ou {error: '...'}."""
+def _ms_key(entry):
+    """Clé sous laquelle se rangent les règles de validation et le Factum d'une
+    enquête de la pile (même convention que _validation_survey_key)."""
+    if entry.get('kobo_uid'):
+        return 'kobo:' + entry['kobo_uid']
+    if entry.get('source') == 'gdb' and entry.get('factum'):
+        return 'gdb:' + entry['factum']
+    return 'fichier:' + (entry.get('name') or '')
+
+
+def _ms_factum(entry, df):
+    """Factum d'une enquête de la pile : saisi dans la pile, sinon enregistré
+    pour elle, sinon porté par ses données (champ Factum__G)."""
+    return entry.get('factum') or study_factum.get_for_survey(_ms_key(entry)) or study_factum.from_dataframe(df)
+
+
+def _ms_order(names, factums):
+    """Enquêtes dans l'ordre du temps : date de référence du Factum, puis n° de
+    collecte ; sans Factum, à la fin dans l'ordre d'import."""
+    def when(item):
+        i, name = item
+        parts = study_factum.parse(factums.get(name) or '')['parts']
+        return (parts.get('date') or '99999999', parts.get('collecte') or 0, i)
+    return [name for _, name in sorted(enumerate(names), key=when)]
+
+
+def _ms_quality(entry, df):
+    """Résumé des contrôles de validation d'une enquête de la pile (règles de
+    validation_rules.py + règles saisies pour elle), mis en cache."""
+    rules = validation_rules.list_rules(_ms_key(entry))
+    try:
+        stamp = os.path.getmtime(entry['path'])
+    except (KeyError, OSError):
+        stamp = 0
+    fingerprint = (entry.get('path'), stamp, tuple((r['id'], r['gauche'], r['operateur'], r['droite']) for r in rules))
+    with _MS_CACHE_LOCK:
+        hit = _MS_QUALITY_CACHE.get(fingerprint)
+    if hit is None:
+        res = validation_rules.run_validation(df, rules)
+        hit = {k: res[k] for k in ('n_lignes', 'n_signalees', 'pct_sans_anomalie', 'n_erreurs', 'n_a_verifier')}
+        _cache_put(_MS_QUALITY_CACHE, fingerprint, hit, limit=32)
+    return hit
+
+
+def _ms_cross_checks(surveys, entries, factums):
+    stamps = tuple(sorted((n, entries[n].get('path'), os.path.getmtime(entries[n]['path']),
+                           factums.get(n) or '') for n in surveys if entries[n].get('path')))
+    with _MS_CACHE_LOCK:
+        hit = _MS_CHECKS_CACHE.get(stamps)
+    if hit is None:
+        hit = multi_checks.check_surveys(surveys, factums)
+        _cache_put(_MS_CHECKS_CACHE, stamps, hit, limit=16)
+    return hit
+
+
+def _compute_ms_comparison(merged, variable, order=None):
+    """Calcule la comparaison d'UNE variable entre enquêtes (ordre chronologique
+    `order`, évolution entre enquêtes consécutives avec IC à 95 %). Renvoie un
+    dict {kind: 'continuous'|'categorical', ...} ou {error: '...'}."""
     try:
         if variable not in merged.columns:
             return {'variable': variable, 'error': f"Variable '{variable}' absente après alignement."}
         serie = pd.to_numeric(merged[variable], errors='coerce')
         ratio_num = serie.notna().mean()
         if ratio_num > 0.8 and serie.nunique() > 10:
-            r = compare_continuous_by_survey(merged, variable)
+            r = compare_continuous_by_survey(merged, variable, order)
             r['kind'] = 'continuous'
+            r['evolution'] = evolution_continuous(merged, variable, order)
         else:
-            r = compare_categorical_by_survey(merged, variable)
+            r = compare_categorical_by_survey(merged, variable, order)
             r['kind'] = 'categorical'
+            r['evolution'] = evolution_categorical(merged, variable, order)
         r['variable'] = variable
         return r
     except Exception as e:
@@ -2335,7 +2503,7 @@ def multi_survey():
                 f.save(raw_path)
                 try:
                     df_raw = load_excel(raw_path)
-                    df_clean = clean_kobo_dataframe(df_raw)
+                    df_clean = clean_kobo_dataframe(df_raw, keep_meta_cols=MS_KEEP_COLS)
                     cleaned_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_clean_' + fname)
                     df_clean.to_excel(cleaned_path, index=False, engine='openpyxl')
                     surveys_meta.append({
@@ -2344,6 +2512,8 @@ def multi_survey():
                         'n_obs': int(len(df_clean)),
                         'n_vars': int(df_clean.shape[1]),
                         'phakts_vars': int(sum(1 for c in df_clean.columns if is_phakts_coded(c))),
+                        'factum': (study_factum.get_for_survey('fichier:' + f.filename)
+                                   or study_factum.from_dataframe(df_clean)),
                     })
                     added += 1
                 except Exception as e:
@@ -2432,7 +2602,7 @@ def multi_survey():
             elif not uid:
                 flash("Sélectionnez un formulaire KoboToolbox.", 'warning')
             else:
-                res = kobo_load_data(token, uid, instance=instance or None)
+                res = kobo_load_data(token, uid, instance=instance or None, keep_meta_cols=MS_KEEP_COLS)
                 if res.get('success'):
                     df_kobo = res['df']
                     asset_name = request.form.get('kobo_asset_name') or f'Kobo_{uid[:8]}'
@@ -2446,11 +2616,63 @@ def multi_survey():
                         'n_vars': int(df_kobo.shape[1]),
                         'phakts_vars': int(sum(1 for c in df_kobo.columns if is_phakts_coded(c))),
                         'source': 'kobo',
+                        'kobo_uid': uid,
+                        'factum': (study_factum.get_for_survey('kobo:' + uid)
+                                   or study_factum.from_dataframe(df_kobo)),
                     })
                     session['multi_surveys'] = surveys_meta
                     flash(f"Enquête KoboToolbox « {asset_name} » ajoutée ({len(df_kobo)} obs.).", 'success')
                 else:
                     flash(f"Chargement KoboToolbox : {res.get('error', 'Erreur')}", 'danger')
+
+        elif action == 'gdb_add':
+            known = {e['factum']: e for e in gdb.enquetes()}
+            added = 0
+            for fac in request.form.getlist('factums'):
+                if fac not in known:
+                    continue
+                if any(m.get('source') == 'gdb' and m.get('factum') == fac for m in surveys_meta):
+                    continue
+                df_gdb = gdb.dataframe(fac)
+                if df_gdb is None or df_gdb.empty:
+                    flash(f"« {known[fac]['titre']} » : aucune donnée dans la base centrale.", 'warning')
+                    continue
+                if not all(re.fullmatch(r'L\d+', str(i)) for i in df_gdb.index):
+                    df_gdb.insert(0, '_uuid', df_gdb.index.astype(str))     # identifiants de soumission d'origine
+                fpath = os.path.join(app.config['UPLOAD_FOLDER'], f"ms_gdb_{uuid.uuid4().hex[:8]}.xlsx")
+                df_gdb.to_excel(fpath, index=False, engine='openpyxl')
+                surveys_meta.append({
+                    'name': known[fac]['titre'] or fac, 'path': fpath, 'n_obs': int(len(df_gdb)),
+                    'n_vars': int(df_gdb.shape[1]),
+                    'phakts_vars': int(sum(1 for c in df_gdb.columns if is_phakts_coded(c))),
+                    'source': 'gdb', 'factum': fac,
+                })
+                added += 1
+            session['multi_surveys'] = surveys_meta
+            if added:
+                flash(f"{added} enquête(s) ajoutée(s) depuis la base centrale.", 'success')
+
+        elif action == 'set_factum':
+            try:
+                entry = surveys_meta[int(request.form.get('idx', '-1'))]
+            except (ValueError, IndexError):
+                entry = None
+            fac = (request.form.get('factum') or '').strip()
+            if entry is None:
+                flash('Enquête introuvable.', 'warning')
+            elif not fac:
+                entry['factum'] = ''
+                study_factum.clear_for_survey(_ms_key(entry))
+                session['multi_surveys'] = surveys_meta
+                flash('Factum retiré.', 'info')
+            else:
+                res = study_factum.set_for_survey(_ms_key(entry), fac, session.get('username') or '')
+                if res['valid']:
+                    entry['factum'] = res['normalized']
+                    session['multi_surveys'] = surveys_meta
+                    flash('Factum enregistré : les enquêtes sont maintenant ordonnées selon sa date.', 'success')
+                else:
+                    flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
 
         elif action == 'run_mv_ms':
             session['ms_mv_params'] = {
@@ -2465,7 +2687,29 @@ def multi_survey():
         elif action == 'clear_mv_ms':
             session.pop('ms_mv_params', None)
 
-    surveys = _load_multi_surveys()
+    surveys, entries = _load_multi_surveys(with_meta=True)
+    factums = {n: _ms_factum(e, surveys[n]) for n, e in entries.items()}
+    order = _ms_order(list(surveys), factums)
+    surveys = {n: surveys[n] for n in order}          # colonnes, fusion et comparaisons dans l'ordre du temps
+    pile = {}
+    for n, e in entries.items():
+        parsed = study_factum.parse(factums[n]) if factums[n] else None
+        pile[e['idx']] = {'name': n, 'factum': factums[n],
+                          'parts': parsed['parts'] if parsed and parsed['valid'] else None,
+                          'rank': order.index(n) + 1, 'quality': _ms_quality(e, surveys[n])}
+    cross_checks = _ms_cross_checks(surveys, entries, factums) if surveys else []
+
+    # Le panier garde des variables nommées par l'ancien alignement (radical seul) :
+    # elles n'existent plus sous ce nom — on les retire plutôt que d'afficher des erreurs.
+    if mode == 'phakts' and surveys and compared_vars:
+        known = set().union(*(set(phakts_radical(c) for c in df.columns) for df in surveys.values()))
+        kept = [v for v in compared_vars if v in known]
+        if len(kept) != len(compared_vars):
+            flash(f"{len(compared_vars) - len(kept)} variable(s) du panier retirée(s) : l'alignement se fait "
+                  "maintenant sur le code PHAKTS complet (Age__1Y et Age__1M sont deux variables). Les ajouter de nouveau.",
+                  'info')
+            compared_vars = kept
+            session['ms_compared_vars'] = kept
 
     if len(surveys) >= 1:
         try:
@@ -2498,13 +2742,13 @@ def multi_survey():
                 # modules/multi_survey.py::auto_analyze) — aucune sélection
                 # manuelle de variable nécessaire.
                 try:
-                    auto_results = auto_analyze(surveys, mode=mode)
+                    auto_results = auto_analyze(surveys, mode=mode, order=order)
                 except Exception as e:
                     auto_results = []
                     flash(f"Erreur d'analyse automatique : {e}", 'danger')
             elif compared_vars and merged is not None:
                 for v in compared_vars:
-                    results.append(_compute_ms_comparison(merged, v))
+                    results.append(_compute_ms_comparison(merged, v, order))
 
     # Variables proposées (union + variables PHAKTS)
     candidate_vars = []
@@ -2516,7 +2760,7 @@ def multi_survey():
             else:
                 all_cols_by_survey.append(set(df.columns))
         if all_cols_by_survey:
-            union = sorted(set().union(*all_cols_by_survey) - {'__survey__'})
+            union = sorted(set().union(*all_cols_by_survey) - MS_HIDDEN_COLS)
             candidate_vars = union
 
     # ── Analyse multivariée sur jeu fusionné ─────────────────────────────────
@@ -2531,8 +2775,8 @@ def multi_survey():
         try:
             mv_merged_df = merge_surveys(surveys, mode=mode)
             vt = get_var_types(mv_merged_df)
-            mv_num_vars = [v for v, t in vt.items() if t in ('continue', 'binaire') and v != '__survey__']
-            mv_cat_vars = [v for v, t in vt.items() if t == 'categorielle' and v != '__survey__']
+            mv_num_vars = [v for v, t in vt.items() if t in ('continue', 'binaire') and v not in MS_HIDDEN_COLS]
+            mv_cat_vars = [v for v, t in vt.items() if t == 'categorielle' and v not in MS_HIDDEN_COLS]
         except Exception:
             pass
 
@@ -2566,6 +2810,9 @@ def multi_survey():
                             auto_mode=auto_mode,
                             auto_results=auto_results,
                             merged_meta=merged_meta,
+                            pile=pile, order=order, cross_checks=cross_checks,
+                            gdb_enquetes=[dict(e, in_pile=any(m.get('source') == 'gdb' and m.get('factum') == e['factum']
+                                                              for m in surveys_meta)) for e in gdb.enquetes()],
                             kobo_connected=bool(session.get('kobo_token')),
                             ms_kobo_assets=session.get('ms_kobo_assets', []),
                             mv_result=mv_result,
@@ -2573,6 +2820,48 @@ def multi_survey():
                             mv_params=mv_params,
                             mv_num_vars=mv_num_vars,
                             mv_cat_vars=mv_cat_vars)
+
+
+@app.route('/multi-survey/export.<any(xlsx, sav, dta):fmt>')
+def multi_survey_export(fmt):
+    """Jeu de données fusionné (colonnes alignées sur le code PHAKTS) avec, pour
+    chaque ligne, l'enquête d'origine et son Factum — Excel, SPSS ou Stata."""
+    surveys, entries = _load_multi_surveys(with_meta=True)
+    if len(surveys) < 2:
+        flash("Ajoutez au moins deux enquêtes pour exporter le jeu fusionné.", 'warning')
+        return redirect(url_for('multi_survey'))
+    mode = session.get('ms_mode', 'phakts')
+    try:
+        merged = merge_surveys(surveys, mode=mode)
+    except Exception as e:
+        flash(f"Fusion impossible : {e}", 'danger')
+        return redirect(url_for('multi_survey'))
+    factums = {n: _ms_factum(e, surveys[n]) for n, e in entries.items()}
+    order = _ms_order(list(surveys), factums)
+    out = merged.rename(columns={'__survey__': 'Enquete'})
+    out.insert(1, 'Factum', out['Enquete'].map(factums).fillna(''))
+    out = out[['Enquete', 'Factum'] + [c for c in out.columns if c not in ('Enquete', 'Factum')]]
+    note = f"Fusion de {len(surveys)} enquêtes (alignement {mode})"
+    if fmt == 'xlsx':
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            out.to_excel(writer, index=False, sheet_name='Données fusionnées')
+            pd.DataFrame([{'Rang': order.index(n) + 1, 'Enquête': n, 'Factum': factums[n],
+                           'Source': e.get('source') or 'excel', 'Observations': len(surveys[n]),
+                           'Variables': surveys[n].shape[1]} for n, e in entries.items()]
+                         ).sort_values('Rang').to_excel(writer, index=False, sheet_name='Enquêtes')
+            variable_coverage(surveys, mode=mode).to_excel(writer, sheet_name='Couverture')
+        buf.seek(0)
+        return send_file(buf, as_attachment=True, download_name='enquetes_fusionnees.xlsx',
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    try:
+        content = stat_export.export(out, fmt, user_labels={'Enquete': "Enquête d'origine", 'Factum': "Factum de l'étude"},
+                                     note=note)
+    except ImportError:
+        flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
+        return redirect(url_for('multi_survey'))
+    return send_file(io.BytesIO(content), as_attachment=True, download_name=f'enquetes_fusionnees.{fmt}',
+                     mimetype='application/x-spss-sav' if fmt == 'sav' else 'application/x-stata-dta')
 
 
 @app.route('/multi-survey/download-xlsx')

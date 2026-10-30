@@ -223,9 +223,15 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
           </div>` : '<div class="mb-2"></div>'}
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <span class="status-pill ${pillClass}">${pillLabel}${pct !== null ? ' · ' + t.pct + ' %' : ''}</span>
-            <a href="/suivi/analyser/${t.uid}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
-              Analyser <i class="bi bi-arrow-right ms-1"></i>
-            </a>
+            <div class="d-flex gap-1">
+              <a href="/qualite/validation?uid=${encodeURIComponent(t.uid)}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.72rem"
+                 title="Contrôler la qualité des données de ce formulaire : doublons, heures, seuils, valeurs extrêmes et règles de l'enquête. Les données sont chargées à la demande (le suivi ne lit que les compteurs).">
+                <i class="bi bi-shield-check me-1"></i>Qualité
+              </a>
+              <a href="/suivi/analyser/${t.uid}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
+                Analyser <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </div>
           </div>
           ${t.district_reel ? `
           <div class="mt-2" title="Proportion de districts ayant individuellement atteint ou dépassé 100 % (${t.district_reel.atteints}/${t.district_reel.total}) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.">

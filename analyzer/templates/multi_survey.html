@@ -3,6 +3,50 @@
 {% block page_title %}Analyse multi-enquête (DPF / PHAKTS){% endblock %}
 
 {% block content %}
+<style>
+.sev { display:inline-block; padding:2px 9px; border-radius:10px; font-size:.72rem; font-weight:700; white-space:nowrap; }
+.sev-erreur { background:#FADBD8; color:#922B21; }
+.sev-a_verifier { background:#FDEBD0; color:#A04000; }
+.sev-info { background:#EAECEE; color:#566573; }
+.sev-ok { background:#D5F5E3; color:#117A65; }
+</style>
+
+{% macro pfmt(x) %}{{ '< 0,0001' if x is number and x < 0.0001 else x }}{% endmacro %}
+
+{% macro evolution_table(rows) %}
+{% if rows %}
+<h6 class="small fw-semibold text-muted mt-3">
+  <i class="bi bi-graph-up me-1"></i>Évolution entre enquêtes consécutives
+  <span class="fw-normal">— ordre chronologique du Factum · intervalle de confiance à 95 %</span>
+</h6>
+<div class="table-responsive">
+  <table class="table table-sm align-middle mb-1">
+    <thead class="table-light">
+      <tr><th>De → vers</th><th>Modalité</th><th class="text-end">Avant</th><th class="text-end">Après</th>
+          <th class="text-end">Écart</th><th class="text-end">IC 95 %</th><th class="text-end">p</th></tr>
+    </thead>
+    <tbody>
+      {% for e in rows %}
+      {% set pct = e.unite == 'points de %' %}
+      <tr>
+        <td class="small">{{ e.de }} → {{ e.vers }}</td>
+        <td class="small">{{ e.modalite }}</td>
+        <td class="text-end small">{{ e.v1 }}{{ ' %' if pct }} <span class="text-muted">(n={{ e.n1 }})</span></td>
+        <td class="text-end small">{{ e.v2 }}{{ ' %' if pct }} <span class="text-muted">(n={{ e.n2 }})</span></td>
+        <td class="text-end small fw-semibold {% if e.significatif %}{{ 'text-success' if e.diff > 0 else 'text-danger' }}{% else %}text-muted{% endif %}">
+          {% if e.significatif %}{{ '▲' if e.diff > 0 else '▼' }} {% endif %}{{ '%+.1f'|format(e.diff) if pct else '%+.2f'|format(e.diff) }}{{ ' pts' if pct }}
+        </td>
+        <td class="text-end small text-muted">[{{ e.ic_bas }} ; {{ e.ic_haut }}]</td>
+        <td class="text-end small">{{ pfmt(e.p_value) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted mb-0">▲ ▼ : l'intervalle de confiance exclut 0 (écart net entre les deux enquêtes). Un écart dont l'intervalle contient 0 peut n'être dû qu'au hasard de l'échantillonnage.</p>
+{% endif %}
+{% endmacro %}
+
 <div class="container-fluid px-4 py-3">
 
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
@@ -43,6 +87,13 @@
             {% else %}
               <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:.65em">connecté</span>
             {% endif %}
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-semibold small px-3 py-2" id="tab-gdb"
+                  data-bs-toggle="tab" data-bs-target="#pane-gdb" type="button">
+            <i class="bi bi-boxes me-1" style="color:#4f46e5"></i>Base centrale (GDB)
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size:.65em">{{ gdb_enquetes|length }}</span>
           </button>
         </li>
       </ul>
@@ -136,6 +187,39 @@
           {% endif %}
         </div>
 
+        <!-- ── Onglet Base centrale ─────────────────────────────────────── -->
+        <div class="tab-pane fade" id="pane-gdb" role="tabpanel">
+          {% if gdb_enquetes %}
+          <form method="POST">
+            <input type="hidden" name="action" value="gdb_add">
+            <p class="small text-muted mb-2">
+              Choisissez des enquêtes déjà versées, par leur Factum : leurs données sont rouvertes telles
+              qu'elles ont été versées, sans recharger les fichiers.
+            </p>
+            <div class="list-group mb-2" style="max-height:260px;overflow-y:auto">
+              {% for e in gdb_enquetes %}
+              <label class="list-group-item d-flex gap-2 align-items-start small {% if e.in_pile %}text-muted{% endif %}">
+                <input class="form-check-input mt-1" type="checkbox" name="factums" value="{{ e.factum }}"
+                       {% if e.in_pile %}disabled checked{% endif %}>
+                <span>
+                  <strong>{{ e.titre }}</strong> — {{ e.parts.date_lisible }} · {{ e.n_repondants }} répondants · {{ e.n_variables }} variables
+                  {% if e.in_pile %}<span class="badge bg-light text-dark border">déjà dans la pile</span>{% endif %}
+                  <span class="d-block font-monospace text-muted" style="font-size:.7rem;word-break:break-all">{{ e.factum }}</span>
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-in-down me-1"></i>Ajouter à la pile</button>
+          </form>
+          {% else %}
+          <div class="alert alert-light border small mb-0">
+            <i class="bi bi-info-circle text-primary me-1"></i>
+            Aucune enquête n'a encore été versée dans la base centrale.
+            <a href="{{ url_for('gdb_index') }}">Ouvrir la base centrale →</a>
+          </div>
+          {% endif %}
+        </div>
+
       </div>{# /tab-content #}
 
       <!-- ─── Pile des enquêtes importées ───────────────────────────────── -->
@@ -157,20 +241,40 @@
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th style="width:28px">#</th>
-              <th>Fichier / Formulaire</th>
+              <th style="width:44px" title="Ordre chronologique (date de référence du Factum) : c'est celui des comparaisons et des écarts">Ordre</th>
+              <th>Fichier / Formulaire — Factum</th>
               <th class="text-center" style="width:80px">Obs.</th>
               <th class="text-center" style="width:80px">Variables</th>
               <th class="text-center" style="width:110px">PHAKTS</th>
+              <th class="text-center" style="width:120px" title="Part des lignes sans anomalie (contrôles de « Validation des données »)">Qualité</th>
               <th class="text-center" style="width:60px">Source</th>
               <th class="text-center" style="width:50px"></th>
             </tr>
           </thead>
           <tbody>
             {% for s in surveys_meta %}
+            {% set p = pile.get(loop.index0) %}
             <tr>
-              <td class="text-muted small">{{ loop.index }}</td>
-              <td class="fw-semibold small">{{ s.name }}</td>
+              <td class="text-muted small text-center">{{ p.rank if p else '—' }}</td>
+              <td>
+                <div class="fw-semibold small">{{ s.name }}</div>
+                <form method="POST" class="d-flex gap-1 mt-1">
+                  <input type="hidden" name="action" value="set_factum">
+                  <input type="hidden" name="idx" value="{{ loop.index0 }}">
+                  <input name="factum" value="{{ p.factum if p else '' }}" class="form-control form-control-sm font-monospace"
+                         style="font-size:.7rem;min-width:240px" placeholder="Factum de l'étude (date de référence = ordre)">
+                  <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="submit" title="Enregistrer le Factum"><i class="bi bi-check2"></i></button>
+                </form>
+                {% if p and p.parts %}
+                <div class="text-muted" style="font-size:.7rem">
+                  {{ p.parts.sujet_lisible }} · {{ p.parts.date_lisible }}{% if p.parts.collectes > 1 %} · collecte {{ p.parts.collecte }}/{{ p.parts.collectes }}{% endif %}
+                </div>
+                {% elif p and p.factum %}
+                <div class="text-danger" style="font-size:.7rem">Factum invalide</div>
+                {% else %}
+                <div class="text-warning" style="font-size:.7rem">Sans Factum — classée après les autres</div>
+                {% endif %}
+              </td>
               <td class="text-center small">{{ s.n_obs }}</td>
               <td class="text-center small">{{ s.n_vars }}</td>
               <td class="text-center">
@@ -181,8 +285,19 @@
                 {% endif %}
               </td>
               <td class="text-center">
+                {% if p %}
+                <a href="{{ url_for('validation_donnees', ms=loop.index0) }}" class="text-decoration-none"
+                   title="Ouvrir le détail des contrôles de cette enquête">
+                  <span class="sev {{ 'sev-erreur' if p.quality.n_erreurs else ('sev-a_verifier' if p.quality.n_a_verifier else 'sev-ok') }}">{{ p.quality.pct_sans_anomalie }} %</span>
+                </a>
+                <div class="text-muted" style="font-size:.68rem">{{ p.quality.n_signalees }} ligne(s) signalée(s)</div>
+                {% endif %}
+              </td>
+              <td class="text-center">
                 {% if s.source == 'kobo' %}
                   <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Kobo</span>
+                {% elif s.source == 'gdb' %}
+                  <span class="badge border" style="background:#eef2ff;color:#4f46e5">GDB</span>
                 {% else %}
                   <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Excel</span>
                 {% endif %}
@@ -417,17 +532,79 @@
   </div>{# /card section 1 #}
 
   {% if surveys_meta|length >= 1 %}
-  <!-- ═══════════ Section 2 — Couverture ═══════════ -->
+  <!-- ═══════════ Section 2 — Qualité et cohérence ═══════════ -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold">
+        <i class="bi bi-shield-check me-2 text-primary"></i>2. Qualité des enquêtes et cohérence entre elles
+      </h6>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted mb-3">
+        À vérifier <strong>avant de comparer</strong> : une comparaison n'est fiable que si chaque enquête est propre
+        (doublons, heures, seuils PHAKTS, valeurs extrêmes, règles de l'équipe) et si les enquêtes se comparent
+        réellement (mêmes unités, mêmes modalités, pas de soumissions communes). Rien n'est modifié.
+      </p>
+      {% set ns = namespace(lignes=0, signalees=0) %}
+      {% for idx, p in pile.items() %}{% set ns.lignes = ns.lignes + p.quality.n_lignes %}{% set ns.signalees = ns.signalees + p.quality.n_signalees %}{% endfor %}
+      <div class="table-responsive mb-3">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Enquête</th><th class="text-center">Lignes</th><th class="text-center">Signalées</th>
+                <th class="text-center">Sans anomalie</th><th class="text-center">Erreurs</th><th class="text-center">À vérifier</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for idx, p in pile.items() %}
+            <tr>
+              <td class="small fw-semibold">{{ p.name }}</td>
+              <td class="text-center small">{{ p.quality.n_lignes }}</td>
+              <td class="text-center small">{{ p.quality.n_signalees }}</td>
+              <td class="text-center"><span class="sev {{ 'sev-erreur' if p.quality.n_erreurs else ('sev-a_verifier' if p.quality.n_a_verifier else 'sev-ok') }}">{{ p.quality.pct_sans_anomalie }} %</span></td>
+              <td class="text-center small">{{ p.quality.n_erreurs }}</td>
+              <td class="text-center small">{{ p.quality.n_a_verifier }}</td>
+              <td class="text-end"><a class="btn btn-sm btn-outline-primary py-0 px-2" href="{{ url_for('validation_donnees', ms=idx) }}">Détail et règles</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if cross_checks %}
+      <h6 class="small fw-semibold text-muted text-uppercase">Cohérence entre enquêtes</h6>
+      <div class="list-group">
+        {% for c in cross_checks %}
+        <div class="list-group-item">
+          <div class="d-flex align-items-start gap-2">
+            <span class="sev sev-{{ c.severite }}">{{ {'erreur': 'Erreur', 'a_verifier': 'À vérifier', 'info': 'Info'}[c.severite] }}</span>
+            <div>
+              <div class="fw-semibold small">{{ c.titre }}</div>
+              <div class="small text-muted">{{ c.detail }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% elif surveys_meta|length >= 2 %}
+      <div class="alert alert-success small mb-0">
+        <i class="bi bi-check-circle me-1"></i>Aucune incohérence détectée entre ces {{ surveys_meta|length }} enquêtes.
+      </div>
+      {% else %}
+      <div class="alert alert-light border small mb-0">Ajoutez une deuxième enquête pour contrôler la cohérence entre enquêtes.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══════════ Section 3 — Couverture ═══════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-grid me-2 text-primary"></i>2. Couverture des variables (alignement DPF / PHAKTS)
+        <i class="bi bi-grid me-2 text-primary"></i>3. Couverture des variables (alignement DPF / PHAKTS)
       </h6>
       <form method="POST" class="d-flex align-items-center gap-2">
         <input type="hidden" name="action" value="change_mode">
         <label class="small text-muted mb-0">Alignement :</label>
         <select name="align_mode" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>PHAKTS (radical)</option>
+          <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>PHAKTS (code complet)</option>
           <option value="exact"  {% if mode=='exact'  %}selected{% endif %}>Nom exact</option>
           <option value="union"  {% if mode=='union'  %}selected{% endif %}>Union (libre)</option>
         </select>
@@ -454,11 +631,11 @@
   {% endif %}
 
   {% if surveys_meta|length >= 2 %}
-  <!-- ═══════════ Section 3 — Comparaisons croisées ═══════════ -->
+  <!-- ═══════════ Section 4 — Comparaisons croisées ═══════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>3. Comparer des variables entre enquêtes
+        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>4. Comparer des variables entre enquêtes
       </h6>
       <form method="POST" class="d-flex align-items-center gap-2">
         <input type="hidden" name="action" value="toggle_auto">
@@ -482,7 +659,10 @@
           sont détectés automatiquement depuis le type porté par le nom de chaque variable (xType),
           avec le traitement statistique et le test de comparaison adaptés. Aucune sélection manuelle
           n'est nécessaire ; désactivez le commutateur ci-dessus pour revenir au choix variable par
-          variable.
+          variable.<br>
+          <strong>Tests multiples</strong> — avec de nombreux indicateurs testés à 5 %, certains paraissent « significatifs »
+          par pur hasard. Les p-values sont donc corrigées (Benjamini-Hochberg) : <strong>q</strong> est la proportion attendue de
+          fausses découvertes parmi les indicateurs signalés ; on juge sur q, pas sur p.
         </div>
       </div>
 
@@ -490,6 +670,10 @@
       <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
         <div><i class="bi bi-collection me-1"></i><strong>{{ surveys_meta|length }}</strong> enquêtes</div>
         <div><i class="bi bi-tag me-1"></i><strong>{{ auto_results|length }}</strong> indicateur(s) commun(s) détecté(s)</div>
+        {% set tested = auto_results|selectattr('test')|list %}
+        <div><i class="bi bi-activity me-1"></i><strong>{{ tested|selectattr('test.significant_fdr')|list|length }}</strong> écart(s) significatif(s) après correction
+          <span class="text-muted">sur {{ tested|length }} testé(s) ({{ tested|selectattr('test.p_value', 'lt', 0.05)|list|length }} avant correction)</span></div>
+        <div><i class="bi bi-calendar3 me-1"></i>Ordre : {{ order|join(' → ') }}</div>
       </div>
       <div class="accordion" id="msAutoAccordion">
         {% for r in auto_results %}
@@ -511,8 +695,8 @@
                 {% if r.error %}
                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle">erreur</span>
                 {% elif r.test %}
-                <span class="badge {% if r.test.p_value < 0.05 %}bg-warning-subtle text-warning border border-warning-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %}">
-                  {{ r.test.test }} · p={{ r.test.p_value }}{% if r.test.p_value < 0.05 %} (écart significatif){% else %} (pas d'écart significatif){% endif %}
+                <span class="badge {% if r.test.significant_fdr %}bg-warning-subtle text-warning border border-warning-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %}">
+                  {{ r.test.test }} · p={{ pfmt(r.test.p_value) }} · q={{ pfmt(r.test.q_value) }}{% if r.test.significant_fdr %} (écart significatif){% elif r.test.p_value < 0.05 %} (non significatif après correction){% else %} (pas d'écart significatif){% endif %}
                 </span>
                 {% endif %}
               </div>
@@ -536,10 +720,12 @@
                 </div>
               </div>
               <div class="mt-3" id="msAutoChart_{{ loop.index0 }}"></div>
+              {{ evolution_table(r.evolution) }}
               {% elif r.kind == 'continuous' %}
               <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
               <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
               <div class="mt-3" id="msAutoChart_{{ loop.index0 }}"></div>
+              {{ evolution_table(r.evolution) }}
               {% endif %}
             </div>
           </div>
@@ -549,7 +735,7 @@
       {% elif surveys_meta|length >= 2 %}
       <div class="alert alert-warning small mb-0">
         Aucun indicateur codifié PHAKTS commun à au moins 2 enquêtes n'a été détecté (mode
-        d'alignement « PHAKTS (radical) » requis — voir section 2 ci-dessus).
+        d'alignement « PHAKTS (code complet) » requis — voir section 3 ci-dessus).
       </div>
       {% endif %}
 
@@ -643,10 +829,12 @@
                 </div>
               </div>
               <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
+              {{ evolution_table(r.evolution) }}
               {% elif r.kind == 'continuous' %}
               <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
               <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
               <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
+              {{ evolution_table(r.evolution) }}
               {% endif %}
             </div>
           </div>
@@ -669,6 +857,36 @@
       </div>
       {% endif %}
       {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if surveys_meta|length >= 2 %}
+  <!-- ═══════════ Section 5 — Export du jeu fusionné ═══════════ -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-download me-2 text-primary"></i>5. Exporter le jeu de données fusionné</h6>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted mb-3">
+        Toutes les enquêtes empilées, colonnes alignées sur le code PHAKTS, avec pour chaque ligne l'<strong>enquête d'origine</strong>
+        et son <strong>Factum</strong> — pour poursuivre l'analyse dans Excel, SPSS ou Stata.
+        {% if mode != 'phakts' %}<span class="text-warning">Alignement actuel : « {{ mode }} » (voir section 3).</span>{% endif %}
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-success" href="{{ url_for('multi_survey_export', fmt='xlsx') }}"
+           title="Feuilles : Données fusionnées, Enquêtes (ordre, Factum), Couverture">
+          <i class="bi bi-file-earmark-excel me-1"></i>Excel (.xlsx)
+        </a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('multi_survey_export', fmt='sav') }}"
+           title="Libellés de variables et modalités catégorielles recodées">
+          <i class="bi bi-file-earmark-binary me-1"></i>SPSS (.sav)
+        </a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('multi_survey_export', fmt='dta') }}"
+           title="Libellés de variables et modalités catégorielles recodées">
+          <i class="bi bi-file-earmark-binary me-1"></i>Stata (.dta)
+        </a>
+      </div>
     </div>
   </div>
   {% endif %}

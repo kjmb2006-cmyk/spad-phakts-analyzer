@@ -21,6 +21,12 @@
 
 {% set sev_labels = {'erreur': 'Erreur', 'a_verifier': 'À vérifier', 'info': 'Info'} %}
 
+{% if back_url %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <span class="small"><i class="bi bi-diagram-3 me-1 text-primary"></i>Enquête contrôlée : <strong>{{ dataset_name }}</strong></span>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ back_url }}"><i class="bi bi-arrow-left me-1"></i>{{ back_label }}</a>
+</div>
+{% endif %}
 <p class="text-muted small mb-3">
   Contrôles du SPAD (« Règles de validation des données de collecte ») appliqués à
   <strong>{{ dataset_name or 'jeu de données chargé' }}</strong> : doublons, cohérence des heures,
@@ -40,7 +46,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
   <h5 class="mb-0">Résultats des contrôles</h5>
   {% if result.n_signalees %}
-  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('validation_export') }}">
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('validation_export', **ctx_args) }}">
     <i class="bi bi-download"></i> Exporter les lignes à vérifier (.xlsx)
   </a>
   {% endif %}
@@ -96,7 +102,7 @@
           <td class="small">{{ r.libelle or '—' }}</td>
           <td class="small text-muted">{{ r.created_by or '—' }} · {{ r.created_at }}</td>
           <td class="text-end">
-            <form method="post" action="{{ url_for('validation_regle_supprimer', rule_id=r.id) }}" onsubmit="return confirm('Supprimer cette règle ?');">
+            <form method="post" action="{{ url_for('validation_regle_supprimer', rule_id=r.id, **ctx_args) }}" onsubmit="return confirm('Supprimer cette règle ?');">
               <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
             </form>
           </td>
@@ -108,7 +114,7 @@
 </div>
 {% endif %}
 
-<form method="post" action="{{ url_for('validation_regle_ajouter') }}" class="card card-body mb-4">
+<form method="post" action="{{ url_for('validation_regle_ajouter', **ctx_args) }}" class="card card-body mb-4">
   <div class="row g-2 align-items-end">
     <div class="col-md-3">
       <label class="form-label small mb-1">Variable</label>

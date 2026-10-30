@@ -111,6 +111,14 @@ say(j and j.get('valid'), "vérification du Factum")
 say(c.get('/data/export.sav').status_code == 302, "export SPSS en place (sans données : renvoi)")
 from modules import gdb
 say(True, f"base centrale : {len(gdb.enquetes())} enquête(s) versée(s)")
+from modules.multi_survey import phakts_radical
+say(phakts_radical('Age__1M') != phakts_radical('Age__1Y') and phakts_radical('Allaitement__B') != phakts_radical('Allaitement__Duree__1W'),
+    "multi-enquête : alignement sur le code PHAKTS complet (années ≠ mois)")
+ms = c.get('/multi-survey').get_data(as_text=True)
+say('Base centrale (GDB)' in ms and 'Ajouter à la pile' in ms, "multi-enquête : import depuis la base centrale")
+say(c.get('/multi-survey/export.xlsx').status_code == 302, "multi-enquête : export du jeu fusionné en place (sans enquêtes : renvoi)")
+r = c.get('/qualite/validation?uid=audit', follow_redirects=False)
+say(r.status_code == 302, "suivi multi-formulaires : contrôle de qualité d'un formulaire (sans connexion Kobo : renvoi)")
 PY
 
 echo "── Sauvegardes ──"
