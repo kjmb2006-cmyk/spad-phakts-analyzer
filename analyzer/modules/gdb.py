@@ -12,9 +12,10 @@ temps). Version allégée ici, dans spad.db :
   - gdb_variables : résumé par variable et par enquête, pour la vue CUBE et
                     la recherche sans parcourir toutes les valeurs
 
-Le radical PHAKTS (partie avant le premier « __ ») aligne les enquêtes entre
-elles : Age__1Y d'une enquête et Age__1Y!0<N<120 d'une autre sont la même
-variable. Verser à nouveau une enquête (même Factum) remplace ses données.
+Le code PHAKTS sans sa directive aligne les enquêtes entre elles : Age__1Y
+d'une enquête et Age__1Y!0<N<120 d'une autre sont la même variable, mais pas
+Allaitement__B et Allaitement__Duree__1W, ni Age__1Y (années) et Age__1M
+(mois). La colonne « radical » des tables contient cette clé d'alignement. Verser à nouveau une enquête (même Factum) remplace ses données.
 Chaque valeur garde son Factum, son répondant et son code d'origine : on
 remonte toujours à l'enquête source.
 """
@@ -68,11 +69,17 @@ def _connect():
 
 
 def radical_of(column):
-    """Radical PHAKTS d'une colonne : 'groupe/Age__1Y!0<N<120' → 'Age'.
-    Une colonne non codifiée garde son nom (sans chemin de groupe)."""
-    parts = str(column).split('!', 1)[0].split('/')
-    coded = [p for p in parts if '__' in p]
-    return (coded[0].split('__', 1)[0] if coded else parts[-1]).strip() or str(column)
+    """Clé d'alignement d'une colonne : son code PHAKTS sans la directive ni
+    le chemin de groupe Kobo — 'groupe/Age__1Y!0<N<120' → 'Age__1Y' ; une
+    case de choix multiple garde son option ('Sport__X/Football'). Une
+    colonne non codifiée garde son nom (sans chemin de groupe)."""
+    parts = str(column).split('/')
+    first = next((i for i, p in enumerate(parts) if '__' in p), None)
+    if first is None:
+        return parts[-1].strip() or str(column)
+    parts = parts[first:]
+    parts[0] = parts[0].split('!', 1)[0]
+    return '/'.join(parts).strip()
 
 
 def _fold(text):

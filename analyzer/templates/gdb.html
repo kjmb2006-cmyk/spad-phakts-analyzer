@@ -13,7 +13,7 @@
 
 <p class="text-muted small mb-3">
   Les données de chaque enquête versée sont conservées ici, identifiées par leur Factum et alignées sur les
-  radicaux PHAKTS : on peut voir quelles variables existent déjà, les suivre d'une collecte à l'autre et
+  codes PHAKTS : on peut voir quelles variables existent déjà, les suivre d'une collecte à l'autre et
   remonter à l'enquête d'où vient chaque valeur.
 </p>
 
@@ -132,7 +132,7 @@
     <table class="table table-sm table-bordered mb-0 gdb-cube">
       <thead class="table-light">
         <tr>
-          <th>Variable (radical)</th>
+          <th>Variable (code PHAKTS)</th>
           {% for f in factums %}{% set e = enquetes_par_factum[f] %}
           <th class="enq" title="{{ f }}">{{ e.titre|truncate(40, True, '…') }}<div class="fw-normal">{{ e.parts.date_lisible }}</div></th>
           {% endfor %}
