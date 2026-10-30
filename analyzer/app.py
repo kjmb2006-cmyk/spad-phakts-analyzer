@@ -2574,6 +2574,8 @@ def multi_survey():
 
     if request.method == 'POST':
         action = request.form.get('action', '')
+        if request.form.get('align_mode'):
+            session['ms_mode'] = request.form['align_mode']      # reprise par la page rechargée après la redirection
 
         if action == 'upload':
             files = request.files.getlist('files')
@@ -2803,6 +2805,11 @@ def multi_survey():
 
         elif action == 'clear_mv_ms':
             session.pop('ms_mv_params', None)
+
+        # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire. Sinon l'historique du
+        # navigateur garde un résultat de POST, et le bouton « Retour » d'une autre page (ou Précédent)
+        # affiche « Confirmer le nouvel envoi du formulaire », avec le risque de rejouer l'action.
+        return redirect(url_for('multi_survey'))
 
     st = _ms_state()
     surveys, entries, factums, order, var_labels = st['surveys'], st['entries'], st['factums'], st['order'], st['var_labels']

@@ -544,6 +544,18 @@ document.addEventListener('DOMContentLoaded', function () {
 // Repli sur `fallbackUrl` (la destination hiérarchique d'origine) quand il
 // n'y a pas d'historique exploitable dans cet onglet (lien direct, nouvel
 // onglet...), pour ne jamais laisser le bouton sans effet.
+// Retour par un simple chargement (GET) de la page d'origine, jamais par l'historique : si la page
+// précédente était le résultat d'un formulaire (POST), « Précédent » affiche « Confirmer le nouvel
+// envoi du formulaire » et peut rejouer l'action.
+function backGet(fallbackUrl) {
+  var ref = document.referrer;
+  if (ref && ref.indexOf(window.location.origin) === 0 && ref !== window.location.href) {
+    window.location.href = ref;
+  } else {
+    window.location.href = fallbackUrl;
+  }
+}
+
 function smartBack(fallbackUrl) {
   if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.origin) === 0) {
     window.history.back();
