@@ -49,37 +49,45 @@ surveys = {'Tabac Femmes': survey_a, 'CAP Personnel': survey_b, 'Enquête C': su
 indicators = ms.detect_common_indicators(surveys, mode='phakts', min_surveys=2)
 by_radical = {i['radical']: i for i in indicators}
 
-assert set(by_radical) == {'Age', 'Emploi', 'Niveau_Instruction'}, by_radical.keys()
+assert set(by_radical) == {'Age__1Y', 'Emploi__B', 'Niveau_Instruction__X'}, by_radical.keys()
 print("OK — exactement les 3 indicateurs communs à >=2 enquêtes détectés (pas les autres)")
 
-assert by_radical['Age']['n_surveys'] == 3 and by_radical['Age']['suffix'] == '1Y'
-assert by_radical['Emploi']['n_surveys'] == 2 and by_radical['Emploi']['suffix'] == 'B'
-assert by_radical['Niveau_Instruction']['n_surveys'] == 2 and by_radical['Niveau_Instruction']['suffix'] == 'X'
+assert by_radical['Age__1Y']['n_surveys'] == 3 and by_radical['Age__1Y']['suffix'] == '1Y'
+assert by_radical['Emploi__B']['n_surveys'] == 2 and by_radical['Emploi__B']['suffix'] == 'B'
+assert by_radical['Niveau_Instruction__X']['n_surveys'] == 2 and by_radical['Niveau_Instruction__X']['suffix'] == 'X'
 print("OK — xType et nombre d'enquêtes couvertes corrects pour chaque indicateur")
 
-assert 'Poste_Occupe' not in by_radical, "texte libre (__Z) doit être exclu de l'analyse quantitative"
-assert 'Consommation_Tabac' not in by_radical, "présent dans 1 seule enquête -> exclu (min_surveys=2)"
-assert 'Zone' not in by_radical, "présent dans 1 seule enquête -> exclu (min_surveys=2)"
+assert 'Poste_Occupe__Z' not in by_radical, "texte libre (__Z) doit être exclu de l'analyse quantitative"
+assert 'Consommation_Tabac__B' not in by_radical, "présent dans 1 seule enquête -> exclu (min_surveys=2)"
+assert 'Zone__X' not in by_radical, "présent dans 1 seule enquête -> exclu (min_surveys=2)"
 print("OK — texte libre et indicateurs mono-enquête correctement exclus")
 
 results = ms.auto_analyze(surveys, mode='phakts', min_surveys=2)
 by_var = {r['variable']: r for r in results}
-assert set(by_var) == {'Age', 'Emploi', 'Niveau_Instruction'}
+assert set(by_var) == {'Age__1Y', 'Emploi__B', 'Niveau_Instruction__X'}
 print(f"OK — auto_analyze() calcule bien les {len(results)} comparaisons automatiquement")
 
-assert by_var['Age']['kind'] == 'continuous'
-assert by_var['Age']['test']['test'] in ('ANOVA', 'Kruskal-Wallis')
-assert by_var['Age']['test']['p_value'] < 0.05, "les plages d'âge diffèrent nettement entre enquêtes"
-print(f"OK — Age : test {by_var['Age']['test']['test']}, p={by_var['Age']['test']['p_value']} (écart détecté, attendu)")
+assert by_var['Age__1Y']['kind'] == 'continuous'
+assert by_var['Age__1Y']['test']['test'] in ('ANOVA', 'Kruskal-Wallis')
+assert by_var['Age__1Y']['test']['p_value'] < 0.05, "les plages d'âge diffèrent nettement entre enquêtes"
+print(f"OK — Age : test {by_var['Age__1Y']['test']['test']}, p={by_var['Age__1Y']['test']['p_value']} (écart détecté, attendu)")
 
-assert by_var['Emploi']['kind'] == 'categorical'
-assert by_var['Emploi']['test']['test'] == 'χ² (indépendance)'
-assert by_var['Emploi']['test']['p_value'] < 0.05, "60% vs 90% d'emploi doit être détecté comme significatif"
-print(f"OK — Emploi : {by_var['Emploi']['test']['test']}, p={by_var['Emploi']['test']['p_value']} (écart détecté, attendu)")
+assert by_var['Emploi__B']['kind'] == 'categorical'
+assert by_var['Emploi__B']['test']['test'] == 'χ² (indépendance)'
+assert by_var['Emploi__B']['test']['p_value'] < 0.05, "60% vs 90% d'emploi doit être détecté comme significatif"
+print(f"OK — Emploi : {by_var['Emploi__B']['test']['test']}, p={by_var['Emploi__B']['test']['p_value']} (écart détecté, attendu)")
 
-assert by_var['Niveau_Instruction']['test']['p_value'] >= 0.05, "distribution identique -> pas d'écart significatif attendu"
-print(f"OK — Niveau_Instruction : p={by_var['Niveau_Instruction']['test']['p_value']} "
+assert by_var['Niveau_Instruction__X']['test']['p_value'] >= 0.05, "distribution identique -> pas d'écart significatif attendu"
+print(f"OK — Niveau_Instruction : p={by_var['Niveau_Instruction__X']['test']['p_value']} "
       f"(pas d'écart, distribution identique — cohérent)")
+
+# Alignement sur le code PHAKTS COMPLET : une même question en années (1Y) et en mois (1M)
+# n'est PAS la même variable, et un triléen (__C) entre dans l'analyse comme un choix.
+survey_m = pd.DataFrame({'Age__1M': rng.integers(200, 700, 80), 'Fumeur__C': rng.choice(['oui', 'non', 'nsp'], 80)})
+survey_y = pd.DataFrame({'Age__1Y': rng.integers(18, 60, 80), 'Fumeur__C': rng.choice(['oui', 'non', 'nsp'], 80)})
+mixed = ms.detect_common_indicators({'En mois': survey_m, 'En années': survey_y}, mode='phakts', min_surveys=2)
+assert {i['radical'] for i in mixed} == {'Fumeur__C'}, "Age__1M et Age__1Y ne doivent pas être alignés ; Fumeur__C doit l'être"
+print("OK — années ≠ mois (Age__1Y / Age__1M) ; triléen __C reconnu comme indicateur")
 
 # Mode 'exact'/'union' : la détection auto suppose l'alignement par radical PHAKTS
 assert ms.detect_common_indicators(surveys, mode='exact') == []
@@ -132,7 +140,7 @@ assert r.status_code == 200
 html = r.get_data(as_text=True)
 assert 'Interopérabilité PHAKTS' in html
 assert 'indicateur(s) commun(s) détecté' in html
-assert 'Age' in html and 'Emploi' in html and 'Niveau_Instruction' in html
+assert 'Age__1Y' in html and 'Emploi__B' in html and 'Niveau_Instruction__X' in html
 print("OK — mode automatique activé : indicateurs détectés affichés sur la page")
 
 with client.session_transaction() as sess:

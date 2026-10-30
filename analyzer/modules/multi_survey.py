@@ -38,8 +38,14 @@ def is_phakts_coded(col: str) -> bool:
     return is_coded(col)
 
 
-# Colonnes techniques jamais présentées comme variables (identifiant de soumission).
+# Colonnes techniques jamais présentées comme variables : identifiant de soumission, identifiant du
+# formulaire (_xform_id_string : une seule valeur, « aX28oe… »), géolocalisation brute, pièces jointes…
 HIDDEN_COLUMNS = {'_uuid', '__survey__'}
+
+
+def is_hidden_column(col) -> bool:
+    c = str(col)
+    return c in HIDDEN_COLUMNS or c.startswith('_') or c.startswith(('meta/', 'formhub/'))
 
 
 # ─── Fusion multi-enquêtes ───────────────────────────────────────────────────
@@ -100,7 +106,7 @@ def variable_coverage(surveys: dict, mode: str = 'phakts') -> pd.DataFrame:
     else:
         cols_by_survey = {name: set(df.columns) for name, df in surveys.items()}
 
-    all_vars = sorted(set().union(*cols_by_survey.values()) - HIDDEN_COLUMNS)
+    all_vars = sorted(v for v in set().union(*cols_by_survey.values()) if not is_hidden_column(v))
     matrix = pd.DataFrame(
         {name: [int(v in cols) for v in all_vars]
          for name, cols in cols_by_survey.items()},
@@ -116,7 +122,7 @@ def common_variables(surveys: dict, mode: str = 'phakts') -> list:
         sets = [set(phakts_radical(c) for c in df.columns) for df in surveys.values()]
     else:
         sets = [set(df.columns) for df in surveys.values()]
-    return sorted(set.intersection(*sets) - HIDDEN_COLUMNS) if sets else []
+    return sorted(v for v in set.intersection(*sets) if not is_hidden_column(v)) if sets else []
 
 
 # ─── Analyses sur le dataframe fusionné ──────────────────────────────────────

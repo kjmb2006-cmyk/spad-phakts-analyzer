@@ -6,7 +6,7 @@ import re
 _KOBO_META_COLS = {
     '_id', '_uuid', '_submission_time', '_validation_status', '_notes',
     '_status', '_submitted_by', '__version__', '_tags', 'meta/rootUuid',
-    '_index', '_parent_table_name', '_parent_index', 'formhub/uuid',
+    '_index', '_parent_table_name', '_parent_index', 'formhub/uuid', '_xform_id_string',
     '_submission__id', '_submission__uuid', '_submission__submission_time',
     '_submission__validation_status', '_submission__notes',
     '_submission__status', '_submission__submitted_by',
@@ -28,6 +28,73 @@ def load_excel(path: str, sheet: int = 0) -> pd.DataFrame:
     df.dropna(how='all', inplace=True)
     df.dropna(axis=1, how='all', inplace=True)
     return df
+
+
+def _decode_by_line(raw: bytes) -> str:
+    """Décode ligne par ligne : UTF-8 si la ligne l'est, sinon Windows-1252. Un
+    export Kobo (UTF-8) retouché dans Excel mélange les deux ; décoder le fichier
+    entier d'un seul codage abîme soit les lignes d'origine (« â€” »), soit les
+    lignes ressaisies (« Ã© »). Fins de ligne CRLF, LF ou CR acceptées."""
+    lines = []
+    for line in re.split(rb'\r\n|\n|\r', raw):
+        try:
+            lines.append(line.decode('utf-8'))
+        except UnicodeDecodeError:
+            lines.append(line.decode('cp1252', errors='replace'))
+    text = '\n'.join(lines)
+    return text[1:] if text.startswith('\ufeff') else text
+
+
+_PHAKTS_LIKE = re.compile(r'__[A-Za-z0-9]+(?:!|$)')
+
+
+def _looks_like_header(row, columns):
+    """Ligne d'en-tête supplémentaire : la plupart de ses cellules répètent le nom
+    de la colonne ou sont un code PHAKTS (Radical__Affixe), jamais une réponse."""
+    filled = [(c, v) for c, v in zip(columns, row) if str(v).strip()]
+    if len(filled) < 5:
+        return False
+    hits = sum(1 for c, v in filled if v == c or _PHAKTS_LIKE.search(str(v)))
+    return hits >= 0.6 * len(filled)
+
+
+def load_csv(path: str):
+    """Export CSV (Kobo ou retouché) → (DataFrame, notes). Séparateur détecté
+    (; , tabulation), codage mélangé toléré, lignes d'en-tête répétées ou lignes
+    de codes DPF proposés juste sous l'en-tête retirées des données. Les notes
+    disent ce qui a été corrigé, pour que rien ne se fasse en silence."""
+    with open(path, 'rb') as f:
+        text = _decode_by_line(f.read())
+    first = text.split('\n', 1)[0]
+    delimiter = max((';', ',', '\t'), key=first.count)
+    import io
+    df = pd.read_csv(io.StringIO(text), sep=delimiter, dtype=str, keep_default_na=False,
+                     skipinitialspace=False, engine='python', on_bad_lines='skip')
+    df.columns = [str(c).strip() for c in df.columns]
+    notes = []
+    dropped = 0
+    while len(df) and dropped < 5 and _looks_like_header(df.iloc[0].tolist(), df.columns):
+        df = df.iloc[1:]
+        dropped += 1
+    if dropped:
+        notes.append(f"{dropped} ligne(s) d'en-tête supplémentaire(s) sous les noms de colonnes ignorée(s) "
+                     "(noms répétés ou codes DPF proposés) : ce ne sont pas des réponses.")
+    df = df.reset_index(drop=True)
+    df = df.where(df != '', np.nan)
+    df = df.dropna(how='all').dropna(axis=1, how='all')
+    for col in df.columns:
+        affix = _affix_of(col)
+        if affix in ('', ) or re.match(r'^[12][A-Z]?$', affix):
+            num = pd.to_numeric(df[col], errors='coerce')
+            filled = df[col].dropna()
+            if len(filled) and num.notna().sum() == len(filled) and not filled.astype(str).str.match(r'^0\d').any():
+                df[col] = num
+    return df, notes
+
+
+def _affix_of(col):
+    from modules.phakts_codes import affix_of
+    return affix_of(col)
 
 
 def load_excel_sheets(path: str) -> dict:

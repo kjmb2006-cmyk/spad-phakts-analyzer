@@ -4,7 +4,7 @@ from flask import (Flask, render_template, request, session,
                    redirect, url_for, jsonify, send_file, flash, Response)
 from werkzeug.utils import secure_filename
 from config import Config
-from modules.data_loader import (load_excel, load_excel_sheets, clean_kobo_dataframe,
+from modules.data_loader import (load_excel, load_excel_sheets, load_csv, clean_kobo_dataframe,
                                   get_var_types, summarize_dataframe, get_filtered_vars)
 from modules.descriptive import tris_a_plat, statistiques_continues, analyse_binaire_groupe
 from modules.crosstabs import tableau_croise, tableau_croise_dynamique
@@ -12,7 +12,7 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     common_variables, phakts_radical,
                                     is_phakts_coded,
                                     compare_categorical_by_survey,
-                                    compare_continuous_by_survey,
+                                    compare_continuous_by_survey, is_hidden_column,
                                     evolution_categorical, evolution_continuous,
                                     auto_analyze)
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
@@ -59,6 +59,7 @@ from modules import factum as study_factum
 from modules import gdb
 from modules import stat_export
 from modules import multi_checks
+from modules import choice_labels
 from modules import ai_form_assist
 from modules.collecte_monitor import load_state, save_state, append_sync_event, build_dashboard_metrics, build_collecte_views
 
@@ -1647,10 +1648,18 @@ def gdb_verser():
         return redirect(url_for('gdb_index'))
     meta = session.get('data_meta') or {}
     kobo = meta.get('source') == 'KoboToolbox'
+    # Libellés des modalités : conservés avec l'enquête, pour la rouvrir plus tard avec ses vrais noms
+    labels = None
+    if kobo and session.get('kobo_token') and session.get('kobo_uid'):
+        found = choice_labels.from_kobo_structure(get_asset_structure(
+            session['kobo_token'], session['kobo_uid'], instance=session.get('kobo_instance')))
+        labels = None if choice_labels.is_empty(found) else found
     ok, msg = gdb.deposer(df, res['normalized'], titre=(request.form.get('titre') or '').strip(),
                           source='KoboToolbox' if kobo else 'Fichier',
                           source_ref=(session.get('kobo_uid') if kobo else session.get('original_filename')) or '',
-                          user=session.get('username') or '')
+                          user=session.get('username') or '', labels=labels)
+    if ok and kobo and not labels:
+        msg += " Libellés des modalités indisponibles (connexion Kobo requise) : elles s'afficheront avec leurs noms internes."
     flash(msg, 'success' if ok else 'danger')
     return redirect(url_for('gdb_index'))
 
@@ -2239,8 +2248,9 @@ def crosstabs():
 # Identifiant de soumission conservé dans la pile (le nettoyage Kobo le retire d'ordinaire) : il permet de
 # repérer une même soumission présente dans deux enquêtes. Jamais proposé comme variable à comparer.
 MS_KEEP_COLS = ('_uuid',)
-MS_HIDDEN_COLS = {'__survey__', '_uuid'}
 
+MS_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
+_MS_RELABEL_CACHE = {}         # empreinte -> DataFrame aux modalités lisibles
 _MS_DF_CACHE = {}              # (chemin, date de modification) -> DataFrame (lecture seule)
 _MS_QUALITY_CACHE = {}         # empreinte -> résumé de validation
 _MS_CHECKS_CACHE = {}          # empreinte -> contrôles entre enquêtes
@@ -2297,6 +2307,62 @@ def _load_multi_surveys(with_meta=False):
     return (surveys, entries) if with_meta else surveys
 
 
+def _ms_allowed(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in MS_EXTENSIONS
+
+
+def _mtime(path):
+    try:
+        return os.path.getmtime(path) if path else 0
+    except OSError:
+        return 0
+
+
+def _ms_uid_names():
+    """{identifiant de formulaire Kobo: nom} : un identifiant (« aX28oe… ») figurant comme
+    valeur dans les données est remplacé par le nom du formulaire qu'il désigne."""
+    names = {t['uid']: t.get('name') for t in kobo_track.list_tracked() if t.get('uid') and t.get('name')}
+    for a in session.get('ms_kobo_assets', []) or []:
+        if a.get('uid') and a.get('name') and a['name'] != 'Sans nom':
+            names.setdefault(a['uid'], a['name'])
+    return names
+
+
+def _ms_labels(entry):
+    return choice_labels.load(entry.get('labels_path'))
+
+
+def _ms_relabeled(entry, df, labels, uid_names):
+    """Copie de l'enquête où les noms internes des modalités sont remplacés par
+    leurs libellés (voir modules/choice_labels.py), mise en cache."""
+    fingerprint = (entry.get('path'), _mtime(entry.get('path')), _mtime(entry.get('labels_path')),
+                   hash(tuple(sorted(uid_names.items()))))
+    with _MS_CACHE_LOCK:
+        hit = _MS_RELABEL_CACHE.get(fingerprint)
+    if hit is None:
+        hit = choice_labels.relabel_frame(df, labels, uid_names)
+        _cache_put(_MS_RELABEL_CACHE, fingerprint, hit)
+    return hit
+
+
+def _ms_set_labels(entry, labels, source):
+    """Enregistre un dictionnaire de libellés à côté du fichier de l'enquête."""
+    if choice_labels.is_empty(labels):
+        return False
+    path = entry['path'] + '.labels.json'
+    choice_labels.save(path, labels)
+    entry['labels_path'], entry['labels_source'] = path, source
+    return True
+
+
+def _ms_drop_files(entry):
+    for key in ('path', 'labels_path'):
+        try:
+            os.remove(entry.get(key))
+        except Exception:
+            pass
+
+
 def _ms_key(entry):
     """Clé sous laquelle se rangent les règles de validation et le Factum d'une
     enquête de la pile (même convention que _validation_survey_key)."""
@@ -2343,13 +2409,30 @@ def _ms_quality(entry, df):
 
 def _ms_cross_checks(surveys, entries, factums):
     stamps = tuple(sorted((n, entries[n].get('path'), os.path.getmtime(entries[n]['path']),
-                           factums.get(n) or '') for n in surveys if entries[n].get('path')))
+                           _mtime(entries[n].get('labels_path')), factums.get(n) or '')
+                          for n in surveys if entries[n].get('path')))
     with _MS_CACHE_LOCK:
         hit = _MS_CHECKS_CACHE.get(stamps)
     if hit is None:
         hit = multi_checks.check_surveys(surveys, factums)
         _cache_put(_MS_CHECKS_CACHE, stamps, hit, limit=16)
     return hit
+
+
+def _ms_state():
+    """Tout ce qu'il faut pour travailler sur la pile : enquêtes dans l'ordre du temps,
+    en version brute (contrôles de qualité : les règles portent sur les valeurs
+    d'origine) et en version lisible (modalités remplacées par leurs libellés),
+    Factum de chacune et libellés de variables."""
+    raw, entries = _load_multi_surveys(with_meta=True)
+    factums = {n: _ms_factum(e, raw[n]) for n, e in entries.items()}
+    order = _ms_order(list(raw), factums)
+    raw = {n: raw[n] for n in order}
+    uid_names = _ms_uid_names()
+    labels = {n: _ms_labels(entries[n]) for n in order}
+    surveys = {n: _ms_relabeled(entries[n], raw[n], labels[n], uid_names) for n in order}
+    return {'raw': raw, 'surveys': surveys, 'entries': entries, 'factums': factums, 'order': order,
+            'labels': labels, 'var_labels': choice_labels.variable_label_map(choice_labels.merge(list(labels.values())))}
 
 
 def _compute_ms_comparison(merged, variable, order=None):
@@ -2496,15 +2579,20 @@ def multi_survey():
             files = request.files.getlist('files')
             added = 0
             for f in files:
-                if not f or not f.filename or not allowed_file(f.filename):
+                if not f or not f.filename or not _ms_allowed(f.filename):
                     continue
                 fname = str(uuid.uuid4()) + '_' + secure_filename(f.filename)
                 raw_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_' + fname)
                 f.save(raw_path)
                 try:
-                    df_raw = load_excel(raw_path)
+                    if f.filename.lower().endswith('.csv'):
+                        df_raw, notes = load_csv(raw_path)
+                        for note in notes:
+                            flash(f"« {f.filename} » : {note}", 'info')
+                    else:
+                        df_raw = load_excel(raw_path)
                     df_clean = clean_kobo_dataframe(df_raw, keep_meta_cols=MS_KEEP_COLS)
-                    cleaned_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_clean_' + fname)
+                    cleaned_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ms_clean_' + os.path.splitext(fname)[0] + '.xlsx')
                     df_clean.to_excel(cleaned_path, index=False, engine='openpyxl')
                     surveys_meta.append({
                         'name': f.filename,
@@ -2528,17 +2616,14 @@ def multi_survey():
         elif action == 'remove':
             idx = int(request.form.get('idx', '-1'))
             if 0 <= idx < len(surveys_meta):
-                p = surveys_meta[idx].get('path')
-                try: os.remove(p)
-                except Exception: pass
+                _ms_drop_files(surveys_meta[idx])
                 del surveys_meta[idx]
                 session['multi_surveys'] = surveys_meta
                 flash("Enquête retirée.", 'info')
 
         elif action == 'reset':
             for entry in surveys_meta:
-                try: os.remove(entry.get('path'))
-                except Exception: pass
+                _ms_drop_files(entry)
             session['multi_surveys'] = []
             surveys_meta = []
             session['ms_compared_vars'] = []
@@ -2605,7 +2690,10 @@ def multi_survey():
                 res = kobo_load_data(token, uid, instance=instance or None, keep_meta_cols=MS_KEEP_COLS)
                 if res.get('success'):
                     df_kobo = res['df']
-                    asset_name = request.form.get('kobo_asset_name') or f'Kobo_{uid[:8]}'
+                    asset_name = (request.form.get('kobo_asset_name')
+                                  or next((a['name'] for a in session.get('ms_kobo_assets', []) or []
+                                           if a.get('uid') == uid and a.get('name')), None)
+                                  or f'Kobo_{uid[:8]}')
                     fname = f"ms_kobo_{uuid.uuid4().hex[:8]}.xlsx"
                     fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
                     df_kobo.to_excel(fpath, index=False, engine='openpyxl')
@@ -2620,8 +2708,13 @@ def multi_survey():
                         'factum': (study_factum.get_for_survey('kobo:' + uid)
                                    or study_factum.from_dataframe(df_kobo)),
                     })
+                    entry = surveys_meta[-1]
+                    got = _ms_set_labels(entry, choice_labels.from_kobo_structure(
+                        get_asset_structure(token, uid, instance=instance or None)), 'Kobo')
                     session['multi_surveys'] = surveys_meta
-                    flash(f"Enquête KoboToolbox « {asset_name} » ajoutée ({len(df_kobo)} obs.).", 'success')
+                    flash(f"Enquête KoboToolbox « {asset_name} » ajoutée ({len(df_kobo)} obs.)"
+                          + ('' if got else " — libellés des modalités indisponibles : joignez l'XLSForm pour les lire."),
+                          'success' if got else 'warning')
                 else:
                     flash(f"Chargement KoboToolbox : {res.get('error', 'Erreur')}", 'danger')
 
@@ -2647,10 +2740,34 @@ def multi_survey():
                     'phakts_vars': int(sum(1 for c in df_gdb.columns if is_phakts_coded(c))),
                     'source': 'gdb', 'factum': fac,
                 })
+                _ms_set_labels(surveys_meta[-1], gdb.labels_for(fac), 'Base centrale')
                 added += 1
             session['multi_surveys'] = surveys_meta
             if added:
                 flash(f"{added} enquête(s) ajoutée(s) depuis la base centrale.", 'success')
+
+        elif action == 'attach_xlsform':
+            try:
+                entry = surveys_meta[int(request.form.get('idx', '-1'))]
+            except (ValueError, IndexError):
+                entry = None
+            f = request.files.get('xlsform')
+            if entry is None or not f or not f.filename:
+                flash("Choisissez l'XLSForm de cette enquête.", 'warning')
+            else:
+                tmp = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsform_' + uuid.uuid4().hex[:8] + '.xlsx')
+                f.save(tmp)
+                try:
+                    labels = choice_labels.from_xlsform(tmp)
+                    _ms_set_labels(entry, labels, 'XLSForm')
+                    session['multi_surveys'] = surveys_meta
+                    flash(f"Libellés lus dans « {f.filename} » : {len(labels['choices'])} question(s) à choix. "
+                          "Les modalités s'affichent maintenant avec leur vrai nom.", 'success')
+                except ValueError as e:
+                    flash(str(e), 'danger')
+                finally:
+                    try: os.remove(tmp)
+                    except Exception: pass
 
         elif action == 'set_factum':
             try:
@@ -2687,16 +2804,15 @@ def multi_survey():
         elif action == 'clear_mv_ms':
             session.pop('ms_mv_params', None)
 
-    surveys, entries = _load_multi_surveys(with_meta=True)
-    factums = {n: _ms_factum(e, surveys[n]) for n, e in entries.items()}
-    order = _ms_order(list(surveys), factums)
-    surveys = {n: surveys[n] for n in order}          # colonnes, fusion et comparaisons dans l'ordre du temps
+    st = _ms_state()
+    surveys, entries, factums, order, var_labels = st['surveys'], st['entries'], st['factums'], st['order'], st['var_labels']
     pile = {}
     for n, e in entries.items():
         parsed = study_factum.parse(factums[n]) if factums[n] else None
         pile[e['idx']] = {'name': n, 'factum': factums[n],
                           'parts': parsed['parts'] if parsed and parsed['valid'] else None,
-                          'rank': order.index(n) + 1, 'quality': _ms_quality(e, surveys[n])}
+                          'rank': order.index(n) + 1, 'quality': _ms_quality(e, st['raw'][n]),
+                          'labels': {'source': e.get('labels_source') or '', 'n': len(st['labels'][n]['choices'])}}
     cross_checks = _ms_cross_checks(surveys, entries, factums) if surveys else []
 
     # Le panier garde des variables nommées par l'ancien alignement (radical seul) :
@@ -2743,12 +2859,15 @@ def multi_survey():
                 # manuelle de variable nécessaire.
                 try:
                     auto_results = auto_analyze(surveys, mode=mode, order=order)
+                    for r in auto_results:
+                        r['label'] = var_labels.get(r.get('variable') or r.get('radical'))
                 except Exception as e:
                     auto_results = []
                     flash(f"Erreur d'analyse automatique : {e}", 'danger')
             elif compared_vars and merged is not None:
                 for v in compared_vars:
                     results.append(_compute_ms_comparison(merged, v, order))
+                    results[-1]['label'] = var_labels.get(v)
 
     # Variables proposées (union + variables PHAKTS)
     candidate_vars = []
@@ -2760,7 +2879,7 @@ def multi_survey():
             else:
                 all_cols_by_survey.append(set(df.columns))
         if all_cols_by_survey:
-            union = sorted(set().union(*all_cols_by_survey) - MS_HIDDEN_COLS)
+            union = sorted(v for v in set().union(*all_cols_by_survey) if not is_hidden_column(v))
             candidate_vars = union
 
     # ── Analyse multivariée sur jeu fusionné ─────────────────────────────────
@@ -2775,8 +2894,8 @@ def multi_survey():
         try:
             mv_merged_df = merge_surveys(surveys, mode=mode)
             vt = get_var_types(mv_merged_df)
-            mv_num_vars = [v for v, t in vt.items() if t in ('continue', 'binaire') and v not in MS_HIDDEN_COLS]
-            mv_cat_vars = [v for v, t in vt.items() if t == 'categorielle' and v not in MS_HIDDEN_COLS]
+            mv_num_vars = [v for v, t in vt.items() if t in ('continue', 'binaire') and not is_hidden_column(v)]
+            mv_cat_vars = [v for v, t in vt.items() if t == 'categorielle' and not is_hidden_column(v)]
         except Exception:
             pass
 
@@ -2810,7 +2929,7 @@ def multi_survey():
                             auto_mode=auto_mode,
                             auto_results=auto_results,
                             merged_meta=merged_meta,
-                            pile=pile, order=order, cross_checks=cross_checks,
+                            pile=pile, order=order, cross_checks=cross_checks, var_labels=var_labels,
                             gdb_enquetes=[dict(e, in_pile=any(m.get('source') == 'gdb' and m.get('factum') == e['factum']
                                                               for m in surveys_meta)) for e in gdb.enquetes()],
                             kobo_connected=bool(session.get('kobo_token')),
@@ -2826,7 +2945,8 @@ def multi_survey():
 def multi_survey_export(fmt):
     """Jeu de données fusionné (colonnes alignées sur le code PHAKTS) avec, pour
     chaque ligne, l'enquête d'origine et son Factum — Excel, SPSS ou Stata."""
-    surveys, entries = _load_multi_surveys(with_meta=True)
+    st = _ms_state()
+    surveys, entries = st['surveys'], st['entries']
     if len(surveys) < 2:
         flash("Ajoutez au moins deux enquêtes pour exporter le jeu fusionné.", 'warning')
         return redirect(url_for('multi_survey'))
@@ -2836,8 +2956,7 @@ def multi_survey_export(fmt):
     except Exception as e:
         flash(f"Fusion impossible : {e}", 'danger')
         return redirect(url_for('multi_survey'))
-    factums = {n: _ms_factum(e, surveys[n]) for n, e in entries.items()}
-    order = _ms_order(list(surveys), factums)
+    factums, order = st['factums'], st['order']
     out = merged.rename(columns={'__survey__': 'Enquete'})
     out.insert(1, 'Factum', out['Enquete'].map(factums).fillna(''))
     out = out[['Enquete', 'Factum'] + [c for c in out.columns if c not in ('Enquete', 'Factum')]]
@@ -2855,8 +2974,8 @@ def multi_survey_export(fmt):
         return send_file(buf, as_attachment=True, download_name='enquetes_fusionnees.xlsx',
                          mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     try:
-        content = stat_export.export(out, fmt, user_labels={'Enquete': "Enquête d'origine", 'Factum': "Factum de l'étude"},
-                                     note=note)
+        content = stat_export.export(out, fmt, user_labels={**st['var_labels'], 'Enquete': "Enquête d'origine",
+                                                            'Factum': "Factum de l'étude"}, note=note)
     except ImportError:
         flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
         return redirect(url_for('multi_survey'))

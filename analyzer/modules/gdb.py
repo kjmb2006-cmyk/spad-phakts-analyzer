@@ -20,6 +20,7 @@ Chaque valeur garde son Factum, son répondant et son code d'origine : on
 remonte toujours à l'enquête source.
 """
 import datetime
+import json
 import math
 import re
 import sqlite3
@@ -48,7 +49,8 @@ def _connect():
             n_repondants INTEGER,
             n_variables  INTEGER,
             versee_le    TEXT,
-            versee_par   TEXT);
+            versee_par   TEXT,
+            labels       TEXT);
         CREATE TABLE IF NOT EXISTS gdb_valeurs (
             factum     TEXT NOT NULL,
             repondant  TEXT NOT NULL,
@@ -66,6 +68,8 @@ def _connect():
             n_num      INTEGER,
             PRIMARY KEY (factum, code));
     ''')
+    if 'labels' not in {r[1] for r in conn.execute('PRAGMA table_info(gdb_enquetes)')}:
+        conn.execute('ALTER TABLE gdb_enquetes ADD COLUMN labels TEXT')     # bases créées avant les libellés
     return conn
 
 
@@ -103,8 +107,10 @@ def _number(text):
         return None
 
 
-def deposer(df, fac, titre='', source='', source_ref='', user=''):
+def deposer(df, fac, titre='', source='', source_ref='', user='', labels=None):
     """Verse un jeu de données dans la base centrale sous le Factum `fac`.
+    `labels` : dictionnaire des libellés de modalités (modules/choice_labels.py),
+    conservé avec l'enquête pour que la rouvrir affiche les vraies modalités.
     Renvoie (ok, message)."""
     parsed = study_factum.parse(fac)
     if not parsed['valid']:
@@ -142,9 +148,10 @@ def deposer(df, fac, titre='', source='', source_ref='', user=''):
             conn.execute('DELETE FROM gdb_variables WHERE factum = ?', (fac,))
             conn.executemany('INSERT INTO gdb_valeurs VALUES (?, ?, ?, ?, ?, ?)', rows)
             conn.executemany('INSERT INTO gdb_variables VALUES (?, ?, ?, ?, ?)', summary)
-            conn.execute('INSERT OR REPLACE INTO gdb_enquetes VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            conn.execute('INSERT OR REPLACE INTO gdb_enquetes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                          (fac, titre or parsed['parts']['sujet_lisible'], source, source_ref, len(df),
-                          len(summary), datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), user))
+                          len(summary), datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), user,
+                          json.dumps(labels, ensure_ascii=False) if labels else None))
     finally:
         conn.close()
     return True, (f'{len(df)} répondant(s), {len(summary)} variable(s) et {len(rows)} valeur(s) '
@@ -156,16 +163,30 @@ def enquetes():
     conn = _connect()
     try:
         rows = conn.execute('SELECT factum, titre, source, source_ref, n_repondants, n_variables, '
-                            'versee_le, versee_par FROM gdb_enquetes').fetchall()
+                            "versee_le, versee_par, COALESCE(labels, '') != '' FROM gdb_enquetes").fetchall()
     finally:
         conn.close()
-    keys = ('factum', 'titre', 'source', 'source_ref', 'n_repondants', 'n_variables', 'versee_le', 'versee_par')
+    keys = ('factum', 'titre', 'source', 'source_ref', 'n_repondants', 'n_variables', 'versee_le', 'versee_par',
+            'has_labels')
     out = []
     for r in rows:
         e = dict(zip(keys, r))
         e['parts'] = study_factum.parse(e['factum'])['parts']
         out.append(e)
     return sorted(out, key=lambda e: (e['parts'].get('date', ''), e['factum']), reverse=True)
+
+
+def labels_for(fac):
+    """Dictionnaire de libellés conservé avec une enquête versée ({} s'il n'y en a pas)."""
+    conn = _connect()
+    try:
+        row = conn.execute('SELECT labels FROM gdb_enquetes WHERE factum = ?', (fac,)).fetchone()
+    finally:
+        conn.close()
+    try:
+        return json.loads(row[0]) if row and row[0] else {}
+    except ValueError:
+        return {}
 
 
 def dataframe(fac):
