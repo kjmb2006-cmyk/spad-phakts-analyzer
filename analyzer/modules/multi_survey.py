@@ -217,6 +217,7 @@ def compare_categorical_by_survey(merged: pd.DataFrame, variable: str, order=Non
         'chart': fig.to_json(),
         'n_total': int(ct.values.sum()),
         'stats': {'surveys': stats_by_survey, 'n_modalites': int(len(ct))},
+        'frames': {'counts': ct, 'pct': pct},            # tableaux bruts, pour les rapports
     }
 
 
@@ -256,6 +257,7 @@ def compare_continuous_by_survey(merged: pd.DataFrame, variable: str, order=None
                                'median': float(row['Médiane']),
                                'std': None if pd.isna(row['Écart-type']) else float(row['Écart-type'])}
                               for name, row in summary.iterrows()]},
+        'frames': {'summary': summary},
     }
 
 

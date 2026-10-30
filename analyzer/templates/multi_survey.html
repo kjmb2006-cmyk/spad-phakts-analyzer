@@ -952,6 +952,51 @@
       </div>
     </div>
   </div>
+
+  <!-- ═══════════ Section 6 — Rapport d'analyse ═══════════ -->
+  {% set n_report = (auto_results|length) if auto_mode else (results|length) %}
+  <div class="card border-0 shadow-sm mb-3" id="msReport">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>6. Générer le rapport d'analyse</h6>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted mb-3">
+        Un document prêt à partager : <strong>enquêtes comparées</strong> (dans l'ordre du temps, avec leur qualité),
+        <strong>contrôles de cohérence</strong>, <strong>synthèse</strong> et récapitulatif, puis le détail de chaque comparaison —
+        tableaux, graphique, évolution entre enquêtes, <strong>lecture automatique</strong> et <strong>votre commentaire</strong> —
+        des écarts les plus nets aux indicateurs stables, et les notes de méthode.
+        {% if auto_mode %}Il reprend les <strong>{{ n_report }}</strong> indicateur(s) communs détectés (section 4).
+        {% else %}Il reprend les <strong>{{ n_report }}</strong> variable(s) du panier (section 4).{% endif %}
+      </p>
+      {% if n_report %}
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold mb-1" for="msReportTitle">Titre</label>
+          <input id="msReportTitle" name="title" class="form-control form-control-sm" maxlength="150"
+                 placeholder="Rapport d'analyse multi-enquête">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold mb-1" for="msReportAuthor">Auteur</label>
+          <input id="msReportAuthor" name="author" class="form-control form-control-sm" maxlength="80" placeholder="Équipe SPAD">
+        </div>
+        <div class="col-md-4 d-flex flex-wrap gap-2">
+          <button class="btn btn-sm btn-outline-danger" formaction="{{ url_for('multi_survey_report', fmt='pdf') }}">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
+          <button class="btn btn-sm btn-outline-primary" formaction="{{ url_for('multi_survey_report', fmt='docx') }}">
+            <i class="bi bi-file-earmark-word me-1"></i>Word</button>
+          <button class="btn btn-sm btn-outline-success" formaction="{{ url_for('multi_survey_report', fmt='xlsx') }}">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+        </div>
+      </form>
+      <p class="small text-muted mt-2 mb-0">La génération prend quelques secondes (les graphiques sont tracés en image).</p>
+      {% else %}
+      <div class="alert alert-warning small mb-0">
+        Rien à rapporter pour l'instant : {% if auto_mode %}aucun indicateur commun n'a été détecté entre ces enquêtes.
+        {% else %}ajoutez des variables au panier ou activez l'analyse automatique (section 4).{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
   {% endif %}
 
 </div>

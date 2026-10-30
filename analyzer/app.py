@@ -15,7 +15,7 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     compare_continuous_by_survey, is_hidden_column,
                                     evolution_categorical, evolution_continuous,
                                     auto_analyze, cross_survey_test, apply_fdr)
-from modules import multi_comments
+from modules import multi_comments, multi_report
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
@@ -3013,6 +3013,63 @@ def multi_survey_export(fmt):
         return redirect(url_for('multi_survey'))
     return send_file(io.BytesIO(content), as_attachment=True, download_name=f'enquetes_fusionnees.{fmt}',
                      mimetype='application/x-spss-sav' if fmt == 'sav' else 'application/x-stata-dta')
+
+
+def _ms_report_payload(title, author):
+    """Tout ce que le rapport multi-enquête reprend de la page : enquêtes de la pile, contrôles de
+    cohérence, comparaisons (indicateurs détectés en mode automatique, sinon variables du panier)
+    et synthèse. Renvoie (données, None) ou (None, message à afficher)."""
+    st = _ms_state()
+    surveys, entries, factums, order = st['surveys'], st['entries'], st['factums'], st['order']
+    if len(surveys) < 2:
+        return None, "Ajoutez au moins deux enquêtes pour produire le rapport."
+    mode = session.get('ms_mode', 'phakts')
+    auto_mode = session.get('ms_auto_mode', False)
+    compared = list(session.get('ms_compared_vars', []) or [])
+    if not auto_mode and not compared:
+        return None, ("Aucune comparaison à rapporter : activez l'analyse automatique ou ajoutez des variables "
+                      "au panier (section 4).")
+    try:
+        merged = merge_surveys(surveys, mode=mode)
+        if auto_mode:
+            results = auto_analyze(surveys, mode=mode, order=order)
+        else:
+            results = [_compute_ms_comparison(merged, v, order) for v in compared if v in merged.columns]
+            apply_fdr(results)
+    except Exception as e:
+        return None, f"Analyse impossible : {e}"
+    if not results:
+        return None, "Aucun indicateur comparable entre ces enquêtes : rien à rapporter."
+    for r in results:
+        r['label'] = st['var_labels'].get(r.get('variable') or r.get('radical'))
+    cross_checks = _ms_cross_checks(surveys, entries, factums)
+    synthese = _ms_interpret(results, order, cross_checks)
+    pile = sorted(({'rank': order.index(n) + 1, 'name': n, 'factum': factums[n], 'n_obs': len(surveys[n]),
+                    'n_vars': surveys[n].shape[1], 'source': e.get('source') or 'excel',
+                    'quality': _ms_quality(e, st['raw'][n])} for n, e in entries.items()), key=lambda e: e['rank'])
+    return {'title': title, 'author': author, 'generated_at': datetime.datetime.now(), 'mode': mode, 'auto': auto_mode,
+            'order': order, 'pile': pile, 'checks': cross_checks, 'results': results, 'synthese': synthese,
+            'n_obs_merged': int(len(merged))}, None
+
+
+@app.route('/multi-survey/report.<any(pdf, docx, xlsx):fmt>')
+def multi_survey_report(fmt):
+    """Rapport d'analyse multi-enquête (PDF, Word ou Excel) : enquêtes comparées, contrôles de cohérence,
+    synthèse, détail de chaque comparaison avec sa lecture automatique et votre commentaire, notes de méthode."""
+    title = (request.args.get('title') or '').strip()[:150] or "Rapport d'analyse multi-enquête"
+    author = (request.args.get('author') or '').strip()[:80] or 'Équipe SPAD'
+    data, error = _ms_report_payload(title, author)
+    if error:
+        flash(error, 'warning')
+        return redirect(url_for('multi_survey'))
+    try:
+        content, mime = multi_report.generate(data, fmt)
+    except Exception as e:
+        app.logger.exception('Rapport multi-enquête')
+        flash(f"Génération du rapport impossible : {e}", 'danger')
+        return redirect(url_for('multi_survey'))
+    return send_file(io.BytesIO(content), as_attachment=True, mimetype=mime,
+                     download_name=f"rapport_multi-enquete_{datetime.datetime.now():%Y%m%d}.{fmt}")
 
 
 @app.route('/multi-survey/download-xlsx')

@@ -124,6 +124,13 @@ lecture = multi_comments.interpret({'kind': 'categorical', 'variable': 'X', 'evo
     'test': {'test': 'χ² (indépendance)', 'p_value': 0.01, 'q_value': 0.01, 'cramers_v': 0.2}})
 say('diffèrent' in lecture and 'V de Cramér' in lecture and 'faible' in lecture, "multi-enquête : lecture automatique sous chaque comparaison (écart, intensité)")
 import pandas as pd
+from modules import multi_report
+rapport, _ = multi_report.generate({'title': 'Audit', 'author': 'Audit', 'mode': 'phakts', 'order': ['A', 'B'], 'pile': [], 'checks': [],
+    'synthese': 'Audit', 'n_obs_merged': 2, 'results': [{'variable': 'X', 'kind': 'categorical', 'evolution': [], 'chart': None,
+    'stats': {'surveys': []}, 'test': None, 'frames': {'counts': pd.DataFrame({'A': [1]}, index=['oui']), 'pct': pd.DataFrame({'A': [100.0]}, index=['oui'])}}]}, 'docx')
+say(rapport[:2] == b'PK' and any(r.rule.startswith('/multi-survey/report.') for r in m.app.url_map.iter_rules()),
+    "multi-enquête : rapport d'analyse (PDF, Word, Excel) disponible")
+import pandas as pd
 from modules import choice_labels
 shown = choice_labels.relabel_frame(pd.DataFrame({'Sexe__X': ['femme', 'homme']}),
                                     {'questions': {}, 'choices': {'Sexe__X': {'femme': 'Femme', 'homme': 'Homme'}}, 'multiple': []})

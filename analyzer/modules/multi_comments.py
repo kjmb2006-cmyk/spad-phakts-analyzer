@@ -217,9 +217,34 @@ def synthese(results, order, corrected=True, n_errors=0):
     if stable:
         lines.append(f"Sans écart détectable ({len(stable)}) : " + ', '.join(name(r) for r in stable[:8]) + (' …' if len(stable) > 8 else '') + '.')
     if n_errors:
-        lines.append(f"⚠ {n_errors} contrôle(s) de cohérence en erreur (section 2) : les lever avant d'interpréter ces écarts, "
+        lines.append(f"Attention : {n_errors} contrôle(s) de cohérence en erreur (section 2) : les lever avant d'interpréter ces écarts, "
                      "qui peuvent venir des données elles-mêmes (unités, codages, doublons).")
     lines.append("Pour mémoire : un test signale qu'un écart est peu probablement dû au hasard, pas qu'il est important ni qu'il a "
                  "une cause précise ; il ne traduit une évolution réelle que si les enquêtes portent sur des populations et des "
                  "méthodes d'échantillonnage comparables.")
     return '\n'.join(lines)
+
+
+# ─── Classement pour le rapport ──────────────────────────────────────────────
+
+VERDICTS = {'établi': 'Écart établi', 'avant correction': 'À confirmer', 'non': "Pas d'écart établi"}
+_RANK = {'Écart établi': 0, 'À confirmer': 1, "Pas d'écart établi": 2, 'Non testé': 3, 'Erreur': 4}
+
+
+def verdict(r, corrected=True):
+    """Verdict d'une comparaison en une expression : Écart établi / À confirmer / Pas d'écart établi / Non testé / Erreur."""
+    if r.get('error'):
+        return 'Erreur'
+    if not r.get('test'):
+        return 'Non testé'
+    return VERDICTS[_significance(r['test'], corrected)[0]]
+
+
+def ranked(results, corrected=True):
+    """Comparaisons des écarts les plus nets aux indicateurs stables : établis (V de Cramér décroissant),
+    à confirmer, sans écart, non testés, en erreur."""
+    def key(r):
+        v = verdict(r, corrected)
+        t = r.get('test') or {}
+        return (_RANK[v], -(t.get('cramers_v') or 0), t.get('q_value') if t.get('q_value') is not None else t.get('p_value', 1))
+    return sorted(results, key=key)
