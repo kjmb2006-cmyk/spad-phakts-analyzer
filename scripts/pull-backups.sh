@@ -14,6 +14,6 @@ DEST="${1:-$HOME/SPAD-Sauvegardes}"
 
 mkdir -p "$DEST"
 chmod 700 "$DEST"
-rsync -av --ignore-existing -e "ssh -i $SSH_KEY -o ConnectTimeout=10" "$VPS_HOST:/var/backups/spad/" "$DEST/"
+rsync -av --ignore-existing -e "ssh -i $SSH_KEY -o ConnectTimeout=10 -o BatchMode=yes" "$VPS_HOST:/var/backups/spad/" "$DEST/"
 echo "Sauvegardes disponibles dans $DEST :"
 ls -lh "$DEST" | tail -n +2
