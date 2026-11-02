@@ -146,7 +146,10 @@
           <td>
             {% if c.lignes %}
             <span class="fw-bold">{{ c.lignes|length }}</span>
-            <span class="val-lines">· {{ c.lignes[:15]|join(', ') }}{% if c.lignes|length > 15 %}…{% endif %}</span>
+            <span class="val-lines">·
+              {% if can_exclude %}{# jeu chargé : chaque numéro ouvre la fiche de la soumission #}
+              {% for l in c.lignes[:15] %}<a href="{{ url_for('data_preview', ligne=l) }}" class="text-decoration-none" title="Ouvrir la fiche de la soumission n° {{ l }}">{{ l }}</a>{{ ', ' if not loop.last }}{% endfor %}
+              {% else %}{{ c.lignes[:15]|join(', ') }}{% endif %}{% if c.lignes|length > 15 %}…{% endif %}</span>
             {% else %}<span class="text-muted small">—</span>{% endif %}
           </td>
           {% if can_exclude %}

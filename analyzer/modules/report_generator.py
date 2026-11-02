@@ -447,7 +447,7 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 # Tableau récapitulatif
                 bin_rows = [[r['variable'], r['n_valid'], r['n_missing'],
                              f"{r['pct_missing']}%", r['label_pos'],
-                             f"{r['prevalence']}%"] for r in bin_list]
+                             (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list]
                 bin_df = pd.DataFrame(bin_rows, columns=[
                     'Variable', 'N valides', 'Manquantes', '% manq.',
                     'Modalité positive', 'Prévalence',
@@ -969,7 +969,7 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
             else:
                 bin_df = pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'],
                                           f"{r['pct_missing']}%", r['label_pos'],
-                                          f"{r['prevalence']}%"] for r in bin_list],
+                                          (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list],
                                        columns=['Variable', 'N valides', 'Manquantes',
                                                  '% manq.', 'Modalité positive', 'Prévalence'])
                 _docx_df_table(bin_df)
@@ -1412,7 +1412,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
             else:
                 bin_df = pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'],
                                           f"{r['pct_missing']}%", r['label_pos'],
-                                          f"{r['prevalence']}%"] for r in bin_list],
+                                          (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list],
                                        columns=['Variable', 'N valides', 'Manquantes',
                                                  '% manq.', 'Modalité positive', 'Prévalence'])
                 row = _write_df(ws, bin_df, row)

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Préparer les données — SPAD Analyzer{% endblock %}
+{% block page_title %}Préparer les données{% endblock %}
+
+{% block content %}
+<style>
+  .prep-tabs .nav-link { font-size: .84rem; color: #1A5276; }
+  .prep-tabs .nav-link.active { background: #1A5276; color: #fff; }
+  .prep-help { font-size: .78rem; color: #6c7a89; }
+  .prep-result { font-size: .8rem; background: #f7f9fb; border: 1px solid #e3e8ed; border-radius: 8px; padding: 8px 12px; margin-top: 8px; display: none; }
+  .map-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: .8rem; }
+  .map-row .src { flex: 0 0 42%; }
+  .map-row input[type=text] { flex: 1; }
+  .var-card { border: 1px solid #e3e8ed; border-radius: 10px; padding: 10px 14px; }
+  .digest span.pill { display: inline-block; background: #eef3f8; border-radius: 12px; padding: 1px 9px; margin: 2px 4px 0 0; font-size: .74rem; }
+</style>
+<div class="container-fluid px-4 py-3" style="max-width:1180px">
+
+  <div class="alert alert-light border small">
+    <i class="bi bi-magic me-1 text-primary"></i>
+    Créez ici de nouvelles variables à partir de celles du jeu — regrouper des modalités, découper un âge en classes, calculer un indice,
+    marquer les personnes qui répondent à une condition — puis filtrez les lignes à analyser. Une variable créée apparaît dans
+    <strong>toutes</strong> les analyses (statistiques, croisements, analyses multivariées, rapports) et se <strong>recalcule</strong>
+    quand de nouvelles soumissions arrivent. Le fichier d'origine n'est jamais modifié.
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Créer une variable</h6></div>
+        <div class="card-body">
+          <ul class="nav nav-pills prep-tabs mb-3 flex-wrap gap-1" id="prep-tabs">
+            <li class="nav-item"><button type="button" class="nav-link active" data-pane="mapping">Regrouper des modalités</button></li>
+            <li class="nav-item"><button type="button" class="nav-link" data-pane="bins">Classes (âge…)</button></li>
+            <li class="nav-item"><button type="button" class="nav-link" data-pane="formula">Calcul</button></li>
+            <li class="nav-item"><button type="button" class="nav-link" data-pane="condition">Oui / non selon une condition</button></li>
+            <li class="nav-item"><button type="button" class="nav-link" data-pane="date_part">Partie d'une date</button></li>
+          </ul>
+
+          <!-- Regroupement -->
+          <form method="post" action="{{ url_for('data_prepare_add') }}" class="prep-pane" data-pane="mapping">
+            <input type="hidden" name="kind" value="mapping">
+            <div class="row g-2 mb-2">
+              <div class="col-md-6"><label class="form-label small mb-1">Variable à regrouper</label>
+                <select name="source" class="form-select form-select-sm" id="map-source" required>
+                  <option value="">— choisir —</option>
+                  {% for c, label in cat_labels.items() %}<option value="{{ c }}">{{ label }}</option>{% endfor %}
+                </select></div>
+              <div class="col-md-6"><label class="form-label small mb-1">Nom de la nouvelle variable</label>
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="60" placeholder="Ex. Profession regroupée" required></div>
+            </div>
+            <div id="map-box" class="d-none">
+              <div class="prep-help mb-1">Donnez à chaque modalité le nom du groupe où elle va. Pour fusionner, cochez plusieurs modalités et appliquez un nom commun.</div>
+              <div class="d-flex gap-2 align-items-center mb-2">
+                <input type="text" id="map-bulk" class="form-control form-control-sm" placeholder="Nom commun aux modalités cochées" style="max-width:260px">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="map-bulk-btn">Appliquer aux cochées</button>
+              </div>
+              <div id="map-rows" style="max-height:300px;overflow-y:auto;border:1px solid #eef0f2;border-radius:8px;padding:6px 10px"></div>
+              <div class="row g-2 mt-2"><div class="col-md-6"><label class="form-label small mb-1">Modalités non listées (nouvelles réponses)</label>
+                <input type="text" name="other" class="form-control form-control-sm" placeholder="Laisser vide pour les garder telles quelles"></div></div>
+            </div>
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-preview>Voir le résultat</button><button class="btn btn-sm btn-primary">Créer la variable</button></div>
+          </form>
+
+          <!-- Classes -->
+          <form method="post" action="{{ url_for('data_prepare_add') }}" class="prep-pane d-none" data-pane="bins">
+            <input type="hidden" name="kind" value="bins">
+            <div class="row g-2 mb-2">
+              <div class="col-md-6"><label class="form-label small mb-1">Variable numérique</label>
+                <select name="source" class="form-select form-select-sm" id="bins-source" required>
+                  <option value="">— choisir —</option>
+                  {% for c, label in num_labels.items() %}<option value="{{ c }}">{{ label }}</option>{% endfor %}
+                </select></div>
+              <div class="col-md-6"><label class="form-label small mb-1">Nom de la nouvelle variable</label>
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="60" placeholder="Ex. Classe d'âge" required></div>
+            </div>
+            <div class="prep-help mb-2" id="bins-hint">Choisissez une variable pour voir son minimum, sa médiane et son maximum.</div>
+            <div class="d-flex gap-3 mb-2 small">
+              <label><input type="radio" name="mode" value="edges" checked> Bornes choisies</label>
+              <label><input type="radio" name="mode" value="quantiles"> Effectifs égaux (quantiles)</label>
+            </div>
+            <div id="bins-edges"><label class="form-label small mb-1">Bornes (séparées par des espaces)</label>
+              <input type="text" name="edges" class="form-control form-control-sm" placeholder="18 25 35 50 65" style="max-width:320px">
+              <div class="prep-help mt-1">« 18 25 35 » donne : moins de 18 · 18–24 · 25–34 · 35 et plus. Chaque borne ouvre la classe suivante.</div></div>
+            <div id="bins-q" class="d-none"><label class="form-label small mb-1">Nombre de classes</label>
+              <select name="q" class="form-select form-select-sm" style="max-width:200px">
+                <option value="2">2 (moitiés)</option><option value="3">3 (tiers)</option><option value="4" selected>4 (quartiles)</option><option value="5">5 (quintiles)</option><option value="10">10 (déciles)</option>
+              </select></div>
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-preview>Voir le résultat</button><button class="btn btn-sm btn-primary">Créer la variable</button></div>
+          </form>
+
+          <!-- Calcul -->
+          <form method="post" action="{{ url_for('data_prepare_add') }}" class="prep-pane d-none" data-pane="formula">
+            <input type="hidden" name="kind" value="formula">
+            <div class="row g-2 mb-2">
+              <div class="col-md-8"><label class="form-label small mb-1">Nom de la nouvelle variable</label>
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="60" placeholder="Ex. IMC" required></div>
+              <div class="col-md-4"><label class="form-label small mb-1">Décimales</label>
+                <input type="number" name="decimals" min="0" max="8" class="form-control form-control-sm" placeholder="1"></div>
+            </div>
+            <label class="form-label small mb-1">Expression</label>
+            <input type="text" name="expression" class="form-control form-control-sm font-monospace" placeholder="${Poids__1Y} div (${Taille__1Y} * ${Taille__1Y})" required data-expression>
+            <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+              <select class="form-select form-select-sm" style="max-width:320px" data-picker><option value="">Insérer une variable…</option>
+                {% for v in names %}<option value="{{ v.name }}">{{ v.label }} — {{ v.name }}</option>{% endfor %}</select>
+              <span class="prep-help">Opérations : + − * div mod ( ) · fonctions : if(), int(), number(), coalesce(), string-length()</span>
+            </div>
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-preview>Voir le résultat</button><button class="btn btn-sm btn-primary">Créer la variable</button></div>
+          </form>
+
+          <!-- Condition -->
+          <form method="post" action="{{ url_for('data_prepare_add') }}" class="prep-pane d-none" data-pane="condition">
+            <input type="hidden" name="kind" value="condition">
+            <div class="row g-2 mb-2">
+              <div class="col-md-6"><label class="form-label small mb-1">Nom de la nouvelle variable</label>
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="60" placeholder="Ex. Adulte fumeur" required></div>
+              <div class="col-md-3"><label class="form-label small mb-1">Si la condition est vraie</label>
+                <input type="text" name="yes" class="form-control form-control-sm" placeholder="Oui"></div>
+              <div class="col-md-3"><label class="form-label small mb-1">Sinon</label>
+                <input type="text" name="no" class="form-control form-control-sm" placeholder="Non"></div>
+            </div>
+            <label class="form-label small mb-1">Condition</label>
+            <input type="text" name="expression" class="form-control form-control-sm font-monospace" placeholder="${Age__1Y} >= 18 and ${Fume__B} = 'oui'" required data-expression>
+            <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+              <select class="form-select form-select-sm" style="max-width:320px" data-picker><option value="">Insérer une variable…</option>
+                {% for v in names %}<option value="{{ v.name }}">{{ v.label }} — {{ v.name }}</option>{% endfor %}</select>
+              <span class="prep-help">Comparaisons = != &lt; &lt;= &gt; &gt;= · and, or, not() · selected(${choix}, 'valeur') pour un choix multiple. Les valeurs sont celles du fichier (ex. 'sage_femme').</span>
+            </div>
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-preview>Voir le résultat</button><button class="btn btn-sm btn-primary">Créer la variable</button></div>
+          </form>
+
+          <!-- Partie de date -->
+          <form method="post" action="{{ url_for('data_prepare_add') }}" class="prep-pane d-none" data-pane="date_part">
+            <input type="hidden" name="kind" value="date_part">
+            <div class="row g-2 mb-2">
+              <div class="col-md-5"><label class="form-label small mb-1">Variable date</label>
+                <select name="source" class="form-select form-select-sm" required>
+                  <option value="">— choisir —</option>
+                  {% for d in dates %}<option value="{{ d.name }}">{{ d.label }}</option>{% endfor %}
+                </select></div>
+              <div class="col-md-3"><label class="form-label small mb-1">Partie</label>
+                <select name="part" class="form-select form-select-sm">{% for k, t in date_parts.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></div>
+              <div class="col-md-4"><label class="form-label small mb-1">Nom de la nouvelle variable</label>
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="60" placeholder="Ex. Mois de collecte" required></div>
+            </div>
+            {% if not dates %}<div class="prep-help">Aucune variable de type date dans ce jeu. Un type peut se corriger dans le dictionnaire de l'aperçu des données.</div>{% endif %}
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-preview>Voir le résultat</button><button class="btn btn-sm btn-primary">Créer la variable</button></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Filtre -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2 text-primary"></i>Filtrer les lignes à analyser</h6></div>
+        <div class="card-body">
+          <p class="prep-help mb-2">Ne gardez que les soumissions qui vérifient une condition (par exemple les seuls établissements publics, les adultes…). Les autres sont écartées de
+            toutes les analyses ; le fichier n'est pas modifié et « Rétablir » remet tout.
+            {% if excluded_n %}<br><strong>{{ excluded_n }} ligne(s) sont déjà écartées{% if excluded_note %} ({{ excluded_note }}){% endif %}</strong> sur {{ n }}.{% endif %}</p>
+          <form method="post" action="{{ url_for('data_prepare_filter') }}" id="filter-form">
+            <input type="hidden" name="kind" value="filter">
+            <label class="form-label small mb-1">Condition</label>
+            <input type="text" name="expression" class="form-control form-control-sm font-monospace" placeholder="${Profession__X} = 'sage_femme'" required data-expression>
+            <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+              <select class="form-select form-select-sm" style="max-width:320px" data-picker><option value="">Insérer une variable…</option>
+                {% for v in names %}<option value="{{ v.name }}">{{ v.label }} — {{ v.name }}</option>{% endfor %}</select>
+              <select name="mode" class="form-select form-select-sm" style="max-width:260px"><option value="garder">Ne garder que ces lignes</option><option value="ecarter">Écarter ces lignes</option></select>
+            </div>
+            <div class="prep-result" data-result></div>
+            <div class="mt-3 d-flex gap-2 align-items-center">
+              <button type="button" class="btn btn-sm btn-outline-primary" data-preview>Combien de lignes ?</button>
+              <button class="btn btn-sm btn-primary" onclick="return confirm('Écarter ces lignes de toutes les analyses ? Le fichier n\'est pas modifié.');">Appliquer le filtre</button>
+              {% if excluded_n %}<button formaction="{{ url_for('data_exclusions_clear') }}" formnovalidate class="btn btn-sm btn-outline-secondary ms-auto">Rétablir les {{ excluded_n }} ligne(s)</button>{% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>Variables créées <span class="badge bg-secondary">{{ mine|length }}</span></h6></div>
+        <div class="card-body d-flex flex-column gap-2">
+          {% if not mine %}<div class="text-muted small">Aucune variable créée pour l'instant.</div>{% endif %}
+          {% for v in mine %}
+          <div class="var-card">
+            <div class="d-flex align-items-start gap-2">
+              <div class="flex-grow-1">
+                <div class="fw-semibold small">{{ v.name }} <span class="badge bg-light text-muted border">{{ v.kind }}</span></div>
+                <div class="prep-help">{{ v.summary }}</div>
+              </div>
+              <form method="post" action="{{ url_for('data_prepare_delete') }}" onsubmit="return confirm('Supprimer la variable « {{ v.name }} » ?');">
+                <input type="hidden" name="name" value="{{ v.name }}"><button class="btn btn-sm btn-link text-danger p-0" title="Supprimer"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+            {% if v.error %}<div class="alert alert-danger py-1 px-2 small mt-2 mb-0">Calcul impossible : {{ v.error }}</div>
+            {% elif v.digest %}
+            <div class="digest mt-1">
+              {% if v.digest.kind == 'numeric' %}
+              <span class="pill">moyenne {{ v.digest.mean }}</span><span class="pill">médiane {{ v.digest.median }}</span><span class="pill">{{ v.digest.min }} → {{ v.digest.max }}</span>
+              {% else %}
+              {% for label, count in v.digest.counts %}<span class="pill">{{ label }} · {{ count }}</span>{% endfor %}{% if v.digest.distinct > v.digest.counts|length %}<span class="pill">+{{ v.digest.distinct - v.digest.counts|length }}</span>{% endif %}
+              {% endif %}
+              {% if v.digest.missing %}<span class="pill" style="background:#fdecea">{{ v.digest.missing }} sans valeur</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const CAT = {{ cat|tojson }}, NUM = {{ num|tojson }};
+  const previewUrl = '{{ url_for("data_prepare_preview") }}';
+
+  // Onglets
+  document.querySelectorAll('#prep-tabs [data-pane]').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#prep-tabs .nav-link').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.prep-pane').forEach(p => p.classList.toggle('d-none', p.dataset.pane !== btn.dataset.pane));
+  }));
+
+  // Insertion d'une variable dans une expression
+  document.querySelectorAll('[data-picker]').forEach(sel => sel.addEventListener('change', () => {
+    if (!sel.value) return;
+    const input = sel.closest('form').querySelector('[data-expression]');
+    const at = input.selectionStart == null ? input.value.length : input.selectionStart;
+    const token = '${' + sel.value + '}';
+    input.value = input.value.slice(0, at) + token + input.value.slice(input.selectionEnd == null ? at : input.selectionEnd);
+    input.focus(); input.setSelectionRange(at + token.length, at + token.length); sel.value = '';
+  }));
+
+  // Regroupement : une ligne par modalité
+  const mapSource = document.getElementById('map-source'), mapRows = document.getElementById('map-rows'), mapBox = document.getElementById('map-box');
+  mapSource.addEventListener('change', () => {
+    mapRows.innerHTML = ''; const options = CAT[mapSource.value] || [];
+    mapBox.classList.toggle('d-none', !options.length);
+    options.forEach(([raw, label, n]) => {
+      const row = document.createElement('div'); row.className = 'map-row';
+      const cb = document.createElement('input'); cb.type = 'checkbox';
+      const src = document.createElement('span'); src.className = 'src'; src.textContent = label + ' (' + n + ')'; src.title = raw;
+      const hid = document.createElement('input'); hid.type = 'hidden'; hid.name = 'map_value'; hid.value = raw;
+      const txt = document.createElement('input'); txt.type = 'text'; txt.name = 'map_group'; txt.className = 'form-control form-control-sm'; txt.value = label;
+      row.append(cb, src, hid, txt); mapRows.appendChild(row);
+    });
+  });
+  document.getElementById('map-bulk-btn').addEventListener('click', () => {
+    const name = document.getElementById('map-bulk').value.trim(); if (!name) return;
+    mapRows.querySelectorAll('.map-row').forEach(r => { if (r.querySelector('input[type=checkbox]').checked) r.querySelector('input[type=text]').value = name; });
+  });
+
+  // Classes : indication et mode
+  const binsSource = document.getElementById('bins-source');
+  binsSource.addEventListener('change', () => {
+    const s = NUM[binsSource.value];
+    document.getElementById('bins-hint').textContent = s ? 'Minimum ' + s.min + ' · médiane ' + s.median + ' · maximum ' + s.max : 'Choisissez une variable pour voir son minimum, sa médiane et son maximum.';
+  });
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => {
+    const q = document.querySelector('input[name=mode]:checked').value === 'quantiles';
+    document.getElementById('bins-edges').classList.toggle('d-none', q); document.getElementById('bins-q').classList.toggle('d-none', !q);
+  }));
+
+  // Aperçu du résultat avant de créer
+  document.querySelectorAll('[data-preview]').forEach(btn => btn.addEventListener('click', () => {
+    const form = btn.closest('form'), box = form.querySelector('[data-result]');
+    box.style.display = 'block'; box.textContent = 'Calcul…';
+    fetch(previewUrl, { method: 'POST', body: new FormData(form) }).then(r => r.json()).then(d => {
+      box.innerHTML = '';
+      if (!d.ok) { box.style.color = '#b03a2e'; box.textContent = d.error; return; }
+      box.style.color = '';
+      if (d.kind === 'filter') { box.textContent = d.matching + ' ligne(s) sur ' + d.total + ' vérifient la condition.'; return; }
+      if (d.kind === 'numeric') { box.textContent = 'Moyenne ' + d.mean + ' · médiane ' + d.median + ' · de ' + d.min + ' à ' + d.max + ' (' + d.n + ' valeurs, ' + d.missing + ' sans valeur).'; return; }
+      box.append(d.n + ' valeur(s), ' + d.missing + ' sans valeur : ');
+      d.counts.forEach(([label, count]) => { const s = document.createElement('span'); s.className = 'badge bg-light text-dark border me-1'; s.textContent = label + ' · ' + count; box.appendChild(s); });
+      if (d.distinct > d.counts.length) box.append('+' + (d.distinct - d.counts.length) + ' autres');
+    }).catch(() => { box.style.color = '#b03a2e'; box.textContent = 'Calcul impossible pour le moment.'; });
+  }));
+})();
+</script>
+{% endblock %}

@@ -152,6 +152,21 @@ shown = choice_labels.relabel_frame(pd.DataFrame({'Sexe__X': ['femme', 'homme']}
 say(shown['Sexe__X'].tolist() == ['Femme', 'Homme'], "multi-enquête : modalités affichées avec leur vrai nom (libellés du formulaire)")
 r = c.get('/qualite/validation?uid=audit', follow_redirects=False)
 say(r.status_code == 302, "suivi multi-formulaires : contrôle de qualité d'un formulaire (sans connexion Kobo : renvoi)")
+say(c.get('/data/preparer').status_code == 302 and c.get('/data/rows').status_code == 400 and c.get('/data/row/1').status_code == 400,
+    "préparation, lignes et fiche d'une soumission en place (sans données : renvoi)")
+from modules import raw_analysis, preview, dataset as _ds
+_q = pd.DataFrame({'Sexe__X': ['f', 'h'] * 30, 'Grossesse__B': [np.nan, 'oui', np.nan, 'non'] * 15, 'Age__1Y': np.arange(60.)})
+_t = {'Sexe__X': 'categorielle', 'Grossesse__B': 'binaire', 'Age__1Y': 'continue'}
+_f = {'questions': [{'name': 'Grossesse__B', 'relevant': "${Sexe__X} = 'h'"}, {'name': 'Sexe__X', 'relevant': ''}]}
+_m = raw_analysis.missing_profile(_q, _f, _t)
+say(_m['real_missing_pct'] < _m['raw_missing_pct'] and raw_analysis.missing_profile(_q, None, _t)['real_missing_pct'] > _m['real_missing_pct'],
+    "diagnostic : un vide prévu par le formulaire n'est pas compté comme un manque")
+_s = raw_analysis.data_quality_score(_q, _t, _m, None, raw_analysis.duplicate_rows(_q, _t))
+say([x['name'] for x in _s['components']] == ['Complétude réelle', 'Unicité', 'Variables exploitables'], "diagnostic : score de qualité sur des mesures vérifiables")
+say(preview.query(_q, search='oui', per_page=10)['matched'] == 15 and preview.query(_q, sort='Age__1Y', ascending=False, per_page=10)['rows'][0]['line'] == 60,
+    "aperçu : recherche et tri sur le jeu complet")
+_r = _ds.compute_recipe(_q, {'kind': 'bins', 'name': 'x', 'source': 'Age__1Y', 'edges': [20, 40]})
+say(_r.tolist()[:1] == ['< 20'] and _r.tolist()[-1] == '≥ 40', "préparation : classes calculées à partir d'une variable")
 PY
 
 echo "── Sauvegardes ──"

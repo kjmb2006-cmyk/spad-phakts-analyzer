@@ -106,5 +106,62 @@ ok(types['start'] == 'technique' and types['Profession__X'] == 'categorielle' an
 ok(dataset.section_of('METIER_ETUDE/Section_1/Age__1Y') == 'METIER_ETUDE/Section_1' and dataset.section_of('Age__1Y') == '')
 print("OK — types : date, identifiant, texte libre et variables techniques écartés des tris à plat")
 
+# ── Recettes : variables calculées
+rpath = os.path.join(work, 'recettes.xlsx')
+people = pd.DataFrame({'GRP/Age__1Y': [5, 17, 18, 24, 30, 64, 65, 90, None], 'Poids__2K': [20, 50, 60, 70, 80, 90, 100, 110, 70.0],
+                       'Taille__1L': [110, 160, 170, 175, 180, 175, 170, 165, 175], 'GRP/Sexe__X': ['femme', 'homme', 'femme', 'homme', 'femme', 'homme', 'femme', 'homme', 'femme'],
+                       'Date__A': ['2025-02-10', '2025-05-01', '2025-08-15', '2025-11-30', '2026-01-05', '2026-04-10', '2026-07-07', '2026-10-01', None],
+                       'Prof__X': ['sage_femme', 'infirmier', 'medecin', 'aide_soignant', 'sage_femme', 'infirmier', 'medecin', 'agent_sante', 'infirmier']})
+people.to_excel(rpath, index=False)
+raw_people = dataset.read_frame(rpath)
+
+ok(dataset.add_recipe(rpath, {'name': 'Classe âge', 'kind': 'bins', 'source': 'Age__1Y', 'edges': [18, 25, 65]}, raw_people.columns)[0])
+ok(dataset.add_recipe(rpath, {'name': 'IMC', 'kind': 'formula', 'expression': '${Poids__2K} div ((${Taille__1L} div 100) * (${Taille__1L} div 100))', 'decimals': 1}, raw_people.columns)[0])
+ok(dataset.add_recipe(rpath, {'name': 'Obèse', 'kind': 'condition', 'expression': '${IMC} >= 30', 'yes': 'Oui', 'no': 'Non'}, raw_people.columns)[0], 'une recette peut s\'appuyer sur une précédente')
+ok(dataset.add_recipe(rpath, {'name': 'Femme majeure', 'kind': 'condition', 'expression': "${Sexe__X} = 'femme' and ${Age__1Y} >= 18"}, raw_people.columns)[0])
+ok(dataset.add_recipe(rpath, {'name': 'Métier regroupé', 'kind': 'mapping', 'source': 'Prof__X',
+                              'map': {'sage_femme': 'Soins', 'infirmier': 'Soins', 'medecin': 'Médecins'}, 'other': 'Autres'}, raw_people.columns)[0])
+ok(dataset.add_recipe(rpath, {'name': 'Trimestre', 'kind': 'date_part', 'source': 'Date__A', 'part': 'trimestre'}, raw_people.columns)[0])
+ok(dataset.add_recipe(rpath, {'name': 'Quartile poids', 'kind': 'bins', 'source': 'Poids__2K', 'mode': 'quantiles', 'q': 4}, raw_people.columns)[0])
+out, errors = dataset.apply_recipes(raw_people, rpath)
+ok(not errors, errors)
+ok(out['Classe âge'].tolist()[:8] == ['< 18', '< 18', '18–24', '18–24', '25–64', '25–64', '≥ 65', '≥ 65'] and pd.isna(out['Classe âge'].iloc[8]), out['Classe âge'].tolist())
+ok(abs(out['IMC'].iloc[2] - 20.8) < 0.05 and out['Obèse'].tolist().count('Oui') == out['IMC'].ge(30).sum(), out['IMC'].tolist())
+ok(out['Femme majeure'].tolist() == ['Non', 'Non', 'Oui', 'Non', 'Oui', 'Non', 'Oui', 'Non', 'Non'], out['Femme majeure'].tolist())          # âge manquant : « Non », pas d'erreur
+ok(out['Métier regroupé'].tolist()[:4] == ['Soins', 'Soins', 'Médecins', 'Autres'], out['Métier regroupé'].tolist())
+ok(out['Trimestre'].iloc[0] == 'T1' and out['Trimestre'].iloc[3] == 'T4' and pd.isna(out['Trimestre'].iloc[8]), out['Trimestre'].tolist())
+ok(out['Quartile poids'].nunique() == 4, out['Quartile poids'].tolist())
+# les recettes sont rejouées : une soumission arrivée plus tard reçoit ses valeurs
+more = pd.concat([raw_people, raw_people.head(1).assign(**{'GRP/Age__1Y': 70})], ignore_index=True)
+ok(dataset.attach_derived(more, rpath)['Classe âge'].iloc[-1] == '≥ 65', 'soumission ajoutée après coup')
+ok(not dataset.add_recipe(rpath, {'name': 'IMC', 'kind': 'formula', 'expression': '1'}, raw_people.columns)[0], 'nom déjà pris')
+ok(not dataset.add_recipe(rpath, {'name': 'a/b', 'kind': 'formula', 'expression': '1'}, raw_people.columns)[0], 'nom avec « / » refusé')
+ok(not dataset.add_recipe(rpath, {'name': 'Age__1Y', 'kind': 'formula', 'expression': '1'}, raw_people.columns)[0], 'nom d\'une colonne existante refusé')
+dataset.add_recipe(rpath, {'name': 'Cassée', 'kind': 'bins', 'source': 'Inconnue', 'edges': [1]}, raw_people.columns)
+dataset.add_recipe(rpath, {'name': 'Illisible', 'kind': 'formula', 'expression': "jr:choice-name(${Sexe__X}, '')"}, raw_people.columns)
+out, errors = dataset.apply_recipes(raw_people, rpath)
+ok(set(errors) == {'Cassée', 'Illisible'} and 'Cassée' not in out.columns and 'IMC' in out.columns, errors)
+ok(dataset.delete_recipe(rpath, 'Cassée') and dataset.delete_recipe(rpath, 'Illisible') and not dataset.delete_recipe(rpath, 'Inconnue'))
+opts = dataset.value_options(raw_people['Prof__X'], {'questions': {}, 'choices': {'Prof__X': {'infirmier': 'Infirmier(ère)'}}, 'multiple': []}, 'Prof__X')
+ok(opts[0] == ('infirmier', 'Infirmier(ère)', 3) and any(o[1] == 'Sage femme' for o in opts), opts)
+ok(dataset.lines_matching(raw_people, "${Sexe__X} = 'homme' and ${Poids__2K} > 100") == [8], dataset.lines_matching(raw_people, "${Sexe__X} = 'homme' and ${Poids__2K} > 100"))
+print("OK — recettes : classes, IMC, condition, regroupement, trimestre, quantiles ; rejouées sur les nouvelles soumissions ; erreurs signalées sans casser le reste")
+
+# ── Types et libellés choisis par l'utilisateur
+tpath = os.path.join(work, 'types.xlsx')
+pd.DataFrame({'Code__1': [1, 2, 3, 1, 2, 3] * 5, 'Age__1Y': range(30)}).to_excel(tpath, index=False)
+base = dataset.analysis_var_types(dataset.read_frame(tpath))
+dataset.set_type_override(tpath, 'Age__1Y', 'identifiant')
+dataset.set_type_override(tpath, 'Code__1', 'categorielle')
+forced = dataset.analysis_var_types(dataset.read_frame(tpath), overrides=dataset.type_overrides(tpath))
+ok(base['Age__1Y'] == 'continue' and forced['Age__1Y'] == 'identifiant' and forced['Code__1'] == 'categorielle', (base, forced))
+dataset.set_type_override(tpath, 'Age__1Y', None)
+ok(dataset.type_overrides(tpath) == {'Code__1': 'categorielle'})
+dataset.set_user_label(tpath, 'Age__1Y', "Âge révolu de l'enquêté")
+ok(dataset.user_labels(tpath) == {'Age__1Y': "Âge révolu de l'enquêté"})
+dataset.set_user_label(tpath, 'Age__1Y', '')
+ok(dataset.user_labels(tpath) == {} and not os.path.exists(dataset.sidecar(tpath, 'varlabels')))
+print("OK — types forcés et libellés saisis conservés avec le jeu, retour au type détecté possible")
+
 print()
 print(f"TOUS LES TESTS DU JEU DE DONNÉES SONT PASSÉS ({checks} vérifications)")

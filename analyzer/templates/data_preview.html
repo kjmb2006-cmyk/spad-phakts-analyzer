@@ -165,6 +165,287 @@
     {% endfor %}
   </div>
 
+  <!-- Aperçu navigable -->
+  <style>
+    .grid-wrap { max-height: 560px; overflow: auto; }
+    .grid-table { font-size: .78rem; white-space: nowrap; }
+    .grid-table thead th { position: sticky; background: #f4f6f8; color: #1A5276; font-weight: 600; z-index: 2; }
+    .grid-table thead tr.h1 th { top: 0; cursor: pointer; user-select: none; }
+    .grid-table thead tr.h2 th { top: 31px; padding: 2px 4px; z-index: 2; }
+    .grid-table thead tr.h2 input { width: 100%; min-width: 70px; font-size: .72rem; padding: 1px 4px; border: 1px solid #d5d8dc; border-radius: 4px; }
+    .grid-table td.line, .grid-table th.line { position: sticky; left: 0; background: #f4f6f8; text-align: right; color: #85929E; font-variant-numeric: tabular-nums; z-index: 1; }
+    .grid-table tbody tr { cursor: pointer; }
+    .grid-table tbody tr.sev-erreur td { background: #fdecea; }
+    .grid-table tbody tr.sev-a_verifier td { background: #fef9e7; }
+    .grid-table tbody tr.excl td { color: #aab0b6; text-decoration: line-through; }
+    .grid-table td { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+    .cols-panel { position: absolute; z-index: 20; background: #fff; border: 1px solid #d5d8dc; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); width: 340px; max-height: 420px; display: none; flex-direction: column; }
+    .cols-panel.open { display: flex; }
+    .cols-panel .list { overflow-y: auto; padding: 6px 10px; }
+    .cols-panel .sec { font-size: .68rem; font-weight: 700; color: #85929E; text-transform: uppercase; margin-top: 6px; word-break: break-all; }
+    .cols-panel label { display: block; font-size: .78rem; margin: 0; padding: 1px 0; }
+    #row-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 1200; display: none; }
+    #row-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: #fff; box-shadow: -8px 0 32px rgba(0,0,0,.18); z-index: 1201; display: none; flex-direction: column; }
+    #row-drawer.open, #row-overlay.open { display: flex; }
+    #row-drawer .body { overflow-y: auto; padding: 14px 18px; flex: 1; }
+    #row-drawer h6.sec { font-size: .72rem; text-transform: uppercase; color: #1A5276; margin: 16px 0 6px; border-bottom: 1px solid #e5e8eb; padding-bottom: 3px; word-break: break-all; }
+    #row-drawer .item { display: flex; gap: 10px; padding: 3px 0; font-size: .8rem; border-bottom: 1px dotted #eef0f2; }
+    #row-drawer .item .q { flex: 0 0 55%; color: #566573; }
+    #row-drawer .item .a { flex: 1; font-weight: 600; word-break: break-word; }
+    #row-drawer .item.empty .a { color: #b8bec4; font-weight: 400; }
+    #row-drawer .item.flag { background: #fdecea; border-radius: 4px; padding-left: 6px; }
+  </style>
+  <div class="card border-0 shadow-sm mb-4" id="grid-card">
+    <div class="card-header bg-white border-bottom py-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>Lignes — {{ meta.get('sheet_name', 'Feuille principale') }}</h6>
+        <span class="badge bg-secondary" id="grid-count">{{ shape[0] }} lignes</span>
+        {% if excluded_n %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Lignes écartées des analyses (barrées dans la table)">{{ excluded_n }} écartée(s)</span>{% endif %}
+        <div class="d-flex gap-2 ms-auto flex-wrap">
+          <a href="{{ url_for('export_data_xlsx') }}" class="btn btn-sm btn-outline-primary" title="Télécharger les {{ shape[0] }} observations au format XLSX"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Données XLSX</a>
+          <a href="{{ url_for('export_data_csv') }}" class="btn btn-sm btn-outline-primary" title="Télécharger les {{ shape[0] }} observations au format CSV"><i class="bi bi-filetype-csv me-1"></i>Données CSV</a>
+          <a href="{{ url_for('export_data_stat', fmt='sav') }}" class="btn btn-sm btn-outline-primary" title="Fichier SPSS avec libellés des variables et des modalités"><i class="bi bi-file-earmark-binary me-1"></i>SPSS</a>
+          <a href="{{ url_for('export_data_stat', fmt='dta') }}" class="btn btn-sm btn-outline-primary" title="Fichier Stata avec libellés des variables et des modalités"><i class="bi bi-file-earmark-binary me-1"></i>Stata</a>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+        <div class="input-group input-group-sm" style="width:260px">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="search" id="grid-q" class="form-control" placeholder="Chercher dans toutes les colonnes…" autocomplete="off">
+        </div>
+        <div class="position-relative">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="cols-btn"><i class="bi bi-layout-three-columns me-1"></i>Colonnes <span class="badge bg-secondary" id="cols-n"></span></button>
+          <div class="cols-panel" id="cols-panel">
+            <div class="p-2 border-bottom">
+              <input type="search" id="cols-q" class="form-control form-control-sm mb-2" placeholder="Chercher une colonne…" autocomplete="off">
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="default">Par défaut</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="all">Toutes</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="none">Aucune</button>
+              </div>
+            </div>
+            <div class="list" id="cols-list"></div>
+          </div>
+        </div>
+        <select id="grid-flag" class="form-select form-select-sm" style="width:auto" title="Lignes relevées par la validation des données">
+          <option value="">Toutes les lignes</option>
+          <option value="1">Lignes signalées (erreurs et à vérifier)</option>
+          <option value="erreur">Lignes en erreur</option>
+        </select>
+        <select id="grid-per" class="form-select form-select-sm" style="width:auto"></select>
+        <div class="input-group input-group-sm" style="width:170px">
+          <span class="input-group-text">Ligne n°</span>
+          <input type="number" min="1" max="{{ shape[0] }}" id="grid-go" class="form-control" placeholder="{{ shape[0] }} max">
+          <button class="btn btn-outline-secondary" type="button" id="grid-go-btn"><i class="bi bi-box-arrow-up-right"></i></button>
+        </div>
+        <a class="btn btn-sm btn-outline-success ms-auto" id="grid-csv" href="#" title="La vue filtrée et triée, colonnes choisies"><i class="bi bi-download me-1"></i>Cette vue (CSV)</a>
+      </div>
+      <div class="small text-muted mt-2" id="grid-hint">Cliquez sur un en-tête pour trier, sur une ligne pour ouvrir la fiche de la soumission. Les lignes rouges ou jaunes sont celles que relève la validation.</div>
+    </div>
+    <div class="card-body p-0">
+      <div class="grid-wrap"><table class="table table-sm table-hover mb-0 grid-table" id="grid-table"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card-footer bg-white d-flex align-items-center gap-2 flex-wrap">
+      <span class="small text-muted" id="grid-info"></span>
+      <div class="btn-group btn-group-sm ms-auto" id="grid-pager"></div>
+    </div>
+  </div>
+
+  <div id="row-overlay"></div>
+  <aside id="row-drawer" aria-label="Fiche d'une soumission">
+    <div class="d-flex align-items-center gap-2 p-3 border-bottom flex-wrap">
+      <h6 class="mb-0 fw-semibold" id="row-title">Soumission</h6>
+      <span id="row-sev"></span>
+      <div class="ms-auto d-flex gap-1">
+        <button class="btn btn-sm btn-outline-secondary" id="row-pf" title="Ligne signalée précédente"><i class="bi bi-flag"></i><i class="bi bi-chevron-left"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-prev" title="Ligne précédente"><i class="bi bi-chevron-left"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-next" title="Ligne suivante"><i class="bi bi-chevron-right"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-nf" title="Ligne signalée suivante"><i class="bi bi-chevron-right"></i><i class="bi bi-flag"></i></button>
+        <button class="btn btn-sm btn-outline-dark" id="row-close" title="Fermer"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <div class="px-3 py-2 border-bottom d-flex align-items-center gap-3 flex-wrap small">
+      <label class="mb-0"><input type="checkbox" id="row-empty"> Afficher les questions sans réponse</label>
+      <span class="text-muted" id="row-count"></span>
+      <button class="btn btn-sm btn-outline-danger ms-auto py-0" id="row-excl"></button>
+    </div>
+    <div class="body" id="row-body"></div>
+  </aside>
+
+  <script>
+  (function () {
+    const G = {{ grid|tojson }};
+    const ROWS_URL = '{{ url_for("data_rows") }}', CSV_URL = '{{ url_for("data_rows_csv") }}', ROW_URL = '/data/row/';
+    const $ = id => document.getElementById(id);
+    const store = {
+      get(k) { try { return JSON.parse(localStorage.getItem('spad:' + G.storage + ':' + k)); } catch (e) { return null; } },
+      set(k, v) { try { localStorage.setItem('spad:' + G.storage + ':' + k, JSON.stringify(v)); } catch (e) {} },
+    };
+    const known = new Set(G.catalog.map(c => c.name));
+    const saved = (store.get('cols') || []).filter(c => known.has(c));
+    const S = { page: 1, per_page: store.get('per') || 25, q: '', sort: null, dir: 'asc', cols: saved.length ? saved : G.default.slice(), f: {}, flagged: '' };
+    let seq = 0, timer = null, current = null, showEmpty = false;
+
+    const perSel = $('grid-per');
+    G.per_page.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n + ' par page'; perSel.appendChild(o); });
+    perSel.value = S.per_page; if (perSel.value != S.per_page) { S.per_page = 25; perSel.value = 25; }
+
+    function params(extra) {
+      const p = new URLSearchParams();
+      p.set('cols', JSON.stringify(S.cols)); if (S.q) p.set('q', S.q); if (S.sort) { p.set('sort', S.sort); p.set('dir', S.dir); }
+      const f = Object.fromEntries(Object.entries(S.f).filter(([, v]) => v)); if (Object.keys(f).length) p.set('f', JSON.stringify(f));
+      if (S.flagged) p.set('flagged', S.flagged);
+      Object.entries(extra || {}).forEach(([k, v]) => p.set(k, v));
+      return p;
+    }
+
+    function load(keepFocus) {
+      const mine = ++seq;
+      fetch(ROWS_URL + '?' + params({ page: S.page, per_page: S.per_page })).then(r => r.json()).then(d => {
+        if (mine !== seq || d.error) return;
+        S.page = d.page; render(d, keepFocus);
+      });
+      $('grid-csv').href = CSV_URL + '?' + params();
+    }
+
+    function render(d, keepFocus) {
+      const thead = document.querySelector('#grid-table thead'), tbody = document.querySelector('#grid-table tbody');
+      const focusKey = keepFocus && document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.col : null;
+      const caret = focusKey ? document.activeElement.selectionStart : null;
+      thead.innerHTML = '';
+      const h1 = document.createElement('tr'); h1.className = 'h1';
+      const h2 = document.createElement('tr'); h2.className = 'h2';
+      const l1 = document.createElement('th'); l1.className = 'line'; l1.textContent = 'N°'; h1.appendChild(l1);
+      const l2 = document.createElement('th'); l2.className = 'line'; h2.appendChild(l2);
+      d.columns.forEach(c => {
+        const th = document.createElement('th'); th.title = c.name;
+        th.textContent = c.label + (d.sort === c.name ? (d.ascending ? ' ▲' : ' ▼') : '');
+        th.addEventListener('click', () => { S.dir = (S.sort === c.name && S.dir === 'asc') ? 'desc' : 'asc'; S.sort = c.name; S.page = 1; load(); });
+        h1.appendChild(th);
+        const td = document.createElement('th'); const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'filtrer'; inp.dataset.col = c.name; inp.value = S.f[c.name] || '';
+        inp.addEventListener('input', () => { S.f[c.name] = inp.value; S.page = 1; debounce(() => load(true)); });
+        td.appendChild(inp); h2.appendChild(td);
+      });
+      thead.appendChild(h1); thead.appendChild(h2);
+      tbody.innerHTML = '';
+      if (!d.rows.length) {
+        const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = d.columns.length + 1; td.className = 'text-center text-muted py-4';
+        td.textContent = 'Aucune ligne ne correspond à la recherche.'; tr.appendChild(td); tbody.appendChild(tr);
+      }
+      d.rows.forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.severity) tr.classList.add('sev-' + r.severity); if (r.excluded) tr.classList.add('excl');
+        const n = document.createElement('td'); n.className = 'line'; n.textContent = r.line; tr.appendChild(n);
+        r.cells.forEach(t => { const td = document.createElement('td'); td.textContent = t; if (t.length > 40) td.title = t; tr.appendChild(td); });
+        tr.addEventListener('click', () => openCard(r.line));
+        tbody.appendChild(tr);
+      });
+      $('grid-count').textContent = d.matched === d.total ? d.total + ' lignes' : d.matched + ' sur ' + d.total + ' lignes';
+      const first = d.matched ? (d.page - 1) * d.per_page + 1 : 0, last = Math.min(d.page * d.per_page, d.matched);
+      $('grid-info').textContent = d.matched ? 'Lignes ' + first + ' à ' + last + ' sur ' + d.matched : '';
+      pager(d); $('cols-n').textContent = S.cols.length;
+      if (focusKey) { const el = thead.querySelector('input[data-col="' + CSS.escape(focusKey) + '"]'); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
+    }
+
+    function pager(d) {
+      const box = $('grid-pager'); box.innerHTML = '';
+      const add = (label, page, disabled, active) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-outline-secondary' + (active ? ' active' : ''); b.textContent = label; b.disabled = !!disabled;
+        b.addEventListener('click', () => { S.page = page; load(); }); box.appendChild(b);
+      };
+      add('«', 1, d.page === 1); add('‹', d.page - 1, d.page === 1);
+      const lo = Math.max(1, d.page - 2), hi = Math.min(d.pages, d.page + 2);
+      for (let p = lo; p <= hi; p++) add(String(p), p, false, p === d.page);
+      add('›', d.page + 1, d.page === d.pages); add('»', d.pages, d.page === d.pages);
+    }
+
+    function debounce(fn) { clearTimeout(timer); timer = setTimeout(fn, 350); }
+
+    $('grid-q').addEventListener('input', e => { S.q = e.target.value; S.page = 1; debounce(() => load()); });
+    $('grid-flag').addEventListener('change', e => { S.flagged = e.target.value; S.page = 1; load(); });
+    perSel.addEventListener('change', e => { S.per_page = parseInt(e.target.value, 10); store.set('per', S.per_page); S.page = 1; load(); });
+    $('grid-go-btn').addEventListener('click', () => { const n = parseInt($('grid-go').value, 10); if (n >= 1) openCard(n); });
+    $('grid-go').addEventListener('keydown', e => { if (e.key === 'Enter') $('grid-go-btn').click(); });
+
+    // ── Choix des colonnes
+    const panel = $('cols-panel');
+    function drawCols(filter) {
+      const list = $('cols-list'); list.innerHTML = ''; let section = null; const q = (filter || '').toLowerCase();
+      G.catalog.forEach(c => {
+        if (q && !(c.label + ' ' + c.name).toLowerCase().includes(q)) return;
+        if (c.section !== section) { section = c.section; const h = document.createElement('div'); h.className = 'sec'; h.textContent = section || 'Général'; list.appendChild(h); }
+        const lab = document.createElement('label'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = S.cols.includes(c.name);
+        cb.addEventListener('change', () => {
+          S.cols = G.catalog.map(x => x.name).filter(n => n === c.name ? cb.checked : S.cols.includes(n));
+          S.f = Object.fromEntries(Object.entries(S.f).filter(([k]) => S.cols.includes(k))); store.set('cols', S.cols); debounce(() => load());
+        });
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + c.label)); lab.title = c.name; list.appendChild(lab);
+      });
+    }
+    $('cols-btn').addEventListener('click', () => { panel.classList.toggle('open'); drawCols($('cols-q').value); });
+    $('cols-q').addEventListener('input', e => drawCols(e.target.value));
+    panel.querySelectorAll('[data-cols]').forEach(b => b.addEventListener('click', () => {
+      S.cols = b.dataset.cols === 'default' ? G.default.slice() : b.dataset.cols === 'all' ? G.catalog.map(c => c.name) : [];
+      if (!S.cols.length) S.cols = G.default.slice(0, 1);
+      store.set('cols', S.cols); drawCols($('cols-q').value); S.page = 1; load();
+    }));
+    document.addEventListener('click', e => { if (!panel.contains(e.target) && e.target.closest('#cols-btn') === null) panel.classList.remove('open'); });
+
+    // ── Fiche d'une soumission
+    const drawer = $('row-drawer'), overlay = $('row-overlay');
+    function closeCard() { drawer.classList.remove('open'); overlay.classList.remove('open'); current = null; history.replaceState(null, '', location.pathname); }
+    function openCard(line) {
+      fetch(ROW_URL + line).then(r => r.json()).then(d => {
+        if (d.error) { alert(d.error); return; }
+        current = d; drawCard(d); drawer.classList.add('open'); overlay.classList.add('open');
+        history.replaceState(null, '', '?ligne=' + d.line);
+      });
+    }
+    function drawCard(d) {
+      $('row-title').textContent = 'Soumission n° ' + d.line + ' sur ' + d.n;
+      const sev = $('row-sev'); sev.innerHTML = '';
+      if (d.severity || d.excluded) {
+        const b = document.createElement('span'); b.className = 'badge ' + (d.excluded ? 'bg-secondary' : d.severity === 'erreur' ? 'bg-danger' : 'bg-warning text-dark');
+        b.textContent = d.excluded ? 'écartée de l\'analyse' : d.severity === 'erreur' ? 'en erreur' : 'à vérifier'; sev.appendChild(b);
+      }
+      $('row-count').textContent = d.answered + ' réponses sur ' + d.fields + ' questions';
+      const body = $('row-body'); body.innerHTML = '';
+      if (d.flags.length) {
+        const box = document.createElement('div'); box.className = 'alert alert-danger py-2 small';
+        const t = document.createElement('div'); t.className = 'fw-bold mb-1'; t.textContent = 'Relevé à la validation'; box.appendChild(t);
+        d.flags.forEach(f => { const p = document.createElement('div'); p.textContent = '• ' + f.titre + (f.detail ? ' — ' + f.detail : ''); box.appendChild(p); });
+        body.appendChild(box);
+      }
+      d.sections.forEach(sec => {
+        const items = sec.items.filter(i => showEmpty || i.value || i.flags.length); if (!items.length) return;
+        const h = document.createElement('h6'); h.className = 'sec'; h.textContent = sec.name; body.appendChild(h);
+        items.forEach(i => {
+          const row = document.createElement('div'); row.className = 'item' + (i.value ? '' : ' empty') + (i.flags.length ? ' flag' : ''); row.title = i.column;
+          const q = document.createElement('div'); q.className = 'q'; q.textContent = i.label;
+          const a = document.createElement('div'); a.className = 'a'; a.textContent = i.value || '—'; if (i.flags.length) a.title = i.flags.join(' · ');
+          row.appendChild(q); row.appendChild(a); body.appendChild(row);
+        });
+      });
+      const go = (id, line) => { const b = $(id); b.disabled = !line; b.onclick = () => line && openCard(line); };
+      go('row-prev', d.prev); go('row-next', d.next); go('row-pf', d.prev_flagged); go('row-nf', d.next_flagged);
+      const ex = $('row-excl'); ex.textContent = d.excluded ? 'Rétablir dans l\'analyse' : 'Écarter de l\'analyse';
+      ex.onclick = () => fetch(ROW_URL + d.line + '/exclude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: d.excluded ? 'restore' : 'exclude' }) })
+        .then(r => r.json()).then(() => { openCard(d.line); load(); });
+    }
+    $('row-empty').addEventListener('change', e => { showEmpty = e.target.checked; if (current) drawCard(current); });
+    $('row-close').addEventListener('click', closeCard); overlay.addEventListener('click', closeCard);
+    document.addEventListener('keydown', e => {
+      if (!current) return;
+      if (e.key === 'Escape') closeCard();
+      else if (e.target.tagName !== 'INPUT' && e.key === 'ArrowRight' && current.next) openCard(current.next);
+      else if (e.target.tagName !== 'INPUT' && e.key === 'ArrowLeft' && current.prev) openCard(current.prev);
+    });
+
+    load();
+    if (G.line) openCard(G.line);
+  })();
+  </script>
+
   <!-- Binary groups detected -->
   {% if bin_groups %}
   <div class="card border-0 shadow-sm mb-4">
@@ -201,91 +482,77 @@
   </div>
   {% endif %}
 
-  <!-- Variable types (questionnaire reconstruit) -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom d-flex align-items-center py-3 gap-2 flex-wrap">
-      <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-list-check me-2 text-primary"></i>Questionnaire des variables détectées
-      </h6>
-      <span class="text-muted small">{{ shape[1] }} questions · cliquez sur un libellé pour le modifier</span>
-      <div class="d-flex gap-2 ms-auto">
-        <a href="{{ url_for('export_var_types_xlsx') }}"
-           class="btn btn-sm btn-outline-success"
-           title="Télécharger le questionnaire complet au format XLSX (libellés, modalités, statistiques)">
-          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Questionnaire XLSX
-        </a>
-        <a href="{{ url_for('export_var_types_csv') }}"
-           class="btn btn-sm btn-outline-success"
-           title="Télécharger le questionnaire complet au format CSV (libellés, modalités, statistiques)">
-          <i class="bi bi-filetype-csv me-1"></i>Questionnaire CSV
-        </a>
+  <!-- Dictionnaire des variables -->
+  <div class="card border-0 shadow-sm mb-4" id="dict-card">
+    <div class="card-header bg-white border-bottom py-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>Dictionnaire des variables</h6>
+        <span class="text-muted small">{{ shape[1] }} variables · le libellé et le type se corrigent ici et sont conservés avec le jeu de données</span>
+        <div class="d-flex gap-2 ms-auto">
+          <a href="{{ url_for('export_var_types_xlsx') }}" class="btn btn-sm btn-outline-success" title="Questionnaire reconstruit (libellés, modalités, règles du formulaire, effectifs)"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Questionnaire XLSX</a>
+          <a href="{{ url_for('export_var_types_csv') }}" class="btn btn-sm btn-outline-success" title="Questionnaire reconstruit au format CSV"><i class="bi bi-filetype-csv me-1"></i>Questionnaire CSV</a>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+        <div class="input-group input-group-sm" style="width:260px">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="search" id="dict-q" class="form-control" placeholder="Chercher une variable…" autocomplete="off">
+        </div>
+        <select id="dict-type" class="form-select form-select-sm" style="width:auto">
+          <option value="">Tous les types</option>
+          {% for key, text in type_choices.items() %}<option value="{{ key }}">{{ text }}</option>{% endfor %}
+        </select>
+        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="dict-forced"><label class="form-check-label small" for="dict-forced">Types corrigés seulement</label></div>
+        {% if not has_form %}
+        <span class="small text-muted ms-auto"><i class="bi bi-info-circle me-1"></i>Joignez l'XLSForm (hub d'analyse) pour obtenir les libellés des questions, des choix et les règles du formulaire.</span>
+        {% endif %}
       </div>
     </div>
     <div class="card-body p-0">
-      <div class="table-responsive" style="max-height:520px;overflow-y:auto">
-        <table class="table table-sm table-hover mb-0">
+      <div class="table-responsive" style="max-height:560px;overflow-y:auto">
+        <table class="table table-sm table-hover mb-0" id="dict-table">
           <thead class="table-light sticky-top">
             <tr>
               <th style="width:36px">#</th>
-              <th style="width:18%">Variable (code)</th>
-              <th style="width:22%">Question / Libellé</th>
-              <th style="width:13%">Type</th>
-              <th style="width:25%">Modalités attendues</th>
-              <th class="text-end" style="width:7%">Obs.</th>
-              <th class="text-end" style="width:6%">Manq.</th>
+              <th style="width:17%">Variable (code)</th>
+              <th style="width:24%">Question / Libellé</th>
+              <th style="width:170px">Type</th>
+              <th>Modalités attendues</th>
+              {% if has_form %}<th style="width:11%">Règles du formulaire</th>{% endif %}
+              <th class="text-end" style="width:6%">Obs.</th>
               <th class="text-end" style="width:6%">% manq.</th>
             </tr>
           </thead>
           <tbody>
             {% for r in var_table %}
-            <tr>
+            <tr data-search="{{ (r.variable ~ ' ' ~ r.libelle)|lower }}" data-type="{{ r.type }}" data-forced="{{ 1 if r.type_forced else 0 }}">
               <td class="text-muted small">{{ r.idx }}</td>
-              <td class="fw-medium" style="font-size:.74rem;font-family:monospace;word-break:break-all">{{ r.variable }}</td>
+              <td class="fw-medium" style="font-size:.72rem;font-family:monospace;word-break:break-all" title="{{ r.section }}">{{ r.variable }}</td>
               <td style="font-size:.82rem">
-                <span class="var-label-edit"
-                      contenteditable="true" spellcheck="false"
-                      data-variable="{{ r.variable }}"
-                      data-auto="{{ r.libelle_auto }}"
-                      title="Cliquez pour modifier — Entrée pour valider"
+                <span class="var-label-edit" contenteditable="true" spellcheck="false" data-variable="{{ r.variable }}" data-auto="{{ r.libelle_auto }}"
+                      title="Cliquez pour modifier — Entrée pour valider, Échap pour revenir au libellé d'origine"
                       style="display:inline-block;min-width:60%;padding:2px 6px;border-radius:4px;cursor:text">{{ r.libelle }}</span>
-                {% if r.is_custom %}
-                <i class="bi bi-pencil-fill text-success ms-1" style="font-size:.65rem" title="Libellé personnalisé"></i>
-                {% endif %}
+                <span class="badge rounded-pill {% if r.source == 'utilisateur' %}bg-success-subtle text-success-emphasis{% elif r.source == 'XLSForm' %}bg-primary-subtle text-primary-emphasis{% else %}bg-light text-muted border{% endif %}" style="font-size:.6rem" title="Origine du libellé">{{ r.source }}</span>
               </td>
               <td>
-                {% if r.type == 'categorielle' %}
-                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                  <i class="bi bi-tag me-1"></i>Catégorielle
-                </span>
-                {% elif r.type == 'continue' %}
-                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
-                  <i class="bi bi-123 me-1"></i>Continue
-                </span>
-                {% elif r.type == 'binaire' %}
-                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">
-                  <i class="bi bi-toggle-on me-1"></i>Binaire
-                </span>
-                {% elif r.type == 'date' %}
-                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
-                  <i class="bi bi-calendar me-1"></i>Date
-                </span>
-                {% else %}
-                <span class="badge bg-light text-muted border">Texte libre</span>
-                {% endif %}
+                <select class="form-select form-select-sm var-type-edit" data-variable="{{ r.variable }}" data-detected="{{ r.type_detected }}" style="font-size:.74rem;padding:1px 22px 1px 6px;min-width:150px">
+                  {% for key, text in type_choices.items() %}<option value="{{ key }}" {% if key == r.type %}selected{% endif %}>{{ text }}{% if key == r.type_detected %} (détecté){% endif %}</option>{% endfor %}
+                </select>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle type-forced {% if not r.type_forced %}d-none{% endif %}" style="font-size:.6rem" title="Type choisi, différent du type détecté">corrigé</span>
               </td>
-              <td style="font-size:.74rem;color:#566573;line-height:1.4">
-                {{ r.modalites | truncate(180) if r.modalites else '—' }}
+              <td style="font-size:.74rem;color:#566573;line-height:1.4">{{ r.modalites | truncate(180) if r.modalites else '—' }}</td>
+              {% if has_form %}
+              <td style="font-size:.7rem">
+                {% if r.required %}<span class="badge bg-danger-subtle text-danger-emphasis">obligatoire</span>{% endif %}
+                {% if r.relevant %}<span class="badge bg-info-subtle text-info-emphasis" title="{{ r.relevant }}">saut</span>{% endif %}
+                {% if r.constraint %}<span class="badge bg-secondary-subtle text-secondary-emphasis" title="{{ r.constraint }}">contrainte</span>{% endif %}
               </td>
+              {% endif %}
               <td class="text-end small">{{ r.n_obs }}</td>
-              <td class="text-end small">{{ r.n_manq }}</td>
               <td class="text-end small">
-                {% if r.pct_manq >= 50 %}
-                  <span class="text-danger fw-semibold">{{ r.pct_manq }}%</span>
-                {% elif r.pct_manq >= 20 %}
-                  <span class="text-warning">{{ r.pct_manq }}%</span>
-                {% else %}
-                  <span class="text-muted">{{ r.pct_manq }}%</span>
-                {% endif %}
+                {% if r.pct_manq >= 50 %}<span class="text-danger fw-semibold">{{ r.pct_manq }}%</span>
+                {% elif r.pct_manq >= 20 %}<span class="text-warning">{{ r.pct_manq }}%</span>
+                {% else %}<span class="text-muted">{{ r.pct_manq }}%</span>{% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -297,78 +564,44 @@
 
   <script>
   (function() {
-    // Persistance live des libellés modifiés (envoi à /api/var-label)
-    const url = '{{ url_for("save_var_label") }}';
-    let timers = new WeakMap();
+    // Libellés : enregistrés avec le jeu de données (/api/var-label)
+    const labelUrl = '{{ url_for("save_var_label") }}', typeUrl = '{{ url_for("save_var_type") }}';
+    const timers = new WeakMap();
+    function flash(el, ok) { el.style.background = ok ? '#D5F5E3' : '#FADBD8'; setTimeout(() => { el.style.background = ''; }, 1000); }
     function persist(el) {
-      const variable = el.dataset.variable;
       const label = el.textContent.trim();
-      fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({variable, label}),
-      })
-      .then(r => {
-        el.style.background = r.ok ? '#D5F5E3' : '#FADBD8';
-        setTimeout(() => { el.style.background = ''; }, 1000);
-      })
-      .catch(() => { el.style.background = '#FADBD8';
-                      setTimeout(() => { el.style.background = ''; }, 1000); });
+      fetch(labelUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({variable: el.dataset.variable, label: label === el.dataset.auto ? '' : label}) })
+        .then(r => flash(el, r.ok)).catch(() => flash(el, false));
     }
     document.querySelectorAll('.var-label-edit').forEach(el => {
       el.addEventListener('focus', () => { el.style.background = '#FEF9E7'; });
-      el.addEventListener('blur', () => {
-        el.style.background = '';
-        persist(el);
-      });
-      el.addEventListener('input', () => {
-        if (timers.has(el)) clearTimeout(timers.get(el));
-        timers.set(el, setTimeout(() => persist(el), 700));
-      });
-      el.addEventListener('keydown', (e) => {
+      el.addEventListener('blur', () => { el.style.background = ''; persist(el); });
+      el.addEventListener('input', () => { if (timers.has(el)) clearTimeout(timers.get(el)); timers.set(el, setTimeout(() => persist(el), 700)); });
+      el.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
         if (e.key === 'Escape') { el.textContent = el.dataset.auto; el.blur(); }
       });
     });
+    // Types : corrigés pour toutes les analyses (/api/var-type)
+    document.querySelectorAll('.var-type-edit').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const row = sel.closest('tr'), forced = sel.value !== sel.dataset.detected;
+        fetch(typeUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({variable: sel.dataset.variable, type: forced ? sel.value : ''}) })
+          .then(r => { flash(sel, r.ok); if (r.ok) { row.dataset.type = sel.value; row.dataset.forced = forced ? 1 : 0; row.querySelector('.type-forced').classList.toggle('d-none', !forced); } })
+          .catch(() => flash(sel, false));
+      });
+    });
+    // Recherche et filtres du dictionnaire
+    const q = document.getElementById('dict-q'), t = document.getElementById('dict-type'), f = document.getElementById('dict-forced');
+    function filter() {
+      const term = q.value.trim().toLowerCase();
+      document.querySelectorAll('#dict-table tbody tr').forEach(tr => {
+        tr.style.display = (!term || tr.dataset.search.includes(term)) && (!t.value || tr.dataset.type === t.value) && (!f.checked || tr.dataset.forced === '1') ? '' : 'none';
+      });
+    }
+    [q, t, f].forEach(el => el.addEventListener('input', filter));
   })();
   </script>
-
-  <!-- Main sheet preview -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom d-flex align-items-center py-3 gap-2 flex-wrap">
-      <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-table me-2 text-primary"></i>
-        Aperçu — {{ meta.get('sheet_name', 'Feuille principale') }}
-      </h6>
-      <span class="badge bg-secondary">{{ shape[0] }} lignes</span>
-      <span class="text-muted small">Aperçu limité à 20 lignes — export ci-dessous pour les {{ shape[0] }} au complet</span>
-      <div class="d-flex gap-2 ms-auto">
-        <a href="{{ url_for('export_data_xlsx') }}"
-           class="btn btn-sm btn-outline-primary"
-           title="Télécharger les {{ shape[0] }} observations au format XLSX">
-          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Données XLSX
-        </a>
-        <a href="{{ url_for('export_data_csv') }}"
-           class="btn btn-sm btn-outline-primary"
-           title="Télécharger les {{ shape[0] }} observations au format CSV">
-          <i class="bi bi-filetype-csv me-1"></i>Données CSV
-        </a>
-        <a href="{{ url_for('export_data_stat', fmt='sav') }}"
-           class="btn btn-sm btn-outline-primary"
-           title="Fichier SPSS avec libellés des variables et des modalités">
-          <i class="bi bi-file-earmark-binary me-1"></i>SPSS
-        </a>
-        <a href="{{ url_for('export_data_stat', fmt='dta') }}"
-           class="btn btn-sm btn-outline-primary"
-           title="Fichier Stata avec libellés des variables et des modalités">
-          <i class="bi bi-file-earmark-binary me-1"></i>Stata
-        </a>
-      </div>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">{{ preview | safe }}</div>
-    </div>
-  </div>
 
   <!-- Child sheet preview -->
   {% if child_preview %}

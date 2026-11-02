@@ -59,6 +59,21 @@ def read_frame(path):
 
 # ─── Fichiers sidecar ────────────────────────────────────────────────────────
 
+SIDECAR_KINDS = ('derived', 'excluded', 'labels', 'recipes', 'types', 'varlabels', 'xlsform')
+
+
+def signature(path):
+    """Empreinte du jeu : le fichier et tout ce qui change la façon de le lire (libellés, variables calculées, types, lignes écartées).
+    Sert de clé aux caches de pages."""
+    stamps = []
+    for p in [path] + [f'{path}.{kind}.json' for kind in SIDECAR_KINDS]:
+        try:
+            stamps.append(os.path.getmtime(p))
+        except OSError:
+            stamps.append(0)
+    return (path, tuple(stamps))
+
+
 def sidecar(path, kind):
     return f'{path}.{kind}.json'
 
@@ -106,15 +121,17 @@ def delete_derived(path, name):
 
 
 def attach_derived(df, path):
+    """Joint au jeu les variables calculées : classes enregistrées (valeurs figées) puis recettes (recalculées à chaque lecture,
+    donc appliquées aussi aux soumissions arrivées depuis)."""
     data = _read_json(sidecar(path, 'derived'), {})
-    if not data:
-        return df
-    out = df.copy()
-    for name, values in data.items():
-        column = list(values)[:len(out)]
-        column += [None] * (len(out) - len(column))          # soumissions arrivées depuis (synchronisation)
-        out[name] = column
-    return out
+    out = df
+    if data:
+        out = df.copy()
+        for name, values in data.items():
+            column = list(values)[:len(out)]
+            column += [None] * (len(out) - len(column))          # soumissions arrivées depuis (synchronisation)
+            out[name] = column
+    return apply_recipes(out, path)[0]
 
 
 # ─── Lignes écartées de l'analyse ────────────────────────────────────────────
@@ -236,6 +253,11 @@ def _looks_multiple(series):
     return len(alone) >= 2 and len(distinct & alone) >= 0.5 * len(distinct)
 
 
+def choice_names(column, labels):
+    """{code: libellé} des choix d'une question (XLSForm joint), vide si inconnue."""
+    return _choice_names(column, labels or choice_labels.empty())
+
+
 def _choice_names(column, labels):
     for name in (str(column), str(column).split('/')[-1], alignment_key(str(column)), alignment_key(str(column), keep_path=True)):
         if name in (labels.get('choices') or {}):
@@ -315,7 +337,7 @@ TECHNICAL_AFFIXES = ('G', 'P')
 _TECHNICAL_COLUMNS = {'_id', '_uuid', 'start', 'end', 'today', 'deviceid', '_index', '_submission_time'}
 
 
-def analysis_var_types(df, base=None):
+def analysis_var_types(df, base=None, overrides=None):
     """get_var_types() corrigé par le code PHAKTS : date (A), identifiant (E), texte libre (Z), variable
     technique (G, P) — ce ne sont pas des variables à tabuler. Les types 'identifiant' restent proposés pour
     les croisements (par enquêteur, par établissement)."""
@@ -333,6 +355,9 @@ def analysis_var_types(df, base=None):
             types[col] = 'texte_libre'
         elif affix in TECHNICAL_AFFIXES:
             types[col] = 'technique'
+    for col, forced in (overrides or {}).items():
+        if col in types and forced in TYPE_CHOICES:
+            types[col] = forced                                   # le choix de l'utilisateur l'emporte sur tout le reste
     return types
 
 
@@ -348,3 +373,224 @@ def section_of(column):
     """Section (groupe Kobo) d'une colonne : « METIER_ETUDE/Section_1/Age__1Y » → « METIER_ETUDE/Section_1 »."""
     parts = str(column).split('/')
     return '/'.join(parts[:-1]) if len(parts) > 1 else ''
+
+
+# ─── Types de variables corrigés par l'utilisateur ───────────────────────────
+
+TYPE_CHOICES = {'categorielle': 'Catégorielle', 'continue': 'Continue', 'binaire': 'Binaire (0/1)', 'date': 'Date',
+                'identifiant': 'Identifiant', 'texte_libre': 'Texte libre', 'technique': 'Technique (ignorée)'}
+
+
+def type_overrides(path):
+    return _read_json(sidecar(path, 'types'), {}) if path else {}
+
+
+def _write_or_remove(path, kind, data):
+    if data:
+        _write_json(sidecar(path, kind), data)
+    else:
+        try:
+            os.remove(sidecar(path, kind))
+        except OSError:
+            pass
+
+
+def set_type_override(path, column, type_name):
+    """Force le type d'une variable (None ou '' : retour au type détecté)."""
+    data = _read_json(sidecar(path, 'types'), {})
+    if type_name and type_name in TYPE_CHOICES:
+        data[column] = type_name
+    else:
+        data.pop(column, None)
+    _write_or_remove(path, 'types', data)
+
+
+# ─── Libellés de variables saisis par l'utilisateur (conservés avec le jeu) ──
+
+def user_labels(path):
+    return _read_json(sidecar(path, 'varlabels'), {}) if path else {}
+
+
+def set_user_label(path, column, label):
+    data = _read_json(sidecar(path, 'varlabels'), {})
+    label = (label or '').strip()
+    if label:
+        data[column] = label[:500]
+    else:
+        data.pop(column, None)
+    _write_or_remove(path, 'varlabels', data)
+
+
+# ─── Recettes : variables calculées à partir des autres ──────────────────────
+#
+# Une recette décrit comment calculer une variable ; elle est rejouée à chaque lecture du jeu. Genres :
+#   mapping   : regrouper / recoder les valeurs d'une variable        {source, map: {valeur: groupe}, other: 'Autres' | None}
+#   bins      : découper une variable numérique en classes            {source, edges: [bornes]}  ou {mode: 'quantiles', q}
+#   formula   : calcul entre variables                                {expression: '${a} div (${b} * ${b})', decimals}
+#   condition : oui / non selon une condition                         {expression: "${age} >= 18 and ${sexe} = 'femme'", yes, no}
+#   date_part : année, mois, trimestre, semaine d'une date           {source, part}
+
+RECIPE_KINDS = ('mapping', 'bins', 'formula', 'condition', 'date_part')
+RECIPE_LABELS = {'mapping': 'Regroupement de modalités', 'bins': 'Classes', 'formula': 'Calcul', 'condition': 'Oui / non selon une condition',
+                 'date_part': 'Partie de date'}
+DATE_PARTS = {'annee': 'Année', 'mois': 'Mois', 'trimestre': 'Trimestre', 'semaine': 'Semaine', 'annee_mois': 'Année-mois'}
+_NAME_OK = re.compile(r"^[A-Za-z0-9À-ÿ _\-\(\)\.']{1,60}$")
+
+
+def recipes(path):
+    return _read_json(sidecar(path, 'recipes'), []) if path else []
+
+
+def add_recipe(path, recipe, existing_columns=()):
+    """Enregistre une recette. Renvoie (ok, message). Le nom doit être neuf (ni colonne, ni variable calculée, ni recette)."""
+    name = str(recipe.get('name') or '').strip()
+    if recipe.get('kind') not in RECIPE_KINDS:
+        return False, 'Genre de variable inconnu.'
+    if not _NAME_OK.match(name):
+        return False, "Nom invalide : 1 à 60 caractères (lettres, chiffres, espace, _ - ( ) . ' ; pas de « / »)."
+    items = recipes(path)
+    shorts = {str(c).split('/')[-1].split('!')[0] for c in existing_columns}          # « Age__1Y » désigne déjà « GRP/Age__1Y »
+    taken = set(existing_columns) | shorts | {r['name'] for r in items} | set(derived_names(path))
+    if name in taken:
+        return False, f"Une variable « {name} » existe déjà : choisissez un autre nom."
+    items.append(dict(recipe, name=name))
+    _write_or_remove(path, 'recipes', items)
+    return True, None
+
+
+def delete_recipe(path, name):
+    items = recipes(path)
+    kept = [r for r in items if r['name'] != name]
+    if len(kept) == len(items):
+        return False
+    _write_or_remove(path, 'recipes', kept)
+    return True
+
+
+def _norm_value(v):
+    s = str(v).strip()
+    return s[:-2] if re.fullmatch(r'-?\d+\.0', s) else s
+
+
+def _resolver(frame):
+    """Nom de question → colonne : nom exact, sinon dernier segment du chemin de groupe (sans directive)."""
+    short = {}
+    for col in frame.columns:
+        short.setdefault(str(col).split('/')[-1].split('!')[0], col)
+
+    def resolve(name):
+        if name in frame.columns:
+            return frame[name]
+        col = short.get(name)
+        return frame[col] if col is not None else None
+    return resolve
+
+
+def _bin_labels(edges):
+    nums = [float(e) for e in edges]
+    whole = all(n == int(n) for n in nums)
+    fmt = (lambda x: str(int(x))) if whole else (lambda x: str(x).replace('.', ','))
+    labels = [f'< {fmt(nums[0])}']
+    for lo, hi in zip(nums, nums[1:]):
+        if whole:
+            labels.append(f'{fmt(lo)}–{fmt(hi - 1)}' if hi - lo > 1 else fmt(lo))
+        else:
+            labels.append(f'{fmt(lo)} à < {fmt(hi)}')
+    labels.append(f'≥ {fmt(nums[-1])}')
+    return labels
+
+
+QUANTILE_NAMES = {3: ['Tiers inférieur', 'Tiers central', 'Tiers supérieur'],
+                  4: ['Q1 (plus bas)', 'Q2', 'Q3', 'Q4 (plus haut)'],
+                  5: ['Quintile 1 (plus bas)', 'Quintile 2', 'Quintile 3', 'Quintile 4', 'Quintile 5 (plus haut)']}
+
+
+def compute_recipe(frame, recipe):
+    """Colonne calculée (Series alignée sur `frame`). Lève ValueError avec un message lisible."""
+    from modules import xlsform_expr
+    kind = recipe['kind']
+    resolve = _resolver(frame)
+    index = frame.index
+
+    def source():
+        col = resolve(recipe.get('source', ''))
+        if col is None:
+            raise ValueError(f"variable « {recipe.get('source')} » absente des données")
+        return col
+
+    try:
+        if kind == 'mapping':
+            s = source()
+            mapping = {_norm_value(k): v for k, v in (recipe.get('map') or {}).items()}
+            other = recipe.get('other')
+            out = s.map(lambda v: None if pd.isna(v) else mapping.get(_norm_value(v), other if other else str(v)))
+            return out.where(s.notna())
+        if kind == 'bins':
+            num = pd.to_numeric(source(), errors='coerce')
+            if recipe.get('mode') == 'quantiles':
+                q = int(recipe.get('q') or 4)
+                return pd.qcut(num, q, labels=QUANTILE_NAMES.get(q), duplicates='drop').astype(object).where(num.notna())
+            edges = sorted(float(e) for e in recipe.get('edges') or [])
+            if not edges:
+                raise ValueError('aucune borne')
+            cuts = pd.cut(num, bins=[-float('inf')] + edges + [float('inf')], right=False, labels=_bin_labels(edges))
+            return cuts.astype(object).where(num.notna())
+        if kind == 'formula':
+            value = pd.to_numeric(xlsform_expr.evaluate_value(recipe['expression'], resolve, index), errors='coerce')
+            value = value.replace([float('inf'), float('-inf')], float('nan'))
+            return value.round(int(recipe['decimals'])) if recipe.get('decimals') not in (None, '') else value
+        if kind == 'condition':
+            ok = xlsform_expr.evaluate(recipe['expression'], resolve, index)
+            return ok.map({True: recipe.get('yes') or 'Oui', False: recipe.get('no') or 'Non'})
+        if kind == 'date_part':
+            dates = pd.to_datetime(source(), errors='coerce', utc=True)
+            part = recipe.get('part', 'annee')
+            if part == 'annee':
+                return dates.dt.year.astype('Int64').astype(object).where(dates.notna())
+            if part == 'mois':
+                return dates.dt.month.astype('Int64').astype(object).where(dates.notna())
+            if part == 'trimestre':
+                return ('T' + dates.dt.quarter.astype('Int64').astype(str)).where(dates.notna())
+            if part == 'semaine':
+                return dates.dt.isocalendar().week.astype('Int64').astype(object).where(dates.notna())
+            if part == 'annee_mois':
+                return dates.dt.strftime('%Y-%m').where(dates.notna())
+            raise ValueError(f'partie de date inconnue : {part}')
+    except xlsform_expr.Unsupported as e:
+        raise ValueError(str(e))
+    raise ValueError(f'genre de variable inconnu : {kind}')
+
+
+def apply_recipes(df, path):
+    """(jeu avec les variables calculées, {nom: erreur}). Une recette en erreur n'ajoute pas de colonne et est signalée."""
+    items = recipes(path)
+    if not items:
+        return df, {}
+    out, errors = df.copy(), {}
+    for r in items:
+        try:
+            out[r['name']] = compute_recipe(out, r)
+        except (ValueError, KeyError, TypeError) as e:
+            errors[r['name']] = str(e)
+    return out, errors
+
+
+def value_options(series, labels=None, column=None, limit=200):
+    """[(valeur brute, libellé, effectif)] des valeurs d'une variable, les plus fréquentes d'abord : pour proposer à l'utilisateur
+    des modalités lisibles tout en gardant la valeur d'origine dans la recette."""
+    labels = labels or choice_labels.empty()
+    names = _choice_names(column, labels) if column is not None else {}
+    out = []
+    for value, n in series.dropna().astype(str).str.strip().value_counts().head(limit).items():
+        out.append((value, names.get(value) or choice_labels.prettify(value), int(n)))
+    return out
+
+
+def lines_matching(df, expression):
+    """Numéros de ligne (1 = première soumission) où la condition est vraie. Lève ValueError si l'expression est illisible."""
+    from modules import xlsform_expr
+    try:
+        mask = xlsform_expr.evaluate(expression, _resolver(df), df.index)
+    except xlsform_expr.Unsupported as e:
+        raise ValueError(str(e))
+    return [int(i) + 1 for i in df.index[mask.values]]

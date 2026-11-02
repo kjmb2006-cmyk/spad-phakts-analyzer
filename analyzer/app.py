@@ -16,7 +16,7 @@ from modules.multi_survey import (merge_surveys, variable_coverage,
                                     compare_continuous_by_survey, is_hidden_column,
                                     evolution_categorical, evolution_continuous,
                                     auto_analyze, cross_survey_test, apply_fdr)
-from modules import multi_comments, multi_report, dataset, xlsform_checks
+from modules import multi_comments, multi_report, dataset, xlsform_checks, preview
 from modules.multivariate import run_pca, run_mca, run_clustering, run_ca, select_viable_variables
 from modules.report_generator import generate_pdf_report, generate_word_report, generate_excel_report
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
@@ -26,7 +26,7 @@ from modules.comments import (auto_comment_categorical, auto_comment_continuous,
 from modules import ai_assistant
 from modules.raw_analysis import (systematic_analysis, descriptive_summary,
                                    data_quality_gauge, composition_chart,
-                                   distributions_chart, overview_stats,
+                                   distributions_chart, overview_stats, variable_profile,
                                    missing_bar_chart, missing_heatmap, correlation_matrix)
 
 # Import sécurisé du connecteur KoboToolbox
@@ -506,9 +506,20 @@ def get_dataframe(sheet_key='data_path', full=False, display=False):
 
 
 def _data_var_labels(df):
-    """{colonne: texte de la question} du jeu chargé (XLSForm ou structure Kobo joints)."""
+    """{colonne: texte de la question} du jeu chargé. Par ordre de priorité : libellé saisi par l'utilisateur (conservé avec le
+    jeu), libellé saisi dans une version antérieure (session), question de l'XLSForm ou de la structure Kobo jointe."""
     path = session.get('data_path')
-    return dataset.column_labels(df.columns, dataset.load_labels(path)) if path else {}
+    if not path:
+        return {}
+    out = dataset.column_labels(df.columns, dataset.load_labels(path))
+    out.update({c: v for c, v in (session.get('var_labels') or {}).items() if c in df.columns and v})
+    out.update({c: v for c, v in dataset.user_labels(path).items() if c in df.columns})
+    return out
+
+
+def _var_types(df):
+    """Type de chaque variable pour les analyses : détecté, corrigé par le code PHAKTS, puis par le choix de l'utilisateur."""
+    return dataset.analysis_var_types(df, overrides=dataset.type_overrides(session.get('data_path')))
 
 
 def _collecte_state_path():
@@ -1002,6 +1013,7 @@ def analyse_donnees():
         labels_n=len(labels['choices']) if labels else 0,
         excluded_n=len(dataset.excluded_rows(path)) if has_data else 0,
         derived=dataset.derived_names(path) if has_data else [],
+        recipes=[r['name'] for r in dataset.recipes(path)] if has_data else [],
     )
 
 
@@ -1056,6 +1068,204 @@ def data_derived_delete():
     if session.get('data_path') and dataset.delete_derived(session['data_path'], name):
         flash(f"Variable « {name} » supprimée.", 'success')
     return redirect(request.referrer or url_for('analyse_donnees'))
+
+
+# ─── Préparation des données : variables calculées et filtre de lignes ─────────
+
+def _recipe_from_form(form):
+    """(recette, erreur) d'après le formulaire de la page « Préparer les données »."""
+    kind = (form.get('kind') or '').strip()
+    recipe = {'kind': kind, 'name': (form.get('name') or '').strip()}
+    if kind in ('mapping', 'bins', 'date_part'):
+        recipe['source'] = (form.get('source') or '').strip()
+        if not recipe['source']:
+            return None, "Choisissez la variable de départ."
+    if kind == 'mapping':
+        mapping = {raw: group.strip() for raw, group in zip(form.getlist('map_value'), form.getlist('map_group')) if group.strip()}
+        if not mapping:
+            return None, "Indiquez le nom du groupe d'au moins une modalité."
+        recipe['map'] = mapping
+        recipe['other'] = (form.get('other') or '').strip() or None
+    elif kind == 'bins':
+        if form.get('mode') == 'quantiles':
+            try:
+                q = int(form.get('q') or 4)
+            except ValueError:
+                q = 0
+            if not 2 <= q <= 10:
+                return None, "Le nombre de classes d'effectifs égaux doit être compris entre 2 et 10."
+            recipe.update(mode='quantiles', q=q)
+        else:
+            try:
+                edges = [float(x.replace(',', '.').rstrip('.')) for x in re.split(r'[;\s]+|,\s+', (form.get('edges') or '').strip()) if x]
+            except ValueError:
+                return None, "Les bornes sont des nombres séparés par des espaces ou des points-virgules : 18 25 35 50 65."
+            if not edges:
+                return None, "Indiquez au moins une borne (par exemple 18 25 35 50 65)."
+            recipe['edges'] = edges
+    elif kind in ('formula', 'condition'):
+        recipe['expression'] = (form.get('expression') or '').strip()
+        if not recipe['expression']:
+            return None, "Saisissez l'expression."
+        if kind == 'formula':
+            decimals = (form.get('decimals') or '').strip()
+            if decimals:
+                try:
+                    recipe['decimals'] = max(0, min(int(decimals), 8))
+                except ValueError:
+                    return None, "Le nombre de décimales est un entier."
+        else:
+            recipe['yes'] = (form.get('yes') or '').strip() or 'Oui'
+            recipe['no'] = (form.get('no') or '').strip() or 'Non'
+    elif kind == 'date_part':
+        recipe['part'] = form.get('part') if form.get('part') in dataset.DATE_PARTS else 'annee'
+    else:
+        return None, 'Genre de variable inconnu.'
+    return recipe, None
+
+
+def _recipe_summary(recipe, labels):
+    """Phrase qui décrit une recette, pour la liste des variables créées."""
+    src = labels.get(recipe.get('source')) or dataset.readable(recipe.get('source') or '')
+    kind = recipe['kind']
+    if kind == 'mapping':
+        groups = sorted(set(recipe['map'].values()))
+        return f"« {src} » regroupée : {len(recipe['map'])} modalité(s) en {len(groups)} groupe(s) ({', '.join(groups[:5])}{'…' if len(groups) > 5 else ''})"
+    if kind == 'bins':
+        if recipe.get('mode') == 'quantiles':
+            return f"« {src} » en {recipe.get('q')} classes d'effectifs égaux"
+        return f"« {src} » en classes aux bornes {', '.join(f'{e:g}' for e in recipe.get('edges', []))}"
+    if kind == 'formula':
+        return f"Calcul : {recipe.get('expression')}"
+    if kind == 'condition':
+        return f"« {recipe.get('yes') or 'Oui'} » si {recipe.get('expression')}, sinon « {recipe.get('no') or 'Non'} »"
+    return f"{dataset.DATE_PARTS.get(recipe.get('part'), 'Partie')} de « {src} »"
+
+
+def _column_digest(series, limit=8):
+    """Résumé d'une colonne calculée : modalités et effectifs, ou statistiques, avec les valeurs manquantes."""
+    n_missing = int(series.isna().sum())
+    num = pd.to_numeric(series, errors='coerce')
+    if series.notna().any() and num.notna().sum() >= 0.95 * series.notna().sum() and series.nunique() > 12:
+        return {'kind': 'numeric', 'missing': n_missing, 'n': int(num.notna().sum()), 'mean': round(float(num.mean()), 2),
+                'median': round(float(num.median()), 2), 'min': round(float(num.min()), 2), 'max': round(float(num.max()), 2)}
+    counts = series.dropna().astype(str).value_counts()
+    return {'kind': 'categorical', 'missing': n_missing, 'n': int(counts.sum()), 'distinct': int(len(counts)),
+            'counts': [[str(k), int(v)] for k, v in counts.head(limit).items()]}
+
+
+@app.route('/data/preparer')
+def data_prepare():
+    df = get_dataframe(full=True)
+    if df is None:
+        flash("Chargez d'abord des données.", 'warning')
+        return redirect(url_for('analyse_donnees'))
+    path = session['data_path']
+    book = dataset.load_labels(path)
+    labels = _data_var_labels(df)
+    types = _var_types(df)
+    created = {r['name'] for r in dataset.recipes(path)} | set(dataset.derived_names(path))
+    base = [c for c in df.columns if c not in created and types.get(c) != 'technique']
+    cat = {}
+    for c in base:
+        if types.get(c) in ('categorielle', 'binaire') and 1 < df[c].nunique() <= 60:
+            cat[c] = [[raw, label, n] for raw, label, n in dataset.value_options(df[c], book, c)]
+    num = {c: {'min': round(float(v.min()), 2), 'median': round(float(v.median()), 2), 'max': round(float(v.max()), 2)}
+           for c in base if types.get(c) == 'continue' for v in [pd.to_numeric(df[c], errors='coerce').dropna()] if len(v)}
+    dates = [c for c in base if types.get(c) == 'date']
+    names = [{'name': str(c).split('/')[-1].split('!')[0], 'label': labels.get(c) or dataset.readable(c), 'type': types.get(c, '')} for c in base]
+    errors = dataset.apply_recipes(df, path)[1]
+    mine = []
+    for r in dataset.recipes(path):
+        mine.append({'name': r['name'], 'kind': dataset.RECIPE_LABELS.get(r['kind'], r['kind']), 'summary': _recipe_summary(r, labels),
+                     'error': errors.get(r['name']), 'digest': _column_digest(df[r['name']]) if r['name'] in df.columns else None})
+    old = [{'name': n, 'kind': 'Classes enregistrées (classification)', 'summary': 'Valeurs figées, issues d\'une classification', 'error': None,
+            'digest': _column_digest(df[n]) if n in df.columns else None, 'legacy': True} for n in dataset.derived_names(path)]
+    return render_template('data_prepare.html', cat=cat, num=num, dates=[{'name': c, 'label': labels.get(c) or dataset.readable(c)} for c in dates],
+                           cat_labels={c: labels.get(c) or dataset.readable(c) for c in cat},
+                           num_labels={c: labels.get(c) or dataset.readable(c) for c in num},
+                           names=names, mine=mine + old, kinds=dataset.RECIPE_LABELS, date_parts=dataset.DATE_PARTS,
+                           n=len(df), excluded_n=len(dataset.excluded_rows(path)),
+                           excluded_note=dataset.excluded_info(path).get('note', ''))
+
+
+@app.route('/data/preparer/apercu', methods=['POST'])
+def data_prepare_preview():
+    """Résultat d'une variable ou d'un filtre avant de l'enregistrer (JSON)."""
+    df = get_dataframe(full=True)
+    if df is None:
+        return jsonify({'ok': False, 'error': 'Aucune donnée chargée.'})
+    if request.form.get('kind') == 'filter':
+        expression = (request.form.get('expression') or '').strip()
+        try:
+            lines = dataset.lines_matching(df, expression)
+        except ValueError as e:
+            return jsonify({'ok': False, 'error': str(e)})
+        return jsonify({'ok': True, 'kind': 'filter', 'matching': len(lines), 'total': len(df)})
+    recipe, error = _recipe_from_form(request.form)
+    if error:
+        return jsonify({'ok': False, 'error': error})
+    try:
+        column = dataset.compute_recipe(df, recipe)
+    except (ValueError, KeyError, TypeError) as e:
+        return jsonify({'ok': False, 'error': str(e)})
+    return jsonify({'ok': True, **_column_digest(column)})
+
+
+@app.route('/data/preparer/ajouter', methods=['POST'])
+def data_prepare_add():
+    df = get_dataframe(full=True)
+    path = session.get('data_path')
+    if df is None or not path:
+        flash("Chargez d'abord des données.", 'warning')
+        return redirect(url_for('analyse_donnees'))
+    recipe, error = _recipe_from_form(request.form)
+    if not error:
+        try:
+            dataset.compute_recipe(df, recipe)          # refusée ici plutôt qu'enregistrée en erreur
+        except (ValueError, KeyError, TypeError) as e:
+            error = str(e)
+    if not error:
+        ok, error = dataset.add_recipe(path, recipe, df.columns)
+    if error:
+        flash(error, 'danger')
+    else:
+        flash(f"Variable « {recipe['name']} » créée : elle est disponible dans les statistiques, les croisements, les analyses multivariées et les rapports, "
+              "et se recalcule pour les soumissions à venir.", 'success')
+    return redirect(url_for('data_prepare'))
+
+
+@app.route('/data/preparer/supprimer', methods=['POST'])
+def data_prepare_delete():
+    path = session.get('data_path')
+    name = request.form.get('name') or ''
+    if path and (dataset.delete_recipe(path, name) or dataset.delete_derived(path, name)):
+        flash(f"Variable « {name} » supprimée.", 'info')
+    return redirect(url_for('data_prepare'))
+
+
+@app.route('/data/preparer/filtrer', methods=['POST'])
+def data_prepare_filter():
+    """Garde (ou écarte) les lignes qui vérifient une condition, sans toucher au fichier : « Rétablir » remet tout."""
+    df = get_dataframe(full=True)
+    path = session.get('data_path')
+    if df is None or not path:
+        flash("Chargez d'abord des données.", 'warning')
+        return redirect(url_for('analyse_donnees'))
+    try:
+        matching = set(dataset.lines_matching(df, (request.form.get('expression') or '').strip()))
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('data_prepare'))
+    keep = request.form.get('mode') != 'ecarter'
+    out = (set(range(1, len(df) + 1)) - matching) if keep else matching
+    if keep and not matching:
+        flash("Aucune ligne ne vérifie cette condition : le filtre garderait un jeu vide, il n'est donc pas appliqué.", 'warning')
+        return redirect(url_for('data_prepare'))
+    before = set(dataset.excluded_rows(path))
+    total = dataset.set_excluded(path, before | out, note='filtre')
+    flash(f"{len(set(total) - before)} ligne(s) écartée(s) de l'analyse ({len(df) - len(total)} restent). Le fichier n'est pas modifié : « Rétablir » remet toutes les lignes.", 'success')
+    return redirect(url_for('data_prepare'))
 
 
 @app.context_processor
@@ -1149,7 +1359,7 @@ def _phakts_libelle_from_code(col: str) -> str:
     return base.replace('_', ' ').strip()
 
 
-def _extract_modalites(series, typ: str, max_items: int = 20) -> str:
+def _extract_modalites(series, typ: str, max_items: int = 20, names=None) -> str:
     """
     Extrait les modalités/valeurs typiques d'une variable, sous une forme
     compacte adaptée à un questionnaire imprimé.
@@ -1172,6 +1382,7 @@ def _extract_modalites(series, typ: str, max_items: int = 20) -> str:
             except Exception:
                 pass
             vals = [str(v).strip() for v in s.astype(str).value_counts().index[:max_items]]
+            vals = [(names or {}).get(v) or v for v in vals]       # libellés de l'XLSForm quand il est joint
             extra = '' if len(set(s.astype(str))) <= max_items else f' (+{len(set(s.astype(str)))-max_items} autres)'
             return ' ; '.join(vals) + extra
         if typ == 'continue':
@@ -1200,31 +1411,49 @@ _VAR_TYPE_LABELS = {
     'binaire':      'Booléen (Oui/Non)',
     'date':         'Date',
     'texte_libre':  'Texte libre',
+    'identifiant':  'Identifiant',
+    'technique':    'Technique (ignorée)',
 }
 
 
 def _build_var_types_table(df) -> list:
     """
-    Construit la liste { variable, type, libelle, modalites, n_obs, n_manq, %manq }
-    pour l'affichage et l'export XLSX. La colonne « libellé » privilégie celui
-    saisi par l'utilisateur (session['var_labels']) puis le radical PHAKTS.
+    Dictionnaire des variables : { variable, libellé et sa source, type (détecté ou choisi), modalités sous leur vrai nom,
+    effectifs, règles du formulaire }. Le libellé est celui de l'utilisateur (conservé avec le jeu), sinon la question de
+    l'XLSForm joint, sinon le radical du code PHAKTS.
     """
-    var_types = get_var_types(df)
-    user_labels = session.get('var_labels', {}) or {}
+    path = session.get('data_path')
+    book = dataset.load_labels(path) if path else None
+    form = (dataset.load_form(path) if path else None) or {}
+    questions = {q['name']: q for q in form.get('questions', [])}
+    overrides = dataset.type_overrides(path)
+    types = _var_types(df)
+    detected = dataset.analysis_var_types(df)
+    from_form = dataset.column_labels(df.columns, book) if book else {}
+    legacy = {c: v for c, v in (session.get('var_labels') or {}).items() if v}
+    mine = dataset.user_labels(path)
     rows = []
     n = len(df)
-    for i, (col, typ) in enumerate(var_types.items(), start=1):
+    for i, (col, typ) in enumerate(types.items(), start=1):
         n_miss = int(df[col].isna().sum())
-        auto_lib = _phakts_libelle_from_code(col)
-        custom_lib = user_labels.get(col, '').strip()
+        custom = (mine.get(col) or legacy.get(col) or '').strip()
+        base = from_form.get(col) or _phakts_libelle_from_code(col)
+        q = questions.get(str(col).split('/')[-1].split('!')[0], {})
         rows.append({
             'idx': i,
             'variable': col,
-            'libelle': custom_lib or auto_lib,
-            'libelle_auto': auto_lib,
-            'is_custom': bool(custom_lib),
-            'modalites': _extract_modalites(df[col], typ),
+            'libelle': custom or base,
+            'libelle_auto': base,
+            'is_custom': bool(custom),
+            'source': 'utilisateur' if custom else ('XLSForm' if from_form.get(col) else 'automatique'),
+            'modalites': _extract_modalites(df[col], typ, names=dataset.choice_names(col, book) if book else None),
             'type': typ,
+            'type_detected': detected.get(col, typ),
+            'type_forced': col in overrides,
+            'section': dataset.section_of(col),
+            'required': bool(q.get('required')),
+            'relevant': q.get('relevant') or '',
+            'constraint': q.get('constraint') or '',
             'n_obs': int(n - n_miss),
             'n_manq': n_miss,
             'pct_manq': round(n_miss / n * 100, 1) if n else 0,
@@ -1234,19 +1463,164 @@ def _build_var_types_table(df) -> list:
 
 @app.route('/api/var-label', methods=['POST'])
 def save_var_label():
-    """Sauvegarde un libellé personnalisé pour une variable, en session."""
+    """Enregistre le libellé d'une variable : il est conservé avec le jeu de données (et repris dans les analyses, les rapports et
+    le questionnaire exporté). Un libellé vide revient à la question du formulaire ou au nom mis en forme."""
     data = request.get_json(silent=True) or request.form
     var = (data.get('variable') or '').strip()
     label = (data.get('label') or '').strip()
     if not var:
         return jsonify({'error': "variable requis"}), 400
+    path = session.get('data_path')
+    if path:
+        dataset.set_user_label(path, var, label)
     labels = dict(session.get('var_labels', {}) or {})
-    if label:
-        labels[var] = label[:500]
-    else:
-        labels.pop(var, None)
+    labels.pop(var, None)                       # l'ancien stockage en session cède la place à celui du jeu
     session['var_labels'] = labels
-    return jsonify({'ok': True, 'variable': var, 'label': label})
+    return jsonify({'ok': True, 'variable': var, 'label': label[:500]})
+
+
+@app.route('/api/var-type', methods=['POST'])
+def save_var_type():
+    """Corrige le type d'une variable (catégorielle, continue, binaire, date, identifiant, texte libre, technique) pour toutes les
+    analyses. Un type vide revient au type détecté."""
+    data = request.get_json(silent=True) or request.form
+    var = (data.get('variable') or '').strip()
+    kind = (data.get('type') or '').strip()
+    path = session.get('data_path')
+    if not var or not path:
+        return jsonify({'error': 'variable ou jeu de données manquant'}), 400
+    if kind and kind not in dataset.TYPE_CHOICES:
+        return jsonify({'error': 'type inconnu'}), 400
+    dataset.set_type_override(path, var, kind)
+    _reset_analysis_state()                     # les variables choisies pour l'ancien type n'ont plus forcément de sens
+    return jsonify({'ok': True, 'variable': var, 'type': kind or None})
+
+
+_FLAGS_CACHE = {}
+_FLAGS_TTL = 90
+
+
+def _line_flags():
+    """{ligne: [constats de validation]} du jeu chargé. Gardé 90 secondes : la table et la fiche le réclament à chaque page."""
+    path = session.get('data_path')
+    if not path:
+        return {}
+    key = dataset.signature(path)
+    hit = _FLAGS_CACHE.get(key)
+    if hit and time.time() - hit[0] < _FLAGS_TTL:
+        return hit[1]
+    df = get_dataframe(full=True)
+    if df is None:
+        return {}
+    try:
+        flags = preview.flags_by_line(_validation_compute(df, _validation_survey_key(), {})[0])
+    except Exception:
+        return {}
+    _cache_put(_FLAGS_CACHE, key, (time.time(), flags), limit=3)
+    return flags
+
+
+def _preview_args(df):
+    """Paramètres de la table d'aperçu (identiques pour la page, l'export et la fiche) : (colonnes, recherche, filtres, lignes, tri, sens)."""
+    cols = request.args.get('cols')
+    try:
+        columns = [c for c in json.loads(cols) if c in df.columns] if cols else None
+    except ValueError:
+        columns = None
+    try:
+        filters = json.loads(request.args.get('f') or '{}')
+        filters = {k: str(v) for k, v in filters.items()} if isinstance(filters, dict) else {}
+    except ValueError:
+        filters = {}
+    lines = None
+    if request.args.get('lines'):
+        lines = {int(x) for x in re.findall(r'\d+', request.args['lines'])}
+    only = request.args.get('flagged')
+    if only in ('1', 'erreur'):
+        flagged = {line for line, fl in _line_flags().items()
+                   if preview.row_severity(fl) and (only == '1' or preview.row_severity(fl) == 'erreur')}
+        lines = flagged if lines is None else lines & flagged
+    return (columns, request.args.get('q', ''), filters, lines, request.args.get('sort') or None,
+            request.args.get('dir', 'asc') != 'desc')
+
+
+def _preview_frame():
+    """Jeu de l'aperçu : toutes les lignes (même celles écartées de l'analyse), modalités sous leur nom, choix multiples éclatés."""
+    return get_dataframe(full=True, display=True)
+
+
+@app.route('/data/rows')
+def data_rows():
+    """Une page de lignes du jeu chargé (JSON) : recherche, tri, filtres par colonne, colonnes choisies, pagination."""
+    df = _preview_frame()
+    if df is None:
+        return jsonify({'error': 'Aucune donnée chargée.'}), 400
+    path = session.get('data_path')
+    columns, search, filters, lines, sort, ascending = _preview_args(df)
+    try:
+        page, per_page = int(request.args.get('page', 1)), int(request.args.get('per_page', 25))
+    except ValueError:
+        page, per_page = 1, 25
+    types = _var_types(df)
+    out = preview.query(df, columns, search, filters, lines, sort, ascending, page, per_page, key=dataset.signature(path), types=types)
+    labels = _data_var_labels(df)
+    flags = _line_flags() if request.args.get('marks', '1') == '1' else {}
+    excluded = set(dataset.excluded_rows(path))
+    for row in out['rows']:
+        row['severity'] = preview.row_severity(flags.get(row['line']))
+        row['excluded'] = row['line'] in excluded
+    out['columns'] = [{'name': c, 'label': labels.get(c) or dataset.readable(c), 'type': types.get(c, '')} for c in out['columns']]
+    return jsonify(out)
+
+
+@app.route('/data/rows.csv')
+def data_rows_csv():
+    """La vue filtrée et triée (toutes les lignes retenues, colonnes choisies) au format CSV."""
+    df = _preview_frame()
+    if df is None:
+        flash("Veuillez d'abord importer un fichier.", 'warning')
+        return redirect(url_for('upload'))
+    columns, search, filters, lines, sort, ascending = _preview_args(df)
+    cols, rows = preview.full_view(df, columns, search, filters, lines, sort, ascending, key=dataset.signature(session['data_path']),
+                                   types=_var_types(df))
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['N° ligne'] + cols)
+    for row in rows:
+        writer.writerow([row['line']] + row['cells'])
+    fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
+    resp = Response('﻿' + buf.getvalue(), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = f'attachment; filename="{fname}_vue.csv"'
+    return resp
+
+
+@app.route('/data/row/<int:line>')
+def data_row(line):
+    """Fiche d'une soumission (JSON) : ses réponses par section et les anomalies relevées à la validation."""
+    df = _preview_frame()
+    if df is None:
+        return jsonify({'error': 'Aucune donnée chargée.'}), 400
+    path = session.get('data_path')
+    out = preview.card(df, line, _data_var_labels(df), _line_flags(), _var_types(df), excluded=line in dataset.excluded_rows(path))
+    if out is None:
+        return jsonify({'error': f"La ligne {line} n'existe pas (le jeu en compte {len(df)})."}), 404
+    return jsonify(out)
+
+
+@app.route('/data/row/<int:line>/exclude', methods=['POST'])
+def data_row_exclude(line):
+    """Écarte (ou rétablit) une ligne de l'analyse, depuis sa fiche. Le fichier n'est pas modifié."""
+    path = session.get('data_path')
+    df = get_dataframe(full=True)
+    if not path or df is None or not 1 <= line <= len(df):
+        return jsonify({'error': 'ligne introuvable'}), 404
+    current = set(dataset.excluded_rows(path))
+    if request.form.get('action') == 'restore' or (request.get_json(silent=True) or {}).get('action') == 'restore':
+        current.discard(line)
+    else:
+        current.add(line)
+    dataset.set_excluded(path, current, note='fiche')
+    return jsonify({'ok': True, 'excluded': line in current, 'n_excluded': len(current)})
 
 
 @app.route('/data/preview')
@@ -1255,13 +1629,20 @@ def data_preview():
     if df is None:
         flash('Veuillez d\'abord importer un fichier.', 'warning')
         return redirect(url_for('upload'))
-    var_types = get_var_types(df)
+    path = session.get('data_path')
+    var_types = _var_types(df)
     var_table = _build_var_types_table(df)
     bin_groups = detect_binary_groups(df)
-    preview = df.head(20).to_html(
-        classes='table table-sm table-striped table-hover',
-        border=0, index=False, na_rep='—')
     meta = session.get('data_meta', {})
+    shown = _preview_frame()
+    labels = _data_var_labels(shown)
+    grid = {
+        'catalog': preview.column_catalog(shown, labels, _var_types(shown)),
+        'default': preview.default_columns(shown, _var_types(shown)),
+        'per_page': list(preview.PER_PAGE_CHOICES),
+        'storage': dataset.signature(path)[0].rsplit('/', 1)[-1],
+        'line': request.args.get('ligne', type=int),
+    }
 
     # Child sheet preview
     child_preview = None
@@ -1274,8 +1655,11 @@ def data_preview():
         child_meta = {'n': len(df_child), 'cols': len(df_child.columns)}
 
     return render_template('data_preview.html',
-                           preview=preview, columns=df.columns.tolist(),
+                           grid=grid, columns=df.columns.tolist(),
                            var_types=var_types, var_table=var_table,
+                           type_choices=dataset.TYPE_CHOICES,
+                           has_form=bool(dataset.load_form(path)),
+                           excluded_n=len(dataset.excluded_rows(path)),
                            meta=meta, shape=df.shape,
                            bin_groups=bin_groups,
                            child_preview=child_preview, child_meta=child_meta)
@@ -1295,12 +1679,17 @@ def export_var_types_xlsx():
         return redirect(url_for('upload'))
     rows = _build_var_types_table(df)
     TYPE_LABEL = _VAR_TYPE_LABELS
+    has_form = any(r['required'] or r['relevant'] or r['constraint'] for r in rows)
     table = pd.DataFrame([{
         'N°': r['idx'],
+        'Section': r['section'],
         'Variable (code)': r['variable'],
         'Question / Libellé': r['libelle'],
+        'Source du libellé': r['source'],
         'Type': TYPE_LABEL.get(r['type'], r['type']),
         'Modalités attendues': r['modalites'],
+        **({'Obligatoire': 'oui' if r['required'] else '', "Condition d'affichage": r['relevant'], 'Contrainte': r['constraint']}
+           if has_form else {}),
         'Obs. valides': r['n_obs'],
         'Manquantes': r['n_manq'],
         '% manquantes': r['pct_manq'],
@@ -1368,15 +1757,18 @@ def export_var_types_csv():
         flash("Veuillez d'abord importer un fichier.", 'warning')
         return redirect(url_for('upload'))
     rows = _build_var_types_table(df)
+    has_form = any(r['required'] or r['relevant'] or r['constraint'] for r in rows)
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(['N°', 'Variable (code)', 'Question / Libellé', 'Type',
-                      'Modalités attendues', 'Obs. valides', 'Manquantes', '% manquantes'])
+    writer.writerow(['N°', 'Section', 'Variable (code)', 'Question / Libellé', 'Source du libellé', 'Type', 'Modalités attendues']
+                    + (['Obligatoire', "Condition d'affichage", 'Contrainte'] if has_form else [])
+                    + ['Obs. valides', 'Manquantes', '% manquantes'])
     for r in rows:
-        writer.writerow([r['idx'], r['variable'], r['libelle'],
-                          _VAR_TYPE_LABELS.get(r['type'], r['type']),
-                          r['modalites'], r['n_obs'], r['n_manq'], r['pct_manq']])
+        writer.writerow([r['idx'], r['section'], r['variable'], r['libelle'], r['source'],
+                          _VAR_TYPE_LABELS.get(r['type'], r['type']), r['modalites']]
+                        + ([('oui' if r['required'] else ''), r['relevant'], r['constraint']] if has_form else [])
+                        + [r['n_obs'], r['n_manq'], r['pct_manq']])
 
     fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
     resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
@@ -1432,7 +1824,7 @@ def export_data_stat(fmt):
         kobo = stat_export.kobo_dictionary(get_asset_structure(
             session['kobo_token'], session['kobo_uid'], instance=session.get('kobo_instance')))
     try:
-        content = stat_export.export(df, fmt, kobo=kobo, user_labels=session.get('var_labels') or {},
+        content = stat_export.export(df, fmt, kobo=kobo, user_labels=_data_var_labels(df),
                                      note=_current_factum(df))
     except ImportError:
         flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
@@ -1526,40 +1918,30 @@ def api_ai_quick_analysis():
 
 @app.route('/data/raw')
 def raw_data():
-    df = get_dataframe()
+    """Diagnostic des données : ces données sont-elles en état d'être analysées ? (voir modules/raw_analysis.py)"""
+    df = get_dataframe(full=True)                  # le diagnostic porte sur TOUT ce qui a été collecté, lignes écartées comprises
     if df is None:
         return redirect(url_for('upload'))
+    path = session.get('data_path')
+    types = _var_types(df)
+    labels = _data_var_labels(df)
+    form = dataset.load_form(path)
+    validation = _validation_compute(df, _validation_survey_key(), {})[0]
+    shown = choice_labels.relabel_frame(df, dataset.load_labels(path), _ms_uid_names())
 
-    overview   = overview_stats(df)
-    chart_miss = missing_bar_chart(df)
-    chart_heat = missing_heatmap(df)
-    chart_corr = correlation_matrix(df)
-    
-    # Analyse systématique complète
-    sys_analysis = systematic_analysis(df)
-    chart_quality = data_quality_gauge(sys_analysis['quality'])
-    chart_distrib = distributions_chart(df)
-    chart_composition = composition_chart(sys_analysis)
-    
-    # Analyse descriptive avec tableaux et graphiques
-    desc_analysis = descriptive_summary(df)
-
-    # Preview table (first 100 rows, paginated client-side via DataTables)
-    preview_html = df.head(200).to_html(
-        classes='table table-sm table-hover table-bordered mb-0',
-        border=0, index=True, na_rep='—', table_id='rawTable')
-
+    diagnostic = systematic_analysis(df, types, form, validation, labels)
+    profile = {'rows': diagnostic['missing']['rows']}
     return render_template('raw_data.html',
-                           overview=overview,
-                           preview_html=preview_html,
-                           chart_miss=chart_miss,
-                           chart_heat=chart_heat,
-                           chart_corr=chart_corr,
-                           chart_quality=chart_quality,
-                           chart_distrib=chart_distrib,
-                           chart_composition=chart_composition,
-                           sys_analysis=sys_analysis,
-                           desc_analysis=desc_analysis,
+                           overview=overview_stats(df, types),
+                           diagnostic=diagnostic, quality=diagnostic['quality'],
+                           variables=variable_profile(df, shown, types, labels, profile),
+                           chart_quality=data_quality_gauge(diagnostic['quality']),
+                           chart_composition=composition_chart(diagnostic),
+                           chart_miss=missing_bar_chart(df, profile),
+                           chart_heat=missing_heatmap(df),
+                           chart_distrib=distributions_chart(df, types),
+                           chart_corr=correlation_matrix(df, types),
+                           has_form=bool(form), n_excluded=len(dataset.excluded_rows(path)),
                            meta=session.get('data_meta', {}))
 
 
@@ -1706,6 +2088,7 @@ def validation_regle_ajouter():
             form.get('droite_variable') if droite_est_variable else form.get('droite_valeur'),
             droite_est_variable, form.get('libelle'), session.get('username') or '')
     where = "à toutes les vagues de cette étude" if scope_key else "à cette enquête"
+    _FLAGS_CACHE.clear()
     flash(f'Règle ajoutée : elle est maintenant appliquée {where} à chaque contrôle.' if ok else err,
           'success' if ok else 'danger')
     return redirect(url_for('validation_donnees', **args))
@@ -1714,6 +2097,7 @@ def validation_regle_ajouter():
 @app.route('/qualite/validation/regles/<int:rule_id>/supprimer', methods=['POST'])
 def validation_regle_supprimer(rule_id):
     df, key, _, args = _validation_context()
+    _FLAGS_CACHE.clear()
     if validation_rules.delete_rule(rule_id, [key, _study_rule_key(df, key)]):
         flash('Règle supprimée.', 'info')
     return redirect(url_for('validation_donnees', **args))
@@ -2294,7 +2678,7 @@ def descriptive():
     df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
-    var_types = dataset.analysis_var_types(df)
+    var_types = _var_types(df)
     cat_vars  = [v for v, t in var_types.items() if t == 'categorielle']
     num_vars  = [v for v, t in var_types.items() if t == 'continue']
     bin_groups = detect_binary_groups(df)
@@ -2406,7 +2790,7 @@ def descriptive():
 
 def _crosstabs_inputs(df):
     """Variables proposées au croisement et libellés des questions."""
-    var_types = dataset.analysis_var_types(df)
+    var_types = _var_types(df)
     cat_vars = [v for v, t in var_types.items() if t in ('categorielle', 'binaire', 'identifiant')]
     num_vars = [v for v, t in var_types.items() if t == 'continue']
     # Une question à choix multiples se reconnaît à ses colonnes 0/1 « Question/Choix »
@@ -3413,7 +3797,7 @@ MV_METHOD_NAMES = {'pca': 'ACP', 'mca': 'ACM', 'ca': 'AFC', 'clustering': 'Class
 
 
 def _mv_inputs(df):
-    var_types = dataset.analysis_var_types(df)
+    var_types = _var_types(df)
     cat_vars = [v for v, t in var_types.items() if t == 'categorielle']
     num_vars = [v for v, t in var_types.items() if t in ('continue', 'binaire')]
     return cat_vars, num_vars
@@ -3555,7 +3939,7 @@ def report():
     df = get_dataframe(display=True)
     if df is None:
         return redirect(url_for('upload'))
-    var_types  = get_var_types(df)
+    var_types  = _var_types(df)
     cat_vars   = [v for v, t in var_types.items() if t == 'categorielle']
     num_vars   = [v for v, t in var_types.items() if t == 'continue']
     bin_groups = detect_binary_groups(df)

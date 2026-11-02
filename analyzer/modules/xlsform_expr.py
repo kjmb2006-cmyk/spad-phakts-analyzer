@@ -26,7 +26,7 @@ _TOKEN = re.compile(r"""
   | (?P<var>\$\{[^}]+\})
   | (?P<string>'[^']*'|"[^"]*")
   | (?P<number>\d+(?:\.\d+)?)
-  | (?P<func>[A-Za-z_][A-Za-z0-9_\-:]*(?=\s*\())
+  | (?P<func>(?!(?:and|or|div|mod)\b)[A-Za-z_][A-Za-z0-9_\-:]*(?=\s*\())
   | (?P<op><=|>=|!=|=|<|>|\(|\)|,|\+|\*|-)
   | (?P<word>[A-Za-z_][A-Za-z0-9_\-]*)
   | (?P<dot>\.)
@@ -234,3 +234,13 @@ def evaluate(expression, resolve, index, self_value=None):
     tokens = tokenize(expression)
     value = Evaluator(tokens, resolve, self_value, index).parse()
     return _bool(value, index)
+
+
+def evaluate_value(expression, resolve, index, self_value=None):
+    """Valeur de l'expression pour chaque ligne (série) : un calcul comme ${poids} div (${taille} * ${taille}).
+    Une valeur unique est répétée sur toutes les lignes. Lève Unsupported si l'expression sort de ce qui est géré."""
+    tokens = tokenize(expression)
+    value = Evaluator(tokens, resolve, self_value, index).parse()
+    if _is_series(value):
+        return value
+    return pd.Series(value, index=index)

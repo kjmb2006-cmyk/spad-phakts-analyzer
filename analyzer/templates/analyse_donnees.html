@@ -57,8 +57,12 @@
           <button class="btn btn-sm btn-outline-secondary">Rétablir toutes les lignes</button>
         </form>
         {% endif %}
+        {% if recipes %}
+        <div class="small text-muted mb-1">Variables créées (<a href="{{ url_for('data_prepare') }}">gérer</a>) :</div>
+        {% for r in recipes %}<span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">{{ r }}</span>{% endfor %}
+        {% endif %}
         {% if derived %}
-        <div class="small text-muted mb-1">Variables calculées (issues d'une classification) :</div>
+        <div class="small text-muted mb-1 mt-1">Variables calculées (issues d'une classification) :</div>
         {% for name in derived %}
         <form method="post" action="{{ url_for('data_derived_delete') }}" class="d-inline-flex align-items-center gap-1 me-2">
           <input type="hidden" name="name" value="{{ name }}">
@@ -84,12 +88,22 @@
       </a>
     </div>
     <div class="col-md-6 col-lg-4">
+      <a href="{{ url_for('data_prepare') }}" class="feature-card">
+        <div class="feature-icon" style="background:#fdf2e9;color:#d35400">
+          <i class="bi bi-magic fs-3"></i>
+        </div>
+        <h5 class="mt-3 mb-1">Préparer les données</h5>
+        <p class="text-muted small mb-2">Regrouper des modalités, créer des classes d'âge, calculer une variable, filtrer les lignes</p>
+        <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Préparer</div>
+      </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
       <a href="{{ url_for('raw_data') }}" class="feature-card">
         <div class="feature-icon" style="background:#f0e8fd;color:#6f42c1">
           <i class="bi bi-database-fill fs-3"></i>
         </div>
-        <h5 class="mt-3 mb-1">Analyse brute</h5>
-        <p class="text-muted small mb-2">Qualité des données, distributions, corrélations, aperçu automatique</p>
+        <h5 class="mt-3 mb-1">Diagnostic des données</h5>
+        <p class="text-muted small mb-2">Score de qualité, vrais manquants, doublons, anomalies, associations et analyses à lancer ensuite</p>
         <div class="feature-arrow"><i class="bi bi-arrow-right me-1"></i>Ouvrir</div>
       </a>
     </div>
