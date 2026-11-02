@@ -122,14 +122,14 @@
 
     <!-- 🔬 - ANALYSES -->
     <div class="nav-section-label mt-3">🔬 - ANALYSES</div>
+    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}" style="padding-left:28px">
+      <i class="bi bi-clipboard2-data"></i> — Hub Analyse de données
+    </a>
     {% if session.get('data_path') %}
     <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-table"></i> — Aperçu des données
     </a>
     {% endif %}
-    <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-clipboard2-data"></i> — Hub Analyse de données
-    </a>
     <a href="{{ url_for('validation_donnees') }}" class="nav-item {% if request.endpoint == 'validation_donnees' %}active{% endif %}" style="padding-left:28px">
       <i class="bi bi-shield-check"></i> — Validation des données
     </a>
