@@ -35,6 +35,8 @@
 <script src="./vendor/mammoth.browser.min.js"></script>
 <script src="./vendor/ocrad.js"></script>
 <script src="./phakts-core.js"></script>
+<script src="./dpf-registry.js"></script>
+<script src="./phakts-audit.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -843,6 +845,7 @@
   <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ Résultats <span id="resultsCount" style="display:none"></span></button>
   <button class="tab" onclick="switchTab('xlsform', this)" id="tabXlsform">📄 Fichier XLSForm</button>
   <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 Questionnaire Codifié</button>
+  <button class="tab" onclick="switchTab('correction', this)" id="tabCorrection">🛠 Correction DPF</button>
   <button class="tab" onclick="switchTab('agent', this)">🤖 Agent IA PHAKTS</button>
   <button class="tab" onclick="switchTab('grammar', this)">⊘ Dictionnaire des Propriétés Fonctionnelles</button>
 </div>
@@ -1687,6 +1690,67 @@
       </div>
     </div>
 
+  </div>
+
+
+  <!-- ════════════ CORRECTION DPF PANEL ════════════ -->
+  <div id="panelCorrection" style="display:none;padding:24px 28px;max-width:1280px;margin:0 auto">
+
+    <label class="section-label" style="margin-bottom:16px">
+      ▸ Correction DPF
+      <span>Déposez un questionnaire codifié ou un XLSForm : chaque code est contrôlé contre la grammaire PHAKTS et le DPF, les écarts sont listés, les corrections justes sont proposées</span>
+    </label>
+
+    <div id="corrDropzone"
+      style="border:2px dashed var(--border2);border-radius:14px;background:var(--bg1);padding:30px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:14px"
+      onclick="document.getElementById('corrFileInput').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent2)'"
+      ondragleave="this.style.borderColor='var(--border2)'"
+      ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
+      <div style="font-size:30px;margin-bottom:8px">🛠</div>
+      <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px">Glisser-déposer le questionnaire à vérifier</div>
+      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>) ou questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) — <strong>.xlsx</strong></div>
+      <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
+    </div>
+
+    <div id="corrReference" style="font-size:11px;color:var(--text2);margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"></div>
+
+    <div id="corrMessage" style="display:none;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px"></div>
+
+    <div id="corrResult" style="display:none">
+      <div id="corrSummary" style="margin-bottom:16px"></div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        <div id="corrViewToggle" style="display:inline-flex;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+          <button class="btn-ghost" id="corrViewFindings" onclick="corrSetView('constats')" style="border:0;border-radius:0;padding:7px 14px;font-size:11px">Écarts</button>
+          <button class="btn-ghost" id="corrViewCorrected" onclick="corrSetView('corrige')" style="border:0;border-radius:0;border-left:1px solid var(--border2);padding:7px 14px;font-size:11px">Questionnaire corrigé</button>
+        </div>
+        <span id="corrFilters" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select id="corrFStatus" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px">
+            <option value="pending">À valider</option>
+            <option value="applied">Corrigés</option>
+            <option value="all">Tous les écarts</option>
+          </select>
+          <select id="corrFSev" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px">
+            <option value="">Toutes sévérités</option><option>Critique</option><option>Majeure</option><option>Mineure</option>
+          </select>
+          <select id="corrFCat" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px"></select>
+          <input id="corrFSearch" oninput="corrSetFilter()" placeholder="Rechercher (libellé, code, règle)…" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;min-width:200px">
+        </span>
+        <span style="flex:1"></span>
+        <button class="btn-ghost" onclick="corrAcceptShown()" title="Applique toutes les propositions affichées (celles qui ne sont pas encore appliquées)" style="padding:7px 14px;font-size:11px">✓ Accepter les propositions affichées</button>
+        <button class="btn-ghost" onclick="corrResetDecisions()" title="Revient aux corrections sûres appliquées d'office" style="padding:7px 14px;font-size:11px">↺ Réinitialiser</button>
+      </div>
+
+      <div id="corrBody"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:16px 0;margin-top:14px;border-top:1px solid var(--border)">
+        <button class="btn-green" id="corrBtnDownload" onclick="corrDownloadCorrected()" style="padding:9px 18px;font-size:12px">⬇ Télécharger le fichier corrigé</button>
+        <button class="btn-purple" onclick="corrDownloadReport()" style="padding:9px 18px;font-size:12px">📑 Rapport de conformité (XLSX)</button>
+        <button class="btn-add" id="corrBtnResults" onclick="corrLoadToResults()" style="padding:9px 18px;font-size:12px" title="Charge le questionnaire corrigé dans l'onglet Résultats pour générer le XLSForm">⊞ Charger dans Résultats</button>
+        <span id="corrFootNote" style="font-size:11px;color:var(--text2)"></span>
+      </div>
+    </div>
   </div>
 
   <!-- ════════════ ANALYSE SPAD PANEL ════════════ -->
@@ -2542,7 +2606,7 @@ function agentInsertSample(kind) {
 
 // ─── Tab Management ───────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  ['input','editor','upload','results','xlsform','qcodif','agent','grammar','analyse'].forEach(p => {
+  ['input','editor','upload','results','xlsform','qcodif','correction','agent','grammar','analyse'].forEach(p => {
     const el = document.getElementById('panel' + p.charAt(0).toUpperCase() + p.slice(1));
     if (el) el.style.display = 'none';
   });
@@ -2553,6 +2617,7 @@ function switchTab(name, btn) {
   if (name === 'analyse') ensureSpadLoaded();
   if (name === 'agent') ensureAgentInit();
   if (name === 'xlsform') { try { renderXlsformPreview(); } catch (_) {} }
+  if (name === 'correction') { try { corrRenderReference(); } catch (_) {} }
   if (name === 'grammar') { try { renderLearnedDPF(); } catch (_) {} try { renderDpfRules(); } catch (_) {} try { renderAdminReferentiel(); } catch (_) {} }
 }
 function switchTabById(name) {
@@ -2561,7 +2626,7 @@ function switchTabById(name) {
   // reflètent l'ordre RÉEL des boutons .tab dans le DOM (voir la barre
   // d'onglets plus haut dans ce fichier).
   const tabs = document.querySelectorAll('.tab');
-  const idxMap = { input: 0, upload: 1, results: 2, xlsform: 3, qcodif: 4, agent: 5, grammar: 6 };
+  const idxMap = { input: 0, upload: 1, results: 2, xlsform: 3, qcodif: 4, correction: 5, agent: 6, grammar: 7 };
   const idx = idxMap[name] ?? 0;
   switchTab(name, tabs[idx]);
 }
@@ -3634,6 +3699,9 @@ function resetDpfListes() {
   if (!confirm('Rétablir le catalogue par défaut (DPF officiel + listes Studio) ?\nLes listes ajoutées ou modifiées ici seront perdues, pour tous les postes.')) return;
   applyDpfCatalogue(defaultDpfCatalogue());
   persistDpfListes();
+  try { localStorage.removeItem(CORR_REGISTRY_KEY); } catch (_) {}
+  _corrRegistryCache = null;
+  corrRenderReference();
   showStatus('Catalogue DPF rétabli — grammaire synchronisée.', 'success');
 }
 
@@ -3666,7 +3734,27 @@ async function importDpfCatalogue(file) {
 
     applyDpfCatalogue({ lists: parsed.lists.concat(kept), abbreviations: parsed.abbreviations });
     persistDpfListes();
-    showStatus('✓ Catalogue DPF importé depuis « ' + file.name + ' » : ' + parsed.lists.length + ' listes, ' + parsed.abbreviations.length + ' abréviations — grammaire synchronisée.', 'success');
+
+    // Registre des variables (feuille DPF-2) : référence de l'onglet « Correction DPF »
+    let registryMsg = '';
+    const regSheet = wb.worksheets.find(ws => /^DPF-?2$/i.test(ws.name.trim()));
+    if (regSheet) {
+      try {
+        const regRows = [];
+        regSheet.eachRow({ includeEmpty: false }, row => regRows.push(row.values.map(PHAKTS_CORE.excelCellText)));
+        const registry = PHAKTS_AUDIT.parseDpfRegistryRows(regRows);
+        registry.source = file.name;
+        if (registry.variables.length) {
+          localStorage.setItem(CORR_REGISTRY_KEY, JSON.stringify(registry));
+          _corrRegistryCache = null;
+          registryMsg = ', ' + registry.variables.length + ' variables (DPF-2)';
+          corrRenderReference();
+        }
+      } catch (e) {
+        console.warn('[dpf-import] registre DPF-2 ignoré :', e.message);
+      }
+    }
+    showStatus('✓ Catalogue DPF importé depuis « ' + file.name + ' » : ' + parsed.lists.length + ' listes, ' + parsed.abbreviations.length + ' abréviations' + registryMsg + ' — grammaire synchronisée.', 'success');
   } catch (err) {
     showStatus('Import du DPF impossible : ' + err.message, 'error');
     console.error('[dpf-import]', err);
@@ -7354,7 +7442,8 @@ function qcodifMissingCodeColError(headers) {
   if (looksLikeXLSForm) {
     return new Error(
       'Ce fichier ressemble à un XLSForm KoboToolbox brut (feuille « survey », colonnes type/name/label), ' +
-      'pas à un questionnaire codifié PHAKTS. Utilisez plutôt le fichier généré par le bouton ' +
+      'pas à un questionnaire codifié PHAKTS. Pour le vérifier et le corriger, utilisez l\'onglet « 🛠 Correction DPF » ; ' +
+      'pour l\'importer ici, utilisez plutôt le fichier généré par le bouton ' +
       '« 📗 XLSX Codifié (PHAKTS) » (onglet Résultats) — colonnes Libellé / PF-Question / PF-Modalités / Skip Logic.'
     );
   }
@@ -7684,6 +7773,565 @@ async function qcodifDownloadXLSX() {
   const title = (document.getElementById('formTitle')?.value || 'Questionnaire') + '_Codifié';
   const saved = await saveWorkbook(wb, `${title}.xlsx`);
   if (saved) qcodifSetStatus('✓ Téléchargement XLSX prêt.', 'success');
+}
+
+// ─── Correction DPF : audit de conformité grammaire PHAKTS + DPF ─────────────
+// Le moteur (règles, corrections, journal) vit dans phakts-audit.js, testé hors
+// navigateur (tests/phakts-audit.test.js). Ce bloc ne fait que lire le fichier,
+// afficher les écarts, enregistrer les décisions et écrire le fichier corrigé.
+//
+// Principe : une correction SÛRE (accent, séparateur, faute de frappe évidente)
+// est appliquée d'office et reste décochable ; une PROPOSITION (type, liste du
+// DPF, saut, multiplicité) n'est appliquée que si la personne qui valide la coche.
+const CORR_REGISTRY_KEY = 'phakts_dpf_registry';
+const CORR_SEV_COLOR = { Critique: '#f87171', Majeure: '#fb923c', Mineure: '#fbbf24' };
+let corr = null;
+let _corrRegistryCache = null;
+
+/** Registre des variables du DPF : celui importé dans ce navigateur, sinon celui
+ * livré avec l'outil (DPF du 29/10/2026, feuille DPF-2). */
+function corrRegistryRaw() {
+  try {
+    const r = JSON.parse(localStorage.getItem(CORR_REGISTRY_KEY) || 'null');
+    if (r && Array.isArray(r.variables) && r.variables.length) return r;
+  } catch (_) {}
+  return window.PHAKTS_DPF_REGISTRY || null;
+}
+
+function corrRegistryIndex() {
+  const raw = corrRegistryRaw();
+  if (!raw) return null;
+  if (!_corrRegistryCache || _corrRegistryCache.raw !== raw) {
+    _corrRegistryCache = { raw, index: PHAKTS_AUDIT.buildRegistry(raw) };
+  }
+  return _corrRegistryCache.index;
+}
+
+function corrRenderReference() {
+  const el = document.getElementById('corrReference');
+  if (!el) return;
+  const reg = corrRegistryRaw();
+  const lists = (typeof dpfListes !== 'undefined' ? dpfListes : []).filter(l => l.source === 'DPF').length;
+  const chip = t => `<span style="color:var(--accent2)">${t}</span>`;
+  el.innerHTML = '<span>📚 Référence :</span>' +
+    chip(reg ? reg.variables.length + ' variables du DPF (feuille DPF-2)' : 'registre des variables absent') + '·' +
+    chip(lists + ' listes standard du DPF') + '·' +
+    `<span>grammaire ${_esc(PHAKTS_CORE.GRAMMAR_VERSION)}</span>` +
+    (reg && reg.source ? `<span title="${_esc(reg.source)}" style="opacity:.8">· ${_esc(String(reg.source).slice(0, 48))}</span>` : '') +
+    '<button class="btn-ghost" onclick="document.getElementById(\'dpfImportInput\').click()" ' +
+      'title="Importe les listes ET les variables (feuilles DPF_lists_Abreviations et DPF-2) d\'un Dictionnaire des Propriétés Fonctionnelles plus récent" ' +
+      'style="padding:4px 10px;font-size:10px">📥 Charger un DPF plus récent</button>';
+}
+
+function corrSetMessage(text, type) {
+  const el = document.getElementById('corrMessage');
+  if (!el) return;
+  if (!text) { el.style.display = 'none'; return; }
+  const c = { info: ['#0c2240', '#38bdf8', '#7dd3fc'], success: ['#0f2e1a', '#4ade80', '#86efac'], error: ['#3a1a1a', '#f87171', '#fecaca'], warning: ['#33280f', '#fbbf24', '#fde68a'] }[type || 'info'];
+  el.style.cssText = `display:block;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;background:${c[0]};border:1px solid ${c[1]}66;color:${c[2]}`;
+  el.textContent = text;
+}
+
+/** Feuille → { headers, rows[{_row, <colonne>: texte}] } (en-têtes en ligne 1). */
+function corrReadTable(ws) {
+  const headers = [];
+  const hr = ws.getRow(1);
+  const nCols = Math.max(ws.columnCount || 0, hr.cellCount || 0);
+  for (let c = 1; c <= nCols; c++) headers[c - 1] = PHAKTS_CORE.excelCellText(hr.getCell(c).value).trim();
+  const rows = [];
+  ws.eachRow({ includeEmpty: false }, (row, n) => {
+    if (n === 1) return;
+    const o = { _row: n };
+    headers.forEach((h, i) => { if (h) o[h] = PHAKTS_CORE.excelCellText(row.getCell(i + 1).value).trim(); });
+    rows.push(o);
+  });
+  return { headers, rows };
+}
+
+function corrAuditOptions(sh) {
+  return {
+    dpfLists: typeof dpfListes !== 'undefined' ? dpfListes : [],
+    abbreviations: typeof dpfAbreviations !== 'undefined' ? dpfAbreviations : [],
+    registryIndex: corrRegistryIndex(),
+    accepted: sh.accepted,
+    rejected: sh.rejected,
+    // mêmes détecteurs que le bouton « Vérification de la conformité PHAKTS »
+    derive: item => codifyFromLibelleAndModalites(item.libelle, item.pf_modalites),
+    detectAdmin: libelle => detectAdminReferenceField(libelle, normalizeText(libelle)),
+  };
+}
+
+function corrRunSheet(sh) {
+  sh.res = PHAKTS_AUDIT.auditQuestionnaire(sh.items, corrAuditOptions(sh));
+}
+
+async function corrHandleFile(file) {
+  if (!file) return;
+  if (/\.xls$/i.test(file.name)) {
+    corrSetMessage('Le format .xls (Excel 97-2003) n\'est pas lu par l\'outil. Ouvrez le fichier dans Excel, faites « Enregistrer sous… » au format .xlsx, puis déposez-le de nouveau.', 'error');
+    return;
+  }
+  try {
+    corrSetMessage('Lecture de « ' + file.name + ' »…', 'info');
+    await ensureExcelJsReady();
+    const buffer = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer.slice(0));
+    const tables = wb.worksheets.map(ws => Object.assign({ name: ws.name }, corrReadTable(ws)));
+    tables.forEach(t => { t.kind = PHAKTS_AUDIT.detectSheetKind(t.headers); });
+    const pick = (kind, name) => tables.find(t => t.kind === kind && t.name.toLowerCase() === name) || tables.find(t => t.kind === kind);
+    const survey = pick('survey', 'survey');
+    const choices = pick('choices', 'choices');
+
+    const sheets = [];
+    if (survey) {
+      const items = PHAKTS_AUDIT.xlsformToItems(survey, choices || { headers: [], rows: [] });
+      if (items.length) sheets.push({ name: survey.name, kind: 'xlsform', table: survey, items, rowOf: i => items[i]._xls.row });
+    }
+    tables.filter(t => t.kind === 'codified').forEach(t => {
+      const cols = PHAKTS_AUDIT.detectCodifiedColumns(t.headers);
+      const get = (r, c) => (c >= 0 ? (r[t.headers[c]] || '') : '');
+      const items = [], rows = [];
+      t.rows.forEach(r => {
+        const code = get(r, cols.code).trim();
+        const lib = get(r, cols.libelle).trim();
+        const mod = get(r, cols.modalites).trim();
+        const skip = get(r, cols.skip).trim();
+        // ligne de section (titre seul) : rien à vérifier
+        if (!code && !(lib && (mod || skip))) return;
+        items.push({ libelle: lib, pf_question: code, pf_modalites: mod, pf_skip: skip });
+        rows.push(r._row);
+      });
+      if (items.length) sheets.push({ name: t.name, kind: 'codified', table: t, cols, items, rowOf: i => rows[i] });
+    });
+
+    if (!sheets.length) {
+      const seen = tables.map(t => '« ' + t.name + ' » (' + (t.headers.filter(Boolean).slice(0, 6).join(', ') || 'vide') + ')').join(' ; ');
+      throw new Error('aucune feuille exploitable. Attendu : un XLSForm (feuilles survey et choices) ou un questionnaire codifié (colonnes Libellé, PF/Question, PF/Modalités, Skip Logic). Feuilles lues : ' + seen);
+    }
+    corr = {
+      fileName: file.name, buffer, view: 'constats',
+      filter: { status: 'pending', sev: '', cat: '', q: '' },
+      sheets: sheets.map(sh => Object.assign(sh, { accepted: new Set(), rejected: new Set() })),
+    };
+    document.getElementById('corrFStatus').value = 'pending';
+    document.getElementById('corrFSev').value = '';
+    document.getElementById('corrFSearch').value = '';
+    corr.sheets.forEach(corrRunSheet);
+    corrSetMessage('', '');
+    corrRender();
+  } catch (e) {
+    console.error('[correction]', e);
+    corrSetMessage('Lecture impossible : ' + e.message, 'error');
+  }
+}
+
+// ── Affichage ────────────────────────────────────────────────────────────────
+function corrTotals() {
+  const t = { total: 0, conformes: 0, corriges: 0, aValider: 0, findings: 0, appliquees: 0, sev: { Critique: 0, Majeure: 0, Mineure: 0 }, sevOpen: { Critique: 0, Majeure: 0, Mineure: 0 }, dpf: { exact: 0, nouvelle: 0, proche: 0 } };
+  corr.sheets.forEach(sh => {
+    const m = sh.res.summary;
+    t.total += m.total; t.conformes += m.conformes; t.corriges += m.corriges; t.aValider += m.aValider;
+    t.findings += m.findings; t.appliquees += m.appliquees;
+    ['Critique', 'Majeure', 'Mineure'].forEach(k => { t.sev[k] += m.bySeverity[k]; });
+    sh.res.findings.forEach(f => { if (!f.applied) t.sevOpen[f.severity]++; });
+    t.dpf.exact += m.dpf.exact || 0;
+    t.dpf.nouvelle += m.dpf.nouvelle || 0;
+    t.dpf.proche += (m.dpf.meme_radical || 0) + (m.dpf.question_equivalente || 0);
+  });
+  return t;
+}
+
+function corrRender() {
+  if (!corr) return;
+  document.getElementById('corrResult').style.display = 'block';
+  const t = corrTotals();
+  const pct = n => (t.total ? Math.round((n / t.total) * 100) : 100);
+  const card = (n, label, color, sub) =>
+    `<div style="flex:1;min-width:130px;background:var(--bg1);border:1px solid var(--border);border-top:3px solid ${color};border-radius:10px;padding:10px 14px">` +
+      `<div style="font-size:24px;font-weight:700;color:${color};font-family:var(--mono)">${n}</div>` +
+      `<div style="font-size:11px;color:var(--text)">${label}</div>` +
+      (sub ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">${sub}</div>` : '') + '</div>';
+  const modeLabel = corr.sheets.map(sh => (sh.kind === 'xlsform' ? 'XLSForm « ' : 'Questionnaire codifié « ') + sh.name + ' » (' + sh.items.length + ')').join(' · ');
+  const sevChips = ['Critique', 'Majeure', 'Mineure'].map(k =>
+    `<span style="color:${CORR_SEV_COLOR[k]}">${t.sevOpen[k]} ${k.toLowerCase()}${t.sevOpen[k] > 1 ? 's' : ''}</span>`).join(' · ');
+  const doneW = pct(t.conformes + t.corriges), initW = pct(t.conformes);
+  document.getElementById('corrSummary').innerHTML =
+    `<div style="font-size:12px;color:var(--text2);margin-bottom:10px">📄 <strong style="color:var(--text)">${_esc(corr.fileName)}</strong> — ${_esc(modeLabel)}</div>` +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+      card(t.total, 'questions auditées', '#38bdf8') +
+      card(t.conformes, 'conformes d\'emblée', '#4ade80', initW + ' %') +
+      card(t.corriges, 'corrigées (sûr)', '#22d3ee', 'corrections appliquées : ' + t.appliquees) +
+      card(t.aValider, 'à valider', t.aValider ? '#fb923c' : '#4ade80', t.aValider ? sevChips : 'rien en attente') +
+      card(t.dpf.exact, 'variables du DPF', '#a78bfa', t.dpf.nouvelle + ' nouvelle(s)' + (t.dpf.proche ? ' · ' + t.dpf.proche + ' proche(s) d\'une variable du DPF' : '')) +
+    '</div>' +
+    `<div title="Conformes d'emblée + corrigées / total" style="height:8px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative">` +
+      `<div style="position:absolute;inset:0 auto 0 0;width:${doneW}%;background:#22d3ee"></div>` +
+      `<div style="position:absolute;inset:0 auto 0 0;width:${initW}%;background:#4ade80"></div></div>` +
+    `<div style="font-size:10px;color:var(--text2);margin-top:4px">${initW} % conformes d'emblée · ${doneW} % après les corrections appliquées</div>`;
+
+  // catégories présentes
+  const cats = new Set();
+  corr.sheets.forEach(sh => sh.res.findings.forEach(f => cats.add(f.category)));
+  const catSel = document.getElementById('corrFCat');
+  const keep = corr.filter.cat;
+  catSel.innerHTML = '<option value="">Toutes catégories</option>' + [...cats].sort().map(c => `<option${c === keep ? ' selected' : ''}>${_esc(c)}</option>`).join('');
+
+  const xls = corr.sheets.some(sh => sh.kind === 'xlsform');
+  const btnRes = document.getElementById('corrBtnResults');
+  btnRes.disabled = xls;
+  btnRes.style.opacity = xls ? '.45' : '1';
+  btnRes.title = xls ? 'Un XLSForm ne porte ni contraintes ni skip PHAKTS : le charger dans Résultats les perdrait. Utilisez le fichier corrigé.' : 'Charge le questionnaire corrigé dans l\'onglet Résultats pour générer le XLSForm';
+  document.getElementById('corrFootNote').textContent = xls
+    ? 'XLSForm : seuls les noms (colonne name) sont corrigés, avec leurs ${références}. Renommer un champ change le nom de sa colonne dans les exports : à faire avant la collecte.'
+    : 'Le fichier corrigé garde votre mise en forme ; un « Journal des corrections PHAKTS » est ajouté.';
+
+  ['corrViewFindings', 'corrViewCorrected'].forEach(id => {
+    const on = (id === 'corrViewFindings') === (corr.view === 'constats');
+    const b = document.getElementById(id);
+    b.style.background = on ? 'var(--bg3)' : 'transparent';
+    b.style.color = on ? 'var(--text)' : 'var(--accent2)';
+  });
+  document.getElementById('corrFilters').style.display = corr.view === 'constats' ? 'inline-flex' : 'none';
+  corr.view === 'constats' ? corrRenderFindings() : corrRenderCorrected();
+}
+
+function corrSetView(v) { if (!corr) return; corr.view = v; corrRender(); }
+
+function corrSetFilter() {
+  if (!corr) return;
+  corr.filter = {
+    status: document.getElementById('corrFStatus').value,
+    sev: document.getElementById('corrFSev').value,
+    cat: document.getElementById('corrFCat').value,
+    q: PHAKTS_AUDIT.plain(document.getElementById('corrFSearch').value),
+  };
+  corrRenderFindings();
+}
+
+function corrFilteredRows() {
+  const f = corr.filter;
+  const rows = [];
+  corr.sheets.forEach((sh, si) => sh.res.items.forEach(it => it.findings.forEach(fi => {
+    if (f.status === 'pending' && fi.applied) return;
+    if (f.status === 'applied' && !fi.applied) return;
+    if (f.sev && fi.severity !== f.sev) return;
+    if (f.cat && fi.category !== f.cat) return;
+    if (f.q && !PHAKTS_AUDIT.plain([it.libelle, it.original.pf_question, fi.rule, fi.message, fi.category].join(' ')).includes(f.q)) return;
+    rows.push({ si, sh, it, fi });
+  })));
+  return rows;
+}
+
+/** Écart entre deux textes : on ne montre que la zone modifiée, avec un peu de contexte. */
+function corrDiff(a, b) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  let ja = a.length, jb = b.length;
+  while (ja > i && jb > i && a[ja - 1] === b[jb - 1]) { ja--; jb--; }
+  const ctx = 22;
+  const lead = i > ctx ? '…' : '';
+  const pre = a.slice(Math.max(0, i - ctx), i);
+  const trail = a.length - ja > ctx ? '…' : '';
+  const post = a.slice(ja, ja + ctx);
+  return {
+    before: lead + _esc(pre) + (ja > i ? '<span style="background:#f8717133;color:#fca5a5;text-decoration:line-through">' + _esc(a.slice(i, ja)) + '</span>' : '<span style="background:#f8717133">∅</span>') + _esc(post) + trail,
+    after: lead + _esc(pre) + (jb > i ? '<span style="background:#4ade8033;color:#86efac">' + _esc(b.slice(i, jb)) + '</span>' : '<span style="background:#4ade8033">∅</span>') + _esc(post) + trail,
+  };
+}
+
+function corrRenderFindings() {
+  const body = document.getElementById('corrBody');
+  const rows = corrFilteredRows();
+  if (!rows.length) {
+    const none = corr.sheets.every(sh => !sh.res.findings.length);
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text2);border:1px dashed var(--border2);border-radius:12px">' +
+      (none ? '✓ Aucun écart : le questionnaire respecte la grammaire PHAKTS et le DPF.' : 'Aucun écart ne correspond à ces filtres.') + '</div>';
+    return;
+  }
+  // nombre de lignes concernées par chaque règle (pour « appliquer à toutes »)
+  const ruleBase = r => String(r).replace(/#\d+$/, '');
+  const perRule = {};
+  corr.sheets.forEach(sh => sh.res.findings.forEach(f => { if (f.after != null && !f.applied) { const k = ruleBase(f.rule); perRule[k] = (perRule[k] || 0) + 1; } }));
+
+  let html = '<div style="overflow-x:auto;border:1px solid var(--border2);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="background:var(--bg2);border-bottom:1px solid var(--border2);font-size:11px;color:var(--text2)">' +
+      '<th style="padding:8px 10px;text-align:left;width:130px">Gravité</th>' +
+      '<th style="padding:8px 10px;text-align:left">Écart constaté</th>' +
+      '<th style="padding:8px 10px;text-align:left;width:34%">Avant → Après</th>' +
+      '<th style="padding:8px 10px;text-align:left;width:120px">Décision</th></tr></thead><tbody>';
+  let last = '';
+  const dpfBadge = it => ({ exact: ['DPF', '#4ade80', 'Variable présente dans le DPF'], meme_radical: ['radical DPF', '#fbbf24', 'Même radical qu\'une variable du DPF'], question_equivalente: ['≈ DPF', '#fbbf24', 'Question équivalente à une variable du DPF'], nouvelle: ['nouvelle', '#a78bfa', 'Variable absente du DPF : à soumettre au Comité DPF'] }[it.dpf.status]);
+  rows.forEach(({ si, sh, it, fi }) => {
+    const key = si + ':' + it.index;
+    if (key !== last) {
+      last = key;
+      const b = dpfBadge(it);
+      const name = sh.kind === 'xlsform' ? it.xls.type + ' · ' : '';
+      html += `<tr style="background:var(--bg2)"><td colspan="4" style="padding:7px 10px;border-top:1px solid var(--border2)">` +
+        `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text2)">${_esc(corr.sheets.length > 1 || sh.kind === 'xlsform' ? sh.name + ' · ' : '')}ligne ${sh.rowOf(it.index)}</span> ` +
+        `<span style="color:var(--text)">${_esc(it.libelle.slice(0, 110) || '—')}</span> ` +
+        `<code style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-left:6px">${_esc(name + it.original.pf_question)}</code>` +
+        (b ? ` <span title="${b[2]}" style="font-size:9px;padding:1px 6px;border-radius:9px;border:1px solid ${b[1]}66;color:${b[1]};margin-left:6px">${b[0]}</span>` : '') + '</td></tr>';
+    }
+    const color = CORR_SEV_COLOR[fi.severity];
+    const hasFix = fi.after != null;
+    let ba;
+    if (hasFix) {
+      const d = corrDiff(fi.before, fi.after);
+      ba = `<div title="${_esc(fi.before)}" style="font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--text2)">${d.before}</div>` +
+           `<div title="${_esc(fi.after)}" style="font-family:var(--mono);font-size:10.5px;word-break:break-all;margin-top:3px">${d.after}</div>`;
+    } else {
+      ba = `<div style="font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--text2)">${_esc(String(fi.before).slice(0, 140))}</div>` +
+           (fi.suggestion ? `<div style="font-size:10.5px;margin-top:3px;color:#86efac">proposition : <code>${_esc(fi.suggestion)}</code></div>` : '');
+    }
+    const cnt = perRule[ruleBase(fi.rule)] || 0;
+    let decision;
+    if (hasFix) {
+      decision = `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${fi.applied ? '#4ade80' : 'var(--text)'}" title="${fi.auto ? 'Correction sûre, appliquée d\'office : décochez pour la refuser' : 'Proposition à valider : cochez pour l\'appliquer'}">` +
+        `<input type="checkbox" ${fi.applied ? 'checked' : ''} onchange="corrToggle(${si},'${fi.id}',this.checked)"> ${fi.applied ? (fi.auto ? 'Corrigé' : 'Appliqué') : 'Appliquer'}</label>` +
+        (!fi.applied && cnt > 1 ? `<a href="#" onclick="corrApplyRule('${ruleBase(fi.rule)}');return false" title="Appliquer cette proposition à toutes les lignes concernées" style="font-size:10px;color:var(--accent2)">↳ les ${cnt} lignes</a>` : '');
+    } else {
+      decision = '<span style="font-size:10.5px;color:var(--text2)" title="Pas de correction automatique : à traiter à la main dans le fichier">✎ à traiter</span>';
+    }
+    html += `<tr style="border-top:1px solid var(--border)${fi.applied ? ';opacity:.78' : ''}">` +
+      `<td style="padding:8px 10px;vertical-align:top"><span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;border:1px solid ${color}88;color:${color}">${fi.severity}</span>` +
+        `<div style="font-size:10px;color:var(--text2);margin-top:3px">${_esc(fi.category)}</div></td>` +
+      `<td style="padding:8px 10px;vertical-align:top"><div style="color:var(--text)">${_esc(fi.message)}</div>` +
+        (fi.action ? `<div style="font-size:11px;color:var(--text2);margin-top:3px">⇒ ${_esc(fi.action)}</div>` : '') +
+        `<div style="font-size:9.5px;color:var(--text3);margin-top:3px;font-family:var(--mono)">${_esc(fi.rule)} · ${_esc(fi.source)}</div></td>` +
+      `<td style="padding:8px 10px;vertical-align:top">${ba}</td>` +
+      `<td style="padding:8px 10px;vertical-align:top">${decision}</td></tr>`;
+  });
+  html += '</tbody></table></div>' +
+    `<div style="font-size:11px;color:var(--text2);margin-top:8px">${rows.length} écart(s) affiché(s)</div>`;
+  body.innerHTML = html;
+}
+
+function corrRenderCorrected() {
+  let html = '';
+  corr.sheets.forEach(sh => {
+    const rows = sh.res.items.map(it => {
+      const changed = it.changed;
+      const open = it.status === 'a_valider';
+      const edge = open ? '#fb923c' : (changed ? '#4ade80' : 'transparent');
+      const cell = (before, after) => before === after
+        ? `<div style="font-family:var(--mono);font-size:10.5px;word-break:break-all">${_esc(after)}</div>`
+        : (() => { const d = corrDiff(before, after); return `<div style="font-family:var(--mono);font-size:10.5px;word-break:break-all">${d.after}</div>`; })();
+      const state = open ? '<span style="color:#fb923c">à valider</span>' : (changed ? '<span style="color:#4ade80">corrigée</span>' : '<span style="color:var(--text2)">conforme</span>');
+      return `<tr style="border-top:1px solid var(--border);border-left:3px solid ${edge}">` +
+        `<td style="padding:6px 10px;color:var(--text2);font-family:var(--mono);font-size:10.5px">${sh.rowOf(it.index)}</td>` +
+        `<td style="padding:6px 10px;max-width:260px">${_esc(it.libelle.slice(0, 120))}</td>` +
+        `<td style="padding:6px 10px;color:var(--accent2)">${cell(it.original.pf_question, it.corrected.pf_question)}</td>` +
+        (sh.kind === 'xlsform' ? `<td style="padding:6px 10px;font-size:10.5px;color:var(--text2)">${_esc(it.xls.type)}</td>` :
+          `<td style="padding:6px 10px">${cell(it.original.pf_modalites, it.corrected.pf_modalites)}</td>` +
+          `<td style="padding:6px 10px;color:#fcd34d">${cell(it.original.pf_skip, it.corrected.pf_skip)}</td>`) +
+        `<td style="padding:6px 10px;font-size:11px">${state}</td></tr>`;
+    }).join('');
+    const head = sh.kind === 'xlsform'
+      ? '<th style="padding:8px 10px;text-align:left">name (corrigé)</th><th style="padding:8px 10px;text-align:left">type</th>'
+      : '<th style="padding:8px 10px;text-align:left">PF/Question (corrigé)</th><th style="padding:8px 10px;text-align:left">PF/Modalités</th><th style="padding:8px 10px;text-align:left">Skip Logic</th>';
+    html += `<div style="font-size:12px;font-weight:600;color:var(--accent2);margin:${html ? '20px' : '0'} 0 6px">Feuille « ${_esc(sh.name)} » — ${sh.items.length} question(s)</div>` +
+      '<div style="overflow-x:auto;border:1px solid var(--border2);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      '<thead><tr style="background:var(--bg2);font-size:11px;color:var(--text2)"><th style="padding:8px 10px;text-align:left">Ligne</th><th style="padding:8px 10px;text-align:left">Libellé</th>' + head +
+      '<th style="padding:8px 10px;text-align:left">État</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  });
+  document.getElementById('corrBody').innerHTML = html;
+}
+
+// ── Décisions ────────────────────────────────────────────────────────────────
+function corrKeepScroll(fn) {
+  const y = window.scrollY, box = document.querySelector('main') || document.body;
+  fn();
+  window.scrollTo(0, y);
+  void box;
+}
+
+function corrToggle(si, id, checked) {
+  const sh = corr.sheets[si];
+  const f = sh.res.findings.find(x => x.id === id);
+  if (!f) return;
+  if (f.auto) { checked ? sh.rejected.delete(id) : sh.rejected.add(id); }
+  else { checked ? sh.accepted.add(id) : sh.accepted.delete(id); }
+  corrKeepScroll(() => { corrRunSheet(sh); corrRender(); });
+}
+
+function corrApplyRule(rule) {
+  const base = r => String(r).replace(/#\d+$/, '');
+  let n = 0;
+  corr.sheets.forEach(sh => sh.res.findings.forEach(f => {
+    if (base(f.rule) === rule && f.after != null && !f.applied) { f.auto ? sh.rejected.delete(f.id) : sh.accepted.add(f.id); n++; }
+  }));
+  corrKeepScroll(() => { corr.sheets.forEach(corrRunSheet); corrRender(); });
+  showStatus(n + ' correction(s) appliquée(s) (règle « ' + rule + ' »).', 'success');
+}
+
+function corrAcceptShown() {
+  if (!corr) return;
+  const rows = corrFilteredRows().filter(({ fi }) => fi.after != null && !fi.applied);
+  if (!rows.length) { showStatus('Aucune proposition à appliquer dans cet affichage.', 'info'); return; }
+  rows.forEach(({ sh, fi }) => { fi.auto ? sh.rejected.delete(fi.id) : sh.accepted.add(fi.id); });
+  corrKeepScroll(() => { corr.sheets.forEach(corrRunSheet); corrRender(); });
+  showStatus(rows.length + ' proposition(s) appliquée(s). Relisez l\'onglet « Questionnaire corrigé » avant d\'exporter.', 'success');
+}
+
+function corrResetDecisions() {
+  if (!corr) return;
+  corr.sheets.forEach(sh => { sh.accepted.clear(); sh.rejected.clear(); corrRunSheet(sh); });
+  corrKeepScroll(corrRender);
+}
+
+// ── Exports ──────────────────────────────────────────────────────────────────
+function corrStyleHeader(ws) {
+  const hdr = ws.getRow(1);
+  hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3A5F' } };
+  hdr.alignment = { vertical: 'middle' };
+  hdr.height = 22;
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+}
+
+function corrAddSheet(wb, name, columns, rows) {
+  const old = wb.getWorksheet(name);
+  if (old) wb.removeWorksheet(old.id);
+  const ws = wb.addWorksheet(name);
+  ws.columns = columns;
+  rows.forEach(r => ws.addRow(r));
+  corrStyleHeader(ws);
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+  ws.eachRow((row, n) => { if (n > 1) row.alignment = { vertical: 'top', wrapText: true }; });
+  return ws;
+}
+
+/** Feuilles de rapport : synthèse, journal (corrections appliquées), écarts à valider. */
+function corrAddReportSheets(wb) {
+  const t = corrTotals();
+  const reg = corrRegistryRaw();
+  const sheetsInfo = corr.sheets.map(sh => (sh.kind === 'xlsform' ? 'XLSForm' : 'Questionnaire codifié') + ' « ' + sh.name + ' » : ' + sh.items.length + ' question(s)').join(' | ');
+  const synth = [
+    ['Fichier audité', corr.fileName], ['Feuilles', sheetsInfo], ['Date de l\'audit', new Date().toLocaleString('fr-FR')],
+    ['Grammaire PHAKTS', PHAKTS_CORE.GRAMMAR_VERSION], ['Moteur d\'audit', PHAKTS_AUDIT.AUDIT_VERSION],
+    ['Référence DPF', reg ? (reg.variables.length + ' variables (feuille DPF-2) — ' + (reg.source || '')) : 'registre absent'],
+    ['Questions auditées', t.total], ['Conformes d\'emblée', t.conformes], ['Corrigées (corrections sûres ou validées)', t.corriges],
+    ['À valider / à traiter à la main', t.aValider],
+    ['Écarts constatés', t.findings], ['Dont corrections appliquées', t.appliquees],
+    ['Écarts restants — Critique', t.sevOpen.Critique], ['Écarts restants — Majeure', t.sevOpen.Majeure], ['Écarts restants — Mineure', t.sevOpen.Mineure],
+    ['Variables présentes dans le DPF', t.dpf.exact], ['Variables absentes du DPF (à soumettre au Comité DPF)', t.dpf.nouvelle],
+  ];
+  const wsS = corrAddSheet(wb, 'Synthèse DPF', [{ header: 'Indicateur', key: 'a', width: 52 }, { header: 'Valeur', key: 'b', width: 90 }], synth);
+  wsS.getColumn(1).font = { bold: true };
+
+  const applied = [], pending = [];
+  corr.sheets.forEach(sh => {
+    const j = PHAKTS_AUDIT.journalRows(sh.name, sh.res, i => sh.rowOf(i));
+    applied.push(...j.appliquees); pending.push(...j.aValider);
+  });
+  const cols = [
+    { header: 'Feuille', key: 'feuille', width: 22 }, { header: 'Ligne', key: 'ligne', width: 7 }, { header: 'Champ', key: 'champ', width: 14 },
+    { header: 'Catégorie', key: 'categorie', width: 16 }, { header: 'Sévérité', key: 'severite', width: 10 },
+    { header: 'Avant', key: 'avant', width: 55 }, { header: 'Après', key: 'apres', width: 55 },
+    { header: 'Anomalie', key: 'anomalie', width: 60 }, { header: 'Règle', key: 'regle', width: 28 }, { header: 'Source', key: 'source', width: 34 },
+  ];
+  corrAddSheet(wb, 'Journal des corrections PHAKTS', cols, applied);
+  corrAddSheet(wb, 'Écarts à valider', cols.concat([{ header: 'Action proposée', key: 'action', width: 60 }, { header: 'Libellé', key: 'libelle', width: 50 }]), pending);
+}
+
+function corrOutName(suffix) {
+  return String(corr.fileName).replace(/\.xlsx?m?$/i, '') + suffix;
+}
+
+/** Surligne et annote une cellule corrigée. Le style est REMPLACÉ, jamais modifié sur place :
+ * dans un classeur chargé, les cellules de même style partagent un seul objet, et un
+ * `cell.fill = …` colorierait toute la colonne. */
+function corrMarkCell(cell, note) {
+  cell.style = Object.assign({}, cell.style, { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDFF5E3' } } });
+  cell.note = note;
+}
+
+/** Écrit les corrections dans le classeur d'origine (mise en forme conservée). */
+async function corrApplyToWorkbook(wb) {
+  corr.sheets.forEach(sh => {
+    const ws = wb.getWorksheet(sh.name);
+    if (!ws) return;
+    if (sh.kind === 'codified') {
+      const fields = [['pf_question', sh.cols.code], ['pf_modalites', sh.cols.modalites], ['pf_skip', sh.cols.skip]];
+      sh.res.items.forEach(it => {
+        const row = ws.getRow(sh.rowOf(it.index));
+        fields.forEach(([field, col]) => {
+          if (col < 0 || it.corrected[field] === it.original[field]) return;
+          const cell = row.getCell(col + 1);
+          cell.value = it.corrected[field];
+          corrMarkCell(cell, 'Corrigé (audit DPF) — avant : ' + String(it.original[field]).slice(0, 400));
+        });
+      });
+    } else {
+      const nameCol = sh.table.headers.findIndex(h => h === 'name') + 1;
+      const renames = PHAKTS_AUDIT.xlsformRenames(sh.res);
+      sh.res.items.forEach(it => {
+        if (it.corrected.pf_question === it.original.pf_question) return;
+        const cell = ws.getRow(it.xls.row).getCell(nameCol);
+        cell.value = it.corrected.pf_question;
+        corrMarkCell(cell, 'Renommé (audit DPF) — avant : ' + it.original.pf_question);
+      });
+      if (renames.size) {
+        // le nouveau nom doit aussi apparaître dans toutes les formules qui citent l'ancien
+        wb.worksheets.forEach(w2 => {
+          if (!/^(survey|settings)$/i.test(w2.name)) return;
+          w2.eachRow(row => row.eachCell(cell => {
+            if (typeof cell.value === 'string' && cell.value.includes('${')) {
+              const next = PHAKTS_AUDIT.renameRefs(cell.value, renames);
+              if (next !== cell.value) cell.value = next;
+            }
+          }));
+        });
+      }
+    }
+  });
+}
+
+async function corrDownloadCorrected() {
+  if (!corr) return;
+  try {
+    await ensureExcelJsReady();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(corr.buffer.slice(0));
+    await corrApplyToWorkbook(wb);
+    corrAddReportSheets(wb);
+    const saved = await saveWorkbook(wb, corrOutName('_corrige.xlsx'));
+    if (saved) showStatus('✓ Fichier corrigé prêt — le « Journal des corrections PHAKTS » liste chaque modification.', 'success');
+  } catch (e) {
+    console.error('[correction]', e);
+    showStatus('Export impossible : ' + e.message, 'error');
+  }
+}
+
+async function corrDownloadReport() {
+  if (!corr) return;
+  try {
+    await ensureExcelJsReady();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'PHAKTS STUDIO';
+    corrAddReportSheets(wb);
+    const saved = await saveWorkbook(wb, corrOutName('_rapport_conformite.xlsx'));
+    if (saved) showStatus('✓ Rapport de conformité prêt.', 'success');
+  } catch (e) {
+    console.error('[correction]', e);
+    showStatus('Export impossible : ' + e.message, 'error');
+  }
+}
+
+function corrLoadToResults() {
+  if (!corr) return;
+  const sheets = corr.sheets.filter(sh => sh.kind === 'codified');
+  if (!sheets.length) return;
+  const items = sheets.flatMap(sh => PHAKTS_AUDIT.correctedItems(sh.res, sh.items));
+  if (results.length && !confirm('Charger ' + items.length + ' question(s) corrigée(s) va REMPLACER les ' + results.length + ' résultat(s) actuel(s). Continuer ?')) return;
+  results = items.map(it => ({ libelle: it.libelle, pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip }));
+  persistResults();
+  renderTable();
+  switchTabById('results');
+  const open = corr.sheets.reduce((n, sh) => n + sh.res.items.filter(i => i.status === 'a_valider').length, 0);
+  showStatus('⊞ ' + items.length + ' question(s) corrigée(s) chargée(s) dans Résultats' + (open ? ' — ' + open + ' encore à valider.' : '.'), open ? 'warning' : 'success');
 }
 
 /* Réinitialise le panel */

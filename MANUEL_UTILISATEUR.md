@@ -19,6 +19,7 @@
    - 5.4 [Onglet Résultats](#54-onglet-résultats)
    - 5.5 [Onglet Agent IA PHAKTS](#55-onglet-agent-ia-phakts)
    - 5.6 [Onglet DPF — Dictionnaire des Propriétés Fonctionnelles](#56-onglet-dpf--dictionnaire-des-propriétés-fonctionnelles)
+   - 5.7 [Onglet Correction DPF](#57-onglet-correction-dpf)
 6. [SPAD Analyzer — Analyse statistique](#6-spad-analyzer--analyse-statistique)
    - 6.1 [Importer les données](#61-importer-les-données)
    - 6.2 [Aperçu et questionnaire des variables](#62-aperçu-et-questionnaire-des-variables)
@@ -155,6 +156,7 @@ PHAKTS Studio est organisée en **7 onglets** :
 | ✎ **Éditeur** | Rédiger ou enrichir des questions une par une avec leurs modalités |
 | ⬆ **Uploads** | Importer un fichier (PDF, Word, Excel, image scannée…) pour extraction automatique |
 | ⊞ **Résultats** | Visualiser, modifier, exporter les codifications produites |
+| 🛠 **Correction DPF** | Vérifier un questionnaire codifié ou un XLSForm contre la grammaire PHAKTS et le DPF, et le corriger |
 | 🤖 **Agent IA PHAKTS** | Dialoguer avec l'IA experte en codification |
 | ⊘ **Dictionnaire des Propriétés Fonctionnelles** | Référence de la grammaire PHAKTS + codifications apprises |
 | 📊 **Analyse SPAD** | Bascule vers le module d'analyse statistique des données |
@@ -336,6 +338,70 @@ auto-sauvegarde de l'Agent IA) apparaît ici, avec :
 **Bouton « Télécharger DPF »** (en haut à droite) : export complet du DPF
 (sections A-H + I) au format XLSX, utilisable comme documentation papier ou
 référence partagée.
+
+### 5.7 Onglet Correction DPF
+
+Cet onglet **vérifie qu'un questionnaire déjà codifié respecte la grammaire
+PHAKTS et le DPF**, repère chaque codification qui ne les respecte pas, et
+propose la correction juste.
+
+**Fichiers acceptés** (`.xlsx`) — déposez-le dans la zone prévue :
+
+- un **questionnaire codifié** : colonnes *Libellé*, *PF/Question*,
+  *PF/Modalités*, *Skip Logic* (toutes les feuilles sont vérifiées) ;
+- un **XLSForm KoboToolbox** : feuilles *survey* et *choices*. Le type du champ
+  (`integer`, `select_one`, `text`…) sert à vérifier l'affixe du nom.
+
+> Un fichier **.xls** ancien (Excel 97-2003) n'est pas lu : ouvrez-le dans
+> Excel, puis *Enregistrer sous… .xlsx*.
+
+**Ce qui est contrôlé** :
+
+| Catégorie | Exemples |
+|---|---|
+| **Faute de frappe** | `!boulean`, `Practiques`, coquille recopiée du DPF (`Netoyage`), `!` oublié |
+| **Type variable** | affixe `__Z` alors que la question définit une liste (→ `__X`), unité inconnue (`1C`), « Combien… » codé en booléen, pourcentage sans `__2P` |
+| **Modalités** | accents, espaces, parenthèses dans les valeurs, doublons, crochets, identifiant de liste différent de la contrainte |
+| **Liste DPF** | liste `Sexe_` différente de celle du DPF, mêmes valeurs qu'une liste du DPF sous un autre nom, région/district codés en liste inline (Règle 16) |
+| **Registre DPF** | variable déjà définie dans le DPF (feuille DPF-2) sous un autre code ; variable nouvelle à soumettre au Comité DPF |
+| **Skip Logic** | condition sur une question inexistante, cible qui n'est pas la question, valeur hors liste, « Si oui » sans règle |
+| **Sémantique** | radical sans rapport avec le libellé |
+
+**Deux sortes de corrections** :
+
+- **Corrections sûres** (accent, séparateur, constante de type…) : appliquées
+  d'office, marquées *Corrigé*. Décochez pour en refuser une.
+- **Propositions** (changer le type, reprendre la liste du DPF, réécrire un saut,
+  choisir 1*1 ou 1*) : **jamais appliquées sans votre accord**. Cochez *Appliquer*
+  ligne par ligne, ou *« ↳ les N lignes »* pour une même règle, ou
+  *« Accepter les propositions affichées »* après filtrage.
+
+L'onglet **Questionnaire corrigé** montre le résultat ligne par ligne avant
+tout export.
+
+**Exports** :
+
+- **⬇ Télécharger le fichier corrigé** : votre classeur, mise en forme
+  conservée, cellules corrigées surlignées en vert et annotées (valeur
+  d'origine), plus trois feuilles : *Synthèse DPF*, *Journal des corrections
+  PHAKTS* (Feuille, Ligne, Champ, Catégorie, Sévérité, Avant, Après) et
+  *Écarts à valider*.
+- **📑 Rapport de conformité** : ces trois feuilles seules.
+- **⊞ Charger dans Résultats** (questionnaire codifié uniquement) : poursuivre
+  vers la génération du XLSForm.
+
+**Cas du XLSForm** : seule la colonne `name` est corrigée, et le nouveau nom est
+propagé dans toutes les formules (`${ancien_nom}` → `${nouveau_nom}` : `relevant`,
+`constraint`, `calculation`, `instance_name`…). Renommer un champ change le nom
+de sa colonne dans les exports : à faire **avant** la collecte.
+
+**À savoir sur le DPF** : le DPF contient lui-même des accents et des fautes
+(`Evalution`, `Netoyage`, `Conssomation`, `Tabgagique`…). L'outil compare sur
+une clé normalisée et **ne propose jamais** une graphie fautive du DPF. Quand le
+DPF et la grammaire divergent (séparateur `,` ou `|`, unité `1N`), la
+proposition est signalée « décision DPF en attente » et n'est jamais appliquée
+d'office. Pour utiliser un DPF plus récent : *📥 Charger un DPF plus récent*
+(listes **et** variables sont rechargées).
 
 ---
 

@@ -1,7 +1,9 @@
-const CACHE_NAME = 'phakts-studio-v38';
+const CACHE_NAME = 'phakts-studio-v39';
 const APP_SHELL = [
   './PHAKTS\u00b7STUDIO.html',
   './phakts-core.js',
+  './phakts-audit.js',
+  './dpf-registry.js',
   './manifest.webmanifest',
   './icons/icon-192.svg',
   './icons/icon-512.svg',
@@ -63,9 +65,10 @@ self.addEventListener('fetch', event => {
       }
     }
 
-    // Grammaire PHAKTS : network-first comme la page, sinon une grammaire mise
-    // \u00e0 jour sur le serveur resterait masqu\u00e9e par l'ancienne copie en cache.
-    if (url.pathname.endsWith('/phakts-core.js')) {
+    // Grammaire PHAKTS, audit DPF et registre des variables : network-first comme la
+    // page, sinon une r\u00e8gle mise \u00e0 jour sur le serveur resterait masqu\u00e9e par
+    // l'ancienne copie en cache.
+    if (/\/(phakts-core|phakts-audit|dpf-registry)\.js$/.test(url.pathname)) {
       try {
         const resp = await fetch(event.request);
         if (resp.ok) cache.put(event.request, resp.clone());
