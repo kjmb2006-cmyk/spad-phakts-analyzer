@@ -1738,7 +1738,8 @@
           <input id="corrFSearch" oninput="corrSetFilter()" placeholder="Rechercher (libellé, code, règle)…" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;min-width:200px">
         </span>
         <span style="flex:1"></span>
-        <button class="btn-purple" id="corrBtnCodify" onclick="corrCodifyAll()" title="Propose puis applique un code PHAKTS (et ses modalités) à chaque libellé qui n'en a pas ; relisez ensuite l'onglet « Questionnaire corrigé »" style="display:none;padding:7px 14px;font-size:11px">✨ Codifier les libellés sans code</button>
+        <button class="btn-purple" id="corrBtnCodify" onclick="corrCodifyAll()" title="Propose puis applique un code PHAKTS (et ses modalités) à chaque libellé qui n'en a pas — codifieur hors-ligne, gratuit et instantané ; relisez ensuite l'onglet « Questionnaire corrigé »" style="display:none;padding:7px 14px;font-size:11px">✨ Codifier (hors-ligne) les libellés sans code</button>
+        <button class="btn-purple" id="corrBtnCodifyAI" onclick="corrCodifyAllAI()" title="Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant" style="display:none;padding:7px 14px;font-size:11px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc">🤖 Codifier avec l'IA PHAKTS</button>
         <button class="btn-ghost" onclick="corrAcceptShown()" title="Applique toutes les propositions affichées (celles qui ne sont pas encore appliquées)" style="padding:7px 14px;font-size:11px">✓ Accepter les propositions affichées</button>
         <button class="btn-ghost" onclick="corrResetDecisions()" title="Revient aux corrections sûres appliquées d'office" style="padding:7px 14px;font-size:11px">↺ Réinitialiser</button>
       </div>
@@ -7883,24 +7884,97 @@ function corrReadTable(ws) {
 const corrCodeCache = new Map();
 const corrCodeKey = (libelle, modalites) => String(libelle || '').trim() + '||' + String(modalites || '').trim();
 
-async function corrPrecodify() {
+// Libellés sans code ET sans modalités déjà saisies (seul cas où un codifieur est utile — quand
+// des modalités existent, codifyFromLibelleAndModalites(libelle, modalites) s'en sert directement).
+// opts.ignoreCache : cible TOUT libellé encore sans code, même s'il a déjà une proposition en
+// cache (passe hors-ligne automatique au chargement du fichier) — utilisé par la codification IA,
+// pour qu'elle ne se retrouve jamais sans rien à faire simplement parce que le codifieur
+// hors-ligne est passé avant elle et a déjà rempli le cache.
+function corrUncodedTodo(opts) {
+  const ignoreCache = opts && opts.ignoreCache;
   const todo = [];
   corr.sheets.forEach(sh => sh.items.forEach(it => {
     const k = corrCodeKey(it.libelle, it.pf_modalites);
-    if (!String(it.pf_question || '').trim() && it.libelle.trim() && !String(it.pf_modalites || '').trim() && !corrCodeCache.has(k) && !todo.some(x => x.k === k)) {
+    if (!String(it.pf_question || '').trim() && it.libelle.trim() && !String(it.pf_modalites || '').trim() && (ignoreCache || !corrCodeCache.has(k)) && !todo.some(x => x.k === k)) {
       todo.push({ k, libelle: it.libelle.trim().replace(/\s*[\r\n]+\s*/g, ' ') });
     }
   }));
+  return todo;
+}
+
+async function corrPrecodify() {
+  const todo = corrUncodedTodo();
   if (!todo.length) return;
   try {
     const out = await codifyOffline(todo.map(x => x.libelle).join('\n'));
     const items = (out && out.items) || [];
     if (items.length === todo.length) {
-      todo.forEach((x, i) => corrCodeCache.set(x.k, { pf_question: items[i].pf_question, pf_modalites: items[i].pf_modalites || '' }));
+      todo.forEach((x, i) => corrCodeCache.set(x.k, { pf_question: items[i].pf_question, pf_modalites: items[i].pf_modalites || '', source: 'offline' }));
     }
   } catch (e) {
     console.warn('[correction] codification hors-ligne indisponible :', e.message);
   }
+}
+
+/** Codification par l'IA PHAKTS (même modèle que l'onglet Codification, /api/codify) des
+ * libellés sans code ET sans modalités. Appelée UNIQUEMENT sur un clic explicite (appel payant,
+ * jamais automatique). Les lots respectent la limite serveur (20 000 caractères) avec une bonne
+ * marge ; chaque réponse est réappariée par libellé (le prompt impose "libelle": texte original
+ * exact), jamais par position, pour ne jamais recoller un code au mauvais libellé. Un libellé que
+ * l'IA ne renvoie pas (fusion, troncature…) retombe sur le codifieur hors-ligne plutôt que de
+ * rester sans aucune proposition. */
+async function corrPrecodifyAI(onProgress) {
+  if (!isApiAvailable) throw new Error('Serveur API injoignable — la codification par IA n\'est pas disponible (voir « SERVEUR API » en haut de page).');
+  // ignoreCache: la passe hors-ligne tourne automatiquement au chargement du fichier et a déjà
+  // pu remplir le cache — sans ça, l'IA ne trouverait plus jamais rien à codifier après coup.
+  const todo = corrUncodedTodo({ ignoreCache: true });
+  if (!todo.length) return { ia: 0, repli: 0, total: 0 };
+  const BATCH_CHARS = 6000; // marge large sous la limite serveur (20 000) : réponses plus rapides, lots multiples visibles
+  const batches = [];
+  let cur = [], curLen = 0;
+  todo.forEach(x => {
+    if (cur.length && curLen + x.libelle.length + 1 > BATCH_CHARS) { batches.push(cur); cur = []; curLen = 0; }
+    cur.push(x); curLen += x.libelle.length + 1;
+  });
+  if (cur.length) batches.push(cur);
+
+  const iaKeys = new Set();
+  for (let b = 0; b < batches.length; b++) {
+    const batch = batches[b];
+    if (onProgress) onProgress(b + 1, batches.length, batch.length);
+    try {
+      const out = await codifyUsingReferenceModel(batch.map(x => x.libelle).join('\n'));
+      const byLib = new Map();
+      ((out && out.items) || []).forEach(it => {
+        const k = PHAKTS_AUDIT.plain(it.libelle || '');
+        if (k && it.pf_question && !byLib.has(k)) byLib.set(k, it);
+      });
+      batch.forEach(x => {
+        const found = byLib.get(PHAKTS_AUDIT.plain(x.libelle));
+        // l'IA remplace toute proposition hors-ligne déjà en cache pour ce libellé (meilleure qualité)
+        if (found) { corrCodeCache.set(x.k, { pf_question: found.pf_question, pf_modalites: found.pf_modalites || '', pf_skip: found.pf_skip || '', source: 'ia' }); iaKeys.add(x.k); }
+      });
+    } catch (e) {
+      console.warn('[correction] codification IA indisponible pour un lot :', e.message);
+    }
+  }
+
+  // ce que l'IA n'a pas retrouvé : garder une proposition hors-ligne déjà en cache si elle existe,
+  // sinon en calculer une maintenant — jamais rien plutôt qu'une proposition
+  const leftover = todo.filter(x => !iaKeys.has(x.k) && !corrCodeCache.has(x.k));
+  if (leftover.length) {
+    try {
+      const out = await codifyOffline(leftover.map(x => x.libelle).join('\n'));
+      const items = (out && out.items) || [];
+      if (items.length === leftover.length) {
+        leftover.forEach((x, i) => corrCodeCache.set(x.k, { pf_question: items[i].pf_question, pf_modalites: items[i].pf_modalites || '', source: 'offline' }));
+      }
+    } catch (e) {
+      console.warn('[correction] repli hors-ligne indisponible :', e.message);
+    }
+  }
+  const withProposal = todo.filter(x => corrCodeCache.has(x.k)).length;
+  return { ia: iaKeys.size, repli: withProposal - iaKeys.size, total: todo.length };
 }
 
 function corrAuditOptions(sh) {
@@ -7963,7 +8037,8 @@ async function corrHandleFile(file) {
       tables.filter(t => !t.kind && t.headers.filter(Boolean).length >= 2).forEach(t => {
         const sample = corrReadSample(t.ws, t.headers.length, 300);
         if (!sample.length) return;
-        const items = PHAKTS_AUDIT.datasetToItems(t.headers, sample);
+        const { items, sections: dataSections } = PHAKTS_AUDIT.datasetToItems(t.headers, sample);
+        sections += dataSections;
         if (items.length) sheets.push({ name: t.name, kind: 'data', table: { headers: t.headers }, headers: t.headers, items, rowOf: i => items[i]._xls.row });
       });
     }
@@ -8053,10 +8128,21 @@ function corrRender() {
   const keep = corr.filter.cat;
   catSel.innerHTML = '<option value="">Toutes catégories</option>' + [...cats].sort().map(c => `<option${c === keep ? ' selected' : ''}>${_esc(c)}</option>`).join('');
 
+  // les deux boutons portent sur les MÊMES lignes « code.vide » encore en attente — l'un ou
+  // l'autre (ou les deux tour à tour) selon la qualité souhaitée ; chacun reste une proposition
+  const uncoded = corr.sheets.reduce((n, sh) => n + sh.res.findings.filter(f => f.rule === 'code.vide' && !f.applied).length, 0);
   const codifiable = corr.sheets.reduce((n, sh) => n + sh.res.findings.filter(f => f.rule === 'code.vide' && f.after != null && !f.applied).length, 0);
   const btnCodify = document.getElementById('corrBtnCodify');
   btnCodify.style.display = codifiable ? '' : 'none';
-  btnCodify.textContent = '✨ Codifier les ' + codifiable + ' libellé' + (codifiable > 1 ? 's' : '') + ' sans code';
+  btnCodify.textContent = '✨ Codifier (hors-ligne) les ' + codifiable + ' libellé' + (codifiable > 1 ? 's' : '') + ' sans code';
+  const btnCodifyAI = document.getElementById('corrBtnCodifyAI');
+  btnCodifyAI.style.display = uncoded ? '' : 'none';
+  btnCodifyAI.disabled = !isApiAvailable;
+  btnCodifyAI.style.opacity = isApiAvailable ? '1' : '.45';
+  btnCodifyAI.title = isApiAvailable
+    ? "Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant"
+    : 'Serveur API injoignable (voir « SERVEUR API » en haut de page) — la codification par IA est indisponible hors ligne.';
+  btnCodifyAI.textContent = "🤖 Codifier avec l'IA PHAKTS (" + uncoded + ' libellé' + (uncoded > 1 ? 's' : '') + ')';
   const xls = corr.sheets.some(sh => sh.kind === 'xlsform' || sh.kind === 'data');
   const isData = corr.sheets.some(sh => sh.kind === 'data');
   const btnRes = document.getElementById('corrBtnResults');
@@ -8264,6 +8350,46 @@ function corrCodifyAll() {
   corrKeepScroll(corrRender);
   const t = corrTotals();
   showStatus('✨ ' + done + ' libellé(s) codifié(s)' + (t.sansCodeRestant ? ' — ' + t.sansCodeRestant + ' sans proposition possible' : '') + '. Relisez le questionnaire corrigé, puis traitez les ' + t.aValider + ' point(s) restant(s) à valider.', t.sansCodeRestant ? 'warning' : 'success');
+}
+
+/** Codifie avec l'IA PHAKTS (/api/codify, même modèle que l'onglet Codification) tous les
+ * libellés sans code — appel PAYANT, jamais déclenché automatiquement, seulement sur ce clic.
+ * Plus précis que le codifieur hors-ligne (reconnaît « Pourquoi / Si oui, quel… », les listes du
+ * DPF, les sauts explicites…), mais a besoin du serveur. Le code proposé reste une proposition :
+ * rien n'est appliqué sans relecture de l'onglet « Questionnaire corrigé ». */
+async function corrCodifyAllAI() {
+  if (!corr) return;
+  if (!isApiAvailable) { showStatus('Serveur API injoignable : la codification par IA n\'est pas disponible. Vérifiez « SERVEUR API » en haut de page, ou utilisez « ✨ Codifier (hors-ligne) ».', 'error'); return; }
+  const btnAI = document.getElementById('corrBtnCodifyAI');
+  const btnOff = document.getElementById('corrBtnCodify');
+  const label = btnAI.textContent;
+  btnAI.disabled = true; btnOff.disabled = true;
+  try {
+    const r = await corrPrecodifyAI((b, nb, n) => {
+      corrSetMessage('🤖 Codification par l\'IA PHAKTS — lot ' + b + '/' + nb + ' (' + n + ' question' + (n > 1 ? 's' : '') + ')…', 'info');
+    });
+    if (!r.total) { showStatus('Aucun libellé à codifier.', 'info'); return; }
+    corr.sheets.forEach(corrRunSheet);
+    let done = 0;
+    corr.sheets.forEach(sh => sh.res.findings.forEach(f => {
+      if (f.rule === 'code.vide' && f.after != null && !f.applied) { sh.accepted.add(f.id); done++; }
+    }));
+    corr.sheets.forEach(corrRunSheet);
+    corr.view = 'corrige';
+    corrSetMessage('', '');
+    corrKeepScroll(corrRender);
+    const t = corrTotals();
+    let msg = '🤖 ' + r.ia + ' libellé(s) codifié(s) par l\'IA PHAKTS';
+    if (r.repli) msg += ', ' + r.repli + ' par repli hors-ligne (non renvoyé(s) par l\'IA)';
+    if (r.total - r.ia - r.repli > 0) msg += ', ' + (r.total - r.ia - r.repli) + ' sans proposition';
+    msg += '. Relisez le questionnaire corrigé, puis traitez les ' + t.aValider + ' point(s) restant(s) à valider.';
+    showStatus(msg, t.sansCodeRestant || r.repli ? 'warning' : 'success');
+  } catch (e) {
+    corrSetMessage('', '');
+    showStatus('Codification par l\'IA impossible : ' + e.message, 'error');
+  } finally {
+    btnAI.disabled = false; btnAI.textContent = label; btnOff.disabled = false;
+  }
 }
 
 function corrAcceptShown() {

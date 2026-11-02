@@ -353,14 +353,26 @@ propose la correction juste.
   (`integer`, `select_one`, `text`…) sert à vérifier l'affixe du nom ;
 - une **liste de libellés à codifier** : une colonne *Libellé* (ou *Question*), avec ou
   sans colonne *Modalités*. Les libellés sans code d'un questionnaire codifié sont
-  traités de la même façon. Le bouton **✨ Codifier les libellés sans code** propose
-  pour chacun un code PHAKTS et ses modalités (codifieur hors-ligne du Studio, sans
-  appel à l'IA : gratuit et reproductible), puis l'audit contrôle ce code comme les
-  autres (type, listes du DPF, variable équivalente du DPF, mots interrogatifs,
-  saut « Si oui »). Les titres de section (« SECTION 1 : … », lignes tout en
-  capitales) sont ignorés. Le fichier corrigé ajoute les colonnes *PF/Question* et
-  *Skip Logic* (et *PF/Modalités* si elle n'existait pas) ; relisez toujours
-  l'onglet **Questionnaire corrigé** : un code tiré d'un libellé reste une proposition ;
+  traités de la même façon. Deux boutons proposent, pour chaque libellé, un code PHAKTS
+  et ses modalités :
+  - **✨ Codifier (hors-ligne)** — le codifieur local du Studio, sans appel réseau :
+    gratuit, instantané, reproductible, mais plus sommaire (une question fermée mal
+    tournée peut ressortir en booléen par défaut) ;
+  - **🤖 Codifier avec l'IA PHAKTS** — le même modèle que l'onglet Codification
+    (`/api/codify`) : reconnaît mieux « Pourquoi… / Si oui, quel… », propose les listes
+    du DPF et, quand le libellé le dit explicitement, une Skip Logic. Nécessite le
+    serveur API (bouton grisé sinon) et **consomme des appels payants** — jamais
+    déclenché automatiquement, uniquement sur ce clic. Les deux boutons peuvent être
+    utilisés l'un après l'autre sur le même fichier : l'IA peut rattraper les
+    libellés où la version hors-ligne a mal deviné.
+
+  Dans les deux cas, le code proposé passe ensuite par le même audit que les autres
+  (type, listes du DPF, variable équivalente du DPF, mots interrogatifs, saut « Si
+  oui »…) — y compris une Skip Logic proposée par l'IA : si elle cite une question qui
+  n'existe pas, l'écart est signalé comme n'importe quel saut mal écrit, jamais appliqué
+  tel quel. Le fichier corrigé ajoute les colonnes *PF/Question* et *Skip Logic* (et
+  *PF/Modalités* si elle n'existait pas) ; relisez toujours l'onglet **Questionnaire
+  corrigé** : un code tiré d'un libellé reste une proposition ;
 - un **fichier de données** (export Kobo « XLS », c'est-à-dire `.xlsx`) : la première
   ligne porte soit les noms de variables, soit les libellés des questions. Un nom
   est vérifié comme un code ; un libellé reçoit un code PHAKTS proposé d'après son
@@ -371,6 +383,14 @@ propose la correction juste.
   question). Deux colonnes qui recevraient le même code se voient proposer un code
   distinct (« …_VPO__1 »). La feuille *Renommages colonnes* donne ancien → nouvel
   en-tête.
+
+**Les titres de section ne sont jamais codifiés**, dans un questionnaire comme dans
+un fichier de données : une ligne « SECTION 1 : … » / « PARTIE B… » ou tout en
+capitales, une colonne dont l'en-tête commence par ces mêmes mots, sont écartées et
+comptées à part (message *« N titre(s) de section ignoré(s) »*). Dans un fichier de
+données, un en-tête **compact** tout en majuscules (`SEXE`, `FCFA`, `ID`…) reste en
+revanche une vraie variable à codifier — seul un mot-clé explicite de section écarte
+une colonne, pour ne jamais faire disparaître une variable réelle en silence.
 
 > Un fichier **.xls** ancien (Excel 97-2003) n'est pas lu : ouvrez-le dans
 > Excel, puis *Enregistrer sous… .xlsx*.

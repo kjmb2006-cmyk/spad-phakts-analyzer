@@ -424,14 +424,18 @@
     if (multiLine) {
       // rien d'autre n'est fiable tant que le code n'est pas isolé
     } else if (!w.pf_question.trim()) {
-      // libellé sans code : on le codifie (code + modalités tirés du libellé, jamais appliqués sans accord)
+      // libellé sans code : on le codifie (code, modalités ET saut éventuel tirés du libellé par
+      // le codifieur — hors-ligne ou IA —, jamais appliqués sans accord)
       const full = deriveFull();
-      const alsoMod = full && full.pf_modalites && !w.pf_modalites.trim() ? { pf_modalites: String(full.pf_modalites) } : null;
+      const also = {};
+      if (full && full.pf_modalites && !w.pf_modalites.trim()) also.pf_modalites = String(full.pf_modalites);
+      if (full && full.pf_skip && !w.pf_skip.trim()) also.pf_skip = String(full.pf_skip);
+      const alsoMod = Object.keys(also).length ? also : null;
       emit({
         rule: 'code.vide', category: CAT.TYPE, severity: SEV.CRITIQUE,
         message: xls && xls.data ? 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS' : 'Libellé non codifié : aucun code PHAKTS pour cette question',
         action: (xls && xls.data ? 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)' : 'Coder la question (Radical__Déterminant__Affixe!contrainte)')
-          + (alsoMod ? ' — modalités proposées : ' + alsoMod.pf_modalites.slice(0, 90) : ''),
+          + (alsoMod && alsoMod.pf_modalites ? ' — modalités proposées : ' + alsoMod.pf_modalites.slice(0, 90) : ''),
         suggestion: derive(), fix: () => derive() || null, also: alsoMod,
       });
     }
@@ -1694,10 +1698,14 @@
   }
 
   // Ligne qui sert de TITRE (« SECTION 1 : … », « IDENTIFICATION ») et non de question à codifier.
-  function isSectionTitle(libelle) {
+  // opts.requireKeyword : seul le mot-clé explicite (« SECTION… », « PARTIE… ») compte comme
+  // titre — utilisé pour un en-tête de colonne compact (ex. un fichier de données), où un code
+  // court tout en majuscules (« FCFA », « ID ») est une vraie variable, pas un titre de section.
+  function isSectionTitle(libelle, opts) {
     const t = String(libelle || '').trim();
     if (!t || /\?\s*$/.test(t)) return false;
     if (/^(section|partie|module|chapitre|bloc|rubrique|theme|volet|annexe|titre)\b/i.test(strip(t))) return true;
+    if (opts && opts.requireKeyword) return false;
     const letters = strip(t).replace(/[^A-Za-z]/g, '');
     return letters.length >= 4 && t === t.toUpperCase();
   }
@@ -1807,6 +1815,11 @@
     return { affix: '', suggest: choice ? 'X' : 'Z', label: choice ? 'un choix dans une liste' : 'du texte', distinct: choice ? [...distinct].slice(0, 12) : [] };
   }
 
+  // headers/rows d'un fichier de données (export Kobo ou base préparée à la main).
+  // Renvoie { items, sections } — une colonne « SECTION 1 : … » n'est jamais une variable à
+  // codifier. Un en-tête compact (« FCFA », « ID », « SEXE »…) est une vraie variable même tout
+  // en majuscules (isSectionTitle en mode strict : seul un mot-clé explicite compte) ; un en-tête
+  // au long cours qui ressemble à une phrase (looksLikeLabel) est contrôlé sans restriction.
   function datasetToItems(headers, rows) {
     const hs = headers.map(h => String(h == null ? '' : h).trim());
     const col = new Map();
@@ -1824,13 +1837,15 @@
       return (siblings.get(p) || 0) >= 2 && (looksCoded(last) || looksLikeLabel(last) && !looksLikeLabel(h.split('/').pop()));
     };
     const items = [];
+    let sections = 0;
     const sample = i => rows.map(r => (r || [])[i]);
     const add = (h, i, children) => {
       const parts = h.split('/');
       const name = parts[parts.length - 1];
-      const inf = inferColumn(sample(i));
       const meta = KOBO_META.test(name) ? name.toLowerCase() : '';
       const label = !meta && looksLikeLabel(name);
+      if (!meta && isSectionTitle(name, label ? undefined : { requireKeyword: true })) { sections++; return; }
+      const inf = inferColumn(sample(i));
       items.push({
         libelle: label ? name : '', pf_question: label ? '' : name,
         pf_modalites: label && inf.distinct && inf.distinct.length ? inf.distinct.join(' | ') : '', pf_skip: '',
@@ -1851,7 +1866,7 @@
       add(p, first, kids);
     });
     items.sort((a, b) => a._xls.row - b._xls.row);
-    return items;
+    return { items, sections };
   }
 
   // { en-tête d'origine → nouvel en-tête } pour toutes les colonnes touchées, enfants d'un

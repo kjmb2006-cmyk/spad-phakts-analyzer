@@ -544,14 +544,14 @@ const dataHeaders = ['_id', '_uuid', 'grp/Nb_Cas', 'Poids__Z', 'Sexe', 'Sport__X
 const dataRows = Array.from({ length: 12 }, (_, i) => [String(i), 'u' + i, String(i + 2), (50 + i / 2).toFixed(1), i % 2 ? 'Masculin' : 'Feminin', 'Football', '1', '0', i % 3 ? 'ABIDJAN_1' : 'BELIER', '2026-05-01 08:00:00']);
 
 test('données : colonnes système et enfants d\'un choix multiple écartés, chemin de groupe gardé', () => {
-  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const { items } = AUDIT.datasetToItems(dataHeaders, dataRows);
   assert.deepEqual(items.map(i => i._xls.header), ['grp/Nb_Cas', 'Poids__Z', 'Sexe', 'Sport__X', 'Région sanitaire', 'start']);
   assert.deepEqual(items.map(i => i._xls.row), [3, 4, 5, 6, 9, 10]);
   assert.equal(items[3]._xls.children.length, 2);
 });
 
 test('données : le type se lit sur les valeurs (entier, réel) ; un choix deviné reste une proposition', () => {
-  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const { items } = AUDIT.datasetToItems(dataHeaders, dataRows);
   const r = audit(items);
   const byHeader = h => r.items[items.findIndex(i => i._xls.header === h)];
   assert.equal(byHeader('grp/Nb_Cas').corrected.pf_question, 'Nb_Cas__1');
@@ -563,7 +563,7 @@ test('données : le type se lit sur les valeurs (entier, réel) ; un choix devin
 });
 
 test('données : un en-tête qui est un libellé reçoit un code proposé, jamais appliqué sans accord', () => {
-  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const { items } = AUDIT.datasetToItems(dataHeaders, dataRows);
   const derive = it => ({ pf_question: 'Region_Sanitaire__X!1*1Admin_Region_Sanitaire_', pf_modalites: '' + it.libelle.length });
   const r = audit(items, { derive });
   const i = items.findIndex(x => x._xls.header === 'Région sanitaire');
@@ -576,14 +576,14 @@ test('données : un en-tête qui est un libellé reçoit un code proposé, jamai
 });
 
 test('données : renommage des en-têtes avec chemin de groupe et colonnes enfants', () => {
-  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const { items } = AUDIT.datasetToItems(dataHeaders, dataRows);
   const r = audit(items);
   const map = AUDIT.datasetHeaderRenames(r);
   assert.equal(map.get('grp/Nb_Cas'), 'grp/Nb_Cas__1');
   assert.equal(map.get('Poids__Z'), 'Poids__2');
   assert.equal(map.has('Sexe'), false);
   assert.equal(map.has('_id'), false);
-  const sport = audit(AUDIT.datasetToItems(['Sport_X', 'Sport_X/Football', 'Sport_X/Course'], [['Football', '1', '0'], ['Course', '0', '1'], ['Football', '1', '0']]));
+  const sport = audit(AUDIT.datasetToItems(['Sport_X', 'Sport_X/Football', 'Sport_X/Course'], [['Football', '1', '0'], ['Course', '0', '1'], ['Football', '1', '0']]).items);
   const m2 = AUDIT.datasetHeaderRenames(sport);
   assert.equal(m2.get('Sport_X'), 'Sport__X');
   assert.equal(m2.get('Sport_X/Football'), 'Sport__X/Football');
@@ -591,7 +591,7 @@ test('données : renommage des en-têtes avec chemin de groupe et colonnes enfan
 });
 
 test('données : les colonnes Kobo start/end sont des variables générées', () => {
-  const items = AUDIT.datasetToItems(['start', 'end'], [['2026-05-01 08:00:00', '2026-05-01 09:00:00'], ['2026-05-01 08:10:00', '2026-05-01 09:10:00'], ['2026-05-01 08:20:00', '2026-05-01 09:20:00']]);
+  const { items } = AUDIT.datasetToItems(['start', 'end'], [['2026-05-01 08:00:00', '2026-05-01 09:00:00'], ['2026-05-01 08:10:00', '2026-05-01 09:10:00'], ['2026-05-01 08:20:00', '2026-05-01 09:20:00']]);
   const r = audit(items);
   assert.equal(r.items[0].corrected.pf_question, 'Entretien__Debut__G');
   assert.equal(r.items[1].corrected.pf_question, 'Entretien__Fin__G');
@@ -788,4 +788,72 @@ test('stabilité : un questionnaire codifié par l\'outil, une fois toutes les p
   assert.equal(corrected[2].pf_skip, 'Emploi__B = Oui -> @Metier__Z');
   const again = audit(corrected);
   assert.deepEqual(again.findings.filter(f => f.auto).map(f => f.rule), []);
+});
+
+// ── Sections : jamais codifiées, ni dans un questionnaire ni dans une base de données ──────
+test('isSectionTitle en mode strict (requireKeyword) : seul un mot-clé explicite compte', () => {
+  assert.equal(AUDIT.isSectionTitle('SECTION 1 : IDENTIFICATION', { requireKeyword: true }), true);
+  assert.equal(AUDIT.isSectionTitle('Partie B', { requireKeyword: true }), true);
+  // un en-tête compact tout en majuscules reste une vraie variable (pas un titre) en mode strict
+  assert.equal(AUDIT.isSectionTitle('FCFA', { requireKeyword: true }), false);
+  assert.equal(AUDIT.isSectionTitle('IDENTIFICATION', { requireKeyword: true }), false);
+  assert.equal(AUDIT.isSectionTitle('SEXE', { requireKeyword: true }), false);
+  // sans le mode strict, ces mêmes en-têtes tout capitales restent détectés (comportement inchangé)
+  assert.equal(AUDIT.isSectionTitle('IDENTIFICATION'), true);
+});
+
+test('données : un en-tête compact tout en majuscules (FCFA, ID, SEXE) n\'est jamais pris pour une section', () => {
+  const headers = ['ID', 'SEXE', 'FCFA', 'REGION'];
+  const rows = [['1', 'M', '1500', 'ABIDJAN_1'], ['2', 'F', '2300', 'BELIER'], ['3', 'M', '900', 'ABIDJAN_1']];
+  const { items, sections } = AUDIT.datasetToItems(headers, rows);
+  assert.equal(sections, 0);
+  assert.deepEqual(items.map(i => i._xls.header), headers);
+});
+
+test('données : une colonne « SECTION … » ou « PARTIE … » est écartée, jamais codifiée', () => {
+  const headers = ['SECTION 1 : IDENTIFICATION DU REPONDANT', 'Age', 'Sexe', 'PARTIE B : SANTÉ'];
+  const rows = [['', '34', 'M', ''], ['', '28', 'F', ''], ['', '51', 'M', '']];
+  const { items, sections } = AUDIT.datasetToItems(headers, rows);
+  assert.equal(sections, 2);
+  assert.deepEqual(items.map(i => i._xls.header), ['Age', 'Sexe']);
+});
+
+test('données : un en-tête-libellé qui ressemble à un titre de section (avec espaces, tout capitales) est écarté', () => {
+  const headers = ['IDENTIFICATION DU REPONDANT', 'Quel est votre sexe ?'];
+  const rows = [['', 'Masculin'], ['', 'Feminin'], ['', 'Masculin']];
+  const { items, sections } = AUDIT.datasetToItems(headers, rows);
+  assert.equal(sections, 1);
+  assert.deepEqual(items.map(i => i._xls.header), ['Quel est votre sexe ?']);
+});
+
+test('fichier de données : la section comptée par corrHandleFile vient bien de datasetToItems (forme {items, sections})', () => {
+  const { items, sections } = AUDIT.datasetToItems(['SECTION 1', 'Age'], [['', '34'], ['', '28']]);
+  assert.equal(sections, 1);
+  assert.equal(items.length, 1);
+});
+
+test('libellé sans code : le saut proposé (pf_skip) par le codifieur est lui aussi contrôlé par la logique de saut, jamais appliqué seul', () => {
+  const derive = it => (it.libelle === 'Si oui, quel est votre métier ?'
+    ? { pf_question: 'Metier__Z!1*Expression', pf_modalites: 'Expression', pf_skip: 'Emploi__B = Oui -> @Metier__Z' }
+    : { pf_question: 'Emploi__B!boolean', pf_modalites: 'Oui | Non' });
+  const items = [q('', '', '', 'Avez-vous un emploi ?'), q('', '', '', 'Si oui, quel est votre métier ?')];
+  const first = audit(items, { derive });
+  const f1 = rule(first, 'code.vide', 1);
+  assert.equal(f1.also.pf_skip, 'Emploi__B = Oui -> @Metier__Z');
+  // non accepté : le saut proposé par le codifieur n'apparaît nulle part dans le corrigé
+  assert.equal(first.items[1].corrected.pf_skip, '');
+  const accepted = new Set(first.findings.filter(f => f.rule === 'code.vide').map(f => f.id));
+  const r = audit(items, { derive, accepted });
+  assert.equal(r.items[1].corrected.pf_skip, 'Emploi__B = Oui -> @Metier__Z');
+  // et il n'est pas dupliqué par la détection « Si oui » du moteur de saut
+  assert.equal(r.items[1].findings.filter(f => f.category === 'Skip Logic').length, 0);
+});
+
+test('un saut malformé proposé par le codifieur est rattrapé par le contrôle de saut (jamais appliqué tel quel)', () => {
+  const derive = () => ({ pf_question: 'Metier__Z!1*Expression', pf_modalites: 'Expression', pf_skip: 'Variable_Inexistante__B = Oui -> @Metier__Z' });
+  const items = [q('', '', '', 'Si oui, quel est votre métier ?')];
+  const first = audit(items, { derive });
+  const accepted = new Set(first.findings.filter(f => f.rule === 'code.vide').map(f => f.id));
+  const r = audit(items, { derive, accepted });
+  assert.ok(rule(r, 'skip.source_inconnue', 0));
 });

@@ -26,10 +26,11 @@ const checks = [
       ok.items[0].corrected.pf_question === 'Age__1Y!0<N<120' && ok.items[0].corrected.pf_modalites === 'Années' &&
       AUDIT.isSectionTitle('SECTION 1 : IDENTITÉ') && !AUDIT.isSectionTitle('Sexe') && AUDIT.detectSheetKind(['Libellé']) === 'libelles';
   }],
-  ['fichier de données : colonne entière renommée, valeurs jamais touchées', () => {
-    const items = AUDIT.datasetToItems(['Nb_Cas', '_id'], [['1', 'a'], ['2', 'b'], ['3', 'c']]);
+  ['fichier de données : colonne entière renommée, valeurs jamais touchées, section écartée', () => {
+    const { items, sections } = AUDIT.datasetToItems(['SECTION 1', 'Nb_Cas', '_id', 'FCFA'], [['', '1', 'a', '500'], ['', '2', 'b', '900'], ['', '3', 'c', '750']]);
     const res = AUDIT.auditQuestionnaire(items);
-    return items.length === 1 && AUDIT.datasetHeaderRenames(res).get('Nb_Cas') === 'Nb_Cas__1';
+    // FCFA : en-tête compact tout en majuscules, jamais pris pour une section (variable réelle)
+    return items.length === 2 && sections === 1 && items.some(i => i._xls.header === 'FCFA') && AUDIT.datasetHeaderRenames(res).get('Nb_Cas') === 'Nb_Cas__1';
   }],
   ['XLSForm : nom renommé d\'office', () => {
     const items = AUDIT.xlsformToItems({ headers: ['type', 'name', 'label'], rows: [{ _row: 2, type: 'text', name: 'Nom_Z', label: 'Nom' }] }, { headers: [], rows: [] });
