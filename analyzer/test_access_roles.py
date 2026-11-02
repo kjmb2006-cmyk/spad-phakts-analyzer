@@ -110,20 +110,23 @@ with client.session_transaction() as sess:
 print("OK — mot de passe Invité reconnu, redirection directe vers / (tableau de bord Invité)")
 
 # Les pages liste (districts/superviseurs/enquêteurs) exigent un calcul déjà
-# en cache — SESSION-SCOPÉ (voir app.py::_load_completude_cache()), jamais
-# un repli sur le calcul le plus récent d'un autre rôle. On seed donc ici un
-# cache minimal directement dans la session invité, plutôt que de dépendre
-# d'un /completude/calculer lancé par un autre rôle plus haut dans ce script
-# (qui ne serait de toute façon pas visible depuis cette session).
-import json as _json
+# en cache. Ce cache est un fichier CANONIQUE partagé (voir
+# modules/completude_cache.py, relu par app.py::_load_completude_cache()),
+# tenu à jour par le timer serveur ou le bouton « Calculer » — le rôle
+# invité ne fait que le lire. On en écrit donc ici un minimal, dans un
+# dossier temporaire substitué à UPLOAD_FOLDER le temps du test : jamais
+# dans le vrai dossier, pour ne pas écraser le calcul d'un poste de dev.
+import shutil as _shutil
 import tempfile as _tempfile
-_cache_path = os.path.join(_tempfile.gettempdir(), '_test_access_roles_completude_cache.json')
-with open(_cache_path, 'w', encoding='utf-8') as f:
-    _json.dump({'national': {}, 'district': {}, 'region': {}, 'etablissement': {},
-                'enqueteur': {}, 'superviseur': {}, 'anomalies_zero': [], 'anomalies_excess': [],
-                'export': []}, f)
-with client.session_transaction() as sess:
-    sess['completude_path'] = _cache_path
+from modules import completude_cache
+_real_upload_folder = app.config['UPLOAD_FOLDER']
+_tmp_upload_folder = _tempfile.mkdtemp(prefix='_test_access_roles_')
+completude_cache.save_cache(
+    {'national': {}, 'district': {}, 'region': {}, 'etablissement': {},
+     'enqueteur': {}, 'superviseur': {}, 'roster': {}, 'roster_families': {}, 'named_roster': {},
+     'anomalies_zero': [], 'anomalies_excess': [], 'export': []},
+    _tmp_upload_folder, '2026-01-01T00:00:00')
+app.config['UPLOAD_FOLDER'] = _tmp_upload_folder
 
 allowed = ['/', '/collecte/dashboard', '/completude', '/completude/districts', '/completude/superviseurs', '/completude/enqueteurs']
 for path in allowed:
@@ -156,10 +159,8 @@ with client.session_transaction() as sess:
 print("OK — /logout efface bien authentification et rôle")
 
 accounts.delete_user(TEST_USER)
-try:
-    os.remove(_cache_path)
-except OSError:
-    pass
+app.config['UPLOAD_FOLDER'] = _real_upload_folder
+_shutil.rmtree(_tmp_upload_folder, ignore_errors=True)
 
 print()
 print("=" * 70)
