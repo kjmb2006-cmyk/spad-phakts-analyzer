@@ -1709,7 +1709,7 @@
       ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:30px;margin-bottom:8px">🛠</div>
       <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px">Glisser-déposer le questionnaire à vérifier</div>
-      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>) ou questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) — <strong>.xlsx</strong></div>
+      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
       <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
     </div>
 
@@ -7832,6 +7832,33 @@ function corrSetMessage(text, type) {
   el.textContent = text;
 }
 
+/** Texte d'une cellule ; les dates (objets Date d'ExcelJS) deviennent « AAAA-MM-JJ hh:mm:ss ». */
+function corrCellText(v) {
+  if (v instanceof Date) return isNaN(v) ? '' : v.toISOString().slice(0, 19).replace('T', ' ');
+  return PHAKTS_CORE.excelCellText(v).trim();
+}
+
+/** En-têtes (ligne 1) seulement : suffit à reconnaître la nature d'une feuille. */
+function corrReadHeaders(ws) {
+  const hr = ws.getRow(1);
+  const n = Math.max(ws.columnCount || 0, hr.cellCount || 0);
+  const headers = [];
+  for (let c = 1; c <= n; c++) headers[c - 1] = corrCellText(hr.getCell(c).value);
+  return headers;
+}
+
+/** Échantillon des premières lignes de réponses : tableaux de texte alignés sur les en-têtes. */
+function corrReadSample(ws, nCols, max) {
+  const rows = [];
+  for (let r = 2; r <= ws.rowCount && rows.length < max; r++) {
+    const row = ws.getRow(r);
+    const line = [];
+    for (let c = 1; c <= nCols; c++) line.push(corrCellText(row.getCell(c).value));
+    if (line.some(Boolean)) rows.push(line);
+  }
+  return rows;
+}
+
 /** Feuille → { headers, rows[{_row, <colonne>: texte}] } (en-têtes en ligne 1). */
 function corrReadTable(ws) {
   const headers = [];
@@ -7877,8 +7904,12 @@ async function corrHandleFile(file) {
     const buffer = await file.arrayBuffer();
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer.slice(0));
-    const tables = wb.worksheets.map(ws => Object.assign({ name: ws.name }, corrReadTable(ws)));
-    tables.forEach(t => { t.kind = PHAKTS_AUDIT.detectSheetKind(t.headers); });
+    const tables = wb.worksheets.map(ws => {
+      const headers = corrReadHeaders(ws);
+      const kind = PHAKTS_AUDIT.detectSheetKind(headers);
+      // un export de données peut peser des dizaines de Mo : on ne lit en entier que les questionnaires
+      return kind ? Object.assign({ name: ws.name, kind }, corrReadTable(ws)) : { name: ws.name, kind, headers, ws };
+    });
     const pick = (kind, name) => tables.find(t => t.kind === kind && t.name.toLowerCase() === name) || tables.find(t => t.kind === kind);
     const survey = pick('survey', 'survey');
     const choices = pick('choices', 'choices');
@@ -7904,6 +7935,16 @@ async function corrHandleFile(file) {
       });
       if (items.length) sheets.push({ name: t.name, kind: 'codified', table: t, cols, items, rowOf: i => rows[i] });
     });
+
+    // Fichier de données : aucune feuille de questionnaire, mais des colonnes et des lignes de réponses
+    if (!sheets.length) {
+      tables.filter(t => !t.kind && t.headers.filter(Boolean).length >= 2).forEach(t => {
+        const sample = corrReadSample(t.ws, t.headers.length, 300);
+        if (!sample.length) return;
+        const items = PHAKTS_AUDIT.datasetToItems(t.headers, sample);
+        if (items.length) sheets.push({ name: t.name, kind: 'data', table: { headers: t.headers }, headers: t.headers, items, rowOf: i => items[i]._xls.row });
+      });
+    }
 
     if (!sheets.length) {
       const seen = tables.map(t => '« ' + t.name + ' » (' + (t.headers.filter(Boolean).slice(0, 6).join(', ') || 'vide') + ')').join(' ; ');
@@ -7955,7 +7996,8 @@ function corrRender() {
       `<div style="font-size:24px;font-weight:700;color:${color};font-family:var(--mono)">${n}</div>` +
       `<div style="font-size:11px;color:var(--text)">${label}</div>` +
       (sub ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">${sub}</div>` : '') + '</div>';
-  const modeLabel = corr.sheets.map(sh => (sh.kind === 'xlsform' ? 'XLSForm « ' : 'Questionnaire codifié « ') + sh.name + ' » (' + sh.items.length + ')').join(' · ');
+  const KIND_LABEL = { xlsform: 'XLSForm « ', codified: 'Questionnaire codifié « ', data: 'Fichier de données « ' };
+  const modeLabel = corr.sheets.map(sh => KIND_LABEL[sh.kind] + sh.name + ' » (' + sh.items.length + (sh.kind === 'data' ? ' variables' : '') + ')').join(' · ');
   const sevChips = ['Critique', 'Majeure', 'Mineure'].map(k =>
     `<span style="color:${CORR_SEV_COLOR[k]}">${t.sevOpen[k]} ${k.toLowerCase()}${t.sevOpen[k] > 1 ? 's' : ''}</span>`).join(' · ');
   const doneW = pct(t.conformes + t.corriges), initW = pct(t.conformes);
@@ -7980,14 +8022,17 @@ function corrRender() {
   const keep = corr.filter.cat;
   catSel.innerHTML = '<option value="">Toutes catégories</option>' + [...cats].sort().map(c => `<option${c === keep ? ' selected' : ''}>${_esc(c)}</option>`).join('');
 
-  const xls = corr.sheets.some(sh => sh.kind === 'xlsform');
+  const xls = corr.sheets.some(sh => sh.kind !== 'codified');
+  const isData = corr.sheets.some(sh => sh.kind === 'data');
   const btnRes = document.getElementById('corrBtnResults');
   btnRes.disabled = xls;
   btnRes.style.opacity = xls ? '.45' : '1';
-  btnRes.title = xls ? 'Un XLSForm ne porte ni contraintes ni skip PHAKTS : le charger dans Résultats les perdrait. Utilisez le fichier corrigé.' : 'Charge le questionnaire corrigé dans l\'onglet Résultats pour générer le XLSForm';
-  document.getElementById('corrFootNote').textContent = xls
-    ? 'XLSForm : les noms (colonne name) sont corrigés et propagés dans les ${références}. Un nom changé = une autre colonne dans les exports : la feuille « Renommages XLSForm » donne la correspondance ancien → nouveau.'
-    : 'Le fichier corrigé garde votre mise en forme ; un « Journal des corrections PHAKTS » est ajouté.';
+  btnRes.title = xls ? 'Un XLSForm ou un fichier de données ne porte ni contraintes ni skip PHAKTS : le charger dans Résultats les perdrait. Utilisez le fichier corrigé.' : 'Charge le questionnaire corrigé dans l\'onglet Résultats pour générer le XLSForm';
+  document.getElementById('corrFootNote').textContent = isData
+    ? 'Fichier de données : seuls les en-têtes de colonnes sont renommés (jamais les valeurs). La feuille « Renommages colonnes » donne la correspondance ancien → nouveau.'
+    : (xls
+      ? 'XLSForm : les noms (colonne name) sont corrigés et propagés dans les ${références}. Un nom changé = une autre colonne dans les exports : la feuille « Renommages XLSForm » donne la correspondance ancien → nouveau.'
+      : 'Le fichier corrigé garde votre mise en forme ; un « Journal des corrections PHAKTS » est ajouté.');
 
   ['corrViewFindings', 'corrViewCorrected'].forEach(id => {
     const on = (id === 'corrViewFindings') === (corr.view === 'constats');
@@ -8072,7 +8117,7 @@ function corrRenderFindings() {
       const b = dpfBadge(it);
       const name = sh.kind === 'xlsform' ? it.xls.type + ' · ' : '';
       html += `<tr style="background:var(--bg2)"><td colspan="4" style="padding:7px 10px;border-top:1px solid var(--border2)">` +
-        `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text2)">${_esc(corr.sheets.length > 1 || sh.kind === 'xlsform' ? sh.name + ' · ' : '')}ligne ${sh.rowOf(it.index)}</span> ` +
+        `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text2)">${_esc(corr.sheets.length > 1 || sh.kind !== 'codified' ? sh.name + ' · ' : '')}${sh.kind === 'data' ? 'colonne' : 'ligne'} ${sh.rowOf(it.index)}</span> ` +
         `<span style="color:var(--text)">${_esc(it.libelle.slice(0, 110) || '—')}</span> ` +
         `<code style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-left:6px">${_esc(name + it.original.pf_question)}</code>` +
         (b ? ` <span title="${b[2]}" style="font-size:9px;padding:1px 6px;border-radius:9px;border:1px solid ${b[1]}66;color:${b[1]};margin-left:6px">${b[0]}</span>` : '') + '</td></tr>';
@@ -8126,17 +8171,17 @@ function corrRenderCorrected() {
         `<td style="padding:6px 10px;color:var(--text2);font-family:var(--mono);font-size:10.5px">${sh.rowOf(it.index)}</td>` +
         `<td style="padding:6px 10px;max-width:260px">${_esc(it.libelle.slice(0, 120))}</td>` +
         `<td style="padding:6px 10px;color:var(--accent2)">${cell(it.original.pf_question, it.corrected.pf_question)}</td>` +
-        (sh.kind === 'xlsform' ? `<td style="padding:6px 10px;font-size:10.5px;color:var(--text2)">${_esc(it.xls.type)}</td>` :
+        (sh.kind !== 'codified' ? `<td style="padding:6px 10px;font-size:10.5px;color:var(--text2)">${_esc(it.xls.type)}</td>` :
           `<td style="padding:6px 10px">${cell(it.original.pf_modalites, it.corrected.pf_modalites)}</td>` +
           `<td style="padding:6px 10px;color:#fcd34d">${cell(it.original.pf_skip, it.corrected.pf_skip)}</td>`) +
         `<td style="padding:6px 10px;font-size:11px">${state}</td></tr>`;
     }).join('');
-    const head = sh.kind === 'xlsform'
-      ? '<th style="padding:8px 10px;text-align:left">name (corrigé)</th><th style="padding:8px 10px;text-align:left">type</th>'
+    const head = sh.kind !== 'codified'
+      ? '<th style="padding:8px 10px;text-align:left">' + (sh.kind === 'data' ? 'en-tête (corrigé)' : 'name (corrigé)') + '</th><th style="padding:8px 10px;text-align:left">' + (sh.kind === 'data' ? 'valeurs' : 'type') + '</th>'
       : '<th style="padding:8px 10px;text-align:left">PF/Question (corrigé)</th><th style="padding:8px 10px;text-align:left">PF/Modalités</th><th style="padding:8px 10px;text-align:left">Skip Logic</th>';
     html += `<div style="font-size:12px;font-weight:600;color:var(--accent2);margin:${html ? '20px' : '0'} 0 6px">Feuille « ${_esc(sh.name)} » — ${sh.items.length} question(s)</div>` +
       '<div style="overflow-x:auto;border:1px solid var(--border2);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
-      '<thead><tr style="background:var(--bg2);font-size:11px;color:var(--text2)"><th style="padding:8px 10px;text-align:left">Ligne</th><th style="padding:8px 10px;text-align:left">Libellé</th>' + head +
+      '<thead><tr style="background:var(--bg2);font-size:11px;color:var(--text2)"><th style="padding:8px 10px;text-align:left">' + (sh.kind === 'data' ? 'Col.' : 'Ligne') + '</th><th style="padding:8px 10px;text-align:left">Libellé</th>' + head +
       '<th style="padding:8px 10px;text-align:left">État</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   });
   document.getElementById('corrBody').innerHTML = html;
@@ -8210,7 +8255,7 @@ function corrAddSheet(wb, name, columns, rows) {
 function corrAddReportSheets(wb) {
   const t = corrTotals();
   const reg = corrRegistryRaw();
-  const sheetsInfo = corr.sheets.map(sh => (sh.kind === 'xlsform' ? 'XLSForm' : 'Questionnaire codifié') + ' « ' + sh.name + ' » : ' + sh.items.length + ' question(s)').join(' | ');
+  const sheetsInfo = corr.sheets.map(sh => ({ xlsform: 'XLSForm', codified: 'Questionnaire codifié', data: 'Fichier de données' }[sh.kind]) + ' « ' + sh.name + ' » : ' + sh.items.length + (sh.kind === 'data' ? ' variable(s)' : ' question(s)')).join(' | ');
   const synth = [
     ['Fichier audité', corr.fileName], ['Feuilles', sheetsInfo], ['Date de l\'audit', new Date().toLocaleString('fr-FR')],
     ['Grammaire PHAKTS', PHAKTS_CORE.GRAMMAR_VERSION], ['Moteur d\'audit', PHAKTS_AUDIT.AUDIT_VERSION],
@@ -8243,6 +8288,14 @@ function corrAddReportSheets(wb) {
   corr.sheets.filter(sh => sh.kind === 'xlsform').forEach(sh => sh.res.items.forEach(it => {
     if (it.corrected.pf_question !== it.original.pf_question) renames.push({ ancien: it.original.pf_question, nouveau: it.corrected.pf_question, type: it.xls.type, ligne: it.xls.row });
   }));
+  const colRenames = [];
+  corr.sheets.filter(sh => sh.kind === 'data').forEach(sh => {
+    PHAKTS_AUDIT.datasetHeaderRenames(sh.res).forEach((nouveau, ancien) => colRenames.push({ feuille: sh.name, ancien, nouveau }));
+  });
+  if (colRenames.length) {
+    corrAddSheet(wb, 'Renommages colonnes', [{ header: 'Feuille', key: 'feuille', width: 28 }, { header: 'Ancien en-tête', key: 'ancien', width: 60 },
+      { header: 'Nouvel en-tête', key: 'nouveau', width: 54 }], colRenames);
+  }
   if (renames.length) {
     corrAddSheet(wb, 'Renommages XLSForm', [{ header: 'Ancien nom (name)', key: 'ancien', width: 48 }, { header: 'Nouveau nom (name)', key: 'nouveau', width: 54 },
       { header: 'Type du champ', key: 'type', width: 24 }, { header: 'Ligne', key: 'ligne', width: 8 }], renames);
@@ -8266,7 +8319,17 @@ async function corrApplyToWorkbook(wb) {
   corr.sheets.forEach(sh => {
     const ws = wb.getWorksheet(sh.name);
     if (!ws) return;
-    if (sh.kind === 'codified') {
+    if (sh.kind === 'data') {
+      const renames = PHAKTS_AUDIT.datasetHeaderRenames(sh.res);
+      const hr = ws.getRow(1);
+      sh.headers.forEach((h, i) => {
+        const next = renames.get(h);
+        if (!next) return;
+        const cell = hr.getCell(i + 1);
+        cell.value = next;
+        corrMarkCell(cell, 'Renommé (audit DPF) — avant : ' + h);
+      });
+    } else if (sh.kind === 'codified') {
       const fields = [['pf_question', sh.cols.code], ['pf_modalites', sh.cols.modalites], ['pf_skip', sh.cols.skip]];
       sh.res.items.forEach(it => {
         const row = ws.getRow(sh.rowOf(it.index));

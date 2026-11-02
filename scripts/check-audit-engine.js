@@ -16,6 +16,11 @@ const checks = [
   ['séparateur d\'un choix unique : virgule', () => fixed(q('Religion__X!1*1Religion_', 'Religion_=[A|B|C]')).pf_modalites === 'Religion_=[A,B,C]'],
   ['unité 1N ramenée à 1', () => fixed(q('Nb_Enfants__1N!N', 'Nombre')).pf_question === 'Nb_Enfants__1!N'],
   ['coquille du DPF jamais proposée', () => !/Sceptiqu/i.test(JSON.stringify(AUDIT.dpfValues({ valeurs: 'Fosse_Sceptiqu, Latrine' })))],
+  ['fichier de données : colonne entière renommée, valeurs jamais touchées', () => {
+    const items = AUDIT.datasetToItems(['Nb_Cas', '_id'], [['1', 'a'], ['2', 'b'], ['3', 'c']]);
+    const res = AUDIT.auditQuestionnaire(items);
+    return items.length === 1 && AUDIT.datasetHeaderRenames(res).get('Nb_Cas') === 'Nb_Cas__1';
+  }],
   ['XLSForm : nom renommé d\'office', () => {
     const items = AUDIT.xlsformToItems({ headers: ['type', 'name', 'label'], rows: [{ _row: 2, type: 'text', name: 'Nom_Z', label: 'Nom' }] }, { headers: [], rows: [] });
     return AUDIT.auditQuestionnaire(items).items[0].corrected.pf_question === 'Nom__Z';

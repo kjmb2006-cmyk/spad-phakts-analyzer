@@ -374,18 +374,19 @@
 
     const xlsMeta = { start: 'Entretien__Debut', end: 'Entretien__Fin', today: 'Enquete__Date', deviceid: 'Appareil', username: 'Enqueteur__Compte', phonenumber: 'Appareil__Telephone', audit: 'Entretien__Audio' };
     const xlsSuggest = () => {
-      if (!xls || !xls.affix) return '';
+      const affix = xls && (xls.affix || xls.suggest);
+      if (!affix) return '';
       const { code } = splitQ(w.pf_question);
       if (xls.meta && (!code || /^(start|end|today|deviceid|username|phonenumber|audit)$/i.test(code))) return xlsMeta[xls.meta] + '__G';
       const base = strip(code).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').split('_').filter(Boolean).map(cap).join('_');
-      return base ? base + '__' + xls.affix : '';
+      return base ? base + '__' + affix : '';
     };
     const derive = () => {
-      if (xls) return xlsSuggest();
+      if (xls && !xls.fromLabel) return xlsSuggest();
       if (!ctx.derive) return '';
       try {
         const d = ctx.derive({ ...item, pf_question: w.pf_question, pf_modalites: w.pf_modalites });
-        return d && d.pf_question ? d.pf_question : '';
+        return d && d.pf_question ? (xls ? splitQ(d.pf_question).code : d.pf_question) : '';
       } catch (_) { return ''; }
     };
 
@@ -417,7 +418,8 @@
     } else if (!w.pf_question.trim()) {
       emit({
         rule: 'code.vide', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: 'Aucun code PHAKTS pour cette question', action: 'Coder la question (Radical__Déterminant__Affixe!contrainte)',
+        message: xls && xls.data ? 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS' : 'Aucun code PHAKTS pour cette question',
+        action: xls && xls.data ? 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)' : 'Coder la question (Radical__Déterminant__Affixe!contrainte)',
         suggestion: derive(), fix: () => derive() || null,
       });
     } else {
@@ -616,7 +618,7 @@
         rule: 'affixe.absent', category: CAT.TYPE, severity: SEV.CRITIQUE,
         message: 'Code sans affixe de type (B, C, A, X, Z, 1, 2, G, P, SRC) : « ' + code + ' » n\'est pas un code PHAKTS',
         action: 'Coder selon Radical__Déterminant__Affixe!contrainte' + (sugg ? ' — proposition issue du libellé : ' + sugg : ''),
-        suggestion: sugg, auto: Boolean(xls && sugg), fix: () => sugg || null,
+        suggestion: sugg, auto: Boolean(xls && sugg && (!xls.data || xls.affix)), fix: () => sugg || null,
         also: null,
       });
     }
@@ -1140,8 +1142,8 @@
       const label = { B: 'Oui/Non', C: 'Oui/Non/autre', X: 'liste de choix', Z: 'texte', A: 'date', 1: 'entier', 2: 'réel', G: 'variable générée', P: 'photo' };
       emit({
         rule: 'type.xlsform_affixe', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: 'Le champ est de type « ' + xls.type + ' » (' + (label[klass(xls.affix)] || xls.affix) + ') mais le nom se termine par __' + have + ' (' + (label[klass(have)] || have) + ')',
-        action: 'Écrire __' + xls.affix + ' (le type du champ fait foi)', auto: true,
+        message: (xls.data ? 'Les valeurs de la colonne sont ' + xls.type : 'Le champ est de type « ' + xls.type + ' »') + ' (' + (label[klass(xls.affix)] || xls.affix) + ') mais le nom se termine par __' + have + ' (' + (label[klass(have)] || have) + ')',
+        action: 'Écrire __' + xls.affix + (xls.data ? ' (les valeurs de la colonne font foi)' : ' (le type du champ fait foi)'), auto: true,
         fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[^_]+$/, '__' + xls.affix), p.constraint); },
       });
     }
@@ -1575,16 +1577,38 @@
     });
     groups.forEach(list => {
       if (list.length < 2) return;
+      const first = list[0];
       list.slice(1).forEach(i => {
         const r = results[i];
-        const first = list[0];
         const sameLib = plain(r.libelle) === plain(results[first].libelle);
-        r.findings.push({
-          id: i + ':doublon.code', index: i, rule: 'doublon.code', field: 'pf_question', category: CAT.DOUBLON, severity: SEV.MAJEURE,
-          message: 'Code déjà utilisé ligne ' + (first + 1) + (sameLib ? ' (même libellé : question répétée)' : ' pour une autre question'),
-          action: 'Deux questions ne peuvent pas porter le même code (Kobo refuse deux « name » identiques) : préciser le déterminant', source: SRC.GRAMMAIRE,
-          before: r.work.pf_question, after: null, auto: false, applied: false, detail: '', suggestion: '', also: null,
+        // Le mot qui distingue cette question de celle qui garde le code (« Rougeole », « VPO »…)
+        const base = new Set(contentWords(results[first].libelle));
+        const tokens = strip(r.libelle).split(/[^A-Za-z0-9]+/).filter(Boolean);
+        const extra = [];
+        tokens.forEach(t => {
+          const k = t.toLowerCase();
+          if (k.length >= 3 && !STOPWORDS.has(k) && !base.has(k) && !extra.some(e => e.toLowerCase() === k)) {
+            extra.push(/^[A-Z0-9]{2,5}$/.test(t) ? t : cap(k));
+          }
         });
+        let after = null;
+        if (!sameLib && extra.length) {
+          const { code, constraint } = splitQ(r.work.pf_question);
+          const segs = code.split('__');
+          const affix = segs.length >= 2 ? segs.pop() : '';
+          const tag = extra.slice(0, 2).join('_');
+          after = joinQ(affix ? segs.join('__') + '_' + tag + '__' + affix : code + '_' + tag, constraint);
+          if (codeKey(codeOf(after)) !== codeKey(codeOf(r.work.pf_question)) && groups.has(codeKey(codeOf(after)))) after = null; // déjà pris
+        }
+        const f = {
+          id: i + ':doublon.code', index: i, rule: 'doublon.code', field: 'pf_question', category: CAT.DOUBLON, severity: SEV.MAJEURE,
+          message: 'Code déjà utilisé ' + (r.xls && r.xls.data ? 'par la colonne ' : 'ligne ') + (r.xls && r.xls.row != null ? r.xls.row : first + 1) + ' (' + (sameLib ? 'même libellé : question répétée' : 'autre question') + ')',
+          action: after ? 'Deux questions ne peuvent pas porter le même code : ajouter ce qui les distingue (' + extra.slice(0, 2).join(' ') + ')' : 'Deux questions ne peuvent pas porter le même code (Kobo refuse deux « name » identiques) : préciser le déterminant',
+          source: SRC.GRAMMAIRE, before: r.work.pf_question, after, auto: false, applied: false, detail: '', suggestion: after ? codeOf(after) : '', also: null,
+        };
+        f.applied = after != null && ctx.accepted.has(f.id);
+        if (f.applied) r.work.pf_question = after;
+        r.findings.push(f);
       });
     });
 
@@ -1702,6 +1726,96 @@
     return items;
   }
 
+
+  // ── Fichier de données (export Kobo) ──────────────────────────────────────
+  // La première ligne porte les noms de variables, ou les libellés des questions selon
+  // l'option d'export choisie dans Kobo. rows : lignes d'échantillon (tableaux de texte).
+  const KOBO_SYSTEM = /^(_|meta\/|formhub\/)|^(__version__|instanceID|instanceName)$/i;
+  const KOBO_META = /^(start|end|today|deviceid|username|phonenumber|audit)$/i;
+
+  // Un en-tête qui contient espaces, accents ou ponctuation est un libellé, pas un code.
+  const looksLikeLabel = h => /[\s'’?:,;()]|[^\x00-\x7f]/.test(h) || h.length > 60;
+
+  // Type probable d'une colonne d'après ses valeurs : { affix } quand c'est sûr (nombre,
+  // date, oui/non), { suggest } quand ce n'est qu'une probabilité (liste ou texte libre).
+  function inferColumn(values) {
+    const v = values.map(x => String(x == null ? '' : x).trim()).filter(Boolean);
+    if (v.length < 3) return { affix: '', suggest: '', label: 'sans valeurs' };
+    if (v.every(x => /^-?\d+$/.test(x))) return { affix: '1', suggest: '1', label: 'entières' };
+    if (v.every(x => /^-?\d+([.,]\d+)?$/.test(x))) return { affix: '2', suggest: '2', label: 'décimales' };
+    if (v.every(x => /^\d{4}-\d{2}-\d{2}([ T][\d:.+-]+)?$/.test(x))) return { affix: 'A', suggest: 'A', label: 'de dates' };
+    const set = new Set(v.map(x => valueKey(x)));
+    if ([...set].every(x => ['oui', 'non', 'yes', 'no', 'true', 'false', 'vrai', 'faux'].includes(x))) return { affix: 'B', suggest: 'B', label: 'oui/non' };
+    const distinct = new Set(v);
+    const choice = v.length >= 5 && distinct.size <= Math.max(8, Math.ceil(v.length * 0.2)) && v.every(x => x.length < 40);
+    return { affix: '', suggest: choice ? 'X' : 'Z', label: choice ? 'un choix dans une liste' : 'du texte', distinct: choice ? [...distinct].slice(0, 12) : [] };
+  }
+
+  function datasetToItems(headers, rows) {
+    const hs = headers.map(h => String(h == null ? '' : h).trim());
+    const col = new Map();
+    hs.forEach((h, i) => { if (h && !col.has(h)) col.set(h, i); });
+    const prefixOf = h => (h.includes('/') ? h.slice(0, h.lastIndexOf('/')) : '');
+    // colonnes « Question/choix » d'une question à choix multiples : la question parente
+    // est elle-même une colonne, ou au moins deux colonnes partagent un préfixe codifié
+    const siblings = new Map();
+    hs.forEach(h => { const p = prefixOf(h); if (p && !col.has(p)) siblings.set(p, (siblings.get(p) || 0) + 1); });
+    const isChild = h => {
+      const p = prefixOf(h);
+      if (!p) return false;
+      if (col.has(p)) return true;
+      const last = p.split('/').pop();
+      return (siblings.get(p) || 0) >= 2 && (looksCoded(last) || looksLikeLabel(last) && !looksLikeLabel(h.split('/').pop()));
+    };
+    const items = [];
+    const sample = i => rows.map(r => (r || [])[i]);
+    const add = (h, i, children) => {
+      const parts = h.split('/');
+      const name = parts[parts.length - 1];
+      const inf = inferColumn(sample(i));
+      const meta = KOBO_META.test(name) ? name.toLowerCase() : '';
+      const label = !meta && looksLikeLabel(name);
+      items.push({
+        libelle: label ? name : '', pf_question: label ? '' : name,
+        pf_modalites: label && inf.distinct && inf.distinct.length ? inf.distinct.join(' | ') : '', pf_skip: '',
+        _xls: { row: i + 1, type: 'valeurs ' + inf.label, list: '', affix: meta ? 'G' : inf.affix, suggest: meta ? 'G' : inf.suggest, kind: '', meta, data: true, fromLabel: label, header: h, children },
+      });
+    };
+    hs.forEach((h, i) => {
+      if (!h || KOBO_SYSTEM.test(h) || col.get(h) !== i) return;
+      if (isChild(h)) return;
+      add(h, i, hs.filter(c => c.startsWith(h + '/')));
+    });
+    // question à choix multiples sans colonne parente : une entrée pour le préfixe commun
+    siblings.forEach((n, p) => {
+      if (n < 2) return;
+      const kids = hs.filter(c => prefixOf(c) === p);
+      if (!kids.length || !kids.every(k => !col.has(k) || isChild(k))) return;
+      const first = hs.indexOf(kids[0]);
+      add(p, first, kids);
+    });
+    items.sort((a, b) => a._xls.row - b._xls.row);
+    return items;
+  }
+
+  // { en-tête d'origine → nouvel en-tête } pour toutes les colonnes touchées, enfants d'un
+  // choix multiple compris. Le chemin de groupe (grp/…) n'est jamais modifié.
+  function datasetHeaderRenames(res) {
+    const map = new Map();
+    res.items.forEach(r => {
+      if (!r.xls || !r.xls.data) return;
+      const after = r.corrected.pf_question.trim();
+      const before = (r.xls.fromLabel ? r.libelle : r.original.pf_question).trim();
+      if (!after || after === before) return;
+      const path = r.xls.header.includes('/') ? r.xls.header.slice(0, r.xls.header.lastIndexOf('/') + 1) : '';
+      const newHeader = path + after;
+      if (newHeader === r.xls.header) return;
+      map.set(r.xls.header, newHeader);
+      (r.xls.children || []).forEach(c => { map.set(c, newHeader + c.slice(r.xls.header.length)); });
+    });
+    return map;
+  }
+
   // ${ancien_nom} → ${nouveau_nom} dans une expression XLSForm (relevant,
   // constraint, calculation, choice_filter, libellés…).
   const renameRefs = (text, map) => String(text == null ? '' : text).replace(/\$\{([^}]+)\}/g, (m, n) => (map.has(n) ? '${' + map.get(n) + '}' : m));
@@ -1733,7 +1847,7 @@
     res.items.forEach(r => {
       r.findings.forEach(f => {
         const line = {
-          feuille: sheetName, ligne: rowFor(r.index), champ: r.xls ? 'name' : FIELD_LABEL[f.field], categorie: f.category, severite: f.severity,
+          feuille: sheetName, ligne: rowFor(r.index), champ: r.xls ? (r.xls.data ? 'En-tête' : 'name') : FIELD_LABEL[f.field], categorie: f.category, severite: f.severity,
           avant: f.before, apres: f.after == null ? '' : f.after, regle: f.rule, source: f.source,
           anomalie: f.message, action: f.action, libelle: r.libelle,
         };
@@ -1753,7 +1867,7 @@
     AUDIT_VERSION, SEV, CAT, SRC, DPF_LEXIE_TYPOS,
     auditQuestionnaire, auditItem, parseSkipRule, parseListDef, canonValue, canonListId, codeKey,
     parseDpfRegistryRows, buildRegistry, unitHint, dpfValues, affixStatus, strip, plain,
-    normalizeDpfCode, detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
+    datasetToItems, datasetHeaderRenames, inferColumn, normalizeDpfCode, detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
     get defaultRegistry() { return DEFAULT_REGISTRY; },
   };
 });

@@ -538,3 +538,92 @@ test('journal : colonnes de l\'équipe, corrections appliquées séparées des �
   assert.equal(j.appliquees[0].apres, 'Pratique__B!boolean');
   assert.equal(j.aValider.length >= 1, true);
 });
+
+// ── Fichier de données (export Kobo) ────────────────────────────────────────
+const dataHeaders = ['_id', '_uuid', 'grp/Nb_Cas', 'Poids__Z', 'Sexe', 'Sport__X', 'Sport__X/Football', 'Sport__X/Course', 'Région sanitaire', 'start'];
+const dataRows = Array.from({ length: 12 }, (_, i) => [String(i), 'u' + i, String(i + 2), (50 + i / 2).toFixed(1), i % 2 ? 'Masculin' : 'Feminin', 'Football', '1', '0', i % 3 ? 'ABIDJAN_1' : 'BELIER', '2026-05-01 08:00:00']);
+
+test('données : colonnes système et enfants d\'un choix multiple écartés, chemin de groupe gardé', () => {
+  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  assert.deepEqual(items.map(i => i._xls.header), ['grp/Nb_Cas', 'Poids__Z', 'Sexe', 'Sport__X', 'Région sanitaire', 'start']);
+  assert.deepEqual(items.map(i => i._xls.row), [3, 4, 5, 6, 9, 10]);
+  assert.equal(items[3]._xls.children.length, 2);
+});
+
+test('données : le type se lit sur les valeurs (entier, réel) ; un choix deviné reste une proposition', () => {
+  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const r = audit(items);
+  const byHeader = h => r.items[items.findIndex(i => i._xls.header === h)];
+  assert.equal(byHeader('grp/Nb_Cas').corrected.pf_question, 'Nb_Cas__1');
+  assert.equal(byHeader('Poids__Z').corrected.pf_question, 'Poids__2');
+  const sexe = byHeader('Sexe');
+  assert.equal(sexe.corrected.pf_question, 'Sexe');
+  assert.equal(sexe.findings.find(f => f.rule === 'affixe.absent').auto, false);
+  assert.equal(sexe.findings.find(f => f.rule === 'affixe.absent').after, 'Sexe__X');
+});
+
+test('données : un en-tête qui est un libellé reçoit un code proposé, jamais appliqué sans accord', () => {
+  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const derive = it => ({ pf_question: 'Region_Sanitaire__X!1*1Admin_Region_Sanitaire_', pf_modalites: '' + it.libelle.length });
+  const r = audit(items, { derive });
+  const i = items.findIndex(x => x._xls.header === 'Région sanitaire');
+  const f = rule(r, 'code.vide', i);
+  assert.equal(f.auto, false);
+  assert.equal(f.after, 'Region_Sanitaire__X');
+  assert.match(f.message, /libellé de la question/);
+  const ok = audit(items, { derive, accepted: new Set([f.id]) });
+  assert.equal(ok.items[i].corrected.pf_question, 'Region_Sanitaire__X');
+});
+
+test('données : renommage des en-têtes avec chemin de groupe et colonnes enfants', () => {
+  const items = AUDIT.datasetToItems(dataHeaders, dataRows);
+  const r = audit(items);
+  const map = AUDIT.datasetHeaderRenames(r);
+  assert.equal(map.get('grp/Nb_Cas'), 'grp/Nb_Cas__1');
+  assert.equal(map.get('Poids__Z'), 'Poids__2');
+  assert.equal(map.has('Sexe'), false);
+  assert.equal(map.has('_id'), false);
+  const sport = audit(AUDIT.datasetToItems(['Sport_X', 'Sport_X/Football', 'Sport_X/Course'], [['Football', '1', '0'], ['Course', '0', '1'], ['Football', '1', '0']]));
+  const m2 = AUDIT.datasetHeaderRenames(sport);
+  assert.equal(m2.get('Sport_X'), 'Sport__X');
+  assert.equal(m2.get('Sport_X/Football'), 'Sport__X/Football');
+  assert.equal(m2.get('Sport_X/Course'), 'Sport__X/Course');
+});
+
+test('données : les colonnes Kobo start/end sont des variables générées', () => {
+  const items = AUDIT.datasetToItems(['start', 'end'], [['2026-05-01 08:00:00', '2026-05-01 09:00:00'], ['2026-05-01 08:10:00', '2026-05-01 09:10:00'], ['2026-05-01 08:20:00', '2026-05-01 09:20:00']]);
+  const r = audit(items);
+  assert.equal(r.items[0].corrected.pf_question, 'Entretien__Debut__G');
+  assert.equal(r.items[1].corrected.pf_question, 'Entretien__Fin__G');
+});
+
+test('inferColumn : types sûrs et types probables', () => {
+  assert.equal(AUDIT.inferColumn(['1', '2', '3']).affix, '1');
+  assert.equal(AUDIT.inferColumn(['1,5', '2', '3.2']).affix, '2');
+  assert.equal(AUDIT.inferColumn(['2026-01-02', '2026-01-03', '2026-01-04']).affix, 'A');
+  assert.equal(AUDIT.inferColumn(['Oui', 'Non', 'oui']).affix, 'B');
+  const choice = AUDIT.inferColumn(['A', 'B', 'A', 'B', 'A', 'B']);
+  assert.deepEqual([choice.affix, choice.suggest], ['', 'X']);
+  assert.equal(AUDIT.inferColumn(['x', 'y']).suggest, '');
+});
+
+test('doublon de code : un code distinct est proposé d\'après le mot qui différencie les libellés', () => {
+  const items = [
+    q('Nombre_Doses__1', '', '', 'Nombre de doses reçues pour la Rougeole'),
+    q('Nombre_Doses__1', '', '', 'Nombre de doses reçues pour la VPO'),
+    q('Nombre_Doses__1', '', '', 'Nombre de doses reçues pour la Fièvre jaune'),
+  ];
+  const r = audit(items);
+  assert.equal(findingsOf(r, 0).some(f => f.rule === 'doublon.code'), false);
+  const f1 = rule(r, 'doublon.code', 1), f2 = rule(r, 'doublon.code', 2);
+  assert.equal(f1.after, 'Nombre_Doses_VPO__1');
+  assert.equal(f2.after, 'Nombre_Doses_Fievre_Jaune__1');
+  assert.equal(f1.applied, false);
+  const ok = audit(items, { accepted: new Set([f1.id, f2.id]) });
+  assert.deepEqual(ok.items.map(i => i.corrected.pf_question), ['Nombre_Doses__1', 'Nombre_Doses_VPO__1', 'Nombre_Doses_Fievre_Jaune__1']);
+});
+
+test('doublon de code : une question répétée (même libellé) n\'est pas renommée', () => {
+  const r = audit([q('Age__1Y', '', '', 'Age'), q('Age__1Y', '', '', 'Age')]);
+  assert.equal(rule(r, 'doublon.code', 1).after, null);
+});

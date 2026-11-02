@@ -350,7 +350,17 @@ propose la correction juste.
 - un **questionnaire codifié** : colonnes *Libellé*, *PF/Question*,
   *PF/Modalités*, *Skip Logic* (toutes les feuilles sont vérifiées) ;
 - un **XLSForm KoboToolbox** : feuilles *survey* et *choices*. Le type du champ
-  (`integer`, `select_one`, `text`…) sert à vérifier l'affixe du nom.
+  (`integer`, `select_one`, `text`…) sert à vérifier l'affixe du nom ;
+- un **fichier de données** (export Kobo « XLS », c'est-à-dire `.xlsx`) : la première
+  ligne porte soit les noms de variables, soit les libellés des questions. Un nom
+  est vérifié comme un code ; un libellé reçoit un code PHAKTS proposé d'après son
+  texte et ses valeurs. Le type se lit sur les valeurs de la colonne (entier,
+  réel, date, oui/non). Seuls les **en-têtes** sont renommés, jamais les valeurs ;
+  les colonnes système de Kobo (`_id`, `_uuid`, géolocalisation…) et les colonnes
+  « Question/choix » d'un choix multiple sont gérées à part (renommées avec leur
+  question). Deux colonnes qui recevraient le même code se voient proposer un code
+  distinct (« …_VPO__1 »). La feuille *Renommages colonnes* donne ancien → nouvel
+  en-tête.
 
 > Un fichier **.xls** ancien (Excel 97-2003) n'est pas lu : ouvrez-le dans
 > Excel, puis *Enregistrer sous… .xlsx*.
@@ -373,7 +383,7 @@ propose la correction juste.
   séparateur `,` pour un choix unique / `|` pour un choix multiple, `1*` quand le
   libellé annonce plusieurs réponses, code XLSForm tiré du type du champ…) :
   marquées *Corrigé*. Décochez pour en refuser une.
-- **Propositions** (changer le type d'une question codifiée, reprendre la liste du
+- **Propositions** (code tiré d'un libellé, type d'une colonne deviné, changer le type d'une question codifiée, reprendre la liste du
   DPF, réécrire un saut, remplacer par la variable équivalente du DPF) :
   **jamais appliquées sans votre accord**. Cochez *Appliquer* ligne par ligne,
   ou *« ↳ les N lignes »* pour une même règle, ou
