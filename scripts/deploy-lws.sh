@@ -36,7 +36,14 @@ fi
 
 echo
 echo "── 2/4 · Dépendances (npm + pip, rapide si rien n'a changé) ──"
-ssh_run "cd $REPO_DIR && npm install --omit=dev 2>&1 | tail -3"
+# npm ci, pas npm install : installation STRICTEMENT à partir du verrou commité (jamais de
+# réécriture de package-lock.json sur le serveur, jamais de résolution incrémentale divergente
+# selon la version de npm installée là-bas — cause réelle d'un node_modules/package-lock.json qui
+# dérivait du dépôt, constatée le 03/11/2026 : archiver-utils chargeait encore minimatch@3.1.5
+# malgré l'« overrides » du 02/11/2026, et chaque déploiement laissait package-lock.json modifié
+# sur le serveur). npm ci supprime et réinstalle node_modules à chaque fois : aussi rapide que
+# npm install quand rien n'a changé, mais jamais de dérive silencieuse.
+ssh_run "cd $REPO_DIR && npm ci --omit=dev 2>&1 | tail -5"
 ssh_run "cd $REPO_DIR/analyzer && venv/bin/pip install -q -r requirements.txt"
 
 echo

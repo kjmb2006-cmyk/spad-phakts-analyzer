@@ -11,11 +11,21 @@
 //  vérifie (1) que la version imposée est bien celle qui est chargée, (2) que tout ce
 //  qu'exceljs fait réellement fonctionne : lire, écrire, zipper avec motifs.
 //  Si une mise à jour d'exceljs/archiver se met un jour à appeler glob@7, ce contrôle échoue.
+//
+//  N'exécute aucun programme externe (pas de `unzip`, rien qui suppose un outil précis
+//  installé sur l'hôte) : constaté le 03/11/2026, le VPS de production n'a pas `unzip` — la
+//  lecture du zip de test passe par `unzipper`, déjà une dépendance directe d'exceljs (qui
+//  l'utilise lui-même pour LIRE un .xlsx, qui est un zip), donc garantie présente partout.
+//
+//  Trouvé le 03/11/2026 sur le VPS : `npm install --omit=dev` (pas `npm ci`) y chargeait encore
+//  minimatch@3.1.5 via archiver-utils→glob malgré l'« overrides » — une installation incrémentale
+//  peut laisser un paquet imbriqué d'une install précédente, et réécrit package-lock.json au
+//  passage. scripts/deploy-lws.sh utilise maintenant `npm ci`, qui réinstalle proprement à partir
+//  du verrou commité à chaque déploiement.
 // ─────────────────────────────────────────────────────────────────────────────
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const dirOf = (name, from) => path.dirname(require.resolve(name + '/package.json', { paths: [from] }));
@@ -81,9 +91,15 @@ const check = async (name, fn) => {
       a.append('contenu', { name: 'texte.txt' });
       a.finalize();
     });
-    const list = execSync('unzip -Z1 "' + out + '"').toString().trim().split('\n');
+    // Liste les entrées EN NODE (jamais un `unzip` système : rien ne garantit sa présence sur le
+    // serveur — constaté le 03/11/2026, le VPS ne l'a pas). unzipper est déjà une dépendance
+    // directe d'exceljs (il lui sert à LIRE un .xlsx, qui est lui-même un zip), donc toujours
+    // présente partout où exceljs l'est.
+    const unzipper = require(dirOf('unzipper', exceljsDir));
+    const zip = await unzipper.Open.file(out);
+    const list = zip.files.map(f => f.path);
     fs.unlinkSync(out);
-    if (!list.includes('public/phakts-core.js') || !list.includes('texte.txt') || !list.some(x => x.startsWith('scripts/'))) throw new Error('entrées du zip : ' + list.length);
+    if (!list.includes('public/phakts-core.js') || !list.includes('texte.txt') || !list.some(x => x.startsWith('scripts/'))) throw new Error('entrées du zip : ' + list.join(', ').slice(0, 160));
     return list.length + ' entrées';
   });
 
