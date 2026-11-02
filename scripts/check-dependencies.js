@@ -6,22 +6,25 @@
 //
 //  Pourquoi : « minimatch < 11.0.1 » est signalé par npm audit (déni de service sur des
 //  motifs forgés). Aucune version de glob/archiver/exceljs n'embarque encore la 11, donc
-//  package.json l'impose dans le sous-arbre d'exceljs (« overrides »). Conséquence connue :
-//  glob@7 (indirect, jamais appelé par exceljs) ne comprend pas minimatch 11. Ce script
-//  vérifie (1) que la version imposée est bien celle qui est chargée, (2) que tout ce
-//  qu'exceljs fait réellement fonctionne : lire, écrire, zipper avec motifs.
-//  Si une mise à jour d'exceljs/archiver se met un jour à appeler glob@7, ce contrôle échoue.
+//  package.json l'impose partout via « overrides » (champ racine, PAS nichée sous "exceljs" —
+//  constaté le 03/11/2026 : `npm ci` sous npm 10.9.8, la version du VPS, refuse une override
+//  nichée à 3-4 niveaux de profondeur — « Invalid: lock file's minimatch@11.0.4 does not
+//  satisfy minimatch@3.1.5 » — alors que la même override posée à la racine fonctionne
+//  identiquement sous npm 10.9.8 ET 11.8.0, le poste où le verrou est généré ; reproduit et
+//  vérifié dans les deux sens avant de corriger). Ce script vérifie (1) que la version imposée
+//  est bien celle qui est chargée, (2) que tout ce qu'exceljs fait réellement fonctionne :
+//  lire, écrire, zipper avec motifs. Si une mise à jour d'exceljs/archiver se met un jour à
+//  appeler glob@7 (jamais le cas aujourd'hui), ce contrôle échoue.
 //
 //  N'exécute aucun programme externe (pas de `unzip`, rien qui suppose un outil précis
 //  installé sur l'hôte) : constaté le 03/11/2026, le VPS de production n'a pas `unzip` — la
 //  lecture du zip de test passe par `unzipper`, déjà une dépendance directe d'exceljs (qui
 //  l'utilise lui-même pour LIRE un .xlsx, qui est un zip), donc garantie présente partout.
 //
-//  Trouvé le 03/11/2026 sur le VPS : `npm install --omit=dev` (pas `npm ci`) y chargeait encore
-//  minimatch@3.1.5 via archiver-utils→glob malgré l'« overrides » — une installation incrémentale
-//  peut laisser un paquet imbriqué d'une install précédente, et réécrit package-lock.json au
-//  passage. scripts/deploy-lws.sh utilise maintenant `npm ci`, qui réinstalle proprement à partir
-//  du verrou commité à chaque déploiement.
+//  scripts/deploy-lws.sh utilise `npm ci` (jamais `npm install`, qui peut laisser un paquet
+//  imbriqué d'une install précédente et réécrire package-lock.json au passage) et réécrit
+//  package.json/package-lock.json avec le contenu exact de HEAD juste avant, pour ne jamais
+//  installer depuis un verrou resté sale sur le disque du serveur par un ancien déploiement.
 // ─────────────────────────────────────────────────────────────────────────────
 const path = require('path');
 const fs = require('fs');
