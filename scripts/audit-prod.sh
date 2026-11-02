@@ -28,11 +28,14 @@ EXPECTED=$1
 ok() { echo "  ✓ $1"; }
 ko() { echo "  ✗ $1"; }
 check() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else ko "$1"; fi; }
+# comme check, mais affiche la sortie de la commande quand elle échoue
+check_why() { local out; if out=$(eval "$2" 2>&1); then ok "$1"; else ko "$1"; echo "$out" | tail -${3:-8} | sed 's/^/      ↳ /'; fi; }
 
 echo "── Version déployée ──"
 HEAD=$(git -C $REPO rev-parse --short HEAD)
 if [ "$HEAD" = "$EXPECTED" ]; then ok "le serveur est sur $HEAD, comme le dépôt"; else ko "le serveur est sur $HEAD, le dépôt sur $EXPECTED : lancer ./scripts/deploy-lws.sh"; fi
-check "aucun fichier de code modifié à la main sur le serveur" "[ -z \"\$(git -C $REPO status --porcelain --untracked-files=no)\" ]"
+DIRTY=$(git -C $REPO status --porcelain --untracked-files=no)
+if [ -z "$DIRTY" ]; then ok "aucun fichier de code modifié à la main sur le serveur"; else ko "aucun fichier de code modifié à la main sur le serveur"; echo "$DIRTY" | sed 's/^/      ↳ /'; fi
 
 echo "── Services ──"
 for u in spad-analyzer.service phakts-studio.service spad-kobo-refresh.timer spad-backup.timer; do
@@ -48,8 +51,9 @@ for p in multer:2 express:4.22 mammoth:1.13; do
   have=$(node -p "require('$name/package.json').version" 2>/dev/null)
   if [[ "$have" == "$want"* ]]; then ok "$name $have"; else ko "$name $have (attendu $want.x)"; fi
 done
-check "exceljs : correction minimatch en place, lecture/écriture Excel et zip fonctionnels" "node scripts/check-dependencies.js"
-check "npm audit (production) : aucune vulnérabilité connue" "timeout 120 npm audit --omit=dev"
+check_why "exceljs : correction minimatch en place, lecture/écriture Excel et zip fonctionnels" "node scripts/check-dependencies.js"
+echo "      ↳ node $(node -v) · npm $(npm -v) · minimatch installés : $(npm ls minimatch --omit=dev --all 2>/dev/null | grep -o 'minimatch@[0-9.]*' | sort -u | tr '\n' ' ')"
+check_why "npm audit (production) : aucune vulnérabilité connue" "timeout 120 npm audit --omit=dev" 14
 check "pyreadstat installé (exports SPSS/Stata)" "analyzer/venv/bin/python3 -c 'import pyreadstat'"
 WZ=$(analyzer/venv/bin/python3 -c 'from importlib.metadata import version; print(version("werkzeug"))' 2>/dev/null)
 [ "$WZ" = "3.1.9" ] && ok "Werkzeug $WZ" || ko "Werkzeug $WZ (attendu 3.1.9)"
