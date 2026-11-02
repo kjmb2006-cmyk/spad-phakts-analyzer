@@ -39,9 +39,9 @@ async function main() {
 //  Registre des variables normalisées du DPF (feuille « DPF-2 ») — GÉNÉRÉ par
 //  scripts/build-dpf-registry.js, ne pas éditer à la main.
 //  Source : ${registry.source}
-//  Les codes sont reproduits TELS QUE le DPF les écrit, fautes comprises (accents,
-//  coquilles) : phakts-audit.js les compare sur une clé normalisée et ne les
-//  propose jamais comme correction.
+//  Les codes sont ceux de ce fichier. Si un DPF plus ancien contient encore des fautes
+//  (accents, coquilles), phakts-audit.js compare sur une clé normalisée et ne les
+//  propose jamais comme correction (voir scripts/clean-dpf.js pour nettoyer un DPF).
 // ─────────────────────────────────────────────────────────────────────────────
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();

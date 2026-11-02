@@ -369,11 +369,14 @@ propose la correction juste.
 
 **Deux sortes de corrections** :
 
-- **Corrections sûres** (accent, séparateur, constante de type…) : appliquées
-  d'office, marquées *Corrigé*. Décochez pour en refuser une.
-- **Propositions** (changer le type, reprendre la liste du DPF, réécrire un saut,
-  choisir 1*1 ou 1*) : **jamais appliquées sans votre accord**. Cochez *Appliquer*
-  ligne par ligne, ou *« ↳ les N lignes »* pour une même règle, ou
+- **Corrections appliquées d'office** (accent, constante de type, unité `1N` → `1`,
+  séparateur `,` pour un choix unique / `|` pour un choix multiple, `1*` quand le
+  libellé annonce plusieurs réponses, code XLSForm tiré du type du champ…) :
+  marquées *Corrigé*. Décochez pour en refuser une.
+- **Propositions** (changer le type d'une question codifiée, reprendre la liste du
+  DPF, réécrire un saut, remplacer par la variable équivalente du DPF) :
+  **jamais appliquées sans votre accord**. Cochez *Appliquer* ligne par ligne,
+  ou *« ↳ les N lignes »* pour une même règle, ou
   *« Accepter les propositions affichées »* après filtrage.
 
 L'onglet **Questionnaire corrigé** montre le résultat ligne par ligne avant
@@ -392,15 +395,16 @@ tout export.
 
 **Cas du XLSForm** : seule la colonne `name` est corrigée, et le nouveau nom est
 propagé dans toutes les formules (`${ancien_nom}` → `${nouveau_nom}` : `relevant`,
-`constraint`, `calculation`, `instance_name`…). Renommer un champ change le nom
-de sa colonne dans les exports : à faire **avant** la collecte.
+`constraint`, `calculation`, `instance_name`…). Un champ renommé donne une autre
+colonne dans les exports : la feuille *Renommages XLSForm* du fichier corrigé
+donne la correspondance ancien → nouveau, et chaque cellule changée garde
+l'ancien nom en note.
 
 **À savoir sur le DPF** : le DPF contient lui-même des accents et des fautes
 (`Evalution`, `Netoyage`, `Conssomation`, `Tabgagique`…). L'outil compare sur
 une clé normalisée et **ne propose jamais** une graphie fautive du DPF. Quand le
-DPF et la grammaire divergent (séparateur `,` ou `|`, unité `1N`), la
-proposition est signalée « décision DPF en attente » et n'est jamais appliquée
-d'office. Pour utiliser un DPF plus récent : *📥 Charger un DPF plus récent*
+DPF et la grammaire divergent (séparateur `,` ou `|`, unité `1N`), c'est la
+grammaire qui s'applique (décision SPAD du 02/11/2026). Pour utiliser un DPF plus récent : *📥 Charger un DPF plus récent*
 (listes **et** variables sont rechargées).
 
 ---

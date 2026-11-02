@@ -726,6 +726,7 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
   // Valeurs par défaut : DPF officiel + listes de Studio sans équivalent DPF
   // (source "Studio"). Remplaçable à tout moment par l'import d'un DPF plus récent.
   // Généré depuis « Dictionnaire des Propriete Fonctionnelles -genesis-FWD version finale29102026.xlsx » (feuille DPF_lists_Abreviations).
+  // Coquilles du DPF corrigées le 02/11/2026 (Infifférent, Fosse_Septique, Alimemtation, 0Ativité_Sportive, Enterrée s) : voir scripts/clean-dpf.js.
   const DEFAULT_DPF_CATALOGUE = {
     lists: [
       { identifiant: "Acces_soins_Obstacles_", valeurs: "Financier, Distance, Qualite, Information, 0", source: "DPF" },
@@ -734,9 +735,9 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       { identifiant: "Boolean_", valeurs: "OUI, NON", source: "DPF" },
       { identifiant: "Cite_Changements_Structurels_", valeurs: "Habitations_Plus, Habitations_Moins, Circulation_Plus, Circulation_Moins, Pollution_Plus, Pollution_Moins, Acces_Services_Meilleur, Acces_Services_Degrade, 0", source: "DPF" },
       { identifiant: "Combustible_Cuisson_", valeurs: "Bois, Charbon, Gaz, Electricite, Kerosene, Mazout, 0", source: "DPF" },
-      { identifiant: "Degre_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Infifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
-      { identifiant: "Gradation_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Infifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
-      { identifiant: "Depot_Ordures_Menageres_", valeurs: "Ramassage, Depot_Riverain, Brulees, Enterree_s, Jetees_Riviere, 0", source: "DPF" },
+      { identifiant: "Degre_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Indifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
+      { identifiant: "Gradation_", valeurs: "Considerablement, Considerable, Sensiblement, Moyennement, Moyen, Indifferent, Peu, Faible, Tres_Peu, Tres_Faible, Pas_du_Tout, Inverse", source: "DPF" },
+      { identifiant: "Depot_Ordures_Menageres_", valeurs: "Ramassage, Depot_Riverain, Brulees, Enterrees, Jetees_Riviere, 0", source: "DPF" },
       { identifiant: "ES_Problemes_", valeurs: "Manque_de_personnel, Manque_de_medicaments, Longues_attentes, Cout_eleve, Mauvais_accueil, Insalubrite, 0", source: "DPF" },
       { identifiant: "Frequence_", valeurs: "Permanent, Quotidien, Hebdomadaire, Mensuel, Annuel, Occasionnel, Occasionnel_D, Occasionnel_W, Occasionnel_M, Occasionnel_Y, 0", source: "DPF" },
       { identifiant: "Fumer_Vapoter_Effet_Bebe_", valeurs: "Irritabilite, Trouble_Digestif, Colique, Vomissement, Trouble_Sommeil, Augmentation_Risque_MS, Affaiblissement_Immunite, Infection_Respiratoire, Retard_Croissance_IU, Changement_Gout_Lait, Probleme_Respiratoire_Otite, 0", source: "DPF" },
@@ -744,7 +745,7 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       { identifiant: "Fumer_Vapoter_Effet_Foetus_", valeurs: "Faible_Poids_Naissance, Retard_Croissance, Naissance_Premature, Risque_Mort_Foetale_Accru, Syndrome_Mort_Subite_Nourrisson, Complication_Placentaire, Rupture_Membranes, Trouble_Apprentissage_Langage, 0", source: "DPF" },
       { identifiant: "Gestion_Dechets_", valeurs: "Ramassage_Municipal, Incineration, Enfouillage, a_l_Eau, Compost, Collecte_informelle, 0", source: "DPF" },
       { identifiant: "Impact_", valeurs: "Positif, Negatif, Aucun, 0", source: "DPF" },
-      { identifiant: "Affecte_Sante_", valeurs: "Maladies, Accidents, Pollution, Nuisance, Alimemtation, 0Ativite_Sportive", source: "DPF", ouverte: true },
+      { identifiant: "Affecte_Sante_", valeurs: "Maladies, Accidents, Pollution, Nuisance, Alimentation, 0Activite_Sportive", source: "DPF", ouverte: true },
       { identifiant: "Institution_", valeurs: "Municipalite, Centre_Sante, ONG, Communaute, 0", source: "DPF" },
       { identifiant: "Localisation_Urbaine_", valeurs: "Urbain, Periurbain, Centre_Ville, Peripherie, Rurale, Campement, 0", source: "DPF" },
       { identifiant: "Materiaux_Construction_", valeurs: "Parpaing_Beton, Bois, Terre, Metal, Chaume, Tole, 0", source: "DPF" },
@@ -766,14 +767,14 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       { identifiant: "Src_Info_Sante_", valeurs: "Personnel_Sante, Media, Reseaux_Sociaux, Entourage, 0", source: "DPF" },
       { identifiant: "Statut_Matrimonial_", valeurs: "Celibataire, Mariee, Divorcee, Veuve, Concubinage, 0", source: "DPF" },
       { identifiant: "Statut_Urbain_", valeurs: "Urbain, Periurbain, Rural, Campement, 0", source: "DPF" },
-      { identifiant: "Systeme_Defecation_", valeurs: "Reseau_Collectif, Fosse_Sceptique, Latrine_Simple, A_Ciel_ouvert, Aucun, 0", source: "DPF" },
+      { identifiant: "Systeme_Defecation_", valeurs: "Reseau_Collectif, Fosse_Septique, Latrine_Simple, A_Ciel_ouvert, Aucun, 0", source: "DPF" },
       { identifiant: "Tranche_Revenus_M_Milliers_", valeurs: "10000_100000, 100000_200000, 200000_400000, 500000", source: "DPF" },
       { identifiant: "Trilean_", valeurs: "OUI, NON, 0", source: "DPF" },
       { identifiant: "Type_Allaitement_", valeurs: "Naturel, Artificiel, Mixte", source: "DPF" },
       { identifiant: "Type_ES_", valeurs: "Centre_Sante, CS_Ref, Hopital, Clinique_Privee, Pharmacie, Tradipraticien, 0", source: "DPF" },
       { identifiant: "Type_Etablissement_Sanitaire_", valeurs: "Centre_de_sante, CSRef, Hopital, Clinique_privee, Poste_de_sante, Pharmacie, Autre, 0", source: "DPF" },
       { identifiant: "Type_Evacuation_Eaux_Usees_", valeurs: "Reseau_collectif, Caniveaux, Drainage, Champ_Infiltration, Ciel_Ouvert, 0", source: "DPF" },
-      { identifiant: "Type_Latrine_", valeurs: "Latrine_Amenagee, Fosse_Sceptiqu, Latrine_partage, Latrine_Simple, 0", source: "DPF" },
+      { identifiant: "Type_Latrine_", valeurs: "Latrine_Amenagee, Fosse_Septique, Latrine_partage, Latrine_Simple, 0", source: "DPF" },
       { identifiant: "Type_Logement_", valeurs: "Maison, Appartement, Case, Immeuble_Collectif, 0", source: "DPF" },
       { identifiant: "Type_Savon_", valeurs: "Savon_solide, Savon_liquide, Detergent, Gel_Alcoolique, 0", source: "DPF" },
       { identifiant: "Type_Toiture_", valeurs: "Tole, Tuile, Chaume, Beton, 0", source: "DPF" },

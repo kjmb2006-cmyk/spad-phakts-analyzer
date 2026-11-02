@@ -7986,7 +7986,7 @@ function corrRender() {
   btnRes.style.opacity = xls ? '.45' : '1';
   btnRes.title = xls ? 'Un XLSForm ne porte ni contraintes ni skip PHAKTS : le charger dans Résultats les perdrait. Utilisez le fichier corrigé.' : 'Charge le questionnaire corrigé dans l\'onglet Résultats pour générer le XLSForm';
   document.getElementById('corrFootNote').textContent = xls
-    ? 'XLSForm : seuls les noms (colonne name) sont corrigés, avec leurs ${références}. Renommer un champ change le nom de sa colonne dans les exports : à faire avant la collecte.'
+    ? 'XLSForm : les noms (colonne name) sont corrigés et propagés dans les ${références}. Un nom changé = une autre colonne dans les exports : la feuille « Renommages XLSForm » donne la correspondance ancien → nouveau.'
     : 'Le fichier corrigé garde votre mise en forme ; un « Journal des corrections PHAKTS » est ajouté.';
 
   ['corrViewFindings', 'corrViewCorrected'].forEach(id => {
@@ -8237,6 +8237,16 @@ function corrAddReportSheets(wb) {
   ];
   corrAddSheet(wb, 'Journal des corrections PHAKTS', cols, applied);
   corrAddSheet(wb, 'Écarts à valider', cols.concat([{ header: 'Action proposée', key: 'action', width: 60 }, { header: 'Libellé', key: 'libelle', width: 50 }]), pending);
+
+  // XLSForm : correspondance ancien → nouveau nom (pour retrouver les colonnes des exports déjà produits)
+  const renames = [];
+  corr.sheets.filter(sh => sh.kind === 'xlsform').forEach(sh => sh.res.items.forEach(it => {
+    if (it.corrected.pf_question !== it.original.pf_question) renames.push({ ancien: it.original.pf_question, nouveau: it.corrected.pf_question, type: it.xls.type, ligne: it.xls.row });
+  }));
+  if (renames.length) {
+    corrAddSheet(wb, 'Renommages XLSForm', [{ header: 'Ancien nom (name)', key: 'ancien', width: 48 }, { header: 'Nouveau nom (name)', key: 'nouveau', width: 54 },
+      { header: 'Type du champ', key: 'type', width: 24 }, { header: 'Ligne', key: 'ligne', width: 8 }], renames);
+  }
 }
 
 function corrOutName(suffix) {

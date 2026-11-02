@@ -59,15 +59,16 @@ test('code sans affixe : Critique, jamais corrigé en silence', () => {
   assert.equal(f.applied, false);
 });
 
-test('unités : 1C inconnue (à valider), 1N tolérée par le DPF mais signalée', () => {
+test('unités : 1C inconnue (à valider), 1N ramenée à __1 d\'office (décision du 02/11/2026)', () => {
   const r = audit([q('Cout_Transport__1C!C', 'Montant', '', 'Coût du transport (CFA)'), q('Nb_Enfants__1N!N', 'Nombre', '', 'Nombre d\'enfants')]);
   const bad = rule(r, 'affixe.unite_inconnue', 0);
   assert.equal(bad.auto, false);
   assert.equal(bad.after, 'Cout_Transport__1!C');
   assert.match(bad.action, /2F/);
   const n = rule(r, 'affixe.unite_N', 1);
-  assert.equal(n.auto, false);
-  assert.equal(n.source, AUDIT.SRC.DPF_TODO);
+  assert.equal(n.auto, true);
+  assert.equal(n.source, AUDIT.SRC.DECISION);
+  assert.equal(r.items[1].corrected.pf_question, 'Nb_Enfants__1!N');
 });
 
 test('ancienne écriture du GPS __G__X → __G!DMS', () => {
@@ -166,9 +167,9 @@ test('unité explicite du libellé : « en mois » avec __1N', () => {
 
 // ── Modalités ───────────────────────────────────────────────────────────────
 test('valeurs : accents, espaces, parenthèses, numérotation, crochets parasites', () => {
-  const r = audit(q('Situation__X!1*1Situation_', 'Situation_ = [Célibataire | Marié(e) |Veuf/Veuve | Divorcé (e) | Concubinage) ]*'));
+  const r = audit(q('Situation__X!1*Situation_', 'Situation_ = [Célibataire | Marié(e) |Veuf/Veuve | Divorcé (e) | Concubinage) ]*'));
   assert.equal(r.items[0].corrected.pf_modalites, 'Situation_ = [Celibataire | Marie_e | Veuf/Veuve | Divorce_e | Concubinage]');
-  const r2 = audit(q('Distance__X!1*1Distance_', 'Distance_=[Moins de 1km | 1 à moins 3 km | 4. 5 km et plus ]*'));
+  const r2 = audit(q('Distance__X!1*Distance_', 'Distance_=[Moins de 1km | 1 à moins 3 km | 4. 5 km et plus ]*'));
   assert.equal(r2.items[0].corrected.pf_modalites, 'Distance_=[Moins_de_1km | 1_a_moins_3_km | 5_km_et_plus]');
 });
 
@@ -184,20 +185,30 @@ test('l\'identifiant de la contrainte fait foi (District_ → District_Sanitaire
   assert.equal(rule(r, 'liste.identifiant_discordant').auto, true);
 });
 
-test('choix unique avec « | » : proposition à valider (décision DPF en attente), jamais d\'office', () => {
+test('choix unique avec « | » : séparateur corrigé d\'office selon la grammaire (décision du 02/11/2026)', () => {
   const r = audit(q('Religion__X!1*1Religion_', 'Religion_=[Chretienne|Musulmane|Traditionnelle]', '', 'Quelle est votre religion ?'));
   const f = rule(r, 'modalites.separateur');
-  assert.equal(f.auto, false);
-  assert.equal(f.applied, false);
-  assert.equal(f.source, AUDIT.SRC.DPF_TODO);
-  assert.equal(f.after, 'Religion_=[Chretienne,Musulmane,Traditionnelle]');
-  assert.equal(r.items[0].corrected.pf_modalites, 'Religion_=[Chretienne|Musulmane|Traditionnelle]');
+  assert.equal(f.auto, true);
+  assert.equal(f.applied, true);
+  assert.equal(f.source, AUDIT.SRC.DECISION);
+  assert.equal(r.items[0].corrected.pf_modalites, 'Religion_=[Chretienne,Musulmane,Traditionnelle]');
+});
+
+test('choix multiple avec « , » : séparateur ramené à « | » d\'office, et on peut le refuser', () => {
+  const items = q('Sport__X!1*Sport_', 'Sport_=[Football,Course,Natation]', '', 'Quels sports pratiquez-vous ?');
+  const r = audit(items);
+  const f = rule(r, 'modalites.separateur');
+  assert.equal(r.items[0].corrected.pf_modalites, 'Sport_=[Football|Course|Natation]');
+  const refused = audit(items, { rejected: new Set([f.id]) });
+  assert.equal(refused.items[0].corrected.pf_modalites, 'Sport_=[Football,Course,Natation]');
 });
 
 test('le libellé annonce plusieurs réponses : on propose 1*, on ne touche pas aux modalités', () => {
   const r = audit(q('Vaccins__X!1*1Vaccins_', 'Vaccins_=[VAT|Td|Rougeole]', '', 'Si oui, citez les vaccins obligatoires'));
   const f = rule(r, 'contrainte.multiplicite_libelle');
   assert.equal(f.after, 'Vaccins__X!1*Vaccins_');
+  assert.equal(f.auto, true);
+  assert.equal(r.items[0].corrected.pf_question, 'Vaccins__X!1*Vaccins_');
   assert.equal(ids(r).includes('modalites.separateur'), false);
 });
 
@@ -208,7 +219,7 @@ test('liste Sexe_ : synonymes Homme/Femme ramenés aux valeurs du DPF, à valide
   assert.equal(f.category, 'Liste DPF');
   assert.match(f.message, /Homme.*Masculin/);
   assert.equal(f.auto, false);
-  assert.equal(f.after, 'Sexe_ = [Masculin | Feminin | Autre | 0]');
+  assert.equal(f.after, 'Sexe_ = [Masculin,Feminin,Autre,0]');
 });
 
 test('seules les listes de source DPF font référence (Instruction_ est une liste Studio)', () => {
@@ -223,12 +234,34 @@ test('un sous-ensemble du DPF est Mineure, une valeur hors DPF est Majeure', () 
   assert.equal(rule(extra, 'liste.dpf_valeurs').severity, 'Majeure');
 });
 
-test('jamais une coquille du DPF en proposition : Type_Latrine_ avec Fosse_Septique', () => {
-  const r = audit(q('Latrine__Type__X!1*1Type_Latrine_', 'Type_Latrine_=[Latrine_Amenagee,Fosse_Septique,Latrine_partage,Latrine_Simple,0]'));
-  const f = rule(r, 'liste.dpf_valeurs');
-  const text = (f ? f.after + f.message : '');
-  assert.equal(/Sceptiqu/i.test(text), false);
-  assert.equal(f, undefined, 'Fosse_Septique est la bonne graphie : aucun écart à signaler');
+test('jamais une coquille du DPF en proposition, même avec un DPF ancien qui la contient', () => {
+  const oldDpf = [{ identifiant: 'Type_Latrine_', valeurs: 'Latrine_Amenagee, Fosse_Sceptiqu, Latrine_partage, Latrine_Simple, 0', source: 'DPF' }];
+  // la bonne graphie n'est pas un écart
+  const ok = audit(q('Latrine__Type__X!1*1Type_Latrine_', 'Type_Latrine_=[Latrine_Amenagee,Fosse_Septique,Latrine_partage,Latrine_Simple,0]'), { dpfLists: oldDpf });
+  assert.equal(findingsOf(ok).some(f => f.rule === 'liste.dpf_valeurs'), false);
+  // une liste incomplète se voit proposer la graphie corrigée, jamais la coquille
+  const sub = audit(q('Latrine__Type__X!1*1Type_Latrine_', 'Type_Latrine_=[Latrine_Amenagee,Latrine_Simple]'), { dpfLists: oldDpf });
+  const f = rule(sub, 'liste.dpf_valeurs');
+  assert.ok(f);
+  assert.equal(/Sceptiqu/i.test(f.after + f.message), false);
+  assert.match(f.after, /Fosse_Septique/);
+});
+
+test('0Activite_Sportive : le préfixe 0 est une négation, pas un « | » oublié', () => {
+  const v = AUDIT.dpfValues({ valeurs: 'Maladies, Alimemtation, 0Ativite_Sportive' });
+  assert.deepEqual(v, ['Maladies', 'Alimentation', '0Activite_Sportive']);
+});
+
+test('normalizeDpfCode : codes du DPF mis aux normes, en-têtes et cellules sans code non concernés', () => {
+  const n = c => AUDIT.normalizeDpfCode(c).code;
+  assert.equal(n('Drainage__Eaux_Type_X'), 'Drainage__Eaux_Type__X');
+  assert.equal(n('Eau_Potable__Netoyage_Contenant__Régulier__C'), 'Eau_Potable__Nettoyage_Contenant__Regulier__C');
+  assert.equal(n('Connaissance_Risque__Fumer__SRC__X'), 'Connaissance_Risque__Fumer__SRC');
+  assert.equal(n('Menage__Taille__1N'), 'Menage__Taille__1');
+  assert.equal(n('Cigarette__Conso___QTE__1'), 'Cigarette__Conso__QTE__1');
+  assert.equal(n('Zone_Habitation__X '), 'Zone_Habitation__X');
+  assert.equal(n('Menage__Cuisson__Combustible__X!1*1Combustible_Cuisson_'), 'Menage__Cuisson__Combustible__X!1*1Combustible_Cuisson_');
+  assert.equal(AUDIT.normalizeDpfCode('Age__1Y').changed, false);
 });
 
 test('liste « jumelle » : mêmes valeurs qu\'une liste du DPF sous un autre nom', () => {
@@ -458,26 +491,29 @@ test('XLSForm : groupes et notes ignorés, le type du champ fixe l\'affixe atten
   assert.deepEqual(items.map(i => i._xls.affix), ['X', 'B', 'Z', '1', 'Z', '1']);
 });
 
-test('XLSForm : noms corrigés, type incohérent signalé, aucun nom inventé sans validation', () => {
+test('XLSForm : noms corrigés d\'office, type incohérent aligné sur le type du champ', () => {
   const items = AUDIT.xlsformToItems(xlsSurvey, xlsChoices);
   const r = audit(items);
   const names = r.items.map(i => i.corrected.pf_question);
   assert.deepEqual(names.slice(0, 4), ['Region_Sanitaire__X', 'Responsable__B', 'Nom_Responsable__Z', 'Cas_Rougeole__1']);
-  assert.equal(names[4], 'Autre_Maladie');
-  assert.equal(rule(r, 'affixe.absent', 4).after, 'Autre_Maladie__Z');
+  assert.equal(names[4], 'Autre_Maladie__Z');
+  assert.equal(rule(r, 'affixe.absent', 4).auto, true);
   const bad = rule(r, 'type.xlsform_affixe', 5);
   assert.equal(bad.severity, 'Critique');
   assert.equal(bad.after, 'Age_Mere__1');
-  assert.equal(bad.applied, false);
+  assert.equal(bad.applied, true);
+  // le renommage reste réversible champ par champ
+  const refused = audit(AUDIT.xlsformToItems(xlsSurvey, xlsChoices), { rejected: new Set([bad.id]) });
+  assert.equal(refused.items[5].corrected.pf_question, 'Age_Mere__Z');
   assert.ok(rule(r, 'liste.admin', 0));
 });
 
-test('XLSForm : un nom sans affixe n\'est pas renommé en silence (la casse est dans la proposition)', () => {
+test('XLSForm : un nom sans affixe reçoit le code tiré du type du champ (casse comprise)', () => {
   const r = audit(AUDIT.xlsformToItems({ headers: ['type', 'name', 'label'], rows: [
     { _row: 2, type: 'date', name: 'date_collecte', label: 'Date de la collecte' },
     { _row: 3, type: 'text', name: 'nom_chef__z', label: 'Nom du chef' },
   ] }, { headers: [], rows: [] }));
-  assert.equal(r.items[0].corrected.pf_question, 'date_collecte');
+  assert.equal(r.items[0].corrected.pf_question, 'Date_Collecte__A');
   assert.equal(rule(r, 'affixe.absent', 0).after, 'Date_Collecte__A');
   assert.equal(findingsOf(r, 0).some(f => f.rule === 'code.casse'), false, 'pas de doublon avec la proposition complète');
   assert.equal(r.items[1].corrected.pf_question, 'Nom_Chef__Z');
@@ -491,7 +527,7 @@ test('XLSForm : les renommages se propagent dans les ${références}', () => {
 });
 
 test('journal : colonnes de l\'équipe, corrections appliquées séparées des écarts à valider', () => {
-  const r = audit([q('Pratique__B!boulean', 'Oui | Non'), q('Religion__X!1*1Religion_', 'Religion_=[Chretienne|Musulmane|Traditionnelle]')]);
+  const r = audit([q('Pratique__B!boulean', 'Oui | Non'), q('Cas__B!boolean', 'Oui | Non', '', 'Combien de cas ?')]);
   const j = AUDIT.journalRows('Popul', r, i => i + 2);
   assert.equal(j.appliquees.length, 1);
   assert.deepEqual(

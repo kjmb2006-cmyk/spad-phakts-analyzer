@@ -46,6 +46,7 @@
     DPF_LISTES: 'DPF — listes standard',
     DPF_VARIABLES: 'DPF-2 — variables normalisées',
     DPF_TODO: 'DPF — ToDo (décision en attente)',
+    DECISION: 'Décision SPAD du 02/11/2026 : la règle de la grammaire s\'applique',
     REGLE16: 'Grammaire PHAKTS — Règle 16 (référentiels Admin_)',
     REGLE17: 'Grammaire PHAKTS — Règle 17 (Skip Logic)',
   };
@@ -61,7 +62,7 @@
     conssomation: 'Consommation', innondation: 'Inondation', prescrition: 'Prescription',
     racordement: 'Raccordement', rennoncement: 'Renoncement', dortoire: 'Dortoir',
     dsitrict: 'District', infifferent: 'Indifferent', alimemtation: 'Alimentation',
-    sceptiqu: 'Septique', sceptique: 'Septique',
+    sceptiqu: 'Septique', sceptique: 'Septique', ativite: 'Activite',
   };
 
   // ── Outils de texte ───────────────────────────────────────────────────────
@@ -152,7 +153,7 @@
     }).join('_');
   }
   function codeKey(code) {
-    return fixKnownTypos(strip(code)).toLowerCase().replace(/[^a-z0-9_]/g, '').replace(/_{3,}/g, '__').replace(/^_+|_+$/g, '');
+    return fixKnownTypos(strip(code)).toLowerCase().replace(/[^a-z0-9_]/g, '').replace(/_{3,}/g, '__').replace(/^_+|_+$/g, '').replace(/__1n$/, '__1');
   }
 
   // ── Listes de modalités « Liste_=[a|b|c] » ────────────────────────────────
@@ -202,13 +203,44 @@
   function dpfValues(entry) {
     const out = [];
     for (const raw of CORE.splitListValues(entry.valeurs)) {
-      let v = raw;
-      if (/^0[A-Za-z]/.test(v)) { out.push('0'); v = v.slice(1); }
-      v = v.split('_').map(t => DPF_LEXIE_TYPOS[plain(t).replace(/ /g, '')] || t).join('_');
-      if (v.toLowerCase() === 'activite_sportive' || /^ativite/i.test(v)) v = 'Activite_Sportive';
-      if (v) out.push(v);
+      // « 0 » seul = option Autre/Aucun ; « 0Activite_Sportive » = négation (préfixe 0 de la grammaire)
+      const neg = /^0(?=[A-Za-z])/.test(raw) ? '0' : '';
+      const v = (neg ? raw.slice(1) : raw).split('_').map(t => DPF_LEXIE_TYPOS[plain(t).replace(/ /g, '')] || t).join('_');
+      if (v) out.push(neg + v);
     }
     return out;
+  }
+
+  // Code de variable du DPF mis aux normes : accents, coquilles, séparateurs, casse, affixe.
+  // Renvoie le code et la liste des corrections (pour le journal de nettoyage du DPF).
+  function normalizeDpfCode(raw) {
+    const notes = [];
+    const { code: c0, constraint } = splitQ(String(raw == null ? '' : raw));
+    let code = c0;
+    const step = (rule, next) => { if (next !== code) { notes.push({ rule, before: code, after: next }); code = next; } };
+    step('espaces', code.trim().replace(/\s+/g, '_'));
+    step('accents', strip(code));
+    step('coquilles', code.split('_').map(t => DPF_LEXIE_TYPOS[plain(t).replace(/ /g, '')] || t).join('_'));
+    step('caracteres', code.replace(/[^A-Za-z0-9_]/g, '_'));
+    step('soulignes', code.replace(/_{3,}/g, '__').replace(/^_+|_+$/g, ''));
+    // affixe collé par un seul « _ » à un code qui a déjà des « __ » (Drainage__Eaux_Type_X)
+    {
+      const segs = code.split('__');
+      const last = segs[segs.length - 1];
+      const m = segs.length >= 2 && affixStatus(last) === 'bad' && last.match(/^(.+)_(B|C|A|X|Z|P|G|SRC|[12][YMWDHUQKTLSPVFIN]?)$/);
+      if (m) step('affixe_separateur', segs.slice(0, -1).concat([m[1], m[2]]).join('__'));
+    }
+    step('double_affixe', code.replace(/__SRC__X$/, '__SRC'));
+    step('unite_N', code.replace(/__1N$/, '__1'));
+    step('casse', fixCaseTop(code));
+    return { code: joinQ(code, constraint), changed: code !== c0, notes };
+  }
+  function fixCaseTop(code) {
+    const segs = code.split('__');
+    return segs.map((s2, i) => {
+      if (segs.length > 1 && i === segs.length - 1 && affixStatus(s2) !== 'bad') return s2;
+      return s2.split('_').map(t => (/^[a-z]/.test(t) ? cap(t) : t)).join('_');
+    }).join('__');
   }
 
   // ── Registre des variables du DPF (feuille DPF-2) ─────────────────────────
@@ -543,9 +575,9 @@
         const target = hint && hint[0] === '1' ? hint : '1';
         emit({
           rule: 'affixe.unite_N', category: CAT.TYPE, severity: SEV.MINEURE,
-          message: 'Unité « N » : absente de la grammaire v2025.10.22, utilisée par 8 variables du DPF' + (target !== '1' ? ' ; le libellé mentionne explicitement l\'unité ' + target[1] : ''),
-          action: target !== '1' ? 'Écrire __' + target + ' (unité du libellé)' : 'Écrire __1 (entier sans unité) en attendant la décision « Grandeurs calibrées » du DPF',
-          source: SRC.DPF_TODO, auto: false,
+          message: 'Unité « N » : absente de la grammaire v2025.10.22 (le DPF l\'utilise 8 fois)' + (target !== '1' ? ' ; le libellé mentionne explicitement l\'unité ' + target[1] : ''),
+          action: target !== '1' ? 'Écrire __' + target + ' (unité du libellé)' : 'Écrire __1 (entier sans unité)',
+          source: SRC.DECISION, auto: true,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__1N$/, '__' + target), p.constraint); },
         });
         return;
@@ -584,7 +616,7 @@
         rule: 'affixe.absent', category: CAT.TYPE, severity: SEV.CRITIQUE,
         message: 'Code sans affixe de type (B, C, A, X, Z, 1, 2, G, P, SRC) : « ' + code + ' » n\'est pas un code PHAKTS',
         action: 'Coder selon Radical__Déterminant__Affixe!contrainte' + (sugg ? ' — proposition issue du libellé : ' + sugg : ''),
-        suggestion: sugg, auto: false, fix: () => sugg || null,
+        suggestion: sugg, auto: Boolean(xls && sugg), fix: () => sugg || null,
         also: null,
       });
     }
@@ -997,21 +1029,21 @@
             emit({
               rule: 'contrainte.multiplicite_libelle', category: CAT.TYPE, severity: SEV.MINEURE,
               message: 'Le libellé annonce plusieurs réponses mais la contrainte dit « 1*1 » (choix unique) alors que les modalités sont cumulables (« | »)',
-              action: 'Écrire !1* (au moins un choix) — modalités inchangées', source: SRC.DPF_TODO, auto: false,
+              action: 'Écrire !1* (au moins un choix) — modalités inchangées', source: SRC.DECISION, auto: true,
               fix: q => withConstraint(q, kNow.replace(/^\d*\*\d*/, '1*')),
             });
           } else {
             emit({
               rule: 'modalites.separateur', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
               message: 'Choix unique (1*1) mais modalités séparées par « | » (cumulables)',
-              action: 'Séparer par « , » pour un choix unique, ou écrire !1* pour un choix multiple', source: SRC.DPF_TODO, auto: false, fix: rebuild(','),
+              action: 'Séparer par « , » pour un choix unique (ou écrire !1* pour un choix multiple)', source: SRC.DECISION, auto: true, fix: rebuild(','),
             });
           }
         } else if (!single && comma) {
           emit({
             rule: 'modalites.separateur', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
             message: 'Choix multiple (!' + mNow[1] + '*' + mNow[2] + ') mais modalités séparées par « , » (exclusives)',
-            action: 'Séparer par « | » pour un choix multiple, ou écrire !1*1 pour un choix unique', source: SRC.DPF_TODO, auto: false, fix: rebuild('|'),
+            action: 'Séparer par « | » pour un choix multiple (ou écrire !1*1 pour un choix unique)', source: SRC.DECISION, auto: true, fix: rebuild('|'),
           });
         }
         if (mNow[1] !== '' && parseInt(mNow[1], 10) >= 2 && opts.length && opts.length < parseInt(mNow[1], 10)) {
@@ -1109,7 +1141,7 @@
       emit({
         rule: 'type.xlsform_affixe', category: CAT.TYPE, severity: SEV.CRITIQUE,
         message: 'Le champ est de type « ' + xls.type + ' » (' + (label[klass(xls.affix)] || xls.affix) + ') mais le nom se termine par __' + have + ' (' + (label[klass(have)] || have) + ')',
-        action: 'Écrire __' + xls.affix + ' (ou changer le type du champ dans la feuille survey)', auto: false,
+        action: 'Écrire __' + xls.affix + ' (le type du champ fait foi)', auto: true,
         fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[^_]+$/, '__' + xls.affix), p.constraint); },
       });
     }
@@ -1721,7 +1753,7 @@
     AUDIT_VERSION, SEV, CAT, SRC, DPF_LEXIE_TYPOS,
     auditQuestionnaire, auditItem, parseSkipRule, parseListDef, canonValue, canonListId, codeKey,
     parseDpfRegistryRows, buildRegistry, unitHint, dpfValues, affixStatus, strip, plain,
-    detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
+    normalizeDpfCode, detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
     get defaultRegistry() { return DEFAULT_REGISTRY; },
   };
 });
