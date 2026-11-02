@@ -351,6 +351,16 @@ propose la correction juste.
   *PF/Modalités*, *Skip Logic* (toutes les feuilles sont vérifiées) ;
 - un **XLSForm KoboToolbox** : feuilles *survey* et *choices*. Le type du champ
   (`integer`, `select_one`, `text`…) sert à vérifier l'affixe du nom ;
+- une **liste de libellés à codifier** : une colonne *Libellé* (ou *Question*), avec ou
+  sans colonne *Modalités*. Les libellés sans code d'un questionnaire codifié sont
+  traités de la même façon. Le bouton **✨ Codifier les libellés sans code** propose
+  pour chacun un code PHAKTS et ses modalités (codifieur hors-ligne du Studio, sans
+  appel à l'IA : gratuit et reproductible), puis l'audit contrôle ce code comme les
+  autres (type, listes du DPF, variable équivalente du DPF, mots interrogatifs,
+  saut « Si oui »). Les titres de section (« SECTION 1 : … », lignes tout en
+  capitales) sont ignorés. Le fichier corrigé ajoute les colonnes *PF/Question* et
+  *Skip Logic* (et *PF/Modalités* si elle n'existait pas) ; relisez toujours
+  l'onglet **Questionnaire corrigé** : un code tiré d'un libellé reste une proposition ;
 - un **fichier de données** (export Kobo « XLS », c'est-à-dire `.xlsx`) : la première
   ligne porte soit les noms de variables, soit les libellés des questions. Un nom
   est vérifié comme un code ; un libellé reçoit un code PHAKTS proposé d'après son

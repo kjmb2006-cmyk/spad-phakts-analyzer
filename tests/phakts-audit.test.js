@@ -627,3 +627,165 @@ test('doublon de code : une question répétée (même libellé) n\'est pas reno
   const r = audit([q('Age__1Y', '', '', 'Age'), q('Age__1Y', '', '', 'Age')]);
   assert.equal(rule(r, 'doublon.code', 1).after, null);
 });
+
+// ── Libellés non codifiés : les codifier ────────────────────────────────────
+const stubDerive = it => ({
+  'Quel est votre sexe ?': { pf_question: 'Sexe__X!1*1Sexe_', pf_modalites: 'Sexe_=[Masculin,Feminin,Autre]' },
+  'Avez-vous un emploi ?': { pf_question: 'Emploi__B!boolean', pf_modalites: 'Oui | Non' },
+  'Si oui, quel est votre métier ?': { pf_question: 'Emploi_Metier__Z!1*Expression', pf_modalites: 'Expression' },
+  "Seriez-vous intéressée par un programme d’accompagnement pour arrêter le tabac ou la nicotine pendant l'allaitement ?": { pf_question: 'Accompagnement_Allaitement__B!boolean', pf_modalites: 'Oui | Non' },
+}[it.libelle] || null);
+
+test('libellé sans code : code ET modalités proposés d\'après le libellé, rien d\'appliqué sans accord', () => {
+  const items = [q('', '', '', 'Quel est votre sexe ?')];
+  const r = audit(items, { derive: stubDerive });
+  const f = rule(r, 'code.vide');
+  assert.equal(f.severity, 'Critique');
+  assert.match(f.message, /non codifié/);
+  assert.equal(f.after, 'Sexe__X!1*1Sexe_');
+  assert.equal(f.applied, false);
+  assert.deepEqual(f.also, { pf_modalites: 'Sexe_=[Masculin,Feminin,Autre]' });
+  assert.equal(r.items[0].corrected.pf_question, '');
+  assert.equal(r.summary.nonCodifiees, 1);
+  const ok = audit(items, { derive: stubDerive, accepted: new Set([f.id]) });
+  assert.equal(ok.items[0].corrected.pf_question, 'Sexe__X!1*1Sexe_');
+  assert.equal(ok.items[0].corrected.pf_modalites, 'Sexe_=[Masculin,Feminin,Autre]');
+});
+
+test('libellé sans code : les modalités déjà saisies ne sont pas écrasées', () => {
+  const items = [q('', 'Oui | Non', '', 'Avez-vous un emploi ?')];
+  const f = rule(audit(items, { derive: stubDerive }), 'code.vide');
+  assert.equal(f.also, null);
+});
+
+test('libellé sans code et codifieur indisponible : constat sans proposition, jamais d\'invention', () => {
+  const r = audit([q('', '', '', 'Quel est votre sexe ?')]);
+  const f = rule(r, 'code.vide');
+  assert.equal(f.after, null);
+  assert.equal(r.items[0].corrected.pf_question, '');
+});
+
+test('une fois codifiés, les libellés sont audités : saut « Si oui » proposé, variable du DPF reconnue', () => {
+  const items = [q('', '', '', 'Avez-vous un emploi ?'), q('', '', '', 'Si oui, quel est votre métier ?')];
+  const first = audit(items, { derive: stubDerive });
+  const accepted = new Set(first.findings.filter(f => f.rule === 'code.vide').map(f => f.id));
+  const r = audit(items, { derive: stubDerive, accepted });
+  assert.deepEqual(r.items.map(i => i.corrected.pf_question), ['Emploi__B!boolean', 'Emploi_Metier__Z!1*Expression']);
+  assert.equal(rule(r, 'skip.manquant', 1).after, 'Emploi__B = Oui -> @Emploi_Metier__Z');
+
+  const lib = "Seriez-vous intéressée par un programme d’accompagnement pour arrêter le tabac ou la nicotine pendant l'allaitement ?";
+  const d = audit([q('', '', '', lib)], { derive: stubDerive });
+  const id = rule(d, 'code.vide').id;
+  const dd = audit([q('', '', '', lib)], { derive: stubDerive, accepted: new Set([id]) });
+  assert.equal(rule(dd, 'dpf.variable_equivalente').after, 'Allaitement__Fumer_Arret__Interet_Accompagnement__B!boolean');
+});
+
+test('feuille de libellés seuls reconnue ; titres de section écartés, libellés sans code gardés', () => {
+  assert.equal(AUDIT.detectSheetKind(['Libellé']), 'libelles');
+  assert.equal(AUDIT.detectSheetKind(['Question', 'Modalités']), 'libelles');
+  assert.equal(AUDIT.detectSheetKind(['Libelle', 'PF/Question']), 'codified');
+  assert.equal(AUDIT.detectSheetKind(['Nom', 'Prénom']), '');
+  assert.equal(AUDIT.isSectionTitle('SECTION 1 : IDENTIFIANTS DE L\'ÉTABLISSEMENT'), true);
+  assert.equal(AUDIT.isSectionTitle('Partie B — Connaissances'), true);
+  assert.equal(AUDIT.isSectionTitle('IDENTIFICATION'), true);
+  assert.equal(AUDIT.isSectionTitle('Quel est votre âge ?'), false);
+  assert.equal(AUDIT.isSectionTitle('Etablissement de santé :'), false);
+  assert.equal(AUDIT.isSectionTitle('Sexe'), false);
+
+  const table = { headers: ['Libellé', 'Modalités'], rows: [
+    { _row: 2, Libellé: 'SECTION 1 : IDENTITÉ', Modalités: '' },
+    { _row: 3, Libellé: 'Quel est votre sexe ?', Modalités: 'Masculin | Féminin' },
+    { _row: 4, Libellé: 'Région sanitaire', Modalités: '' },
+    { _row: 5, Libellé: '', Modalités: '' },
+  ] };
+  const cols = AUDIT.detectCodifiedColumns(table.headers);
+  assert.equal(cols.code, -1);
+  const out = AUDIT.questionnaireToItems(table, cols);
+  assert.deepEqual(out.rows, [3, 4]);
+  assert.equal(out.sections, 1);
+  assert.deepEqual(out.items.map(i => [i.libelle, i.pf_question, i.pf_modalites]), [['Quel est votre sexe ?', '', 'Masculin | Féminin'], ['Région sanitaire', '', '']]);
+});
+
+test('questionnaire codifié : une ligne sans code reste une question à codifier', () => {
+  const table = { headers: ['Libellé', 'PF/Question', 'PF/Modalités', 'Skip Logic'], rows: [
+    { _row: 2, 'Libellé': 'Quel est votre âge ?', 'PF/Question': 'Age__1Y!0<N<120', 'PF/Modalités': '', 'Skip Logic': '' },
+    { _row: 3, 'Libellé': 'Avez-vous un emploi ?', 'PF/Question': '', 'PF/Modalités': '', 'Skip Logic': '' },
+  ] };
+  const out = AUDIT.questionnaireToItems(table, AUDIT.detectCodifiedColumns(table.headers));
+  assert.deepEqual(out.rows, [2, 3]);
+  assert.equal(out.items[1].pf_question, '');
+});
+
+// ── Corrections grammaticales proposées pour les types incohérents avec le libellé ──
+test('« Combien » codé en booléen : entier proposé, avec ses modalités ; appliqué seulement sur accord', () => {
+  const items = [q('Nombre_Enfants__B!boolean', 'Oui | Non', '', "Combien d'enfants avez-vous ?")];
+  const f = rule(audit(items), 'type.combien');
+  assert.equal(f.after, 'Nombre_Enfants__1');
+  assert.deepEqual(f.also, { pf_modalites: 'Nombre entier' });
+  assert.equal(f.applied, false);
+  const ok = audit(items, { accepted: new Set([f.id]) });
+  assert.equal(ok.items[0].corrected.pf_question, 'Nombre_Enfants__1');
+  assert.equal(ok.items[0].corrected.pf_modalites, 'Nombre entier');
+});
+
+test('« Âge » codé en booléen ou en texte : __1Y!0<N<120 (règle de la grammaire)', () => {
+  const items = [q('Age__B!boolean', 'Oui | Non', '', 'Quel est votre âge ?'), q('Age_Mere__Z!1*Expression', 'Expression', '', "Quel est l'âge de la mère ?")];
+  const r = audit(items);
+  assert.equal(rule(r, 'type.age', 0).after, 'Age__1Y!0<N<120');
+  assert.equal(rule(r, 'type.age', 1).after, 'Age_Mere__1Y!0<N<120');
+});
+
+test('« Pourquoi / Quel / Où » codés en booléen, même derrière « Si oui, » : texte libre proposé', () => {
+  const items = [
+    q('Metier__B!boolean', 'Oui | Non', '', 'Si oui, quel est votre métier ?'),
+    q('Refus__B!boolean', 'Oui | Non', '', 'Selon vous, pourquoi refuse-t-on le vaccin ?'),
+    q('Lieu__B!boolean', 'Oui | Non', '', 'Où avez-vous reçu le vaccin ?'),
+  ];
+  const r = audit(items);
+  assert.equal(rule(r, 'type.quel_booleen', 0).after, 'Metier__Z!1*Expression');
+  assert.equal(rule(r, 'type.pourquoi_booleen', 1).after, 'Refus__Z!1*Expression');
+  assert.equal(rule(r, 'type.ou_booleen', 2).after, 'Lieu__Z!1*Expression');
+  assert.equal(rule(r, 'type.quel_booleen', 0).also.pf_modalites, 'Expression');
+});
+
+test('une vraie question fermée n\'est pas touchée par ces règles', () => {
+  const r = audit(q('Emploi__B!boolean', 'Oui | Non', '', 'Avez-vous un emploi ?'));
+  assert.deepEqual(findingsOf(r).map(f => f.rule).filter(x => x.startsWith('type.')), []);
+});
+
+test('XLSForm : ces corrections ne touchent jamais au nom (le type du champ fait foi)', () => {
+  const items = AUDIT.xlsformToItems({ headers: ['type', 'name', 'label'], rows: [{ _row: 2, type: 'select_one yes_no', name: 'Age__B', label: 'Quel est votre âge ?' }] }, { headers: ['list_name', 'name', 'label'], rows: [{ list_name: 'yes_no', name: 'oui', label: 'Oui' }, { list_name: 'yes_no', name: 'non', label: 'Non' }] });
+  const r = audit(items);
+  assert.equal(rule(r, 'type.age', 0).after, null);
+});
+
+test('le code proposé pour un libellé sans code est lui-même contrôlé (mot interrogatif, accents)', () => {
+  const derive = it => (it.libelle.startsWith('Pourquoi')
+    ? { pf_question: 'Pourquoi_Avez_Refuse__B!boolean', pf_modalites: 'Oui | Non' }
+    : { pf_question: 'Enfant_Né__B!boolean', pf_modalites: 'Oui | Non' });
+  const items = [q('', '', '', 'Pourquoi avez-vous refusé le vaccin ?'), q('', '', '', "L'enfant est-il né dans un centre de santé ?")];
+  const first = audit(items, { derive });
+  const accepted = new Set(first.findings.filter(f => f.rule === 'code.vide').map(f => f.id));
+  const r = audit(items, { derive, accepted });
+  assert.ok(rule(r, 'code.interrogatif', 0));
+  assert.equal(r.items[1].corrected.pf_question, 'Enfant_Ne__B!boolean');
+});
+
+test('stabilité : un questionnaire codifié par l\'outil, une fois toutes les propositions acceptées, est stable', () => {
+  const derive = it => ({
+    'Quel est votre âge ?': { pf_question: 'Age__1Y!0<N<120', pf_modalites: 'Années' },
+    'Avez-vous un emploi ?': { pf_question: 'Emploi__B!boolean', pf_modalites: 'Oui | Non' },
+    'Si oui, quel est votre métier ?': { pf_question: 'Metier__B!boolean', pf_modalites: 'Oui | Non' },
+  }[it.libelle] || null);
+  const items = [q('', '', '', 'Quel est votre âge ?'), q('', '', '', 'Avez-vous un emploi ?'), q('', '', '', 'Si oui, quel est votre métier ?')];
+  const first = audit(items, { derive });
+  let accepted = new Set(first.findings.filter(f => f.rule === 'code.vide').map(f => f.id));
+  const second = audit(items, { derive, accepted });
+  second.findings.filter(f => f.after != null && !f.applied).forEach(f => accepted.add(f.id));
+  const third = audit(items, { derive, accepted });
+  const corrected = AUDIT.correctedItems(third, items);
+  assert.equal(corrected[2].pf_question, 'Metier__Z!1*Expression');
+  assert.equal(corrected[2].pf_skip, 'Emploi__B = Oui -> @Metier__Z');
+  const again = audit(corrected);
+  assert.deepEqual(again.findings.filter(f => f.auto).map(f => f.rule), []);
+});

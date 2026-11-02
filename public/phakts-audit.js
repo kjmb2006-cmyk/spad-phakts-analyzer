@@ -381,6 +381,14 @@
       const base = strip(code).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').split('_').filter(Boolean).map(cap).join('_');
       return base ? base + '__' + affix : '';
     };
+    // Codification complète d'un libellé (code ET modalités) par le codifieur fourni.
+    const deriveFull = () => {
+      if (!ctx.derive || xls) return null;
+      try {
+        const d = ctx.derive({ ...item, pf_question: w.pf_question, pf_modalites: w.pf_modalites });
+        return d && d.pf_question ? d : null;
+      } catch (_) { return null; }
+    };
     const derive = () => {
       if (xls && !xls.fromLabel) return xlsSuggest();
       if (!ctx.derive) return '';
@@ -416,13 +424,21 @@
     if (multiLine) {
       // rien d'autre n'est fiable tant que le code n'est pas isolé
     } else if (!w.pf_question.trim()) {
+      // libellé sans code : on le codifie (code + modalités tirés du libellé, jamais appliqués sans accord)
+      const full = deriveFull();
+      const alsoMod = full && full.pf_modalites && !w.pf_modalites.trim() ? { pf_modalites: String(full.pf_modalites) } : null;
       emit({
         rule: 'code.vide', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: xls && xls.data ? 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS' : 'Aucun code PHAKTS pour cette question',
-        action: xls && xls.data ? 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)' : 'Coder la question (Radical__Déterminant__Affixe!contrainte)',
-        suggestion: derive(), fix: () => derive() || null,
+        message: xls && xls.data ? 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS' : 'Libellé non codifié : aucun code PHAKTS pour cette question',
+        action: (xls && xls.data ? 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)' : 'Coder la question (Radical__Déterminant__Affixe!contrainte)')
+          + (alsoMod ? ' — modalités proposées : ' + alsoMod.pf_modalites.slice(0, 90) : ''),
+        suggestion: derive(), fix: () => derive() || null, also: alsoMod,
       });
-    } else {
+    }
+
+    // Forme du code (espaces, accents, soulignés, casse, coquilles, mots interrogatifs, affixe).
+    // Exécutée aussi sur un code qui vient d'être proposé pour un libellé sans code.
+    function stageCodeFormat() {
       // espaces, insécables
       {
         const q = w.pf_question;
@@ -501,6 +517,7 @@
 
       stageAffix();
     }
+    if (!multiLine && w.pf_question.trim()) stageCodeFormat();
 
     function lexieDiff(a, b) {
       const A = a.split(/_+/), B = b.split(/_+/);
@@ -1181,29 +1198,39 @@
       const kind = ci.kind;
       const n = ' ' + plain(libelle) + ' ';
       const sugg = () => derive();
-      const flag = (rule, severity, message, action) => {
+      // Correction prévue par la grammaire (« âge → entier __1Y », « combien → entier », « pourquoi / quel /
+      // où → liste ou texte libre »), proposée seulement : elle ne s'applique qu'au code d'une question
+      // codifiée, jamais au nom d'un XLSForm ou d'une colonne.
+      const retype = (affix, constraint, modalites) => ({
+        fix: xls ? null : q => { const p = splitQ(q); return joinQ(p.code.replace(/__[^_]+$/, '__' + affix), constraint); },
+        also: xls ? null : { pf_modalites: modalites },
+      });
+      const flag = (rule, severity, message, action, fixSpec) => {
         const s = sugg();
+        const spec = fixSpec || { fix: null, also: null };
         emit({
-          rule, category: CAT.TYPE, severity, message, action: action + (s && s !== w.pf_question ? ' — proposition issue du libellé : ' + s : ''),
-          suggestion: s && s !== w.pf_question ? s : '', auto: false, fix: null,
+          rule, category: CAT.TYPE, severity, message, action: action + (s && s !== w.pf_question && !spec.fix ? ' — proposition issue du libellé : ' + s : ''),
+          suggestion: s && s !== w.pf_question ? s : '', auto: false, fix: spec.fix, also: spec.also,
         });
       };
+      // « Si oui, quel … ? », « Selon vous, pourquoi … ? » : ces préfixes ne changent pas la nature de la question
+      const nq = n.replace(/^ (si oui|si non|selon vous|d apres vous|le cas echeant|si c est le cas) /, ' ');
       const numeric = kind === 'integer' || kind === 'decimal';
       if (/ combien | nombre de | nombre d | nb de /.test(n) && !numeric) {
-        if (kind === 'boolean' || kind === 'trilean') flag('type.combien', SEV.CRITIQUE, '« Combien / Nombre de » appelle un nombre, le code est un booléen', 'Coder un entier : __1 (ou __1Y, __2…)');
-        else if (kind === 'text') flag('type.combien', SEV.MAJEURE, '« Combien / Nombre de » appelle un nombre, le code est un texte libre', 'Coder un entier : __1 (avec une plage)');
+        if (kind === 'boolean' || kind === 'trilean') flag('type.combien', SEV.CRITIQUE, '« Combien / Nombre de » appelle un nombre, le code est un booléen', 'Coder un entier : __1 (ou __1Y, __2…)', retype('1', '', 'Nombre entier'));
+        else if (kind === 'text') flag('type.combien', SEV.MAJEURE, '« Combien / Nombre de » appelle un nombre, le code est un texte libre', 'Coder un entier : __1 (avec une plage)', retype('1', '', 'Nombre entier'));
       }
       if (/ age /.test(n) && !/ age gestationnel /.test(n) && (kind === 'text' || kind === 'boolean')) {
-        flag('type.age', SEV.CRITIQUE, '« Âge » codé ' + (kind === 'text' ? 'en texte libre' : 'en booléen'), 'Un âge est un entier : __1Y!0<N<120');
+        flag('type.age', SEV.CRITIQUE, '« Âge » codé ' + (kind === 'text' ? 'en texte libre' : 'en booléen'), 'Un âge est un entier : __1Y!0<N<120', retype('1Y', '0<N<120', 'Années'));
       }
-      if (kind === 'boolean' && /^ (quel|quelle|quels|quelles) /.test(n)) {
-        flag('type.quel_booleen', SEV.CRITIQUE, '« Quel(le)(s) … » attend un choix ou un texte, pas Oui/Non', 'Coder __X (liste) ou __Z!1*Expression');
+      if (kind === 'boolean' && /^ (quel|quelle|quels|quelles) /.test(nq)) {
+        flag('type.quel_booleen', SEV.CRITIQUE, '« Quel(le)(s) … » attend un choix ou un texte, pas Oui/Non', 'Coder __X (liste) ou __Z!1*Expression : texte libre proposé tant que la liste des choix n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
       }
-      if (kind === 'boolean' && /^ (pourquoi|pour quelle raison) /.test(n)) {
-        flag('type.pourquoi_booleen', SEV.CRITIQUE, '« Pourquoi » attend une raison, pas Oui/Non', 'Coder __X!1*Raison_ ou __Z!1*Expression');
+      if (kind === 'boolean' && /^ (pourquoi|pour quelle raison) /.test(nq)) {
+        flag('type.pourquoi_booleen', SEV.CRITIQUE, '« Pourquoi » attend une raison, pas Oui/Non', 'Coder __X!1*Raison_ ou __Z!1*Expression : texte libre proposé tant que la liste des raisons n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
       }
-      if (kind === 'boolean' && /^ (ou|dans quel lieu|a quel endroit) /.test(n)) {
-        flag('type.ou_booleen', SEV.CRITIQUE, '« Où » attend un lieu, pas Oui/Non', 'Coder __X!1*1Lieu_ ou __Z!1*Expression');
+      if (kind === 'boolean' && /^ (ou|dans quel lieu|a quel endroit) /.test(nq)) {
+        flag('type.ou_booleen', SEV.CRITIQUE, '« Où » attend un lieu, pas Oui/Non', 'Coder __X!1*1Lieu_ ou __Z!1*Expression : texte libre proposé tant que la liste des lieux n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
       }
       if (numeric && ci.unit !== 'P' && (/%/.test(libelle) || / (pourcentage|taux|proportion|couverture|prevalence) /.test(n))) {
         const isReal = ci.affix === '2';
@@ -1639,6 +1666,7 @@
       corriges: results.filter(r => r.status === 'corrige').length,
       aValider: results.filter(r => r.status === 'a_valider').length,
       findings: all.length, auto: all.filter(f => f.auto).length, appliquees: all.filter(f => f.applied).length,
+      nonCodifiees: results.filter(r => !r.original.pf_question.trim()).length,
       bySeverity, byCategory, dpf,
       registre: ctx.registry ? ctx.registry.size : 0,
       conformiteInitiale: total ? Math.round((conformes / total) * 100) : 100,
@@ -1665,6 +1693,33 @@
     return { code, libelle: libelle === code ? -1 : libelle, modalites, skip };
   }
 
+  // Ligne qui sert de TITRE (« SECTION 1 : … », « IDENTIFICATION ») et non de question à codifier.
+  function isSectionTitle(libelle) {
+    const t = String(libelle || '').trim();
+    if (!t || /\?\s*$/.test(t)) return false;
+    if (/^(section|partie|module|chapitre|bloc|rubrique|theme|volet|annexe|titre)\b/i.test(strip(t))) return true;
+    const letters = strip(t).replace(/[^A-Za-z]/g, '');
+    return letters.length >= 4 && t === t.toUpperCase();
+  }
+
+  // Questions d'une feuille « Libellé / PF-Question / PF-Modalités / Skip Logic » (colonnes
+  // de detectCodifiedColumns ; code absent = -1 pour une simple liste de libellés).
+  // table : { headers, rows:[{_row, <colonne>: texte}] }. Un libellé sans code est une question
+  // à codifier, sauf s'il s'agit manifestement d'un titre de section.
+  function questionnaireToItems(table, cols) {
+    const get = (r, c) => (c >= 0 ? String(r[table.headers[c]] || '') : '').trim();
+    const items = [], rows = [];
+    let sections = 0;
+    (table.rows || []).forEach(r => {
+      const code = get(r, cols.code), libelle = get(r, cols.libelle), mod = get(r, cols.modalites), skip = get(r, cols.skip);
+      if (!code && !libelle) return;
+      if (!code && !mod && !skip && isSectionTitle(libelle)) { sections++; return; }
+      items.push({ libelle, pf_question: code, pf_modalites: mod, pf_skip: skip });
+      rows.push(r._row);
+    });
+    return { items, rows, sections };
+  }
+
   // Une feuille est un questionnaire codifié si elle a une colonne de code PHAKTS
   // distincte du libellé ; un XLSForm si elle a « type » et « name » (survey).
   function detectSheetKind(headers) {
@@ -1673,6 +1728,7 @@
     if (h.includes('list_name') && h.includes('name')) return 'choices';
     const c = detectCodifiedColumns(headers);
     if (c.code >= 0 && c.code !== c.libelle) return 'codified';
+    if (c.libelle >= 0 && c.code < 0) return 'libelles'; // simple liste de libellés à codifier
     return '';
   }
 
@@ -1867,7 +1923,7 @@
     AUDIT_VERSION, SEV, CAT, SRC, DPF_LEXIE_TYPOS,
     auditQuestionnaire, auditItem, parseSkipRule, parseListDef, canonValue, canonListId, codeKey,
     parseDpfRegistryRows, buildRegistry, unitHint, dpfValues, affixStatus, strip, plain,
-    datasetToItems, datasetHeaderRenames, inferColumn, normalizeDpfCode, detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
+    isSectionTitle, questionnaireToItems, datasetToItems, datasetHeaderRenames, inferColumn, normalizeDpfCode, detectCodifiedColumns, detectSheetKind, xlsformToItems, renameRefs, xlsformRenames, correctedItems, journalRows,
     get defaultRegistry() { return DEFAULT_REGISTRY; },
   };
 });

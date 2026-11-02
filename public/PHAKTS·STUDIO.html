@@ -1709,7 +1709,7 @@
       ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:30px;margin-bottom:8px">🛠</div>
       <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px">Glisser-déposer le questionnaire à vérifier</div>
-      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
+      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
       <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
     </div>
 
@@ -1738,6 +1738,7 @@
           <input id="corrFSearch" oninput="corrSetFilter()" placeholder="Rechercher (libellé, code, règle)…" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;min-width:200px">
         </span>
         <span style="flex:1"></span>
+        <button class="btn-purple" id="corrBtnCodify" onclick="corrCodifyAll()" title="Propose puis applique un code PHAKTS (et ses modalités) à chaque libellé qui n'en a pas ; relisez ensuite l'onglet « Questionnaire corrigé »" style="display:none;padding:7px 14px;font-size:11px">✨ Codifier les libellés sans code</button>
         <button class="btn-ghost" onclick="corrAcceptShown()" title="Applique toutes les propositions affichées (celles qui ne sont pas encore appliquées)" style="padding:7px 14px;font-size:11px">✓ Accepter les propositions affichées</button>
         <button class="btn-ghost" onclick="corrResetDecisions()" title="Revient aux corrections sûres appliquées d'office" style="padding:7px 14px;font-size:11px">↺ Réinitialiser</button>
       </div>
@@ -7875,6 +7876,33 @@ function corrReadTable(ws) {
   return { headers, rows };
 }
 
+// Codification d'un libellé SANS modalités : le codifieur « libellé seul » du Studio (celui de l'onglet
+// Codification, hors-ligne, gratuit et reproductible). codifyFromLibelleAndModalites, lui, part des
+// modalités déjà saisies et retombe sur « booléen » quand il n'y en a pas : il ne sert que dans ce cas.
+// L'audit rattrape ensuite ce que le codifieur rate (Pourquoi / Quel / Combien…).
+const corrCodeCache = new Map();
+const corrCodeKey = (libelle, modalites) => String(libelle || '').trim() + '||' + String(modalites || '').trim();
+
+async function corrPrecodify() {
+  const todo = [];
+  corr.sheets.forEach(sh => sh.items.forEach(it => {
+    const k = corrCodeKey(it.libelle, it.pf_modalites);
+    if (!String(it.pf_question || '').trim() && it.libelle.trim() && !String(it.pf_modalites || '').trim() && !corrCodeCache.has(k) && !todo.some(x => x.k === k)) {
+      todo.push({ k, libelle: it.libelle.trim().replace(/\s*[\r\n]+\s*/g, ' ') });
+    }
+  }));
+  if (!todo.length) return;
+  try {
+    const out = await codifyOffline(todo.map(x => x.libelle).join('\n'));
+    const items = (out && out.items) || [];
+    if (items.length === todo.length) {
+      todo.forEach((x, i) => corrCodeCache.set(x.k, { pf_question: items[i].pf_question, pf_modalites: items[i].pf_modalites || '' }));
+    }
+  } catch (e) {
+    console.warn('[correction] codification hors-ligne indisponible :', e.message);
+  }
+}
+
 function corrAuditOptions(sh) {
   return {
     dpfLists: typeof dpfListes !== 'undefined' ? dpfListes : [],
@@ -7883,7 +7911,7 @@ function corrAuditOptions(sh) {
     accepted: sh.accepted,
     rejected: sh.rejected,
     // mêmes détecteurs que le bouton « Vérification de la conformité PHAKTS »
-    derive: item => codifyFromLibelleAndModalites(item.libelle, item.pf_modalites),
+    derive: item => corrCodeCache.get(corrCodeKey(item.libelle, item.pf_modalites)) || codifyFromLibelleAndModalites(item.libelle, item.pf_modalites),
     detectAdmin: libelle => detectAdminReferenceField(libelle, normalizeText(libelle)),
   };
 }
@@ -7904,7 +7932,9 @@ async function corrHandleFile(file) {
     const buffer = await file.arrayBuffer();
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer.slice(0));
-    const tables = wb.worksheets.map(ws => {
+    // feuilles de rapport de cet outil (un fichier corrigé qu'on redépose) : jamais auditées
+    const REPORT_SHEETS = /^(Synthèse DPF|Journal des corrections PHAKTS|Écarts à valider|Renommages XLSForm|Renommages colonnes)$/i;
+    const tables = wb.worksheets.filter(ws => !REPORT_SHEETS.test(ws.name.trim())).map(ws => {
       const headers = corrReadHeaders(ws);
       const kind = PHAKTS_AUDIT.detectSheetKind(headers);
       // un export de données peut peser des dizaines de Mo : on ne lit en entier que les questionnaires
@@ -7919,21 +7949,13 @@ async function corrHandleFile(file) {
       const items = PHAKTS_AUDIT.xlsformToItems(survey, choices || { headers: [], rows: [] });
       if (items.length) sheets.push({ name: survey.name, kind: 'xlsform', table: survey, items, rowOf: i => items[i]._xls.row });
     }
-    tables.filter(t => t.kind === 'codified').forEach(t => {
+    let sections = 0;
+    tables.filter(t => t.kind === 'codified' || t.kind === 'libelles').forEach(t => {
       const cols = PHAKTS_AUDIT.detectCodifiedColumns(t.headers);
-      const get = (r, c) => (c >= 0 ? (r[t.headers[c]] || '') : '');
-      const items = [], rows = [];
-      t.rows.forEach(r => {
-        const code = get(r, cols.code).trim();
-        const lib = get(r, cols.libelle).trim();
-        const mod = get(r, cols.modalites).trim();
-        const skip = get(r, cols.skip).trim();
-        // ligne de section (titre seul) : rien à vérifier
-        if (!code && !(lib && (mod || skip))) return;
-        items.push({ libelle: lib, pf_question: code, pf_modalites: mod, pf_skip: skip });
-        rows.push(r._row);
-      });
-      if (items.length) sheets.push({ name: t.name, kind: 'codified', table: t, cols, items, rowOf: i => rows[i] });
+      // un libellé sans code est une question À CODIFIER (seuls les titres de section sont écartés)
+      const q = PHAKTS_AUDIT.questionnaireToItems(t, cols);
+      sections += q.sections;
+      if (q.items.length) sheets.push({ name: t.name, kind: t.kind, table: t, cols, items: q.items, rowOf: i => q.rows[i] });
     });
 
     // Fichier de données : aucune feuille de questionnaire, mais des colonnes et des lignes de réponses
@@ -7951,16 +7973,22 @@ async function corrHandleFile(file) {
       throw new Error('aucune feuille exploitable. Attendu : un XLSForm (feuilles survey et choices) ou un questionnaire codifié (colonnes Libellé, PF/Question, PF/Modalités, Skip Logic). Feuilles lues : ' + seen);
     }
     corr = {
-      fileName: file.name, buffer, view: 'constats',
+      fileName: file.name, buffer, view: 'constats', sectionsIgnorees: sections,
       filter: { status: 'pending', sev: '', cat: '', q: '' },
       sheets: sheets.map(sh => Object.assign(sh, { accepted: new Set(), rejected: new Set() })),
     };
     document.getElementById('corrFStatus').value = 'pending';
     document.getElementById('corrFSev').value = '';
     document.getElementById('corrFSearch').value = '';
+    await corrPrecodify();
     corr.sheets.forEach(corrRunSheet);
     corrSetMessage('', '');
     corrRender();
+    const un = corrTotals().nonCodifiees;
+    const parts = [];
+    if (un) parts.push(un + ' libellé(s) sans code : cliquez « ✨ Codifier » pour leur proposer un code PHAKTS et des modalités.');
+    if (corr.sectionsIgnorees) parts.push(corr.sectionsIgnorees + ' titre(s) de section ignoré(s) (lignes « SECTION… » ou tout en capitales).');
+    if (parts.length) corrSetMessage(parts.join(' '), 'info');
   } catch (e) {
     console.error('[correction]', e);
     const unreadable = /central directory|zip file|corrupt/i.test(String(e.message));
@@ -7972,11 +8000,13 @@ async function corrHandleFile(file) {
 
 // ── Affichage ────────────────────────────────────────────────────────────────
 function corrTotals() {
-  const t = { total: 0, conformes: 0, corriges: 0, aValider: 0, findings: 0, appliquees: 0, sev: { Critique: 0, Majeure: 0, Mineure: 0 }, sevOpen: { Critique: 0, Majeure: 0, Mineure: 0 }, dpf: { exact: 0, nouvelle: 0, proche: 0 } };
+  const t = { total: 0, conformes: 0, corriges: 0, aValider: 0, findings: 0, appliquees: 0, nonCodifiees: 0, sansCodeRestant: 0, sev: { Critique: 0, Majeure: 0, Mineure: 0 }, sevOpen: { Critique: 0, Majeure: 0, Mineure: 0 }, dpf: { exact: 0, nouvelle: 0, proche: 0 } };
   corr.sheets.forEach(sh => {
     const m = sh.res.summary;
     t.total += m.total; t.conformes += m.conformes; t.corriges += m.corriges; t.aValider += m.aValider;
     t.findings += m.findings; t.appliquees += m.appliquees;
+    t.nonCodifiees += m.nonCodifiees || 0;
+    t.sansCodeRestant += sh.res.items.filter(i => !i.original.pf_question.trim() && !i.corrected.pf_question.trim()).length;
     ['Critique', 'Majeure', 'Mineure'].forEach(k => { t.sev[k] += m.bySeverity[k]; });
     sh.res.findings.forEach(f => { if (!f.applied) t.sevOpen[f.severity]++; });
     t.dpf.exact += m.dpf.exact || 0;
@@ -7996,7 +8026,7 @@ function corrRender() {
       `<div style="font-size:24px;font-weight:700;color:${color};font-family:var(--mono)">${n}</div>` +
       `<div style="font-size:11px;color:var(--text)">${label}</div>` +
       (sub ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">${sub}</div>` : '') + '</div>';
-  const KIND_LABEL = { xlsform: 'XLSForm « ', codified: 'Questionnaire codifié « ', data: 'Fichier de données « ' };
+  const KIND_LABEL = { xlsform: 'XLSForm « ', codified: 'Questionnaire codifié « ', libelles: 'Liste de libellés « ', data: 'Fichier de données « ' };
   const modeLabel = corr.sheets.map(sh => KIND_LABEL[sh.kind] + sh.name + ' » (' + sh.items.length + (sh.kind === 'data' ? ' variables' : '') + ')').join(' · ');
   const sevChips = ['Critique', 'Majeure', 'Mineure'].map(k =>
     `<span style="color:${CORR_SEV_COLOR[k]}">${t.sevOpen[k]} ${k.toLowerCase()}${t.sevOpen[k] > 1 ? 's' : ''}</span>`).join(' · ');
@@ -8007,6 +8037,7 @@ function corrRender() {
       card(t.total, 'questions auditées', '#38bdf8') +
       card(t.conformes, 'conformes d\'emblée', '#4ade80', initW + ' %') +
       card(t.corriges, 'corrigées (sûr)', '#22d3ee', 'corrections appliquées : ' + t.appliquees) +
+      (t.nonCodifiees ? card(t.nonCodifiees, 'libellés sans code', t.sansCodeRestant ? '#f472b6' : '#4ade80', t.sansCodeRestant ? t.sansCodeRestant + ' encore à codifier' : 'tous codifiés') : '') +
       card(t.aValider, 'à valider', t.aValider ? '#fb923c' : '#4ade80', t.aValider ? sevChips : 'rien en attente') +
       card(t.dpf.exact, 'variables du DPF', '#a78bfa', t.dpf.nouvelle + ' nouvelle(s)' + (t.dpf.proche ? ' · ' + t.dpf.proche + ' proche(s) d\'une variable du DPF' : '')) +
     '</div>' +
@@ -8022,7 +8053,11 @@ function corrRender() {
   const keep = corr.filter.cat;
   catSel.innerHTML = '<option value="">Toutes catégories</option>' + [...cats].sort().map(c => `<option${c === keep ? ' selected' : ''}>${_esc(c)}</option>`).join('');
 
-  const xls = corr.sheets.some(sh => sh.kind !== 'codified');
+  const codifiable = corr.sheets.reduce((n, sh) => n + sh.res.findings.filter(f => f.rule === 'code.vide' && f.after != null && !f.applied).length, 0);
+  const btnCodify = document.getElementById('corrBtnCodify');
+  btnCodify.style.display = codifiable ? '' : 'none';
+  btnCodify.textContent = '✨ Codifier les ' + codifiable + ' libellé' + (codifiable > 1 ? 's' : '') + ' sans code';
+  const xls = corr.sheets.some(sh => sh.kind === 'xlsform' || sh.kind === 'data');
   const isData = corr.sheets.some(sh => sh.kind === 'data');
   const btnRes = document.getElementById('corrBtnResults');
   btnRes.disabled = xls;
@@ -8117,7 +8152,7 @@ function corrRenderFindings() {
       const b = dpfBadge(it);
       const name = sh.kind === 'xlsform' ? it.xls.type + ' · ' : '';
       html += `<tr style="background:var(--bg2)"><td colspan="4" style="padding:7px 10px;border-top:1px solid var(--border2)">` +
-        `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text2)">${_esc(corr.sheets.length > 1 || sh.kind !== 'codified' ? sh.name + ' · ' : '')}${sh.kind === 'data' ? 'colonne' : 'ligne'} ${sh.rowOf(it.index)}</span> ` +
+        `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text2)">${_esc(corr.sheets.length > 1 || sh.kind === 'xlsform' || sh.kind === 'data' ? sh.name + ' · ' : '')}${sh.kind === 'data' ? 'colonne' : 'ligne'} ${sh.rowOf(it.index)}</span> ` +
         `<span style="color:var(--text)">${_esc(it.libelle.slice(0, 110) || '—')}</span> ` +
         `<code style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-left:6px">${_esc(name + it.original.pf_question)}</code>` +
         (b ? ` <span title="${b[2]}" style="font-size:9px;padding:1px 6px;border-radius:9px;border:1px solid ${b[1]}66;color:${b[1]};margin-left:6px">${b[0]}</span>` : '') + '</td></tr>';
@@ -8171,12 +8206,12 @@ function corrRenderCorrected() {
         `<td style="padding:6px 10px;color:var(--text2);font-family:var(--mono);font-size:10.5px">${sh.rowOf(it.index)}</td>` +
         `<td style="padding:6px 10px;max-width:260px">${_esc(it.libelle.slice(0, 120))}</td>` +
         `<td style="padding:6px 10px;color:var(--accent2)">${cell(it.original.pf_question, it.corrected.pf_question)}</td>` +
-        (sh.kind !== 'codified' ? `<td style="padding:6px 10px;font-size:10.5px;color:var(--text2)">${_esc(it.xls.type)}</td>` :
+        (sh.kind === 'xlsform' || sh.kind === 'data' ? `<td style="padding:6px 10px;font-size:10.5px;color:var(--text2)">${_esc(it.xls.type)}</td>` :
           `<td style="padding:6px 10px">${cell(it.original.pf_modalites, it.corrected.pf_modalites)}</td>` +
           `<td style="padding:6px 10px;color:#fcd34d">${cell(it.original.pf_skip, it.corrected.pf_skip)}</td>`) +
         `<td style="padding:6px 10px;font-size:11px">${state}</td></tr>`;
     }).join('');
-    const head = sh.kind !== 'codified'
+    const head = sh.kind === 'xlsform' || sh.kind === 'data'
       ? '<th style="padding:8px 10px;text-align:left">' + (sh.kind === 'data' ? 'en-tête (corrigé)' : 'name (corrigé)') + '</th><th style="padding:8px 10px;text-align:left">' + (sh.kind === 'data' ? 'valeurs' : 'type') + '</th>'
       : '<th style="padding:8px 10px;text-align:left">PF/Question (corrigé)</th><th style="padding:8px 10px;text-align:left">PF/Modalités</th><th style="padding:8px 10px;text-align:left">Skip Logic</th>';
     html += `<div style="font-size:12px;font-weight:600;color:var(--accent2);margin:${html ? '20px' : '0'} 0 6px">Feuille « ${_esc(sh.name)} » — ${sh.items.length} question(s)</div>` +
@@ -8212,6 +8247,23 @@ function corrApplyRule(rule) {
   }));
   corrKeepScroll(() => { corr.sheets.forEach(corrRunSheet); corrRender(); });
   showStatus(n + ' correction(s) appliquée(s) (règle « ' + rule + ' »).', 'success');
+}
+
+/** Codifie d'un coup tous les libellés sans code : accepte la proposition de code (et de modalités)
+ * de chaque ligne, puis montre le questionnaire corrigé pour relecture. Les autres propositions
+ * (type, liste du DPF, variable équivalente, saut) restent à valider une à une. */
+function corrCodifyAll() {
+  if (!corr) return;
+  let done = 0;
+  corr.sheets.forEach(sh => sh.res.findings.forEach(f => {
+    if (f.rule === 'code.vide' && f.after != null && !f.applied) { sh.accepted.add(f.id); done++; }
+  }));
+  if (!done) { showStatus('Aucun libellé à codifier.', 'info'); return; }
+  corr.sheets.forEach(corrRunSheet);
+  corr.view = 'corrige';
+  corrKeepScroll(corrRender);
+  const t = corrTotals();
+  showStatus('✨ ' + done + ' libellé(s) codifié(s)' + (t.sansCodeRestant ? ' — ' + t.sansCodeRestant + ' sans proposition possible' : '') + '. Relisez le questionnaire corrigé, puis traitez les ' + t.aValider + ' point(s) restant(s) à valider.', t.sansCodeRestant ? 'warning' : 'success');
 }
 
 function corrAcceptShown() {
@@ -8255,7 +8307,7 @@ function corrAddSheet(wb, name, columns, rows) {
 function corrAddReportSheets(wb) {
   const t = corrTotals();
   const reg = corrRegistryRaw();
-  const sheetsInfo = corr.sheets.map(sh => ({ xlsform: 'XLSForm', codified: 'Questionnaire codifié', data: 'Fichier de données' }[sh.kind]) + ' « ' + sh.name + ' » : ' + sh.items.length + (sh.kind === 'data' ? ' variable(s)' : ' question(s)')).join(' | ');
+  const sheetsInfo = corr.sheets.map(sh => ({ xlsform: 'XLSForm', codified: 'Questionnaire codifié', libelles: 'Liste de libellés', data: 'Fichier de données' }[sh.kind]) + ' « ' + sh.name + ' » : ' + sh.items.length + (sh.kind === 'data' ? ' variable(s)' : ' question(s)')).join(' | ');
   const synth = [
     ['Fichier audité', corr.fileName], ['Feuilles', sheetsInfo], ['Date de l\'audit', new Date().toLocaleString('fr-FR')],
     ['Grammaire PHAKTS', PHAKTS_CORE.GRAMMAR_VERSION], ['Moteur d\'audit', PHAKTS_AUDIT.AUDIT_VERSION],
@@ -8329,15 +8381,30 @@ async function corrApplyToWorkbook(wb) {
         cell.value = next;
         corrMarkCell(cell, 'Renommé (audit DPF) — avant : ' + h);
       });
-    } else if (sh.kind === 'codified') {
-      const fields = [['pf_question', sh.cols.code], ['pf_modalites', sh.cols.modalites], ['pf_skip', sh.cols.skip]];
+    } else if (sh.kind === 'codified' || sh.kind === 'libelles') {
+      // colonnes absentes (liste de libellés : ni PF/Question, ni PF/Modalités, ni Skip Logic) : créées
+      // à droite des données, avec le style de l'en-tête existant, seulement si un résultat les remplit
+      const target = { pf_question: sh.cols.code, pf_modalites: sh.cols.modalites, pf_skip: sh.cols.skip };
+      let last = Math.max(ws.columnCount, sh.table.headers.length);
+      const head = ws.getRow(1);
+      const model = head.getCell(Math.max(1, sh.cols.libelle + 1));
+      [['pf_question', 'PF/Question', 55], ['pf_modalites', 'PF/Modalités', 45], ['pf_skip', 'Skip Logic', 40]].forEach(([field, label, width]) => {
+        if (target[field] >= 0 || !sh.res.items.some(it => it.corrected[field])) return;
+        last++;
+        target[field] = last - 1;
+        const h = head.getCell(last);
+        h.value = label;
+        h.style = Object.assign({}, model.style);
+        ws.getColumn(last).width = width;
+      });
       sh.res.items.forEach(it => {
         const row = ws.getRow(sh.rowOf(it.index));
-        fields.forEach(([field, col]) => {
+        Object.keys(target).forEach(field => {
+          const col = target[field];
           if (col < 0 || it.corrected[field] === it.original[field]) return;
           const cell = row.getCell(col + 1);
           cell.value = it.corrected[field];
-          corrMarkCell(cell, 'Corrigé (audit DPF) — avant : ' + String(it.original[field]).slice(0, 400));
+          corrMarkCell(cell, it.original[field] ? 'Corrigé (audit DPF) — avant : ' + String(it.original[field]).slice(0, 400) : 'Codifié (audit DPF) — proposition à relire');
         });
       });
     } else {
@@ -8398,7 +8465,7 @@ async function corrDownloadReport() {
 
 function corrLoadToResults() {
   if (!corr) return;
-  const sheets = corr.sheets.filter(sh => sh.kind === 'codified');
+  const sheets = corr.sheets.filter(sh => sh.kind === 'codified' || sh.kind === 'libelles');
   if (!sheets.length) return;
   const items = sheets.flatMap(sh => PHAKTS_AUDIT.correctedItems(sh.res, sh.items));
   if (results.length && !confirm('Charger ' + items.length + ' question(s) corrigée(s) va REMPLACER les ' + results.length + ' résultat(s) actuel(s). Continuer ?')) return;

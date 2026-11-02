@@ -16,6 +16,16 @@ const checks = [
   ['séparateur d\'un choix unique : virgule', () => fixed(q('Religion__X!1*1Religion_', 'Religion_=[A|B|C]')).pf_modalites === 'Religion_=[A,B,C]'],
   ['unité 1N ramenée à 1', () => fixed(q('Nb_Enfants__1N!N', 'Nombre')).pf_question === 'Nb_Enfants__1!N'],
   ['coquille du DPF jamais proposée', () => !/Sceptiqu/i.test(JSON.stringify(AUDIT.dpfValues({ valeurs: 'Fosse_Sceptiqu, Latrine' })))],
+  ['libellé sans code : code proposé (jamais appliqué sans accord), titre de section écarté', () => {
+    const derive = () => ({ pf_question: 'Age__1Y!0<N<120', pf_modalites: 'Années' });
+    const items = [{ libelle: 'Quel est votre âge ?', pf_question: '', pf_modalites: '', pf_skip: '' }];
+    const r = AUDIT.auditQuestionnaire(items, { derive });
+    const f = r.findings.find(x => x.rule === 'code.vide');
+    const ok = AUDIT.auditQuestionnaire(items, { derive, accepted: new Set([f.id]) });
+    return f && f.after === 'Age__1Y!0<N<120' && !f.applied && r.items[0].corrected.pf_question === '' &&
+      ok.items[0].corrected.pf_question === 'Age__1Y!0<N<120' && ok.items[0].corrected.pf_modalites === 'Années' &&
+      AUDIT.isSectionTitle('SECTION 1 : IDENTITÉ') && !AUDIT.isSectionTitle('Sexe') && AUDIT.detectSheetKind(['Libellé']) === 'libelles';
+  }],
   ['fichier de données : colonne entière renommée, valeurs jamais touchées', () => {
     const items = AUDIT.datasetToItems(['Nb_Cas', '_id'], [['1', 'a'], ['2', 'b'], ['3', 'c']]);
     const res = AUDIT.auditQuestionnaire(items);
