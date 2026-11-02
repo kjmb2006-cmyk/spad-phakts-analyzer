@@ -30,19 +30,26 @@ echo "── 1/4 · git pull sur le VPS ──"
 PULL_OUTPUT=$(ssh_run "cd $REPO_DIR && git pull origin main")
 echo "$PULL_OUTPUT"
 
+# package.json / package-lock.json réécrits avec le contenu EXACT de HEAD après le pull : constaté
+# le 03/11/2026, un ancien `npm install` (avant le passage à `npm ci` ci-dessous) avait laissé
+# package-lock.json modifié sur le disque du serveur ; comme le pull qui a suivi ne touchait pas
+# ce fichier, il restait un fast-forward "propre" sans corriger cette dérive — et `npm ci`, qui
+# lit le fichier tel quel SUR LE DISQUE (pas ce que git a committé), réinstallait alors depuis ce
+# lockfile dérivé, rechargeant le minimatch vulnérable. `git show HEAD:<chemin>` écrit le contenu
+# committé sans rien "annuler" (jamais checkout/reset/clean) : seuls ces deux fichiers précis sont
+# concernés, jamais les .local.json de données (ignorés par git, intacts).
+ssh_run "cd $REPO_DIR && git show HEAD:package.json > package.json && git show HEAD:package-lock.json > package-lock.json"
+
 if echo "$PULL_OUTPUT" | grep -q "Already up to date."; then
   echo "→ Rien de nouveau à déployer."
 fi
 
 echo
 echo "── 2/4 · Dépendances (npm + pip, rapide si rien n'a changé) ──"
-# npm ci, pas npm install : installation STRICTEMENT à partir du verrou commité (jamais de
-# réécriture de package-lock.json sur le serveur, jamais de résolution incrémentale divergente
-# selon la version de npm installée là-bas — cause réelle d'un node_modules/package-lock.json qui
-# dérivait du dépôt, constatée le 03/11/2026 : archiver-utils chargeait encore minimatch@3.1.5
-# malgré l'« overrides » du 02/11/2026, et chaque déploiement laissait package-lock.json modifié
-# sur le serveur). npm ci supprime et réinstalle node_modules à chaque fois : aussi rapide que
-# npm install quand rien n'a changé, mais jamais de dérive silencieuse.
+# npm ci, pas npm install : installation STRICTEMENT à partir du lockfile (celui qu'on vient de
+# remettre à jour ci-dessus), jamais de résolution incrémentale qui le réécrirait. npm ci supprime
+# et réinstalle node_modules à chaque fois : aussi rapide que npm install quand rien n'a changé,
+# mais jamais de dérive silencieuse.
 ssh_run "cd $REPO_DIR && npm ci --omit=dev 2>&1 | tail -5"
 ssh_run "cd $REPO_DIR/analyzer && venv/bin/pip install -q -r requirements.txt"
 
