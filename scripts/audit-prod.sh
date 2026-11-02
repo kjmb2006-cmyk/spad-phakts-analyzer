@@ -48,6 +48,8 @@ for p in multer:2 express:4.22 mammoth:1.13; do
   have=$(node -p "require('$name/package.json').version" 2>/dev/null)
   if [[ "$have" == "$want"* ]]; then ok "$name $have"; else ko "$name $have (attendu $want.x)"; fi
 done
+check "exceljs : correction minimatch en place, lecture/écriture Excel et zip fonctionnels" "node scripts/check-dependencies.js"
+check "npm audit (production) : aucune vulnérabilité connue" "timeout 120 npm audit --omit=dev"
 check "pyreadstat installé (exports SPSS/Stata)" "analyzer/venv/bin/python3 -c 'import pyreadstat'"
 WZ=$(analyzer/venv/bin/python3 -c 'from importlib.metadata import version; print(version("werkzeug"))' 2>/dev/null)
 [ "$WZ" = "3.1.9" ] && ok "Werkzeug $WZ" || ko "Werkzeug $WZ (attendu 3.1.9)"

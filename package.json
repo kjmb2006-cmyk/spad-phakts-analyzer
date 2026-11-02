@@ -137,7 +137,8 @@
   "license": "MIT",
   "overrides": {
     "exceljs": {
-      "uuid": "^11.1.1"
+      "uuid": "^11.1.1",
+      "minimatch": "^11.0.1"
     }
   }
 }
