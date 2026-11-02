@@ -68,6 +68,10 @@ S=http://127.0.0.1:8010
 check "page servie = page du dépôt" "curl -sf '$S/PHAKTS%C2%B7STUDIO.html' | cmp -s - '$REPO/public/PHAKTS·STUDIO.html'"
 check "noyau phakts-core.js servi = dépôt" "curl -sf $S/phakts-core.js | cmp -s - $REPO/public/phakts-core.js"
 check "service worker à jour (les navigateurs rechargeront la page)" "curl -sf $S/service-worker.js | cmp -s - $REPO/public/service-worker.js"
+check "Correction DPF : moteur phakts-audit.js servi = dépôt" "curl -sf $S/phakts-audit.js | cmp -s - $REPO/public/phakts-audit.js"
+check "Correction DPF : registre des variables du DPF servi = dépôt" "curl -sf $S/dpf-registry.js | cmp -s - $REPO/public/dpf-registry.js"
+check "Correction DPF : onglet présent dans la page" "curl -sf '$S/PHAKTS%C2%B7STUDIO.html' | grep -q 'panelCorrection'"
+check "Correction DPF : règles clés du moteur (corrections sûres, décisions du 02/11/2026)" "node $REPO/scripts/check-audit-engine.js"
 XLS=$(curl -sf "${AUTH[@]}" -H 'Content-Type: application/json' $S/api/xlsform -d '{
   "formTitle": "Audit", "factum": "PGT14_OS2_RC2_2__CIV_MS__1C1_Audit__20251000__ES",
   "items": [
