@@ -238,5 +238,46 @@ with m.app.test_client() as c:
     ok(c.get('/data/raw').status_code == 200 and 'Diagnostic des données' in html and 'Par où continuer' in html, 'diagnostic')
     ok('Diagnostic des données' in c.get('/analyse-donnees').get_data(as_text=True) and 'Préparer les données' in c.get('/analyse-donnees').get_data(as_text=True), 'hub et menu')
 
+    # ── Rapports : la section porte le nom de la page et dit la même chose qu'elle
+    from docx import Document
+    from flask import session as flask_session
+    from openpyxl import load_workbook
+    from modules import raw_analysis
+    report_page = c.get('/report').get_data(as_text=True)
+    ok('Diagnostic des données' in report_page and 'Analyse brute' not in report_page, 'page Rapport : la section porte le nom de la page')
+    reports_dir = m.app.config['REPORTS_FOLDER']
+    m.app.config['REPORTS_FOLDER'] = work                      # les rapports du test ne vont pas dans le vrai dossier
+    try:
+        report_form = {'analyses': ['raw'], 'report_title': 'T', 'report_author': 'A'}
+        word = c.post('/report', data={**report_form, 'report_format': 'word'})
+        xls = c.post('/report', data={**report_form, 'report_format': 'excel'})
+        pdf = c.post('/report', data={**report_form, 'report_format': 'pdf'})
+    finally:
+        m.app.config['REPORTS_FOLDER'] = reports_dir
+    ok(word.status_code == 200 and xls.status_code == 200 and pdf.status_code == 200, 'les trois rapports se génèrent')
+    ok(pdf.data[:5] == b'%PDF-' and len(pdf.data) > 5000, 'PDF valide')
+
+    with m.app.test_request_context():
+        flask_session['data_path'] = path
+        flask_session['original_filename'] = 'kobo.xlsx'
+        inputs = m._diagnostic_inputs()
+    ok(inputs and {'df', 'types', 'labels', 'form', 'validation'} <= set(inputs) and inputs['form'], 'entrées du diagnostic partagées (formulaire joint)')
+    page_quality = raw_analysis.systematic_analysis(inputs['df'], inputs['types'], inputs['form'], inputs['validation'], inputs['labels'])['quality']
+
+    doc = Document(io.BytesIO(word.data))
+    paragraphs = [p.text for p in doc.paragraphs]
+    ok('1. Diagnostic des données' in paragraphs and not any('brute' in t.lower() for t in paragraphs), 'Word : section « Diagnostic des données », plus d\'« Analyse brute »')
+    ok(not any(t.startswith('Erreur') for t in paragraphs), f'Word : aucune erreur interceptée dans la section ({[t for t in paragraphs if t.startswith("Erreur")]})')
+    cells = [[cell.text for cell in row.cells] for t in doc.tables for row in t.rows]
+    word_scores = {r[0]: r[1] for r in cells if len(r) == 3 and r[0] in {c_['name'] for c_ in page_quality['components']}}
+    ok(word_scores == {c_['name']: f"{c_['value']:.1f}".replace('.', ',') for c_ in page_quality['components']},
+       f'Word : les mesures du score sont celles de la page ({word_scores})')
+    ok(any('Manquants bruts' in t and 'Manquants réels' in t for t in paragraphs), 'Word : manquants bruts et réels')
+
+    wb = load_workbook(io.BytesIO(xls.data))
+    ok(all(not name.startswith('Brute') for name in wb.sheetnames) and 'Diagnostic-Qualité' in wb.sheetnames and 'Diagnostic-Manquantes' in wb.sheetnames, wb.sheetnames)
+    ok('Diagnostic-Erreur' not in wb.sheetnames, 'Excel : aucune erreur interceptée dans la section')
+    print("OK — rapports PDF, Word et Excel : « Diagnostic des données », mêmes mesures que la page")
+
 print()
 print(f"TOUS LES TESTS DES PAGES DE DONNÉES SONT PASSÉS ({checks} vérifications)")

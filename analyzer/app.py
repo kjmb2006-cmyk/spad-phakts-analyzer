@@ -1916,17 +1916,26 @@ def api_ai_quick_analysis():
     return jsonify(res)
 
 
+def _diagnostic_inputs():
+    """Ce que le diagnostic lit : les valeurs brutes de TOUT ce qui a été collecté (lignes écartées comprises), les types et libellés
+    de l'utilisateur, le formulaire joint et le résultat de la validation. Partagé par la page et les rapports, pour qu'ils disent
+    la même chose. None sans données."""
+    df = get_dataframe(full=True)
+    if df is None:
+        return None
+    return {'df': df, 'types': _var_types(df), 'labels': _data_var_labels(df),
+            'form': dataset.load_form(session.get('data_path')),
+            'validation': _validation_compute(df, _validation_survey_key(), {})[0]}
+
+
 @app.route('/data/raw')
 def raw_data():
     """Diagnostic des données : ces données sont-elles en état d'être analysées ? (voir modules/raw_analysis.py)"""
-    df = get_dataframe(full=True)                  # le diagnostic porte sur TOUT ce qui a été collecté, lignes écartées comprises
-    if df is None:
+    inputs = _diagnostic_inputs()
+    if inputs is None:
         return redirect(url_for('upload'))
+    df, types, labels, form, validation = (inputs[k] for k in ('df', 'types', 'labels', 'form', 'validation'))
     path = session.get('data_path')
-    types = _var_types(df)
-    labels = _data_var_labels(df)
-    form = dataset.load_form(path)
-    validation = _validation_compute(df, _validation_survey_key(), {})[0]
     shown = choice_labels.relabel_frame(df, dataset.load_labels(path), _ms_uid_names())
 
     diagnostic = systematic_analysis(df, types, form, validation, labels)
@@ -4000,6 +4009,8 @@ def report():
                 elif len(surveys) < 2:
                     flash("Moins de 2 enquêtes — section multi-enquête ignorée.", 'warning')
 
+            diagnostic = _diagnostic_inputs() if 'raw' in selected_analyses else None
+
             if format_type == 'pdf':
                 generate_pdf_report(
                     df, report_path,
@@ -4013,6 +4024,7 @@ def report():
                     user_comments=user_comments,
                     multi_survey_results=multi_survey_results,
                     multi_survey_meta=multi_survey_meta,
+                    diagnostic=diagnostic,
                 )
             elif format_type == 'excel':
                 generate_excel_report(
@@ -4027,6 +4039,7 @@ def report():
                     user_comments=user_comments,
                     multi_survey_results=multi_survey_results,
                     multi_survey_meta=multi_survey_meta,
+                    diagnostic=diagnostic,
                 )
             else:  # word
                 generate_word_report(
@@ -4041,6 +4054,7 @@ def report():
                     user_comments=user_comments,
                     multi_survey_results=multi_survey_results,
                     multi_survey_meta=multi_survey_meta,
+                    diagnostic=diagnostic,
                 )
             return send_file(report_path, as_attachment=True,
                              download_name=f'{title.replace(" ","_")}.{extension}')

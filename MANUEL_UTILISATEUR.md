@@ -22,7 +22,7 @@
 6. [SPAD Analyzer — Analyse statistique](#6-spad-analyzer--analyse-statistique)
    - 6.1 [Importer les données](#61-importer-les-données)
    - 6.2 [Aperçu et questionnaire des variables](#62-aperçu-et-questionnaire-des-variables)
-   - 6.3 [Analyse brute](#63-analyse-brute)
+   - 6.3 [Diagnostic des données](#63-diagnostic-des-données)
    - 6.4 [Statistiques descriptives](#64-statistiques-descriptives)
    - 6.5 [Analyse Croisée Dynamique](#65-analyse-croisée-dynamique)
    - 6.6 [Analyses multivariées](#66-analyses-multivariées)
@@ -360,36 +360,85 @@ l'analyseur Flask. À gauche, une barre latérale liste les sections.
 
 ### 6.2 Aperçu et questionnaire des variables
 
-Page « *Aperçu des données* ». Affiche :
+Page « *Aperçu des données* ». Deux parties :
 
-- **Tableau récapitulatif** : N° / Variable (code) / Question/Libellé / Type /
-  Modalités attendues / Obs. valides / Manquantes / % manq.
-- **Libellés éditables** : cliquez sur n'importe quelle question pour la
-  modifier, Entrée pour valider, Échap pour annuler. La modification est
-  sauvegardée automatiquement et survivra à toutes les analyses + au rapport.
-- **Bouton 📊 Télécharger questionnaire XLSX** : exporte un fichier Excel
-  formaté avec 2 feuilles (*Questionnaire* + *Métadonnées*), utilisable comme
-  document papier.
-- **Aperçu des 20 premières lignes** des données brutes.
+**Les données, ligne par ligne**
 
-### 6.3 Analyse brute
+- **Recherche** dans toutes les colonnes à la fois, **tri** par colonne
+  (numérique quand la colonne l'est), **filtre par colonne**, choix des
+  colonnes affichées, 10 à 200 lignes par page.
+- **Filtre « lignes signalées »** : ne garde que les soumissions relevées par
+  la validation des données.
+- **Aller à la ligne N** et **Cette vue (CSV)** : exporte exactement ce qui est
+  affiché (recherche, filtres et tri compris).
+- **Fiche d'une soumission** : un clic sur une ligne ouvre toutes les réponses
+  classées par section, avec leur libellé et les anomalies relevées à la
+  validation. On passe à la ligne précédente ou suivante, ou directement à la
+  prochaine ligne signalée. Le bouton **Écarter / Rétablir** retire la
+  soumission des analyses sans toucher au fichier. Les numéros de ligne de la
+  page *Validation des données* ouvrent directement cette fiche.
 
-Page « *Analyse brute* ». 8 onglets organisés :
+**Le dictionnaire des variables**
 
-1. **Qualité & Profil** : jauge qualité, composition par type, profil numérique
-   (nb. obs / vars / complètes / continues / catégorielles / binaires)
-2. **Variables continues** : pour chaque variable, statistiques (Moyenne,
-   Médiane, IC 95%, asymétrie, aplatissement, IQR, outliers) + histogramme
-   avec courbe normale théorique + boxplot/violon
-3. **Catégorielles** : pour chaque variable, table de fréquences + bar chart
-   horizontal + donut + indicateurs d'hétérogénéité (entropie de Shannon,
-   Herfindahl)
-4. **Binaires** : table récap (prévalence, IC 95%) + jauge de prévalence
-5. **Manquantes** : graphique en barres + heatmap des données manquantes
-6. **Corrélations** : matrice de corrélations Pearson pour les variables
-   numériques
-7. **Vue d'ensemble** : grand tableau exhaustif variable × statistiques
-8. **Tableau brut** : aperçu paginé des données
+- Pour chaque variable : code, libellé, type, modalités, et règles du
+  formulaire (obligatoire, saut de logique, contrainte) quand un XLSForm est
+  joint.
+- **Libellé éditable** : cliquez sur la question, Entrée pour valider, Échap
+  pour annuler. Un badge dit d'où vient le libellé (vous, le XLSForm ou le
+  code). Il est conservé avec le jeu de données et repris par les analyses, les
+  rapports, les exports SPSS/Stata et le questionnaire.
+- **Type corrigé** : si le type reconnu est faux (un code numérique qui est en
+  réalité une catégorie, par exemple), choisissez le bon dans la liste. Un badge
+  « corrigé » le signale et toutes les analyses suivantes en tiennent compte.
+- **Bouton Télécharger questionnaire (XLSX)** : fichier Excel formaté
+  (*Questionnaire* + *Métadonnées*), avec section, origine du libellé et, si le
+  XLSForm est joint, obligatoire, saut de logique et contrainte.
+
+**Préparer les données** (menu *Préparer les données*)
+
+Crée des variables à partir de celles qui existent, avec un aperçu du résultat
+avant l'enregistrement :
+
+- **Regrouper des modalités** (« Primaire » + « Secondaire » → « Scolarisé »),
+- **Créer des classes** à partir de bornes (0 ; 15 ; 25 ; 50) ou de quantiles,
+- **Calculer** une variable (par exemple un indice de masse corporelle),
+- **Poser une condition** (oui / non) à partir d'une expression,
+- **Extraire une partie d'une date** (année, mois, trimestre, semaine,
+  année-mois).
+
+Les variables créées sont proposées dans les statistiques, les croisements, les
+analyses multivariées et les rapports, et se recalculent pour les nouvelles
+soumissions. Un **filtre de lignes** (« ne garder que » ou « mettre de côté »)
+écarte des soumissions des analyses sans modifier le fichier ; il est
+réversible et refuse de vider le jeu de données.
+
+### 6.3 Diagnostic des données
+
+Page « *Diagnostic des données* » (anciennement « Analyse brute »). Elle répond
+à une question : *ces données sont-elles en état d'être analysées ?*
+
+1. **Score de qualité** (jauge) : calculé à partir de mesures vérifiables,
+   détaillées à côté — complétude réelle, validité (quand la validation a été
+   faite), unicité des soumissions, part des variables exploitables.
+2. **Par où continuer** : recommandations classées (croisements, analyses
+   multivariées, corrections à faire), avec le formulaire prérempli.
+3. **Réponses manquantes : réelles ou prévues par le formulaire** : avec le
+   XLSForm joint, une question qui ne s'appliquait pas à la personne (saut de
+   logique) n'est pas comptée comme un manque. La page distingue les manquants
+   *bruts* des manquants *réels*, et regroupe les cases d'une question à choix
+   multiples.
+4. **Anomalies de structure** : colonnes presque vides, variables constantes,
+   taux de manquants élevés, doublons.
+5. **Quelles variables vont ensemble** : associations entre variables
+   catégorielles (V de Cramér, avec p corrigé) et corrélations de **Spearman**
+   entre variables continues. Un lien quasi total (district et région, par
+   exemple) est marqué *redondant* et n'est pas recommandé.
+6. **Composition et distributions** des variables.
+7. **Profil des variables** : une ligne par variable (type, effectifs,
+   manquants, résumé, alertes) — recherche et filtres par type ou alerte.
+
+Le diagnostic porte sur tout ce qui a été collecté, **lignes écartées
+comprises**.
 
 ### 6.4 Statistiques descriptives
 
@@ -492,8 +541,8 @@ Page « *Rapport PDF* ». Configurez et téléchargez votre rapport :
    - Questions à choix multiples
    - Statistiques descriptives
    - Tableaux croisés
-   - **Analyse brute** (qualité, profil, continues, catégorielles, binaires,
-     manquantes, corrélations, vue d'ensemble)
+   - **Diagnostic des données** (score de qualité, profil, continues,
+     catégorielles, binaires, manquantes réelles, corrélations, vue d'ensemble)
    - **Multi-enquête** (comparaisons sauvegardées dans le panier — DPF / PHAKTS)
 4. **Sélection fine** : pour chaque catégorie (catégorielles, continues, choix
    multiples), cochez les variables à inclure individuellement
@@ -672,7 +721,7 @@ Radical__TYPE!contrainte
 
 ### Le rapport PDF est trop gros
 
-- Décochez la section **Analyse brute** si vous n'en avez pas besoin
+- Décochez la section **Diagnostic des données** si vous n'en avez pas besoin
 - Limitez le nombre de variables sélectionnées dans chaque catégorie
 
 ### Le rapport Word ne s'ouvre pas

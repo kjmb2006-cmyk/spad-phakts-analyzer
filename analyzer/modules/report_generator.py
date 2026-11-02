@@ -60,6 +60,7 @@ from modules.raw_analysis import (
 )
 from modules.comments import (auto_comment_categorical, auto_comment_continuous,
                               auto_comment_crosstab, auto_comment_binary_group)
+from modules.multi_comments import _fr
 
 PRIMARY = colors.HexColor('#1a3c5e')
 ACCENT  = colors.HexColor('#e05c1a')
@@ -124,6 +125,63 @@ def _fig_to_img(fig_json: str, width=520, height=300) -> str | None:
         return None
 
 
+# ── Section « Diagnostic des données » (commune aux rapports PDF, Word et Excel) ──────────────────────────────
+
+def _diagnostic_parts(df, diagnostic=None):
+    """Le diagnostic du rapport est celui de la page « Diagnostic des données » : mêmes données (valeurs brutes, lignes écartées
+    comprises), mêmes types de variables, mêmes libellés, et le formulaire et la validation quand ils existent. `diagnostic`
+    ({'df', 'types', 'form', 'validation', 'labels'}) vient de l'application ; sans lui, les types sont devinés sur `df`."""
+    d = diagnostic or {}
+    frame = d['df'] if d.get('df') is not None else df
+    types = d.get('types')
+    sysa = systematic_analysis(frame, types, d.get('form'), d.get('validation'), d.get('labels'))
+    return {'df': frame, 'types': types, 'sysa': sysa, 'desc': descriptive_summary(frame, types),
+            'ov': overview_stats(frame, types), 'profile': sysa.get('missing')}
+
+
+def _score_table(quality):
+    """Les mesures du score de qualité (mesure, valeur sur 100, poids), ou None."""
+    comps = (quality or {}).get('components') or []
+    if not comps:
+        return None
+    return pd.DataFrame([[c['name'], _fr(c['value']), c['weight']] for c in comps], columns=['Mesure', 'Score (%)', 'Poids'])
+
+
+def _score_notes(quality):
+    """Une ligne de lecture par mesure : ce qui a été compté."""
+    return [f"{c['name']} — {c['detail']}" for c in (quality or {}).get('components') or [] if c.get('detail')]
+
+
+def _missing_summary(quality):
+    """Manquants bruts et manquants réels (parmi les personnes à qui la question s'appliquait), en une phrase."""
+    q = quality or {}
+    if q.get('raw_missing_pct') is None or q.get('missing_pct') is None:
+        return ''
+    return (f"Manquants bruts : {_fr(q['raw_missing_pct'])} % des cellules. Manquants réels : {_fr(q['missing_pct'])} % "
+            "(un vide prévu par le formulaire, comme une question réservée à un sous-groupe, n'est pas un manque).")
+
+
+def _missing_table(missing, limit=25):
+    """Les questions qui ont des vides : manquants bruts, manquants réels et verdict (vide par construction ou vrai manque)."""
+    rows = [r for r in (missing or {}).get('rows') or [] if r.get('group_head', True) and r['n_missing'] > 0]
+    rows.sort(key=lambda r: (-(r['pct_missing_applicable'] or 0), -r['pct_missing']))
+    out = []
+    for r in rows[:limit]:
+        name = str(r.get('group') or r['variable'])
+        out.append([name if len(name) <= 48 else name[:47] + '…', _fr(r['pct_missing']),
+                    '—' if r['pct_missing_applicable'] is None else _fr(r['pct_missing_applicable']), r['verdict']])
+    if not out:
+        return None
+    return pd.DataFrame(out, columns=['Variable', 'Manquants bruts (%)', 'Manquants réels (%)', 'Verdict'])
+
+
+def _binary_table(bin_list):
+    """Tableau des variables binaires : effectifs, manquants et prévalence du « oui » (décimales à la française)."""
+    return pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'], f"{_fr(r['pct_missing'])} %", r['label_pos'],
+                          (f"{_fr(r['prevalence'])} %" if r['prevalence'] is not None else '—')] for r in bin_list],
+                        columns=['Variable', 'N valides', 'Manquantes', '% manq.', 'Modalité positive', 'Prévalence'])
+
+
 class _NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -161,7 +219,8 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                          crosstabs_col=None,
                          user_comments: dict = None,
                          multi_survey_results: list = None,
-                         multi_survey_meta: dict = None):
+                         multi_survey_meta: dict = None,
+                        diagnostic: dict = None):
     S = _styles()
     tmp_imgs = []
     bin_groups = bin_groups or []
@@ -185,7 +244,7 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
             story.append(Paragraph('<b>Lecture automatique :</b><br/>' + para(auto), S['CommentAuto']))
         if user:
             story.append(Paragraph('<b>Commentaire de l\'analyste :</b> ' + para(user), S['CommentUser']))
-    # Activer l'analyse brute par défaut si l'utilisateur n'a rien précisé
+    # Activer le diagnostic des données par défaut si l'utilisateur n'a rien précisé
     if selected_analyses is None:
         selected_analyses = ['raw']
     cat_vars = cat_vars or []
@@ -358,16 +417,15 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
         section += 1
         story.append(PageBreak())
 
-    # ── 5. Analyse brute (overview & data quality) ───────────────────────────
+    # ── 5. Diagnostic des données (overview & data quality) ──────────────────
     if 'raw' in selected_analyses:
         story += [
-            Paragraph(f'{section}. Analyse brute', S['H1']),
+            Paragraph(f'{section}. Diagnostic des données', S['H1']),
             HRFlowable(width='100%', thickness=1, color=ACCENT, spaceAfter=8),
         ]
         try:
-            sysa  = systematic_analysis(df)
-            desc  = descriptive_summary(df)
-            ov    = overview_stats(df)
+            dx = _diagnostic_parts(df, diagnostic)
+            sysa, desc, ov, frame, dtypes = dx['sysa'], dx['desc'], dx['ov'], dx['df'], dx['types']
 
             # ── 5.1 Qualité & Profil ─────────────────────────────────────────
             story.append(Paragraph(f'{section}.1 Qualité & Profil', S['H2']))
@@ -393,6 +451,14 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                     ['Binaires', prof.get('n_binary', '—')],
                 ]
                 story.append(_df_to_table(pd.DataFrame(prof_rows, columns=['Indicateur', 'Valeur'])))
+                story.append(Spacer(1, 0.3*cm))
+
+            score_df = _score_table(sysa.get('quality'))
+            if score_df is not None:
+                story.append(Paragraph('<b>Mesures du score de qualité</b>', S['Body']))
+                story.append(_df_to_table(score_df))
+                for note in _score_notes(sysa.get('quality')):
+                    story.append(Paragraph('• ' + _xml_escape(note), S['Body']))
                 story.append(Spacer(1, 0.3*cm))
 
             # ── 5.2 Variables continues ──────────────────────────────────────
@@ -424,7 +490,7 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 story.append(Paragraph('Aucune variable catégorielle détectée.', S['Body']))
             for r in cat_list[:10]:
                 story.append(Paragraph(f"<b>{r['variable']}</b> — {r['n_categories']} catégorie(s), "
-                                        f"dominante : <b>{r['dominant']}</b> ({r['dominant_pct']}%)", S['Body']))
+                                        f"dominante : <b>{r['dominant']}</b> ({_fr(r['dominant_pct'])} %)", S['Body']))
                 try:
                     freq_df = pd.read_html(StringIO(r['table']))[0]
                     story.append(_df_to_table(freq_df))
@@ -445,31 +511,30 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                 story.append(Paragraph('Aucune variable binaire détectée.', S['Body']))
             else:
                 # Tableau récapitulatif
-                bin_rows = [[r['variable'], r['n_valid'], r['n_missing'],
-                             f"{r['pct_missing']}%", r['label_pos'],
-                             (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list]
-                bin_df = pd.DataFrame(bin_rows, columns=[
-                    'Variable', 'N valides', 'Manquantes', '% manq.',
-                    'Modalité positive', 'Prévalence',
-                ])
-                story.append(_df_to_table(bin_df))
+                story.append(_df_to_table(_binary_table(bin_list)))
                 story.append(Spacer(1, 0.3*cm))
 
             # ── 5.5 Manquantes ───────────────────────────────────────────────
             story.append(PageBreak())
             story.append(Paragraph(f'{section}.5 Manquantes', S['H2']))
+            if _missing_summary(sysa.get('quality')):
+                story.append(Paragraph(_xml_escape(_missing_summary(sysa.get('quality'))), S['Body']))
+            miss_df = _missing_table(sysa.get('missing'))
+            if miss_df is not None:
+                story.append(_df_to_table(miss_df))
+                story.append(Spacer(1, 0.3*cm))
             try:
-                miss_bar = missing_bar_chart(df)
+                miss_bar = missing_bar_chart(frame, sysa.get('missing'))
                 if miss_bar:
                     bar_img = _fig_to_img(miss_bar, width=520, height=300)
                     if bar_img:
                         tmp_imgs.append(bar_img)
                         story.append(Image(bar_img, width=15*cm, height=7*cm))
-                        story.append(Paragraph('Figure : Taux de données manquantes par variable', S['Caption']))
+                        story.append(Paragraph('Figure : Réponses manquantes parmi les personnes concernées, par variable', S['Caption']))
             except Exception:
                 pass
             try:
-                miss_heat = missing_heatmap(df)
+                miss_heat = missing_heatmap(frame)
                 if miss_heat:
                     h_img = _fig_to_img(miss_heat, width=520, height=300)
                     if h_img:
@@ -483,13 +548,13 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
             story.append(PageBreak())
             story.append(Paragraph(f'{section}.6 Corrélations', S['H2']))
             try:
-                corr_fig = correlation_matrix(df)
+                corr_fig = correlation_matrix(frame, dtypes)
                 if corr_fig:
                     c_img = _fig_to_img(corr_fig, width=520, height=400)
                     if c_img:
                         tmp_imgs.append(c_img)
                         story.append(Image(c_img, width=14*cm, height=10*cm))
-                        story.append(Paragraph('Figure : Matrice de corrélations (variables numériques)', S['Caption']))
+                        story.append(Paragraph('Figure : Corrélations de Spearman entre variables continues', S['Caption']))
                     else:
                         story.append(Paragraph('Pas assez de variables numériques pour une matrice de corrélations.', S['Body']))
                 else:
@@ -519,7 +584,7 @@ def generate_pdf_report(df: pd.DataFrame, output_path: str = None,
                     for r in sysa['recommendations'][:10]:
                         story.append(Paragraph(f"• {r['type']} — {r['rationale']}", S['Body']))
         except Exception as e:
-            story.append(Paragraph(f'Erreur lors de l\'analyse brute : {e}', S['Body']))
+            story.append(Paragraph(f'Erreur lors du diagnostic des données : {e}', S['Body']))
         section += 1
         story.append(PageBreak())
 
@@ -613,7 +678,8 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                           crosstabs_col=None,
                           user_comments: dict = None,
                           multi_survey_results: list = None,
-                          multi_survey_meta: dict = None):
+                          multi_survey_meta: dict = None,
+                         diagnostic: dict = None):
     tmp_imgs = []
     bin_groups = bin_groups or []
     user_comments = user_comments or {}
@@ -630,7 +696,7 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
             r.bold = True
             r2 = p.add_run(user)
             r2.italic = True
-    # Activer l'analyse brute par défaut si l'utilisateur n'a rien précisé
+    # Activer le diagnostic des données par défaut si l'utilisateur n'a rien précisé
     if selected_analyses is None:
         selected_analyses = ['raw']
     cat_vars = cat_vars or []
@@ -872,9 +938,9 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
         section += 1
         doc.add_page_break()
 
-    # ── 5. Analyse brute (overview & data quality) ───────────────────────────
+    # ── 5. Diagnostic des données (overview & data quality) ──────────────────
     if 'raw' in selected_analyses:
-        doc.add_heading(f'{section}. Analyse brute', level=1)
+        doc.add_heading(f'{section}. Diagnostic des données', level=1)
 
         def _docx_df_table(df_in: pd.DataFrame, max_rows: int = 80):
             d = df_in.head(max_rows)
@@ -893,9 +959,8 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                     cells[j].text = '' if pd.isna(v) else str(v)
 
         try:
-            sysa = systematic_analysis(df)
-            desc = descriptive_summary(df)
-            ov   = overview_stats(df)
+            dx = _diagnostic_parts(df, diagnostic)
+            sysa, desc, ov, frame, dtypes = dx['sysa'], dx['desc'], dx['ov'], dx['df'], dx['types']
 
             # ── 5.1 Qualité & Profil ─────────────────────────────────────────
             doc.add_heading(f'{section}.1 Qualité & Profil', level=2)
@@ -921,6 +986,12 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                     ['Binaires', prof.get('n_binary', '—')],
                 ], columns=['Indicateur', 'Valeur'])
                 _docx_df_table(prof_df)
+            score_df = _score_table(sysa.get('quality'))
+            if score_df is not None:
+                doc.add_paragraph('Mesures du score de qualité').runs[0].font.bold = True
+                _docx_df_table(score_df)
+                for note in _score_notes(sysa.get('quality')):
+                    doc.add_paragraph('• ' + note)
 
             # ── 5.2 Variables continues ──────────────────────────────────────
             doc.add_page_break()
@@ -949,7 +1020,7 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                 doc.add_heading(r['variable'], level=3)
                 doc.add_paragraph(
                     f"{r['n_categories']} catégorie(s) — dominante : "
-                    f"{r['dominant']} ({r['dominant_pct']}%)"
+                    f"{r['dominant']} ({_fr(r['dominant_pct'])} %)"
                 )
                 try:
                     freq_df = pd.read_html(StringIO(r['table']))[0]
@@ -967,27 +1038,27 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
             if not bin_list:
                 doc.add_paragraph('Aucune variable binaire détectée.')
             else:
-                bin_df = pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'],
-                                          f"{r['pct_missing']}%", r['label_pos'],
-                                          (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list],
-                                       columns=['Variable', 'N valides', 'Manquantes',
-                                                 '% manq.', 'Modalité positive', 'Prévalence'])
-                _docx_df_table(bin_df)
+                _docx_df_table(_binary_table(bin_list))
 
             # ── 5.5 Manquantes ───────────────────────────────────────────────
             doc.add_page_break()
             doc.add_heading(f'{section}.5 Manquantes', level=2)
+            if _missing_summary(sysa.get('quality')):
+                doc.add_paragraph(_missing_summary(sysa.get('quality')))
+            miss_df = _missing_table(sysa.get('missing'))
+            if miss_df is not None:
+                _docx_df_table(miss_df)
             try:
-                mb = missing_bar_chart(df)
+                mb = missing_bar_chart(frame, sysa.get('missing'))
                 if mb:
                     b_img = _fig_to_img(mb, width=520, height=300)
                     if b_img:
                         tmp_imgs.append(b_img); doc.add_picture(b_img, width=Inches(6.5))
-                        doc.add_paragraph('Figure : Taux de données manquantes par variable')
+                        doc.add_paragraph('Figure : Réponses manquantes parmi les personnes concernées, par variable')
             except Exception:
                 pass
             try:
-                mh = missing_heatmap(df)
+                mh = missing_heatmap(frame)
                 if mh:
                     h_img = _fig_to_img(mh, width=520, height=300)
                     if h_img:
@@ -1000,12 +1071,12 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
             doc.add_page_break()
             doc.add_heading(f'{section}.6 Corrélations', level=2)
             try:
-                corr = correlation_matrix(df)
+                corr = correlation_matrix(frame, dtypes)
                 if corr:
                     c_img = _fig_to_img(corr, width=520, height=400)
                     if c_img:
                         tmp_imgs.append(c_img); doc.add_picture(c_img, width=Inches(6))
-                        doc.add_paragraph('Figure : Matrice de corrélations (variables numériques)')
+                        doc.add_paragraph('Figure : Corrélations de Spearman entre variables continues')
                     else:
                         doc.add_paragraph('Pas assez de variables numériques pour une matrice de corrélations.')
                 else:
@@ -1033,7 +1104,7 @@ def generate_word_report(df: pd.DataFrame, output_path: str = None,
                     for r in sysa['recommendations'][:10]:
                         doc.add_paragraph(f"• {r['type']} — {r['rationale']}")
         except Exception as e:
-            doc.add_paragraph(f'Erreur lors de l\'analyse brute : {e}')
+            doc.add_paragraph(f'Erreur lors du diagnostic des données : {e}')
         section += 1
         doc.add_page_break()
 
@@ -1118,7 +1189,8 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                            crosstabs_col=None,
                            user_comments: dict = None,
                            multi_survey_results: list = None,
-                           multi_survey_meta: dict = None):
+                           multi_survey_meta: dict = None,
+                          diagnostic: dict = None):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
     from openpyxl.utils import get_column_letter
@@ -1337,15 +1409,14 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
             row = _write_note(ws, f'Erreur : {e}', row)
         section += 1
 
-    # ── 5. Analyse brute ─────────────────────────────────────────────────────
+    # ── 5. Diagnostic des données ────────────────────────────────────────────
     if 'raw' in selected_analyses:
         try:
-            sysa = systematic_analysis(df)
-            desc = descriptive_summary(df)
-            ov   = overview_stats(df)
+            dx = _diagnostic_parts(df, diagnostic)
+            sysa, desc, ov, frame, dtypes = dx['sysa'], dx['desc'], dx['ov'], dx['df'], dx['types']
 
             # 5.1 Qualité & Profil
-            ws = _sheet('Brute-Qualité')
+            ws = _sheet('Diagnostic-Qualité')
             row = _write_title(ws, f'{section}.1 Qualité & Profil')
             q_img = _fig_to_img(data_quality_gauge(sysa.get('quality', {})), width=420, height=240)
             if q_img:
@@ -1367,9 +1438,15 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                     ['Binaires', prof.get('n_binary', '—')],
                 ], columns=['Indicateur', 'Valeur'])
                 row = _write_df(ws, prof_df, row)
+            score_df = _score_table(sysa.get('quality'))
+            if score_df is not None:
+                row = _write_subheading(ws, 'Mesures du score de qualité', row)
+                row = _write_df(ws, score_df, row)
+                for note in _score_notes(sysa.get('quality')):
+                    row = _write_note(ws, '• ' + note, row)
 
             # 5.2 Variables continues
-            ws = _sheet('Brute-Continues')
+            ws = _sheet('Diagnostic-Continues')
             row = _write_title(ws, f'{section}.2 Variables continues')
             cont_list = desc.get('continuous', []) or []
             if not cont_list:
@@ -1386,14 +1463,14 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                     tmp_imgs.append(b_img); row = _write_image(ws, b_img, row)
 
             # 5.3 Catégorielles
-            ws = _sheet('Brute-Catégorielles')
+            ws = _sheet('Diagnostic-Catégorielles')
             row = _write_title(ws, f'{section}.3 Catégorielles')
             cat_list = desc.get('categorical', []) or []
             if not cat_list:
                 row = _write_note(ws, 'Aucune variable catégorielle détectée.', row)
             for r in cat_list[:10]:
                 row = _write_subheading(ws, r['variable'], row)
-                row = _write_note(ws, f"{r['n_categories']} catégorie(s) — dominante : {r['dominant']} ({r['dominant_pct']}%)", row)
+                row = _write_note(ws, f"{r['n_categories']} catégorie(s) — dominante : {r['dominant']} ({_fr(r['dominant_pct'])} %)", row)
                 try:
                     freq_df = pd.read_html(StringIO(r['table']))[0]
                     row = _write_df(ws, freq_df, row)
@@ -1404,24 +1481,24 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                     tmp_imgs.append(bar_img); row = _write_image(ws, bar_img, row)
 
             # 5.4 Binaires
-            ws = _sheet('Brute-Binaires')
+            ws = _sheet('Diagnostic-Binaires')
             row = _write_title(ws, f'{section}.4 Binaires')
             bin_list = desc.get('binary', []) or []
             if not bin_list:
                 row = _write_note(ws, 'Aucune variable binaire détectée.', row)
             else:
-                bin_df = pd.DataFrame([[r['variable'], r['n_valid'], r['n_missing'],
-                                          f"{r['pct_missing']}%", r['label_pos'],
-                                          (f"{r['prevalence']}%" if r['prevalence'] is not None else '—')] for r in bin_list],
-                                       columns=['Variable', 'N valides', 'Manquantes',
-                                                 '% manq.', 'Modalité positive', 'Prévalence'])
-                row = _write_df(ws, bin_df, row)
+                row = _write_df(ws, _binary_table(bin_list), row)
 
             # 5.5 Manquantes
-            ws = _sheet('Brute-Manquantes')
+            ws = _sheet('Diagnostic-Manquantes')
             row = _write_title(ws, f'{section}.5 Manquantes')
+            if _missing_summary(sysa.get('quality')):
+                row = _write_note(ws, _missing_summary(sysa.get('quality')), row)
+            miss_df = _missing_table(sysa.get('missing'))
+            if miss_df is not None:
+                row = _write_df(ws, miss_df, row)
             try:
-                mb = missing_bar_chart(df)
+                mb = missing_bar_chart(frame, sysa.get('missing'))
                 if mb:
                     b_img = _fig_to_img(mb, width=520, height=300)
                     if b_img:
@@ -1429,7 +1506,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
             except Exception:
                 pass
             try:
-                mh = missing_heatmap(df)
+                mh = missing_heatmap(frame)
                 if mh:
                     h_img = _fig_to_img(mh, width=520, height=300)
                     if h_img:
@@ -1438,10 +1515,10 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 pass
 
             # 5.6 Corrélations
-            ws = _sheet('Brute-Corrélations')
+            ws = _sheet('Diagnostic-Corrélations')
             row = _write_title(ws, f'{section}.6 Corrélations')
             try:
-                corr = correlation_matrix(df)
+                corr = correlation_matrix(frame, dtypes)
                 c_img = _fig_to_img(corr, width=520, height=400) if corr else None
                 if c_img:
                     tmp_imgs.append(c_img); row = _write_image(ws, c_img, row)
@@ -1451,7 +1528,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                 row = _write_note(ws, 'Pas assez de variables numériques pour une matrice de corrélations.', row)
 
             # 5.7 Vue d'ensemble
-            ws = _sheet("Brute-Ensemble")
+            ws = _sheet("Diagnostic-Ensemble")
             row = _write_title(ws, f"{section}.7 Vue d'ensemble")
             try:
                 ov_df = pd.read_html(StringIO(ov['table_html']))[0]
@@ -1461,7 +1538,7 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
 
             # 5.8 Anomalies & recommandations
             if sysa.get('anomalies') or sysa.get('recommendations'):
-                ws = _sheet('Brute-Anomalies')
+                ws = _sheet('Diagnostic-Anomalies')
                 row = _write_title(ws, f'{section}.8 Anomalies & Recommandations')
                 if sysa.get('anomalies'):
                     for a in sysa['anomalies'][:20]:
@@ -1471,8 +1548,8 @@ def generate_excel_report(df: pd.DataFrame, output_path: str = None,
                     for r in sysa['recommendations'][:10]:
                         row = _write_note(ws, f"• {r['type']} — {r['rationale']}", row)
         except Exception as e:
-            ws = _sheet('Brute-Erreur')
-            _write_note(ws, f"Erreur lors de l'analyse brute : {e}", 1)
+            ws = _sheet('Diagnostic-Erreur')
+            _write_note(ws, f"Erreur lors du diagnostic des données : {e}", 1)
         section += 1
 
     # ── 6. Multi-enquête (DPF / PHAKTS) ──────────────────────────────────────
