@@ -7922,7 +7922,10 @@ async function corrHandleFile(file) {
     corrRender();
   } catch (e) {
     console.error('[correction]', e);
-    corrSetMessage('Lecture impossible : ' + e.message, 'error');
+    const unreadable = /central directory|zip file|corrupt/i.test(String(e.message));
+    corrSetMessage(unreadable
+      ? '« ' + file.name + ' » n\'est pas un classeur .xlsx lisible (fichier abîmé, protégé par mot de passe, ou autre format renommé en .xlsx). Rouvrez-le dans Excel et enregistrez-le de nouveau en .xlsx.'
+      : 'Lecture impossible : ' + e.message, 'error');
   }
 }
 
