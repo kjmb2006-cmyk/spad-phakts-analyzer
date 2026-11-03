@@ -2254,7 +2254,13 @@ def gdb_variable(radical):
     if not serie:
         flash(f'Aucune valeur pour la variable « {radical} » dans la base centrale.', 'warning')
         return redirect(url_for('gdb_index'))
-    return render_template('gdb_variable.html', radical=radical, serie=serie)
+    # Axe spatial du CUBE (géographie × variable) : facultatif, choisi par l'utilisateur
+    # parmi les radicaux qui ressemblent à un découpage administratif — voir modules/gdb.py.
+    lieu_radical = request.args.get('lieu') or ''
+    return render_template(
+        'gdb_variable.html', radical=radical, serie=serie,
+        lieux_possibles=gdb.spatial_radicals(), lieu_radical=lieu_radical,
+        repartition=gdb.repartition_spatiale(radical, lieu_radical) if lieu_radical else None)
 
 
 @app.route('/gdb/valeurs.csv')

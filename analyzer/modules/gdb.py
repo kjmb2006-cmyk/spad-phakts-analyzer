@@ -4,7 +4,12 @@ SPAD Analyzer — Base centrale (Golden Data Base allégée)
 Le document « Concepts & Fonctionnalités » du SPAD prévoit une base où les
 données de toutes les enquêtes sont conservées, identifiées par leur Factum,
 et croisées selon les variables du DPF (le CUBE : géographie × variables ×
-temps). Version allégée ici, dans spad.db :
+temps). Les 3 axes du CUBE sont lus depuis le même stockage, jamais stockés
+à part : temps = factums triés par date de référence (cube(), serie()),
+variable = radical PHAKTS (clé d'alignement), géographie = un radical comme
+un autre qui ressemble à un découpage administratif (spatial_radicals(),
+repartition_spatiale() — détection par mot-clé, pas une colonne dédiée).
+Version allégée ici, dans spad.db :
 
   - gdb_enquetes  : une ligne par enquête versée (Factum, titre, source…)
   - gdb_valeurs   : une ligne par valeur (Factum, répondant, code, radical,
@@ -60,6 +65,7 @@ def _connect():
             valeur_num REAL);
         CREATE INDEX IF NOT EXISTS idx_gdb_valeurs_factum ON gdb_valeurs(factum);
         CREATE INDEX IF NOT EXISTS idx_gdb_valeurs_radical ON gdb_valeurs(radical);
+        CREATE INDEX IF NOT EXISTS idx_gdb_valeurs_resp ON gdb_valeurs(factum, repondant);
         CREATE TABLE IF NOT EXISTS gdb_variables (
             factum     TEXT NOT NULL,
             code       TEXT NOT NULL,
@@ -313,3 +319,67 @@ def valeurs(radical):
     finally:
         conn.close()
     return pd.DataFrame(rows, columns=['Factum', 'Répondant', 'Code', 'Valeur'])
+
+
+# ─── Dimension spatiale du CUBE (géographie × variable × enquête) ────────────
+# Le document SPAD définit le CUBE comme géographie × variables × temps ; cube()
+# ci-dessus formalise déjà variable (radical) × temps (factums triés par date de
+# référence). La géographie n'a pas de colonne dédiée : une variable comme
+# District_Sanitaire__X est une variable PHAKTS comme une autre, déjà versée
+# dans gdb_valeurs comme n'importe quel radical. Formaliser cet axe est donc une
+# LECTURE en plus (croiser deux radicaux par répondant), jamais un nouveau
+# format de stockage — deposer(), cube(), serie() restent inchangés.
+GEO_KEYWORDS = ('district', 'region', 'commune', 'village', 'localite', 'quartier',
+                'departement', 'sous_prefecture', 'prefecture', 'province', 'ville',
+                'zone', 'arrondissement', 'canton', 'secteur')
+
+
+def spatial_radicals():
+    """Radicaux de la base centrale dont le nom évoque un découpage géographique
+    (district, région, commune…) — détection par mot-clé sur le nom, une
+    suggestion à choisir soi-même, jamais une certitude imposée (un radical
+    sans rapport peut matcher par coïncidence, ex. « Zone_Allaitement »).
+    [(radical, n_valeurs)], couverture décroissante."""
+    conn = _connect()
+    try:
+        rows = conn.execute('SELECT radical, SUM(n_valeurs) FROM gdb_variables GROUP BY radical').fetchall()
+    finally:
+        conn.close()
+    found = [(r, n) for r, n in rows if any(k in _fold(r) for k in GEO_KEYWORDS)]
+    return sorted(found, key=lambda x: -x[1])
+
+
+def repartition_spatiale(radical, lieu_radical, top=12):
+    """La variable `radical` ventilée par lieu (valeurs du radical géographique
+    `lieu_radical`), toutes enquêtes confondues : pour chaque lieu où les deux
+    variables ont une valeur chez le même répondant, l'effectif, puis
+    moyenne/médiane (numérique) ou répartition des modalités (catégoriel) —
+    même logique que serie(), avec le lieu à la place de l'enquête. []
+    si les deux variables n'ont jamais de répondant en commun."""
+    if not radical or not lieu_radical or radical == lieu_radical:
+        return []
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            'SELECT g.valeur, v.valeur, v.valeur_num FROM gdb_valeurs v '
+            'JOIN gdb_valeurs g ON g.factum = v.factum AND g.repondant = v.repondant AND g.radical = ? '
+            'WHERE v.radical = ?', (lieu_radical, radical)).fetchall()
+    finally:
+        conn.close()
+    if not rows:
+        return []
+    df = pd.DataFrame(rows, columns=['lieu', 'valeur', 'valeur_num'])
+    out = []
+    for lieu, g in df.groupby('lieu'):
+        n = len(g)
+        nums = g['valeur_num'].dropna()
+        item = {'lieu': lieu, 'n': n}
+        if len(nums) >= 0.9 * n:
+            item.update(type='numerique', moyenne=round(float(nums.mean()), 2), mediane=round(float(nums.median()), 2))
+        else:
+            counts = g['valeur'].value_counts()
+            item.update(type='categoriel', modalites=[
+                {'valeur': v, 'n': int(c), 'pct': round(100 * c / n, 1)} for v, c in counts.head(top).items()],
+                autres=int(counts.iloc[top:].sum()))
+        out.append(item)
+    return sorted(out, key=lambda i: -i['n'])

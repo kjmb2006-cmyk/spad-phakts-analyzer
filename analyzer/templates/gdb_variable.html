@@ -59,4 +59,63 @@
     </table>
   </div>
 </div>
+
+{% if lieux_possibles %}
+<div class="card mt-4">
+  <div class="card-body">
+    <h6 class="fw-semibold"><i class="bi bi-geo-alt me-1"></i>Répartition spatiale</h6>
+    <p class="small text-muted">
+      3<sup>e</sup> axe du CUBE (géographie × variable), en plus du tableau ci-dessus (variable × enquête) : ventile
+      <strong>{{ radical }}</strong> par une variable de lieu, tous répondants confondus.
+    </p>
+    <form method="get" class="input-group input-group-sm mb-3" style="max-width:30rem">
+      <select name="lieu" class="form-select" onchange="this.form.submit()">
+        <option value="">Choisir une variable de lieu…</option>
+        {% for r, n in lieux_possibles %}
+        <option value="{{ r }}" {{ 'selected' if r == lieu_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if lieu_radical %}
+      {% if repartition %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light"><tr><th>Lieu</th><th>Valeurs</th><th>Résumé</th></tr></thead>
+          <tbody>
+            {% for i in repartition %}
+            <tr>
+              <td class="small fw-semibold">{{ i.lieu }}</td>
+              <td class="small">{{ i.n }}</td>
+              <td class="small">
+                {% if i.type == 'numerique' %}
+                  Moyenne <strong>{{ i.moyenne }}</strong> · médiane {{ i.mediane }}
+                {% else %}
+                  {% for m in i.modalites %}
+                  <div class="d-flex align-items-center gap-2">
+                    <span style="min-width:9rem">{{ m.valeur }}</span>
+                    <div class="progress" style="height:6px;flex:0 0 120px">
+                      <div class="progress-bar" style="width: {{ m.pct }}%"></div>
+                    </div>
+                    <span class="text-muted">{{ m.pct }} % ({{ m.n }})</span>
+                  </div>
+                  {% endfor %}
+                  {% if i.autres %}<div class="text-muted">+ {{ i.autres }} autre(s) valeur(s)</div>{% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="small text-muted mb-0">Aucun répondant n'a à la fois une valeur pour « {{ radical }} » et pour « {{ lieu_radical }} ».</p>
+      {% endif %}
+    {% else %}
+    <p class="small text-muted mb-0">
+      Variables de lieu détectées par mot-clé sur leur nom (district, région, commune…) — à vérifier, pas une certitude.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 {% endblock %}
