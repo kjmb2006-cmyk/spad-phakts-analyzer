@@ -1258,7 +1258,7 @@
             <tr><td class="gd">Type d'allaitement ?</td><td class="gc">Allaitement_Type__X!1*1Allaitement_</td><td class="gm">Allaitement_</td></tr>
             <tr><td class="gd">Depuis combien de temps allaitez-vous (semaines) ?</td><td class="gc">Allaitement_Duree__1W!W</td><td class="gm">Semaines (entier)</td></tr>
             <tr><td class="gd">Avez-vous déjà entendu parler des risques du tabac ou de la nicotine sur la santé des femmes ou des enfants ?</td><td class="gc">Connaissance_Risque_Fumer__B!boolean</td><td class="gm">Oui | Non</td></tr>
-            <tr><td class="gd">Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?</td><td class="gc">Connaissance_Risque_Fumer__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
+            <tr><td class="gd">Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?</td><td class="gc">Connaissance_Risque_Fumer__SRC!1*Src_Info_Sante_</td><td class="gm">Src_Info_Sante_</td></tr>
             <tr><td class="gd">Quels sont les effets possibles du tabac sur la fertilité de la femme ? (citez au moins un effet)</td><td class="gc">Fumer_Effet_Fertilite__X!1*Fumer_Effet_Fertilite_</td><td class="gm">Fumer_Effet_Fertilite_=[Grossesse_Extra_Uterine|Diminution_Ovocyte|Alteration_hormonale|Menopause_Precoce|Dyskinesie_Ciliaire|Delai_Conception_allonge|Risque_Infertilite_Accru|Fausse_Couche|Diminution_Chances_Succès_PMA|0]</td></tr>
             <tr><td class="gd">Quels sont les effets possibles du tabac sur le foetus pendant la grossesse ? (citez au moins un effet)</td><td class="gc">Fumer_Effet_Foetus__X!1*Fumer_Effet_Foetus_</td><td class="gm">Fumer_Effet_Foetus_=[Faible_Poids_Naissance|Retard_Croissance|Naissance_Prématuré|Risque_Mort_Fœtale_Accru|Syndrome_Mort_Subite_Nourrisson|Complication_Placentaire|Rupture_Membranes|Trouble_Apprentissage_Langage|0]</td></tr>
             <tr><td class="gd">Quels sont les effets possibles du tabac sur le bébé allaité ? (citez au moins un effet)</td><td class="gc">Fumer_Effet_Bebe__X!1*Fumer_Effet_Bebe_</td><td class="gm">Fumer_Effet_Bebe_=[Irritabilite|Trouble_Digestif|Colique|Vomissement|Trouble_Sommeil|Augmentation_Risque_MS|Probleme_Respiratoire|0]</td></tr>
@@ -1271,7 +1271,7 @@
             <tr><td class="gd">Consommez-vous du tabac pendant cette grossesse ?</td><td class="gc">Tabac_Conso_Grossesse__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Consommez-vous des cigarettes électroniques pendant l'allaitement ?</td><td class="gc">Cigarette_Electro_Conso_Allaitement__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Pendant votre grossesse, avez-vous été informée des risques du tabac et de la nicotine sur votre santé et celle de votre bébé ?</td><td class="gc">Info_Risque_Fumer_Grossesse__B!boolean</td><td class="gm">Oui | Non</td></tr>
-            <tr><td class="gd">Si oui, où avez-vous obtenu l'information ?</td><td class="gc">Info_Risque_Fumer_Grossesse__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
+            <tr><td class="gd">Si oui, où avez-vous obtenu l'information ?</td><td class="gc">Info_Risque_Fumer_Grossesse__SRC!1*Src_Info_Sante_</td><td class="gm">Src_Info_Sante_</td></tr>
             <tr><td class="gd">Êtes-vous exposée à la fumée de tabac à la maison ou au travail ?</td><td class="gc">Exposition_Fumer_Maison_Travail__B!boolean</td><td class="gm">Oui | Non</td></tr>
             <tr><td class="gd">Si oui, à quelle fréquence / à quel degré ?</td><td class="gc">Exposition_Fumer_Maison_Travail__1W!W</td><td class="gm">Fréquence</td></tr>
             <tr><td class="gd">Selon vous, est-il dangereux de fumer ou vapoter à la maison, au travail ou dans des lieux publics sur leur santé et celle de leur enfant ?</td><td class="gc">Connaissance_Risque_Exposition_Fumer__B!boolean</td><td class="gm">Oui | Non</td></tr>
@@ -1279,7 +1279,7 @@
             <tr><td class="gd">Pensez-vous que fumer ou vapoter pendant l'allaitement est dangereux ?</td><td class="gc">Allaitement__Danger_Fumer__X!1*1Dangereux_</td><td class="gm">Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]</td></tr>
             <tr><td class="gd">Si oui, à quel point êtes-vous d'accord que fumer et vapoter est dangereux pendant l'allaitement ?</td><td class="gc">Dangereux_Niveau_Daccord__X!1*1Niveau_Daccord_</td><td class="gm">Niveau_Daccord_=[D_accord,Pas_d_accord,Plutot_d_accord,Tout_a_fait_d_accord,Pas_du_tout_d_accord]</td></tr>
             <tr><td class="gd">Si vous fumez ou vapotez, avez-vous reçu un accompagnement ou des conseils pour réduire ou arrêter votre consommation ?</td><td class="gc">Fumer_Arret_Conseil__B!boolean</td><td class="gm">Oui | Non</td></tr>
-            <tr><td class="gd">Si oui, qui vous a accompagné ou donné des conseils ?</td><td class="gc">Arret_Fumer_Conseil__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
+            <tr><td class="gd">Si oui, qui vous a accompagné ou donné des conseils ?</td><td class="gc">Arret_Fumer_Conseil__SRC!1*Src_Info_Sante_</td><td class="gm">Src_Info_Sante_</td></tr>
             <tr><td class="gd">Lors de votre consultation prénatale vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Prenatale_Fumer__C!trilean</td><td class="gm">Oui | Non | Ne_Sait_Pas</td></tr>
             <tr><td class="gd">Lors de votre consultation postnatale, vous a-t-on demandé si vous fumez ou vapotez ?</td><td class="gc">Consultation_Postnatale_Fumer__C!trilean</td><td class="gm">Oui | Non | Ne_Sait_Pas</td></tr>
             <tr><td class="gd">Si oui, vous a-t-on proposé une aide pour arrêter de fumer (conseils, consultation avec un professionnel de santé) ?</td><td class="gc">Consultation_Postnatale_Fumer_Arret_Aide__B!boolean</td><td class="gm">Oui | Non</td></tr>
@@ -1308,11 +1308,11 @@
           <thead><tr><th style="width:40%">Question</th><th style="width:35%">Code PHAKTS</th><th>Modalités</th></tr></thead>
           <tbody>
             <tr><td class="gd">Risques du tabac ?</td><td class="gc">Connaissance_Risque_Fumer__B!boolean</td><td class="gm">Oui | Non</td></tr>
-            <tr><td class="gd">Source de l'information ?</td><td class="gc">Connaissance_Risque_Fumer__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
+            <tr><td class="gd">Source de l'information ?</td><td class="gc">Connaissance_Risque_Fumer__SRC!1*Src_Info_Sante_</td><td class="gm">Src_Info_Sante_</td></tr>
             <tr><td class="gd">Type de tabac/nicotine ?</td><td class="gc">Fumer_Type__X!1*Fumer_Type_</td><td class="gm">select_multiple</td></tr>
             <tr><td class="gd">Danger fumer grossesse ?</td><td class="gc">Grossesse__Danger_Fumer__X!1*1Dangereux_</td><td class="gm">Dangereux_</td></tr>
             <tr><td class="gd">Motivation arrêt grossesse ?</td><td class="gc">Grossesse_Fumer_Arret_Motivation__X!1*1Motivation_</td><td class="gm">Motivation_</td></tr>
-            <tr><td class="gd">Info grossesse obtenue ?</td><td class="gc">Info_Risque_Fumer_Grossesse__SRC!1*Source_Info_Sante_</td><td class="gm">Source_Info_Sante_</td></tr>
+            <tr><td class="gd">Info grossesse obtenue ?</td><td class="gc">Info_Risque_Fumer_Grossesse__SRC!1*Src_Info_Sante_</td><td class="gm">Src_Info_Sante_</td></tr>
             <tr><td class="gd">Accompagnement arrêt ?</td><td class="gc">Fumer_Arret_Accompagnement_Recu__B!boolean</td><td class="gm">Oui | Non</td></tr>
           </tbody>
         </table>
@@ -5087,7 +5087,7 @@ function inferModalites(code) {
       if (lm[1] === 'Trilean_') return 'Trilean_=[Oui,Non,Ne_Sait_Pas]';
       if (lm[1] === 'Motivation_') return 'Motivation_=[Très_motivée,Moyennement_motivée,Peu_motivée,Pas_motivée]';
       if (lm[1] === 'Statut_Matrimonial_') return 'Statut_Matrimonial_=[Célibataire,Marié(e),Divorcé(e),Veuf(ve),Concubinage]';
-      if (lm[1] === 'Source_Info_Sante_') return 'Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]';
+      if (lm[1] === 'Src_Info_Sante_') return 'Src_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|0]';
       return lm[1] + '=[...]';
     }
     return /__SRC/.test(code) ? 'Sources multiples' : 'Liste de choix';

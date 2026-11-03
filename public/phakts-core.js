@@ -210,7 +210,7 @@ EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Compétences du personnel pour interpréter"      → Competences_Personnel__Interpretation__X!1*1Niveau_            Niveau_=[Eleve,Moyen,Faible]
 - "Quelle est votre date de naissance ?"           → Date__Naissance__A!YYYY/MM/DD
 - "Avez-vous déjà entendu parler des risques du tabac ou de la nicotine sur la santé des femmes ou des enfants ?" → Connaissance_Risque_Fumer__B!boolean
-- "Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?" → Connaissance_Risque_Fumer__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
+- "Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?" → Connaissance_Risque_Fumer__SRC!1*Src_Info_Sante_            Src_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|0]
 - "Quels sont les effets possibles du tabac sur la fertilité de la femme ? (citez au moins un effet)" → Fumer_Effet_Fertilite__X!1*Fumer_Effet_Fertilite_            Fumer_Effet_Fertilite_=[Grossesse_Extra_Uterine|Diminution_Ovocyte|Alteration_hormonale|Menopause_Precoce|Dyskinesie_Ciliaire|Delai_Conception_allonge|Risque_Infertilite_Accru|Fausse_Couche|Diminution_Chances_Succès_PMA|0]
 - "Quels sont les effets possibles du tabac sur le foetus pendant la grossesse ? (citez au moins un effet)" → Fumer_Effet_Foetus__X!1*Fumer_Effet_Foetus_            Fumer_Effet_Foetus_=[Faible_Poids_Naissance|Retard_Croissance|Naissance_Prématuré|Risque_Mort_Foetale_Accru|Syndrome_Mort_Subite_Nourrisson|Complication_Placentaire|Rupture_Membranes|Trouble_Apprentissage_Langage|0]
 - "Quels sont les effets possibles du tabac sur le bébé allaité ? (citez au moins un effet)" → Fumer_Effet_Bebe__X!1*Fumer_Effet_Bebe_            Fumer_Effet_Bebe_=[Irritabilite|Trouble_Digestif|Colique|Vomissement|Trouble_Sommeil|Augmentation_Risque_MS|Probleme_Respiratoire|0]
@@ -223,7 +223,7 @@ EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Consommez-vous du tabac pendant cette grossesse ?" → Tabac_Conso_Grossesse__B!boolean
 - "Consommez-vous des cigarettes électroniques pendant l'allaitement ?" → Cigarette_Electro_Conso_Allaitement__B!boolean
 - "Pendant votre grossesse, avez-vous été informée des risques du tabac et de la nicotine sur votre santé et celle de votre bébé ?" → Info_Risque_Fumer_Grossesse__B!boolean
-- "Si oui, où avez-vous obtenu l'information ?" → Info_Risque_Fumer_Grossesse__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
+- "Si oui, où avez-vous obtenu l'information ?" → Info_Risque_Fumer_Grossesse__SRC!1*Src_Info_Sante_            Src_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|0]
 - "Êtes-vous exposée à la fumée de tabac à la maison ou au travail ?" → Exposition_Fumer_Maison_Travail__B!boolean
 - "Si oui, à quelle fréquence / à quel degré ?" → Exposition_Fumer_Maison_Travail__1W!W
 - "Selon vous, est-il dangereux de fumer ou vapoter à la maison, au travail ou dans des lieux publics sur leur santé et celle de leur enfant ?" → Connaissance_Risque_Exposition_Fumer__B!boolean
@@ -231,7 +231,7 @@ EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Pensez-vous que fumer ou vapoter pendant l'allaitement est dangereux ?" → Allaitement__Danger_Fumer__X!1*1Dangereux_            Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]
 - "Si oui, à quel point êtes-vous d'accord que fumer et vapoter est dangereux pendant l'allaitement ?" → Dangereux_Niveau_Daccord__X!1*1Niveau_Daccord_            Niveau_Daccord_=[D_accord,Pas_d_accord,Plutot_d_accord,Tout_a_fait_d_accord,Pas_du_tout_d_accord]
 - "Si vous fumez ou vapotez, avez-vous reçu un accompagnement ou des conseils pour réduire ou arrêter votre consommation ?" → Fumer_Arret_Conseil__B!boolean
-- "Si oui, qui vous a accompagné ou donné des conseils ?" → Arret_Fumer_Conseil__SRC!1*Source_Info_Sante_            Source_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|Famille|0]
+- "Si oui, qui vous a accompagné ou donné des conseils ?" → Arret_Fumer_Conseil__SRC!1*Src_Info_Sante_            Src_Info_Sante_=[Personnel_Sante|Media|Reseaux_Sociaux|Entourage|0]
 - "Lors de votre consultation prénatale vous a-t-on demandé si vous fumez ou vapotez ?" → Consultation_Prenatale_Fumer__C!trilean            Oui | Non | Ne_Sait_Pas
 - "Lors de votre consultation postnatale, vous a-t-on demandé si vous fumez ou vapotez ?" → Consultation_Postnatale_Fumer__C!trilean            Oui | Non | Ne_Sait_Pas
   ⚠️ ERREUR COURANTE: __X!1*1Trilean_ — une question Oui / Non / Ne sait pas est un TRILÉEN → __C!trilean (Règle 11 ext.), JAMAIS __X ni __B
@@ -790,7 +790,9 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       // Instruction_ (ex-liste Studio) retirée le 03/11/2026 : faisait doublon avec Niveau_Instruction_
       // (DPF, ci-dessus) pour le même concept — une seule liste canonique désormais, celle du DPF.
       { identifiant: "Secteur_Activite_", valeurs: "Public, Privé, Informel, Autre", source: "Studio" },
-      { identifiant: "Source_Info_Sante_", valeurs: "Personnel_Sante | Media | Reseaux_Sociaux | Entourage | Famille | 0", source: "Studio" },
+      // Source_Info_Sante_ (ex-liste Studio) retirée le 2026-11-03 : même signification que Src_Info_Sante_
+      // (DPF, ci-dessus) — décision de l'utilisateur. La valeur « Famille » qu'elle ajoutait n'est pas dans
+      // le DPF ; retirée des exemples pour rester cohérent avec le contrôle de vocabulaire de l'audit.
       { identifiant: "Zone_Residence_", valeurs: "Urbain, Rural, Périurbain", source: "Studio" },
       { identifiant: "Allaitement_", valeurs: "Naturel, Artificiel, Mixte", source: "Studio" },
       { identifiant: "Profession_", valeurs: "Sans_emploi, Ménagère, Employée, Commerçante, Informelle/Auto_entreprise, Autre", source: "Studio" },

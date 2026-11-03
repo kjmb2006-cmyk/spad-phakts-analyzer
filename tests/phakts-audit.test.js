@@ -243,6 +243,24 @@ test('Secteur_Activite_ : liste Studio catalogée, valeurs Public/Privé/Informe
   assert.equal(ids(r).includes('liste.dpf_valeurs'), false, 'Secteur_Activite_ est Studio, pas DPF : jamais de correction de valeurs');
 });
 
+// Décision du 2026-11-03 (utilisateur) : « on garde Src_Info_Sante_ car même signification que
+// Source_Info_Sante_ ». Liste Studio retirée du catalogue (voir public/phakts-core.js) ; seul le nom
+// du DPF reste. « Famille » (ajoutée par la liste Studio, absente du DPF) retirée des exemples pour
+// rester cohérent avec le contrôle de vocabulaire de l'audit (sinon l'exemple serait lui-même hors DPF).
+test('Source_Info_Sante_ (ancien nom, retiré) avec les valeurs du DPF : jumeau détecté, renvoi vers Src_Info_Sante_', () => {
+  const r = audit(q('Connaissance__SRC!1*Source_Info_Sante_', 'Source_Info_Sante_ = [Personnel_Sante | Media | Reseaux_Sociaux | Entourage]'));
+  const f = rule(r, 'liste.dpf_jumeau');
+  assert.ok(f, ids(r));
+  assert.match(f.message, /Src_Info_Sante_/);
+});
+
+test('Src_Info_Sante_ (DPF) : « Famille » est hors DPF, signalé — plus une liste Studio permissive', () => {
+  const r = audit(q('Connaissance__SRC!1*Src_Info_Sante_', 'Src_Info_Sante_ = [Personnel_Sante | Media | Famille]'));
+  const f = rule(r, 'liste.dpf_valeurs');
+  assert.ok(f, ids(r));
+  assert.match(f.message, /Famille/);
+});
+
 test('un sous-ensemble du DPF est Mineure, une valeur hors DPF est Majeure', () => {
   const sub = audit(q('Sexe__X!1*1Sexe_', 'Sexe_=[Masculin,Feminin]'));
   assert.equal(rule(sub, 'liste.dpf_valeurs').severity, 'Mineure');
@@ -378,7 +396,7 @@ test('même question que celle du DPF sous un autre code : proposition du code n
 });
 
 test('jamais de proposition issue d\'un code du DPF lui-même non conforme (double affixe SRC__X)', () => {
-  const r = audit(q('Connaissance_Risque__Fumer__SRC!1*Source_Info_Sante_', 'Source_Info_Sante_=[Personnel_Sante|Media]', '', 'Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?'));
+  const r = audit(q('Connaissance_Risque__Fumer__SRC!1*Src_Info_Sante_', 'Src_Info_Sante_=[Personnel_Sante|Media]', '', 'Si oui, comment avez-vous appris les risques du tabac sur la grossesse ?'));
   assert.equal(findingsOf(r).some(f => f.rule === 'dpf.variable_equivalente'), false);
 });
 
