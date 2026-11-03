@@ -1248,7 +1248,7 @@
           <tbody>
             <tr><td class="gd">Quel est votre âge ?</td><td class="gc">Age__1Y!0&lt;N&lt;120</td><td class="gm">Années</td></tr>
             <tr><td class="gd">Avez-vous un emploi ?</td><td class="gc">Emploi__B!boolean</td><td class="gm">Oui | Non</td></tr>
-            <tr><td class="gd">Niveau d'instruction ?</td><td class="gc">Niveau_Instruction__X!1*1Instruction_</td><td class="gm">Instruction_</td></tr>
+            <tr><td class="gd">Niveau d'instruction ?</td><td class="gc">Niveau_Instruction__X!1*1Niveau_Instruction_</td><td class="gm">Niveau_Instruction_</td></tr>
             <tr><td class="gd">Profession ?</td><td class="gc">Profession__X!1*1Profession_</td><td class="gm">Profession_</td></tr>
             <tr><td class="gd">Religion ?</td><td class="gc">Religion__X!1*1Religion_</td><td class="gm">Religion_</td></tr>
             <tr><td class="gd">Statut matrimonial ?</td><td class="gc">Statut_Matrimonial__X!1*1Statut_Matrimonial_</td><td class="gm">Statut_Matrimonial_</td></tr>
@@ -5081,8 +5081,9 @@ function inferModalites(code) {
     const lm = code.match(/\*1?(\w+_)$/);
     if (lm) {
       if (lm[1] === 'Niveau_') return 'Niveau_=[Eleve,Moyen,Faible]';
-      if (lm[1] === 'Instruction_') return 'Instruction_=[Primaire,Secondaire,Supérieur,Autre]';
+      if (lm[1] === 'Niveau_Instruction_') return 'Niveau_Instruction_=[Primaire,Secondaire,Supérieur,Autre]';
       if (lm[1] === 'Dangereux_') return 'Dangereux_=[Très_dangereux,Dangereux,Peu_dangereux,Pas_dangereux]';
+      if (lm[1] === 'Secteur_Activite_') return 'Secteur_Activite_=[Public,Privé,Informel,Autre]';
       if (lm[1] === 'Trilean_') return 'Trilean_=[Oui,Non,Ne_Sait_Pas]';
       if (lm[1] === 'Motivation_') return 'Motivation_=[Très_motivée,Moyennement_motivée,Peu_motivée,Pas_motivée]';
       if (lm[1] === 'Statut_Matrimonial_') return 'Statut_Matrimonial_=[Célibataire,Marié(e),Divorcé(e),Veuf(ve),Concubinage]';

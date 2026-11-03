@@ -136,7 +136,7 @@ RÈGLES DISCRIMINANTES DE TYPE (CRITIQUE — à appliquer AVANT de choisir le ty
 - "Numéro de téléphone / Téléphone / Contact / Tel / Portable / Mobile / WhatsApp" → TOUJOURS __Z!1*Tel (JAMAIS __1 ni __Z!1*Expression — un numéro de tél est un TEXTE, peut commencer par 0 ou +, ne se calcule pas). pf_modalites = "Numéro de téléphone (ex: 0XXXXXXXXX)"
 - "Numéro de / N°" → __1 (entier) si purement numérique (ex: N° dossier entier), __Z!1*Tel si téléphone/contact, __Z!1*Expression si alphanumérique (code, identifiant). JAMAIS __B!boolean.
 - "Secteur d'activité / Zone d'habitation / Zone de résidence" → TOUJOURS __X!1*1Liste_ (select_one) avec liste prédéfinie. JAMAIS __Z!1*Expression (ces champs sont TOUJOURS structurables).
-- "Niveau d'éducation / Niveau d'instruction" → SYNONYMES. TOUJOURS Niveau_Instruction__X!1*1Instruction_ avec liste prédéfinie Instruction_=[Primaire,Secondaire,Supérieur,Autre]. JAMAIS créer une liste inline Education_Niveau_.
+- "Niveau d'éducation / Niveau d'instruction" → SYNONYMES. TOUJOURS Niveau_Instruction__X!1*1Niveau_Instruction_ avec liste prédéfinie Niveau_Instruction_=[Primaire,Secondaire,Supérieur,Autre]. JAMAIS créer une liste inline Education_Niveau_.
 - "À quel moment / Quand / À quelle période" → __X!1*1Liste_ (select_one) ou __Z!1*Expression si non structurable, JAMAIS __B!boolean
 - "Quels sont les antécédents / issues / résultats" → __X!1*Liste_ (select_multiple) si les options sont structurables, sinon __Z!1*Expression
 - __B!boolean = RÉSERVÉ UNIQUEMENT aux questions fermées OUI/NON ("Avez-vous...?", "Êtes-vous...?", "Est-ce que...?", "Consommez-vous...?")
@@ -184,11 +184,11 @@ MÉTHODE DE CODAGE EN 5 ÉTAPES:
 EXEMPLES DU MODÈLE DE RÉFÉRENCE:
 - "Quel est votre âge ?"                          → Age__1Y!0<N<120
 - "Avez-vous un emploi ?"                          → Emploi__B!boolean
-- "Quel est votre niveau d'instruction ?"          → Niveau_Instruction__X!1*1Instruction_            Instruction_=[Primaire,Secondaire,Supérieur,Autre]
+- "Quel est votre niveau d'instruction ?"          → Niveau_Instruction__X!1*1Niveau_Instruction_            Niveau_Instruction_=[Primaire,Secondaire,Supérieur,Autre]
 - "Quelle est votre religion ?"                    → Religion__X!1*1Religion_            Religion_=[Chrétienne,Musulmane,Traditionnelle,Autre,0]
 - "Quel est votre Profession ?"                 → Profession__X!1*1Profession_            Profession_=[Sans_emploi,Ménagère,Employée,Commerçante,Informelle/Auto_entreprise,Autre]
 - "Quel est votre groupe ethnique ?"              → Ethnie__X!1*1Ethnie_            Ethnie_=[Gouro,Bété,Malinké,Baoulé,Sénoufo,Agni,Autre]
-- "Quel est votre secteur d'activité ?"          → Secteur_Activite__X!1*1Secteur_Activite_            Secteur_Activite_=[Agriculture,Industrie,Services,Commerce,Informel,Autre]
+- "Quel est votre secteur d'activité ?"          → Secteur_Activite__X!1*1Secteur_Activite_            Secteur_Activite_=[Public,Privé,Informel,Autre]
 - "Région sanitaire d'appartenance ?"              → Region_Sanitaire__Appartenance__X!1*1Region_            Region_=[ABIDJAN_1,AGNEBY_TIASSA,BELIER,BERE,BOUNKANI,FOLON,GBEKE,MORONOU,SAN_PEDRO,TCHOLOGO,TONKPI,WORODOUGOU]
 - "District sanitaire d'appartenance ?"            → District_Sanitaire__Appartenance__X!1*1District_            District_=[ABIDJAN_1-ABOBO_OUEST,ABIDJAN_1-YOPOUGON_OUEST_SONGON,AGNEBY_TIASSA-AGBOVILLE,BELIER-TIEBISSOU,BERE-MANKONO,BOUNKANI-BOUNA,FOLON-KANIASSO,GBEKE-BOUAKE_NORD_OUEST,MORONOU-ARRAH,SAN_PEDRO-SAN_PEDRO,TCHOLOGO-OUANGOLODOUGOU,TONKPI-DANANE,WORODOUGOU-SEGUELA]
 - "Nom de l'établissement ?"                       → Nom_Etablissement__Z!1*Expression                            Expression
@@ -285,8 +285,8 @@ EXEMPLES DÉMOGRAPHIQUES (Fiche Identité Patient):
 - "Quel âge a le patient ?"                         → Age_Patient__1Y!0<N<120
 - "Sexe ?"                                          → Sexe__X!1*1Sexe_            Sexe_=[Masculin,Feminin,Autre]
 - "Employé(e) actuellement ?"                       → Emploi__B!boolean
-- "Niveau d'éducation ?"                            → Niveau_Instruction__X!1*1Instruction_            Instruction_=[Primaire,Secondaire,Supérieur,Autre]
-  ⚠️ ERREUR COURANTE: "éducation" = "instruction" — TOUJOURS utiliser la liste prédéfinie Instruction_, JAMAIS créer une liste inline Education_Niveau_
+- "Niveau d'éducation ?"                            → Niveau_Instruction__X!1*1Niveau_Instruction_            Niveau_Instruction_=[Primaire,Secondaire,Supérieur,Autre]
+  ⚠️ ERREUR COURANTE: "éducation" = "instruction" — TOUJOURS utiliser la liste prédéfinie Niveau_Instruction_, JAMAIS créer une liste inline Education_Niveau_
 - "Lieu de résidence ?"                             → Residence__Z!1*Expression
 - "Numéro de téléphone du patient ?"               → Patient__Telephone__Z!1*Tel                           Numéro de téléphone (ex: 0XXXXXXXXX)
 - "Numéro de téléphone de l'enquêteur ?"           → Enqueteur_Telephone__Z!1*Tel                          Numéro de téléphone (ex: 0XXXXXXXXX)
@@ -727,6 +727,12 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
   // (source "Studio"). Remplaçable à tout moment par l'import d'un DPF plus récent.
   // Généré depuis « Dictionnaire des Propriete Fonctionnelles -genesis-FWD version finale29102026.xlsx » (feuille DPF_lists_Abreviations).
   // Coquilles du DPF corrigées le 02/11/2026 (Infifférent, Fosse_Septique, Alimemtation, 0Ativité_Sportive, Enterrée s) : voir scripts/clean-dpf.js.
+  // Décision du 03/11/2026 : le « 0 » final de chaque liste « DPF » est le symbole générique du DPF pour
+  // « valeur de repli, à adapter » — jamais une valeur à écrire telle quelle dans une codification réelle.
+  // Aucun exemple de ce fichier ne reproduit « 0 » littéralement : c'est toujours un mot réel (Autre,
+  // Ne_Sait_Pas…) choisi d'après la question elle-même, jamais ajouté d'office (règle ci-dessus, « NE JAMAIS
+  // ajouter "Autre", "Ne_Sait_Pas", "0"… »). Trilean_=[OUI,NON,0] (DPF) et les exemples de __C!trilean en
+  // « Oui | Non | Ne_Sait_Pas » ne sont donc pas deux conventions concurrentes : la même règle, à deux niveaux.
   const DEFAULT_DPF_CATALOGUE = {
     lists: [
       { identifiant: "Acces_soins_Obstacles_", valeurs: "Financier, Distance, Qualite, Information, 0", source: "DPF" },
@@ -781,7 +787,9 @@ IMPORTANT: Le champ "pf_skip" est une chaîne vide "" si aucun branchement n'est
       { identifiant: "Niveau_", valeurs: "Eleve, Moyen, Faible", source: "Studio" },
       { identifiant: "Motivation_", valeurs: "Très_Motivée, Peu_Motivée, Pas_Motivée", source: "Studio" },
       { identifiant: "Dangereux_", valeurs: "Très_dangereux, Dangereux, Peu_dangereux, Pas_dangereux", source: "Studio" },
-      { identifiant: "Instruction_", valeurs: "Primaire, Secondaire, Supérieur, Autre", source: "Studio" },
+      // Instruction_ (ex-liste Studio) retirée le 03/11/2026 : faisait doublon avec Niveau_Instruction_
+      // (DPF, ci-dessus) pour le même concept — une seule liste canonique désormais, celle du DPF.
+      { identifiant: "Secteur_Activite_", valeurs: "Public, Privé, Informel, Autre", source: "Studio" },
       { identifiant: "Source_Info_Sante_", valeurs: "Personnel_Sante | Media | Reseaux_Sociaux | Entourage | Famille | 0", source: "Studio" },
       { identifiant: "Zone_Residence_", valeurs: "Urbain, Rural, Périurbain", source: "Studio" },
       { identifiant: "Allaitement_", valeurs: "Naturel, Artificiel, Mixte", source: "Studio" },

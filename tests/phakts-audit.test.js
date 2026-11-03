@@ -222,9 +222,25 @@ test('liste Sexe_ : synonymes Homme/Femme ramenés aux valeurs du DPF, à valide
   assert.equal(f.after, 'Sexe_ = [Masculin,Feminin,Autre,0]');
 });
 
-test('seules les listes de source DPF font référence (Instruction_ est une liste Studio)', () => {
-  const r = audit(q('Niveau__X!1*1Instruction_', 'Instruction_ = [Primaire | Secondaire | Superieur | Technique | Autre]'));
+test('seules les listes de source DPF font référence (Motivation_ est une liste Studio)', () => {
+  const r = audit(q('Niveau__X!1*1Motivation_', 'Motivation_ = [Tres_Motivee | Peu_Motivee | Pas_Motivee | Indifferente]'));
   assert.equal(ids(r).includes('liste.dpf_valeurs'), false);
+});
+
+// Décision du 03/11/2026 : la liste Studio « Instruction_ » (doublon de « Niveau_Instruction_ » du DPF)
+// est retirée du catalogue — voir public/phakts-core.js, DEFAULT_DPF_CATALOGUE. Mêmes valeurs que le DPF
+// sous l'ancien nom : détecté comme « jumeau » et renvoyé vers le nom canonique, pas silencieusement ignoré.
+test('Instruction_ (ancien nom, retiré) avec les valeurs exactes du DPF : jumeau détecté, renommage proposé', () => {
+  const r = audit(q('Niveau__X!1*1Instruction_', 'Instruction_ = [Primaire | Secondaire | Superieur]'));
+  const f = rule(r, 'liste.dpf_jumeau');
+  assert.ok(f, ids(r));
+  assert.match(f.message, /Niveau_Instruction_/);
+  assert.equal(f.auto, false);
+});
+
+test('Secteur_Activite_ : liste Studio catalogée, valeurs Public/Privé/Informel/Autre (pas de liste DPF pour ce concept)', () => {
+  const r = audit(q('Secteur_Activite__X!1*1Secteur_Activite_', 'Secteur_Activite_ = [Public | Privé | Informel | Autre]'));
+  assert.equal(ids(r).includes('liste.dpf_valeurs'), false, 'Secteur_Activite_ est Studio, pas DPF : jamais de correction de valeurs');
 });
 
 test('un sous-ensemble du DPF est Mineure, une valeur hors DPF est Majeure', () => {
