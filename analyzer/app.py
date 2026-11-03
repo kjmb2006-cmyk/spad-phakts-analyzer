@@ -2274,7 +2274,12 @@ def gdb_variable_csv():
 
 @app.route('/map')
 def map_view():
-    """Carte géographique interactive — points GPS avec infobulles."""
+    """Carte géographique interactive — points GPS avec infobulles.
+    source=gdb (voir _map_view_gdb) : mêmes carte/template, points de toutes
+    les enquêtes versées dans la Base centrale au lieu de l'enquête chargée."""
+    if request.args.get('source') == 'gdb':
+        return _map_view_gdb()
+
     df = get_dataframe(full=True)
     if df is None:
         flash("Veuillez d'abord importer un fichier.", 'warning')
@@ -2282,36 +2287,10 @@ def map_view():
 
     import re as _re, ast as _ast
 
-    # ── 1. Parseur GPS ──────────────────────────────────────────────────
-    def _parse_gps(val):
-        """
-        Accepte :
-          "5.18 -4.60 29.0 4.4"   → (5.18, -4.60)
-          "[5.18, -4.60]"          → (5.18, -4.60)
-          "5.18,-4.60"             → (5.18, -4.60)
-        """
-        if not val or (isinstance(val, float) and pd.isna(val)):
-            return None, None
-        s = str(val).strip()
-        # Format KoboToolbox "lat lon alt prec"
-        parts = s.replace(',', ' ').split()
-        if len(parts) >= 2:
-            try:
-                lat, lon = float(parts[0]), float(parts[1])
-                if -90 <= lat <= 90 and -180 <= lon <= 180:
-                    return round(lat, 6), round(lon, 6)
-            except ValueError:
-                pass
-        # Format "[lat, lon]"
-        m = _re.search(r'\[?\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\]?', s)
-        if m:
-            try:
-                lat, lon = float(m.group(1)), float(m.group(2))
-                if -90 <= lat <= 90 and -180 <= lon <= 180:
-                    return round(lat, 6), round(lon, 6)
-            except ValueError:
-                pass
-        return None, None
+    # ── 1. Parseur GPS : modules/gdb.py::parse_gps_value (partagé avec le
+    # mode Base centrale ci-dessous, pour que les deux cartes décodent les
+    # coordonnées à l'identique — plus de divergence possible entre les deux).
+    _parse_gps = gdb.parse_gps_value
 
     # ── 2. Colonnes GPS candidates (par priorité) ───────────────────────
     # On accepte deux dispositions :
@@ -2624,6 +2603,7 @@ def map_view():
     label = gps_col or (f'{lat_col} / {lon_col}' if lat_col and lon_col else '—')
     return render_template(
         'map_view.html',
+        source        = 'enquete',
         geo_data      = geo_data,
         no_gps_cnt    = no_gps_cnt,
         center_lat    = center_lat,
@@ -2637,6 +2617,111 @@ def map_view():
         duration_mode = duration_mode,
         meta          = session.get('data_meta', {}),
         total_pts     = len(geo_data),
+        group_label   = 'Région',
+        group_label_plural = 'Régions',
+        district_label = 'District',
+        # Inutilisés en mode « enquête » (le sélecteur GDB est masqué) : évite 2 requêtes SQLite à chaque
+        # chargement de /map pour une liste qui ne sera pas affichée.
+        gdb_candidats = {'combines': [], 'lats': [], 'lons': []},
+        gdb_lieux     = [],
+        gdb_gps_radical = '', gdb_lat_radical = '', gdb_lon_radical = '', gdb_lieu_radical = '',
+    )
+
+
+def _map_view_gdb():
+    """Carte géographique de la Base centrale (GDB) : points de toutes les
+    enquêtes versées qui portent une donnée GPS — relie /map à modules/gdb.py
+    (demande explicite du 2026-11-03). Diagnostic si rien n'est trouvé, même
+    esprit que la carte « une enquête » ci-dessus : jamais une carte vide muette.
+
+    Réutilise le gabarit map_view.html tel quel : le point GDB repose sur les
+    DEUX mêmes champs que le mode « une enquête » utilise déjà pour filtrer/
+    colorer/chercher (region, district) — ici « region » porte le lieu choisi
+    (ou, à défaut, le titre de l'enquête) et « district » porte toujours le
+    titre de l'enquête, pour pouvoir filtrer par l'un ET par l'autre. Les
+    champs propres au mode enquête (aire, superviseur, enqueteur, zone,
+    duration) restent à leur valeur neutre ('—' / None) : les gabarits qui
+    les affichent sont déjà conditionnés à ne rien montrer dans ce cas."""
+    candidats = gdb.gps_radicals()
+    lieux = gdb.spatial_radicals()
+    gps_radical = request.args.get('gps') or ''
+    lat_radical = request.args.get('lat') or ''
+    lon_radical = request.args.get('lon') or ''
+    lieu_radical = request.args.get('lieu') or ''
+
+    if not gps_radical and not (lat_radical and lon_radical):
+        if candidats['combines']:
+            gps_radical = candidats['combines'][0][0]
+        elif candidats['lats'] and candidats['lons']:
+            lat_radical, lon_radical = candidats['lats'][0][0], candidats['lons'][0][0]
+
+    points, total = gdb.gps_points(gps_radical, lat_radical, lon_radical, lieu_radical)
+
+    PALETTE = ['#2E86C1', '#17A589', '#E67E22', '#8E44AD', '#C0392B',
+               '#1A5276', '#148F77', '#B7770D', '#6C3483', '#922B21',
+               '#117A65', '#A04000', '#154360', '#7D6608', '#4D5656']
+    group_of = (lambda p: p['lieu']) if lieu_radical else (lambda p: p['enquete_titre'])
+    groups_sorted = sorted({group_of(p) for p in points})
+    group_colors = {g: PALETTE[i % len(PALETTE)] for i, g in enumerate(groups_sorted)}
+
+    geo_data = []
+    for i, p in enumerate(points, 1):
+        geo_data.append({
+            'lat': p['lat'], 'lon': p['lon'], 'idx': i,
+            'color': group_colors.get(group_of(p), '#1A5276'),
+            'region': group_of(p), 'district': p['enquete_titre'],
+            'aire': '—', 'superviseur': '—', 'enqueteur': '—', 'zone': '—',
+            'date': p['enquete_date'] or '—', 'duration': None,
+        })
+    region_counts = {g: sum(1 for p in points if group_of(p) == g) for g in groups_sorted}
+
+    if geo_data:
+        lats = [p['lat'] for p in geo_data]
+        lons = [p['lon'] for p in geo_data]
+        center_lat = round(sum(lats) / len(lats), 5)
+        center_lon = round(sum(lons) / len(lons), 5)
+        spread = max(max(lats) - min(lats), max(lons) - min(lons))
+        zoom = 14 if spread < 0.01 else 12 if spread < 0.05 else \
+               10 if spread < 0.2 else 8 if spread < 1 else 6 if spread < 5 else 5
+    else:
+        center_lat, center_lon, zoom = 5.35, -4.00, 7
+
+    diagnostic = None
+    if not geo_data:
+        if not candidats['combines'] and not (candidats['lats'] and candidats['lons']):
+            reason = ("Aucune variable GPS détectée dans la Base centrale. Si vos enquêtes viennent de "
+                      "KoboToolbox, reversez-les (le champ _geolocation n'était pas conservé avant le "
+                      "2026-11-03). Pour un fichier Excel, une colonne « Latitude »/« Longitude » ou "
+                      "« GPS » sera détectée automatiquement au prochain versement.")
+        else:
+            reason = ("Variable GPS sélectionnée, mais aucune valeur exploitable dans la Base centrale "
+                      "(cellules vides ou hors limites).")
+        diagnostic = {'reason': reason, 'no_gps_cnt': 0, 'total_rows': total}
+
+    label = gps_radical or (f'{lat_radical} / {lon_radical}' if lat_radical and lon_radical else '—')
+    return render_template(
+        'map_view.html',
+        source        = 'gdb',
+        geo_data      = geo_data,
+        no_gps_cnt    = 0,
+        center_lat    = center_lat,
+        center_lon    = center_lon,
+        zoom          = zoom,
+        region_counts = region_counts,
+        region_colors = group_colors,
+        ctx_labels    = {},
+        gps_col       = label,
+        diagnostic    = diagnostic,
+        duration_mode = 'none',
+        meta          = {},
+        total_pts     = len(geo_data),
+        group_label   = 'Lieu' if lieu_radical else 'Enquête',
+        group_label_plural = 'Lieux' if lieu_radical else 'Enquêtes',
+        district_label = 'Enquête',
+        gdb_candidats = candidats,
+        gdb_lieux     = lieux,
+        gdb_gps_radical = gps_radical, gdb_lat_radical = lat_radical, gdb_lon_radical = lon_radical,
+        gdb_lieu_radical = lieu_radical,
     )
 
 

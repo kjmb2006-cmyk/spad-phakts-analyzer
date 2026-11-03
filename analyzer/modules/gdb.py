@@ -40,6 +40,11 @@ from modules.form_mapping import DB_PATH
 MAX_CELLS = 3_000_000
 RESPONDENT_COLUMNS = ('_uuid', 'meta/instanceID', '_id')
 TECHNICAL = re.compile(r'^(_|meta/|formhub/)|^__version__$', re.I)
+# _geolocation : seul champ technique Kobo (préfixe "_") qui porte une vraie donnée de réponse
+# (le point GPS d'une question "geopoint"), pas de la pure comptabilité comme _uuid/_id/meta/… —
+# exempté de TECHNICAL pour que la Base centrale puisse le conserver (voir gps_radicals() ci-dessous).
+# Décision du 2026-11-03 : avant ça, aucune enquête Kobo ne pouvait avoir de donnée GPS dans la GDB.
+GEO_EXEMPT = ('_geolocation',)
 
 
 def _connect():
@@ -129,7 +134,8 @@ def deposer(df, fac, titre='', source='', source_ref='', user='', labels=None):
 
     respondents = _respondent_ids(df)
     columns = [c for c in df.columns
-               if not TECHNICAL.match(str(c)) and not str(c).split('/')[-1].lower().startswith('factum')]
+               if (not TECHNICAL.match(str(c)) or str(c).lower() in GEO_EXEMPT)
+               and not str(c).split('/')[-1].lower().startswith('factum')]
     rows, summary = [], []
     for col in columns:
         radical = radical_of(col)
@@ -383,3 +389,124 @@ def repartition_spatiale(radical, lieu_radical, top=12):
                 autres=int(counts.iloc[top:].sum()))
         out.append(item)
     return sorted(out, key=lambda i: -i['n'])
+
+
+# ─── Carte géographique de la base centrale ──────────────────────────────────
+# Relie la carte (app.py::map_view, templates/map_view.html) à la Base centrale :
+# mêmes motifs de détection de colonne GPS que /map (une seule enquête chargée),
+# portés ici pour que les deux parcourent exactement le même code — plus de
+# divergence possible entre les deux. app.py importe parse_gps_value() depuis ce
+# module au lieu de garder sa propre copie.
+GPS_PRIORITY = ('_geolocation', 'start_gps', 'end_gps', 'gps', 'location', 'position', 'coordonnees')
+LAT_PATTERNS = (r'(?:^|[_ ])latitude(?:[_ ]|$)', r'(?:^|[_ ])lat(?:[_ ]|$)', r'^_?y$', r'coord[_ ]y')
+LON_PATTERNS = (r'(?:^|[_ ])longitude(?:[_ ]|$)', r'(?:^|[_ ])lon(?:[_ ]|$)',
+                r'(?:^|[_ ])lng(?:[_ ]|$)', r'(?:^|[_ ])long(?:[_ ]|$)', r'^_?x$', r'coord[_ ]x')
+STRICT_GPS_PAT = re.compile(
+    r'(?:^|[\s_\-/])(gps|geolocation|geo[_\-]?point|geo[_\-]?code|'
+    r'coord|coordonn[eé]es?|location|position|gps_?point)(?:$|[\s_\-/])', re.I)
+
+
+def parse_gps_value(val):
+    """Décode une cellule GPS : « 5.18 -4.60 29.0 4.4 » (Kobo), « [5.18, -4.60] »
+    ou « 5.18,-4.60 » → (lat, lon) arrondis, ou (None, None). Identique à
+    l'ancien `_parse_gps` de app.py::map_view (porté ici le 2026-11-03)."""
+    if not val or (isinstance(val, float) and math.isnan(val)):
+        return None, None
+    s = str(val).strip()
+    parts = s.replace(',', ' ').split()
+    if len(parts) >= 2:
+        try:
+            lat, lon = float(parts[0]), float(parts[1])
+            if -90 <= lat <= 90 and -180 <= lon <= 180:
+                return round(lat, 6), round(lon, 6)
+        except ValueError:
+            pass
+    m = re.search(r'\[?\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\]?', s)
+    if m:
+        try:
+            lat, lon = float(m.group(1)), float(m.group(2))
+            if -90 <= lat <= 90 and -180 <= lon <= 180:
+                return round(lat, 6), round(lon, 6)
+        except ValueError:
+            pass
+    return None, None
+
+
+def gps_radicals():
+    """Radicaux de la base centrale qui ressemblent à une donnée GPS — même
+    détection par nom que /map (priorité aux colonnes combinées type Kobo
+    `_geolocation`, sinon motifs latitude/longitude, sinon mot-clé GPS au sens
+    strict), appliquée aux radicaux déjà versés plutôt qu'aux colonnes d'un
+    fichier. Renvoie {'combines': [(radical, n)], 'lats': [(radical, n)],
+    'lons': [(radical, n)]} — combinés d'abord (comme /map), lat/lon en secours,
+    triés par couverture décroissante. Suggestion à vérifier, pas une certitude."""
+    conn = _connect()
+    try:
+        rows = conn.execute('SELECT radical, SUM(n_valeurs) FROM gdb_variables GROUP BY radical').fetchall()
+    finally:
+        conn.close()
+    combines, lats, lons = [], [], []
+    for radical, n in rows:
+        rl = radical.lower()
+        if rl in GPS_PRIORITY or STRICT_GPS_PAT.search(radical):
+            combines.append((radical, n))
+        if any(re.search(p, radical, re.I) for p in LAT_PATTERNS):
+            lats.append((radical, n))
+        if any(re.search(p, radical, re.I) for p in LON_PATTERNS):
+            lons.append((radical, n))
+    key = lambda t: -t[1]
+    return {'combines': sorted(combines, key=key), 'lats': sorted(lats, key=key), 'lons': sorted(lons, key=key)}
+
+
+def gps_points(gps_radical='', lat_radical='', lon_radical='', group_radical='', limit=5000):
+    """Points GPS de la base centrale, toutes enquêtes confondues, avec leur
+    provenance (jamais un point sans savoir de quelle enquête il vient — même
+    principe que valeurs()/serie()). `gps_radical` (colonne combinée) OU
+    `lat_radical`+`lon_radical` (colonnes séparées) : au moins l'un des deux.
+    `group_radical` facultatif : une variable de lieu (spatial_radicals()) ou
+    toute autre variable, pour colorer/grouper les points (sinon groupés par
+    enquête). `limit` : au-delà, le reste est compté mais pas renvoyé (évite
+    de charger des centaines de milliers de points dans le navigateur)."""
+    if not gps_radical and not (lat_radical and lon_radical):
+        return [], 0
+    conn = _connect()
+    try:
+        if gps_radical:
+            rows = conn.execute('SELECT factum, repondant, valeur, NULL FROM gdb_valeurs WHERE radical = ?',
+                                (gps_radical,)).fetchall()
+        else:
+            rows = conn.execute(
+                'SELECT la.factum, la.repondant, la.valeur, lo.valeur FROM gdb_valeurs la '
+                'JOIN gdb_valeurs lo ON lo.factum = la.factum AND lo.repondant = la.repondant AND lo.radical = ? '
+                'WHERE la.radical = ?', (lon_radical, lat_radical)).fetchall()
+        groups = {}
+        if group_radical:
+            for fac, resp, val in conn.execute('SELECT factum, repondant, valeur FROM gdb_valeurs WHERE radical = ?',
+                                               (group_radical,)).fetchall():
+                groups[(fac, resp)] = val
+    finally:
+        conn.close()
+    meta = {e['factum']: e for e in enquetes()}
+    out, total = [], 0
+    for fac, resp, v1, v2 in rows:
+        lat, lon = parse_gps_value(v1) if v2 is None else (None, None)
+        if v2 is not None:
+            try:
+                lat, lon = float(str(v1).replace(',', '.')), float(str(v2).replace(',', '.'))
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    lat = lon = None
+            except (TypeError, ValueError):
+                lat = lon = None
+        if lat is None or lon is None:
+            continue
+        total += 1
+        if total > limit:
+            continue
+        e = meta.get(fac, {})
+        out.append({
+            'lat': lat, 'lon': lon,
+            'factum': fac, 'enquete_titre': e.get('titre') or fac,
+            'enquete_date': (e.get('parts') or {}).get('date_lisible', ''),
+            'lieu': groups.get((fac, resp), ''), 'repondant': resp,
+        })
+    return out, total

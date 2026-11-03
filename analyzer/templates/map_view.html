@@ -252,7 +252,73 @@
 @media (max-width: 900px) {
   .map-panel { width: 240px; }
 }
+.source-toggle a { flex: 1; text-align: center; padding: 7px 10px; border-radius: 8px; font-size: .78rem;
+  font-weight: 600; text-decoration: none; }
+.source-toggle a.active { background: #1A5276; color: #fff; }
+.source-toggle a:not(.active) { background: #F0F4F8; color: #4A5568; }
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SOURCE : enquête chargée ou Base centrale (toutes les enquêtes versées)
+══════════════════════════════════════════════════════════════════ -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex gap-2 source-toggle mb-2">
+      <a href="{{ url_for('map_view') }}" class="{{ 'active' if source != 'gdb' else '' }}">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Enquête chargée
+      </a>
+      <a href="{{ url_for('map_view', source='gdb') }}" class="{{ 'active' if source == 'gdb' else '' }}">
+        <i class="bi bi-database me-1"></i>Base centrale (GDB)
+      </a>
+    </div>
+    {% if source == 'gdb' %}
+    <form method="get" action="{{ url_for('map_view') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="source" value="gdb">
+      {% if gdb_candidats.combines %}
+      <div class="col-auto">
+        <label class="form-label small mb-1 text-muted">Variable GPS (colonne combinée)</label>
+        <select name="gps" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:14rem">
+          {% for r, n in gdb_candidats.combines %}
+          <option value="{{ r }}" {{ 'selected' if r == gdb_gps_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% if gdb_candidats.lats and gdb_candidats.lons %}
+      <div class="col-auto">
+        <label class="form-label small mb-1 text-muted">… ou latitude</label>
+        <select name="lat" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">—</option>
+          {% for r, n in gdb_candidats.lats %}<option value="{{ r }}" {{ 'selected' if r == gdb_lat_radical }}>{{ r }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1 text-muted">longitude</label>
+        <select name="lon" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">—</option>
+          {% for r, n in gdb_candidats.lons %}<option value="{{ r }}" {{ 'selected' if r == gdb_lon_radical }}>{{ r }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% if gdb_lieux %}
+      <div class="col-auto">
+        <label class="form-label small mb-1 text-muted">Grouper / colorer par</label>
+        <select name="lieu" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:12rem">
+          <option value="">— par enquête —</option>
+          {% for r, n in gdb_lieux %}
+          <option value="{{ r }}" {{ 'selected' if r == gdb_lieu_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </form>
+    <p class="small text-muted mb-0 mt-2">
+      Points GPS de toutes les enquêtes versées dans la <a href="{{ url_for('gdb_index') }}">Base centrale</a>,
+      avec leur enquête d'origine — jamais un point sans savoir d'où il vient.
+    </p>
+    {% endif %}
+  </div>
+</div>
 
 {% if geo_data %}
 <!-- ══════════════════════════════════════════════════════════════════
@@ -273,7 +339,7 @@
   {% endif %}
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #17A589;min-width:130px">
     <div style="font-size:1.5rem;font-weight:800;color:#17A589;line-height:1">{{ region_counts|length }}</div>
-    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Régions</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">{{ group_label_plural }}</div>
   </div>
   {% if ctx_labels.get('aire') %}
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #8E44AD;min-width:130px">
@@ -298,7 +364,7 @@
   <div class="map-panel">
     <div class="map-panel-header">
       <h6><i class="bi bi-funnel-fill me-1"></i>Filtres & Légende</h6>
-      <small>{{ total_pts }} observations · {{ region_counts|length }} région(s)</small>
+      <small>{{ total_pts }} observations · {{ region_counts|length }} {{ group_label|lower }}(s)</small>
     </div>
     <div class="map-panel-body">
 
@@ -306,16 +372,16 @@
       <div class="filter-section">
         <div class="filter-label"><i class="bi bi-search"></i>Recherche</div>
         <input type="text" id="searchFilter" class="filter-input"
-               placeholder="Région, district, enquêteur…"
+               placeholder="{{ group_label }}, {{ district_label|lower }}{{ ', enquêteur…' if source != 'gdb' else '…' }}"
                oninput="applyFilters()">
       </div>
 
       <!-- Filtre région -->
       {% if region_counts|length > 1 %}
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-geo-alt"></i>Région sanitaire</div>
+        <div class="filter-label"><i class="bi bi-geo-alt"></i>{{ group_label }}{{ ' sanitaire' if source != 'gdb' else '' }}</div>
         <select id="regionFilter" class="filter-input" onchange="applyFilters()">
-          <option value="">— Toutes les régions —</option>
+          <option value="">— Tout afficher —</option>
           {% for reg, cnt in region_counts.items()|sort %}
           <option value="{{ reg }}">{{ reg }} ({{ cnt }})</option>
           {% endfor %}
@@ -325,15 +391,15 @@
 
       <!-- Filtre district -->
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-building"></i>District sanitaire</div>
+        <div class="filter-label"><i class="bi bi-building"></i>{{ district_label }}{{ ' sanitaire' if source != 'gdb' else '' }}</div>
         <select id="districtFilter" class="filter-input" onchange="applyFilters()">
-          <option value="">— Tous les districts —</option>
+          <option value="">— Tout afficher —</option>
         </select>
       </div>
 
       <!-- Légende régions -->
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-palette"></i>Régions</div>
+        <div class="filter-label"><i class="bi bi-palette"></i>{{ group_label_plural }}</div>
         <div id="legend-list">
           {% for reg in region_counts|sort %}
           <div class="legend-item" data-region="{{ reg }}"
@@ -346,8 +412,8 @@
         </div>
       </div>
 
-      <!-- Durée enquête : avertissement si non capturée -->
-      {% if duration_mode == 'none' %}
+      <!-- Durée enquête : avertissement si non capturée (sans objet en mode Base centrale, multi-enquêtes) -->
+      {% if source != 'gdb' and duration_mode == 'none' %}
       <div class="filter-section">
         <div class="filter-label" style="color:#E67E22">
           <i class="bi bi-exclamation-triangle"></i>Durée enquête manquante
@@ -496,13 +562,13 @@ GEO_DATA.forEach(function(p) {
         ${p.region !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-geo-alt-fill pr-icon"></i>
-          <div class="pr-label">Région</div>
+          <div class="pr-label">{{ group_label }}</div>
           <div class="pr-value">${p.region}</div>
         </div>` : ''}
         ${p.district !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-building pr-icon"></i>
-          <div class="pr-label">District</div>
+          <div class="pr-label">{{ district_label }}</div>
           <div class="pr-value">${p.district}</div>
         </div>` : ''}
         ${p.aire !== '—' ? `
@@ -529,6 +595,7 @@ GEO_DATA.forEach(function(p) {
           <div class="pr-label">Zone</div>
           <div class="pr-value">${p.zone}</div>
         </div>` : ''}
+        {% if source != 'gdb' %}
         <div class="popup-row">
           <i class="bi bi-stopwatch pr-icon" style="${p.duration ? '' : 'color:#CBD5E0'}"></i>
           <div class="pr-label">Durée enquête</div>
@@ -540,6 +607,7 @@ GEO_DATA.forEach(function(p) {
                  </span>`}
           </div>
         </div>
+        {% endif %}
         <div class="popup-coords">
           <div class="popup-coord-chip">
             <strong>${p.lat}</strong>Latitude
@@ -606,7 +674,7 @@ function applyFilters() {
 function updateDistrictFilter(regionFilter) {
   const sel  = document.getElementById('districtFilter');
   const prev = sel.value;
-  sel.innerHTML = '<option value="">— Tous les districts —</option>';
+  sel.innerHTML = '<option value="">— Tout afficher —</option>';
   const districts = new Set();
   allMarkers.forEach(m => {
     const p = m._data;
