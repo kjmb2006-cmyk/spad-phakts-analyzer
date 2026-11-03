@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="{{ current_locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Connexion — SPAD Analyzer</title>
+  <title>{{ _('Connexion') }} — SPAD Analyzer</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/spad_favicon.png') }}">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -80,13 +80,24 @@
     .register-link { font-size: .76rem; text-align: center; margin-top: 8px; }
     .register-link a { color: var(--navy); font-weight: 600; text-decoration: none; }
     .register-link a:hover { text-decoration: underline; }
+    .lang-switcher { display: flex; justify-content: center; gap: 4px; margin-bottom: 16px; }
+    .lang-switcher a {
+      font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+      text-decoration: none; color: var(--muted); border: 1px solid #D5D8DC;
+    }
+    .lang-switcher a.active { background: var(--navy); color: #fff; border-color: var(--navy); }
   </style>
 </head>
 <body>
   <div class="login-card">
+    <div class="lang-switcher" role="group" aria-label="{{ _('Langue') }}">
+      {% for code, label in available_languages.items() %}
+      <a href="{{ url_for('set_language', lang=code) }}" class="{{ 'active' if code == current_locale else '' }}" title="{{ label }}">{{ code|upper }}</a>
+      {% endfor %}
+    </div>
     <div class="login-logo"><img src="{{ url_for('static', filename='img/spad_logo.png') }}" alt="SPAD"></div>
     <h1>SPAD Analyzer</h1>
-    <p class="subtitle">Accès réservé à l'équipe SPAD — choisissez votre accès et saisissez le mot de passe correspondant.</p>
+    <p class="subtitle">{{ _("Accès réservé à l'équipe SPAD — choisissez votre accès et saisissez le mot de passe correspondant.") }}</p>
 
     {% if error %}
     <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
@@ -96,17 +107,17 @@
       <div class="access-block-head">
         <div class="access-icon"><i class="bi bi-shield-lock-fill"></i></div>
         <div>
-          <div class="access-block-title">Administrateur</div>
-          <div class="access-block-desc">Gestion des comptes Data, journal d'activité</div>
+          <div class="access-block-title">{{ _('Administrateur') }}</div>
+          <div class="access-block-desc">{{ _("Gestion des comptes Data, journal d'activité") }}</div>
         </div>
       </div>
       <form method="post">
         <input type="hidden" name="access" value="admin">
         <div class="mb-2">
           <input type="password" class="form-control" id="password-admin" name="password"
-                 placeholder="Mot de passe Administrateur">
+                 placeholder="{{ _('Mot de passe Administrateur') }}">
         </div>
-        <button type="submit" class="btn btn-login-admin"><i class="bi bi-shield-lock-fill me-1"></i>Se connecter</button>
+        <button type="submit" class="btn btn-login-admin"><i class="bi bi-shield-lock-fill me-1"></i>{{ _('Se connecter') }}</button>
       </form>
     </div>
 
@@ -114,40 +125,40 @@
       <div class="access-block-head">
         <div class="access-icon"><i class="bi bi-unlock-fill"></i></div>
         <div>
-          <div class="access-block-title">Accès complet — Data</div>
-          <div class="access-block-desc">Import, analyses, exports, connexion KoboToolbox</div>
+          <div class="access-block-title">{{ _('Accès complet — Data') }}</div>
+          <div class="access-block-desc">{{ _('Import, analyses, exports, connexion KoboToolbox') }}</div>
         </div>
       </div>
       <form method="post">
         <input type="hidden" name="access" value="data">
         <div class="mb-2">
           <input type="text" class="form-control" id="username-data" name="username"
-                 placeholder="Identifiant" autofocus autocomplete="username">
+                 placeholder="{{ _('Identifiant') }}" autofocus autocomplete="username">
         </div>
         <div class="mb-2">
           <input type="password" class="form-control" id="password-data" name="password"
-                 placeholder="Mot de passe" autocomplete="current-password">
+                 placeholder="{{ _('Mot de passe') }}" autocomplete="current-password">
         </div>
-        <button type="submit" class="btn btn-login"><i class="bi bi-unlock-fill me-1"></i>Se connecter</button>
+        <button type="submit" class="btn btn-login"><i class="bi bi-unlock-fill me-1"></i>{{ _('Se connecter') }}</button>
       </form>
-      <div class="register-link">Pas encore de compte ? <a href="{{ url_for('register') }}">Créer un compte Data</a></div>
+      <div class="register-link">{{ _('Pas encore de compte ?') }} <a href="{{ url_for('register') }}">{{ _('Créer un compte Data') }}</a></div>
     </div>
 
     <div class="access-block access-block--invite">
       <div class="access-block-head">
         <div class="access-icon"><i class="bi bi-eye-fill"></i></div>
         <div>
-          <div class="access-block-title">Accès Invité — lecture seule</div>
-          <div class="access-block-desc">Complétude nationale et suivi d'un formulaire, sans export</div>
+          <div class="access-block-title">{{ _('Accès Invité — lecture seule') }}</div>
+          <div class="access-block-desc">{{ _("Complétude nationale et suivi d'un formulaire, sans export") }}</div>
         </div>
       </div>
       <form method="post">
         <input type="hidden" name="access" value="invite">
         <div class="mb-2">
           <input type="password" class="form-control" id="password-invite" name="password"
-                 placeholder="Mot de passe Invité">
+                 placeholder="{{ _('Mot de passe Invité') }}">
         </div>
-        <button type="submit" class="btn btn-login-invite"><i class="bi bi-eye-fill me-1"></i>Se connecter</button>
+        <button type="submit" class="btn btn-login-invite"><i class="bi bi-eye-fill me-1"></i>{{ _('Se connecter') }}</button>
       </form>
     </div>
   </div>

@@ -2,6 +2,7 @@ import os, json, uuid, re, datetime, io, csv, threading, time
 import pandas as pd
 from flask import (Flask, render_template, request, session,
                    redirect, url_for, jsonify, send_file, flash, Response)
+from flask_babel import Babel, gettext as _
 from werkzeug.utils import secure_filename
 from config import Config
 from modules.data_loader import (load_excel, load_excel_sheets, load_csv, clean_kobo_dataframe,
@@ -71,6 +72,45 @@ app = Flask(__name__)
 app.config.from_object(Config)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
+
+# ─── Langue de l'interface (2026-11-03) ───────────────────────────────────────
+# Français restauré par défaut (Flask-Babel vaut 'en' sans ce réglage) : comportement
+# actuel inchangé pour qui n'a jamais touché au sélecteur. Choix mémorisé dans la
+# session (mêmes garanties — et mêmes limites — que tout le reste de cette app :
+# cookie signé côté client, voir [[production-deploy-workflow]] / mémoire du projet,
+# pas une vraie session serveur malgré SESSION_TYPE dans config.py).
+app.config['LANGUAGES'] = {'fr': 'Français', 'en': 'English', 'es': 'Español', 'pt': 'Português'}
+
+
+def get_locale():
+    lang = session.get('lang')
+    if lang in app.config['LANGUAGES']:
+        return lang
+    return request.accept_languages.best_match(app.config['LANGUAGES'].keys()) or 'fr'
+
+
+babel = Babel(app, locale_selector=get_locale, default_locale='fr')
+
+
+@app.route('/set-language/<lang>')
+def set_language(lang):
+    """Change la langue de l'interface et revient à la page d'où le lien a été
+    cliqué (comme le paramètre `next` déjà utilisé par /login, app.py:305,313) —
+    jamais une destination fixe, pour ne pas perdre l'utilisateur de vue."""
+    if lang in app.config['LANGUAGES']:
+        session['lang'] = lang
+    dest = request.referrer
+    if not dest or not dest.startswith(request.host_url):
+        dest = url_for('index')
+    return redirect(dest)
+
+
+@app.context_processor
+def inject_locale():
+    """Langue courante + langues disponibles, pour construire le sélecteur
+    dans base.html (et login.html/register.html, hors de son arbre d'héritage)."""
+    return {'current_locale': get_locale(), 'available_languages': app.config['LANGUAGES']}
+
 
 @app.context_processor
 def inject_current_year():
@@ -312,18 +352,18 @@ def login():
                 session.permanent = True
                 return redirect(request.args.get('next') or url_for('index'))
             elif status == accounts.STATUS_PENDING:
-                error = "Ce compte est en attente de validation par un administrateur."
+                error = _("Ce compte est en attente de validation par un administrateur.")
             elif status == accounts.STATUS_BLOCKED:
-                error = "Ce compte a été bloqué. Contactez un administrateur."
+                error = _("Ce compte a été bloqué. Contactez un administrateur.")
             else:
-                error = 'Identifiant ou mot de passe incorrect.'
+                error = _('Identifiant ou mot de passe incorrect.')
         elif access == 'invite' and ANALYZER_PASSWORD_INVITE and entered == ANALYZER_PASSWORD_INVITE:
             session['authenticated'] = True
             session['role'] = 'invite'
             session.permanent = True
             return redirect(url_for('index'))
         if not error:
-            error = 'Mot de passe incorrect.'
+            error = _('Mot de passe incorrect.')
     return render_template('login.html', error=error)
 
 
@@ -340,7 +380,7 @@ def register():
         password = request.form.get('password', '')
         confirm = request.form.get('confirm', '')
         if password != confirm:
-            error = "Les deux mots de passe ne correspondent pas."
+            error = _("Les deux mots de passe ne correspondent pas.")
         else:
             ok, err = accounts.create_pending(username, password)
             if ok:

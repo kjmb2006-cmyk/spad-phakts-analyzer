@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord — SPAD Analyzer{% endblock %}
-{% block page_title %}Tableau de bord{% endblock %}
+{% block title %}{{ _('Tableau de bord') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Tableau de bord') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -11,12 +11,12 @@
       <div class="col-lg-8">
         <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
           <span class="badge" style="background:rgba(255,255,255,.2);color:#fff;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);">
-            <i class="bi bi-eye-fill me-1"></i>Accès Invité — Lecture seule
+            <i class="bi bi-eye-fill me-1"></i>{{ _('Accès Invité — Lecture seule') }}
           </span>
         </div>
-        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">SPAD Analyzer — Plateforme de Collecte & d'Analyse</h1>
+        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">{{ _("SPAD Analyzer — Plateforme de Collecte & d'Analyse") }}</h1>
         <p class="hero-subtitle mb-0 opacity-90" style="font-size:.95rem;max-width:680px;">
-          Suivez la complétude de la collecte et l'avancement des formulaires SPAD en temps réel.
+          {{ _("Suivez la complétude de la collecte et l'avancement des formulaires SPAD en temps réel.") }}
         </p>
       </div>
       <div class="col-lg-4 text-end d-none d-lg-block">
@@ -32,11 +32,11 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#fef3e2;color:#e05c1a"><i class="bi bi-broadcast"></i></div>
-          <h5 class="bulle-title">Suivre une collecte en temps réel</h5>
+          <h5 class="bulle-title">{{ _('Suivre une collecte en temps réel') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('collecte_dashboard') }}" class="bulle-item">
-            <i class="bi bi-activity"></i>Suivi d'un formulaire
+            <i class="bi bi-activity"></i>{{ _("Suivi d'un formulaire") }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
         </div>
@@ -47,23 +47,23 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#eaf5ea;color:#198754"><i class="bi bi-clipboard2-pulse-fill"></i></div>
-          <h5 class="bulle-title">Complétude nationale</h5>
+          <h5 class="bulle-title">{{ _('Complétude nationale') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('completude') }}" class="bulle-item">
-            <i class="bi bi-clipboard2-pulse"></i>Complétude nationale
+            <i class="bi bi-clipboard2-pulse"></i>{{ _('Complétude nationale') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('completude_districts') }}" class="bulle-item">
-            <i class="bi bi-pin-map"></i>Complétude par district / établissement
+            <i class="bi bi-pin-map"></i>{{ _('Complétude par district / établissement') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('completude_superviseurs') }}" class="bulle-item">
-            <i class="bi bi-person-badge"></i>Performances superviseurs
+            <i class="bi bi-person-badge"></i>{{ _('Performances superviseurs') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('completude_enqueteurs') }}" class="bulle-item">
-            <i class="bi bi-person-walking"></i>Performances enquêteurs
+            <i class="bi bi-person-walking"></i>{{ _('Performances enquêteurs') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
         </div>

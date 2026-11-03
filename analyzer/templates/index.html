@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord — SPAD Analyzer{% endblock %}
-{% block page_title %}Tableau de bord{% endblock %}
+{% block title %}{{ _('Tableau de bord') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Tableau de bord') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -12,32 +12,32 @@
         <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
           {% if has_data %}
           <span class="badge" style="background:rgba(23,165,137,.3);color:#66f0ce;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(23,165,137,.5);">
-            <i class="bi bi-database-fill-check me-1"></i>Données Excel chargées
+            <i class="bi bi-database-fill-check me-1"></i>{{ _('Données Excel chargées') }}
           </span>
           {% endif %}
           {% if session.get('kobo_token') %}
           <span class="badge" style="background:rgba(255,255,255,.2);color:#fff;font-size:.74rem;letter-spacing:.05em;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);">
-            <i class="bi bi-link-45deg me-1"></i>KoboToolbox Connecté
+            <i class="bi bi-link-45deg me-1"></i>{{ _('KoboToolbox Connecté') }}
           </span>
           {% endif %}
         </div>
-        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">SPAD Analyzer — Plateforme de Collecte & d'Analyse</h1>
+        <h1 class="hero-title fw-bold mb-2" style="font-size:1.8rem;">{{ _("SPAD Analyzer — Plateforme de Collecte & d'Analyse") }}</h1>
         <p class="hero-subtitle mb-3 opacity-90" style="font-size:.95rem;max-width:680px;">
-          Pilotez vos formulaires, suivez la complétude de la collecte en direct et exploitez vos données d'enquête avec des analyses statistiques avancées.
+          {{ _("Pilotez vos formulaires, suivez la complétude de la collecte en direct et exploitez vos données d'enquête avec des analyses statistiques avancées.") }}
         </p>
         <div class="d-flex gap-2 flex-wrap mt-2">
           <a href="{{ url_for('upload') }}" class="btn btn-light btn-sm px-3 fw-semibold shadow-sm">
-            <i class="bi bi-file-earmark-arrow-up me-1 text-primary"></i>Importer un formulaire
+            <i class="bi bi-file-earmark-arrow-up me-1 text-primary"></i>{{ _('Importer un formulaire') }}
           </a>
           <a href="{{ url_for('suivi') }}" class="btn btn-outline-light btn-sm px-3 fw-semibold">
-            <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+            <i class="bi bi-broadcast me-1"></i>{{ _('Suivi multi-formulaires') }}
           </a>
           {% if has_data %}
           <a href="{{ url_for('data_preview') }}" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.35);">
-            <i class="bi bi-table me-1"></i>Aperçu des données
+            <i class="bi bi-table me-1"></i>{{ _('Aperçu des données') }}
           </a>
           <a href="{{ url_for('descriptive') }}" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.35);">
-            <i class="bi bi-clipboard-data-fill me-1"></i>Analyses
+            <i class="bi bi-clipboard-data-fill me-1"></i>{{ _('Analyses') }}
           </a>
           {% endif %}
         </div>
@@ -57,28 +57,28 @@
       <div class="stat-card-v kpi-primary shadow-sm">
         <div class="stat-icon-v bg-primary-subtle text-primary"><i class="bi bi-people-fill"></i></div>
         <div class="stat-value-v">{{ meta.n_obs }}</div>
-        <div class="stat-label-v">Observations</div>
+        <div class="stat-label-v">{{ _('Observations') }}</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="stat-card-v kpi-success shadow-sm">
         <div class="stat-icon-v bg-success-subtle text-success"><i class="bi bi-list-columns-reverse"></i></div>
         <div class="stat-value-v">{{ meta.n_vars }}</div>
-        <div class="stat-label-v">Variables</div>
+        <div class="stat-label-v">{{ _('Variables') }}</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="stat-card-v kpi-warning shadow-sm">
         <div class="stat-icon-v bg-warning-subtle text-warning"><i class="bi bi-tag-fill"></i></div>
         <div class="stat-value-v">{{ meta.n_categorielle }}</div>
-        <div class="stat-label-v">Catégorielles</div>
+        <div class="stat-label-v">{{ _('Catégorielles') }}</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="stat-card-v kpi-info shadow-sm">
         <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-123"></i></div>
         <div class="stat-value-v">{{ meta.n_continue }}</div>
-        <div class="stat-label-v">Continues</div>
+        <div class="stat-label-v">{{ _('Continues') }}</div>
       </div>
     </div>
   </div>
@@ -92,15 +92,15 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#e8f4fd;color:#1a6fa8"><i class="bi bi-file-earmark-arrow-up-fill"></i></div>
-          <h5 class="bulle-title">Formulaire</h5>
+          <h5 class="bulle-title">{{ _('Formulaire') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('upload') }}" class="bulle-item">
-            <i class="bi bi-upload"></i>Importer un formulaire
+            <i class="bi bi-upload"></i>{{ _('Importer un formulaire') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('kobo_assets') }}" class="bulle-item">
-            <i class="bi bi-collection-fill"></i>Mes formulaires (KoboToolbox)
+            <i class="bi bi-collection-fill"></i>{{ _('Mes formulaires (KoboToolbox)') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
         </div>
@@ -111,19 +111,19 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#fef3e2;color:#e05c1a"><i class="bi bi-broadcast"></i></div>
-          <h5 class="bulle-title">Suivre une collecte en temps réel</h5>
+          <h5 class="bulle-title">{{ _('Suivre une collecte en temps réel') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('collecte_dashboard') }}" class="bulle-item">
-            <i class="bi bi-activity"></i>Suivi d'un formulaire
+            <i class="bi bi-activity"></i>{{ _("Suivi d'un formulaire") }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('suivi') }}" class="bulle-item">
-            <i class="bi bi-broadcast"></i>Suivi multi-formulaires
+            <i class="bi bi-broadcast"></i>{{ _('Suivi multi-formulaires') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('completude') }}" class="bulle-item">
-            <i class="bi bi-clipboard2-pulse-fill"></i>Complétude nationale
+            <i class="bi bi-clipboard2-pulse-fill"></i>{{ _('Complétude nationale') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
         </div>
@@ -134,15 +134,15 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#eaf5ea;color:#198754"><i class="bi bi-clipboard-data-fill"></i></div>
-          <h5 class="bulle-title">Analyses</h5>
+          <h5 class="bulle-title">{{ _('Analyses') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('data_preview') }}" class="bulle-item {{ '' if has_data else 'disabled-card' }}">
-            <i class="bi bi-table"></i>Aperçu des données
+            <i class="bi bi-table"></i>{{ _('Aperçu des données') }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
           <a href="{{ url_for('analyse_donnees') }}" class="bulle-item">
-            <i class="bi bi-grid-1x2-fill"></i>Hub d'Analyse
+            <i class="bi bi-grid-1x2-fill"></i>{{ _("Hub d'Analyse") }}
             <i class="bi bi-arrow-right-short"></i>
           </a>
         </div>
@@ -153,7 +153,7 @@
       <div class="bulle-card shadow-sm">
         <div class="bulle-header">
           <div class="bulle-icon" style="background:#fce8e8;color:#dc3545"><i class="bi bi-file-earmark-fill"></i></div>
-          <h5 class="bulle-title">Générer un rapport</h5>
+          <h5 class="bulle-title">{{ _('Générer un rapport') }}</h5>
         </div>
         <div class="bulle-items">
           <a href="{{ url_for('report', format='pdf') }}" class="bulle-item {{ '' if has_data else 'disabled-card' }}">
@@ -190,12 +190,12 @@
               <i class="bi bi-folder2-open"></i>
             </div>
             <div>
-              <h5 class="mb-0 fw-semibold text-dark">Autres enquêtes & Projets personnalisés</h5>
-              <p class="text-muted small mb-0">Définissez vos propres référentiels et suivez la complétude de n'importe quel formulaire ODK/Kobo personnalisé.</p>
+              <h5 class="mb-0 fw-semibold text-dark">{{ _('Autres enquêtes & Projets personnalisés') }}</h5>
+              <p class="text-muted small mb-0">{{ _("Définissez vos propres référentiels et suivez la complétude de n'importe quel formulaire ODK/Kobo personnalisé.") }}</p>
             </div>
           </div>
           <a href="{{ url_for('projets_liste') }}" class="btn btn-outline-primary btn-sm px-4 fw-semibold">
-            <i class="bi bi-folder2-open me-1"></i>Accéder aux projets
+            <i class="bi bi-folder2-open me-1"></i>{{ _('Accéder aux projets') }}
           </a>
         </div>
       </div>
@@ -207,14 +207,14 @@
   <div class="upload-cta mt-4 shadow-sm" style="background:#fff;border-radius:14px;border:2px dashed #CBD5E1;padding:36px;">
     <div class="text-center py-3">
       <i class="bi bi-cloud-arrow-up display-4 text-primary opacity-75"></i>
-      <h4 class="mt-3 text-dark fw-semibold">Prêt à analyser vos données SPAD ?</h4>
-      <p class="text-muted mb-3" style="max-width:500px;margin:0 auto;">Importez directement votre fichier Excel d'enquête ou connectez votre compte KoboToolbox pour charger vos données en temps réel.</p>
+      <h4 class="mt-3 text-dark fw-semibold">{{ _('Prêt à analyser vos données SPAD ?') }}</h4>
+      <p class="text-muted mb-3" style="max-width:500px;margin:0 auto;">{{ _("Importez directement votre fichier Excel d'enquête ou connectez votre compte KoboToolbox pour charger vos données en temps réel.") }}</p>
       <div class="d-flex justify-content-center gap-2 flex-wrap">
         <a href="{{ url_for('upload') }}" class="btn btn-primary px-4 fw-semibold">
-          <i class="bi bi-file-earmark-arrow-up me-2"></i>Importer un fichier Excel
+          <i class="bi bi-file-earmark-arrow-up me-2"></i>{{ _('Importer un fichier Excel') }}
         </a>
         <a href="{{ url_for('kobo_assets') }}" class="btn btn-outline-secondary px-4 fw-semibold">
-          <i class="bi bi-collection-fill me-2"></i>Sélectionner depuis Kobo
+          <i class="bi bi-collection-fill me-2"></i>{{ _('Sélectionner depuis Kobo') }}
         </a>
       </div>
     </div>

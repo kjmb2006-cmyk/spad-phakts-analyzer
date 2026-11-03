@@ -35,6 +35,7 @@ import json
 import sqlite3
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_babel import gettext as _
 
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ANALYZER_DIR = os.path.dirname(_MODULE_DIR)
@@ -96,9 +97,9 @@ def create_pending(username, password):
     """Crée un compte Data en attente de validation. Renvoie (ok, erreur)."""
     username = (username or '').strip()
     if not valid_username(username):
-        return False, "Identifiant invalide (3 à 32 caractères : lettres, chiffres, . _ -)."
+        return False, _("Identifiant invalide (3 à 32 caractères : lettres, chiffres, . _ -).")
     if not password or len(password) < 8:
-        return False, "Le mot de passe doit contenir au moins 8 caractères."
+        return False, _("Le mot de passe doit contenir au moins 8 caractères.")
     conn = _connect()
     try:
         with conn:
@@ -111,7 +112,7 @@ def create_pending(username, password):
         # Contrainte PRIMARY KEY sur username_key : identifiant déjà pris —
         # y compris par une inscription concurrente qui vient de gagner la
         # course (voir docstring).
-        return False, "Cet identifiant est déjà utilisé."
+        return False, _("Cet identifiant est déjà utilisé.")
     finally:
         conn.close()
     return True, None

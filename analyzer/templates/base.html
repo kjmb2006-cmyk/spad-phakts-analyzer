@@ -15,10 +15,10 @@
 
 <!-- Bandeau institutionnel -->
 <div class="brand-ribbon">
-  <div class="brand-ribbon-item d-none d-md-flex">ORGANISATION MONDIALE DE LA SANTÉ</div>
+  <div class="brand-ribbon-item d-none d-md-flex">{{ _('ORGANISATION MONDIALE DE LA SANTÉ') }}</div>
   <div class="brand-ribbon-item brand-ribbon-title">
     <span class="brand-ribbon-year">SPAD {{ current_year }}</span>
-    <span class="brand-ribbon-sub">Système de Production et d'Analyse des Données</span>
+    <span class="brand-ribbon-sub">{{ _("Système de Production et d'Analyse des Données") }}</span>
   </div>
 </div>
 
@@ -32,59 +32,59 @@
   <nav class="sidebar-nav">
     {% if session.get('role') == 'invite' %}
     <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
-      <i class="bi bi-house-fill"></i> Tableau de bord
+      <i class="bi bi-house-fill"></i> {{ _('Tableau de bord') }}
     </a>
-    <div class="nav-section-label mt-3">Accès Invité</div>
+    <div class="nav-section-label mt-3">{{ _('Accès Invité') }}</div>
     <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint == 'collecte_dashboard' %}active{% endif %}">
-      <i class="bi bi-activity"></i> Suivi d'un formulaire
+      <i class="bi bi-activity"></i> {{ _("Suivi d'un formulaire") }}
     </a>
     <a href="{{ url_for('completude') }}" class="nav-item {% if request.endpoint == 'completude' %}active{% endif %}">
-      <i class="bi bi-clipboard2-pulse"></i> Complétude nationale
+      <i class="bi bi-clipboard2-pulse"></i> {{ _('Complétude nationale') }}
     </a>
     <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}">
-      <i class="bi bi-pin-map"></i> Complétude par district / établissement
+      <i class="bi bi-pin-map"></i> {{ _('Complétude par district / établissement') }}
     </a>
     <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}">
-      <i class="bi bi-person-badge"></i> Performances superviseurs
+      <i class="bi bi-person-badge"></i> {{ _('Performances superviseurs') }}
     </a>
     <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}">
-      <i class="bi bi-person-walking"></i> Performances enquêteurs
+      <i class="bi bi-person-walking"></i> {{ _('Performances enquêteurs') }}
     </a>
 
-    <div class="nav-section-label mt-3">Session</div>
+    <div class="nav-section-label mt-3">{{ _('Session') }}</div>
     <a href="{{ url_for('logout') }}" class="nav-item">
-      <i class="bi bi-box-arrow-right"></i> Se déconnecter
+      <i class="bi bi-box-arrow-right"></i> {{ _('Se déconnecter') }}
     </a>
     {% else %}
     <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
-      <i class="bi bi-house-fill"></i> Tableau de bord
+      <i class="bi bi-house-fill"></i> {{ _('Tableau de bord') }}
     </a>
 
     <!-- 📁 - FORMULAIRES -->
-    <div class="nav-section-label mt-3">📁 - FORMULAIRES</div>
+    <div class="nav-section-label mt-3">📁 - {{ _('FORMULAIRES') }}</div>
     <a href="{{ url_for('upload') }}" class="nav-item {% if request.endpoint == 'upload' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-file-earmark-arrow-up"></i> — Formulaire importé de l'ordinateur
+      <i class="bi bi-file-earmark-arrow-up"></i> — {{ _("Formulaire importé de l'ordinateur") }}
     </a>
     <a href="{{ url_for('kobo_assets') }}" class="nav-item {% if request.endpoint in ['kobo_assets','kobo_connect'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-collection-fill"></i> — Mes formulaires (KoboToolbox)
+      <i class="bi bi-collection-fill"></i> — {{ _('Mes formulaires (KoboToolbox)') }}
     </a>
 
     <!-- 📡 - SUIVI DE COLLECTE DE DONNÉES -->
-    <div class="nav-section-label mt-3">📡 - SUIVI DE COLLECTE DE DONNÉES</div>
+    <div class="nav-section-label mt-3">📡 - {{ _('SUIVI DE COLLECTE DE DONNÉES') }}</div>
     <a href="{{ url_for('collecte_dashboard') }}" class="nav-item {% if request.endpoint in ['collecte_dashboard', 'collecte_sync', 'collecte_geographique', 'collecte_equipes', 'collecte_alertes', 'collecte_qualite'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-activity"></i> — Suivi d'un formulaire
+      <i class="bi bi-activity"></i> — {{ _("Suivi d'un formulaire") }}
     </a>
     <a href="{{ url_for('suivi') }}" class="nav-item {% if request.endpoint == 'suivi' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-broadcast"></i> — Suivi multi-formulaires
+      <i class="bi bi-broadcast"></i> — {{ _('Suivi multi-formulaires') }}
     </a>
     {% set completude_sub_endpoints = ['completude_equipe_spad', 'completude_roster_national_detail', 'completude_regions', 'completude_region_detail', 'completude_districts', 'completude_district_detail', 'completude_etablissement_detail', 'completude_superviseurs', 'completude_superviseur_detail', 'completude_enqueteurs', 'completude_enqueteur_detail', 'completude_anomalies', 'completude_graphiques'] %}
     {% set completude_sub_active = request.endpoint in completude_sub_endpoints %}
     <div class="d-flex align-items-center">
       <a href="{{ url_for('completude') }}" class="nav-item flex-grow-1 {% if request.endpoint == 'completude' %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-clipboard2-pulse"></i> — Complétude nationale
+        <i class="bi bi-clipboard2-pulse"></i> — {{ _('Complétude nationale') }}
       </a>
       {% if session.get('kobo_token') %}
-      <button type="button" class="btn btn-sm text-white-50 border-0 px-2 nav-collapse-toggle {{ '' if completude_sub_active else 'collapsed' }}" data-bs-toggle="collapse" data-bs-target="#completudeSubmenu" aria-expanded="{{ 'true' if completude_sub_active else 'false' }}" title="Afficher/masquer les sous-rubriques">
+      <button type="button" class="btn btn-sm text-white-50 border-0 px-2 nav-collapse-toggle {{ '' if completude_sub_active else 'collapsed' }}" data-bs-toggle="collapse" data-bs-target="#completudeSubmenu" aria-expanded="{{ 'true' if completude_sub_active else 'false' }}" title="{{ _('Afficher/masquer les sous-rubriques') }}">
         <i class="bi bi-chevron-down"></i>
       </button>
       {% endif %}
@@ -92,72 +92,72 @@
     {% if session.get('kobo_token') %}
     <div class="collapse {{ 'show' if completude_sub_active else '' }}" id="completudeSubmenu">
       <a href="{{ url_for('completude_equipe_spad') }}" class="nav-item {% if request.endpoint in ['completude_equipe_spad', 'completude_roster_national_detail'] %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-diagram-3"></i> — Complétude de l'équipe SPAD
+        <i class="bi bi-diagram-3"></i> — {{ _("Complétude de l'équipe SPAD") }}
       </a>
       <a href="{{ url_for('completude_regions') }}" class="nav-item {% if request.endpoint == 'completude_regions' %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-map"></i> — Complétude par région
+        <i class="bi bi-map"></i> — {{ _('Complétude par région') }}
       </a>
       <a href="{{ url_for('completude_districts') }}" class="nav-item {% if request.endpoint in ['completude_districts', 'completude_district_detail', 'completude_etablissement_detail'] %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-pin-map"></i> — Complétude par district
+        <i class="bi bi-pin-map"></i> — {{ _('Complétude par district') }}
       </a>
       <a href="{{ url_for('completude_superviseurs') }}" class="nav-item {% if request.endpoint in ['completude_superviseurs', 'completude_superviseur_detail'] %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-person-badge"></i> — Performances superviseurs
+        <i class="bi bi-person-badge"></i> — {{ _('Performances superviseurs') }}
       </a>
       <a href="{{ url_for('completude_enqueteurs') }}" class="nav-item {% if request.endpoint in ['completude_enqueteurs', 'completude_enqueteur_detail'] %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-person-walking"></i> — Performances enquêteurs
+        <i class="bi bi-person-walking"></i> — {{ _('Performances enquêteurs') }}
       </a>
       <a href="{{ url_for('completude_anomalies') }}" class="nav-item {% if request.endpoint == 'completude_anomalies' %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-exclamation-triangle"></i> — Anomalies et signalements
+        <i class="bi bi-exclamation-triangle"></i> — {{ _('Anomalies et signalements') }}
       </a>
       <a href="{{ url_for('completude_graphiques') }}" class="nav-item {% if request.endpoint == 'completude_graphiques' %}active{% endif %}" style="padding-left:28px">
-        <i class="bi bi-graph-up"></i> — Graphiques et analyses
+        <i class="bi bi-graph-up"></i> — {{ _('Graphiques et analyses') }}
       </a>
       {% if session.get('kobo_uid') %}
       <a href="{{ url_for('kobo_refresh') }}" class="nav-item" style="padding-left:28px">
-        <i class="bi bi-arrow-clockwise"></i> — Rafraîchir les données
+        <i class="bi bi-arrow-clockwise"></i> — {{ _('Rafraîchir les données') }}
       </a>
       {% endif %}
     </div>
     {% endif %}
 
     <!-- 🔬 - ANALYSES -->
-    <div class="nav-section-label mt-3">🔬 - ANALYSES</div>
+    <div class="nav-section-label mt-3">🔬 - {{ _('ANALYSES') }}</div>
     <a href="{{ url_for('analyse_donnees') }}" class="nav-item {% if request.endpoint == 'analyse_donnees' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-clipboard2-data"></i> — Hub Analyse de données
+      <i class="bi bi-clipboard2-data"></i> — {{ _('Hub Analyse de données') }}
     </a>
     {% if session.get('data_path') %}
     <a href="{{ url_for('data_preview') }}" class="nav-item {% if request.endpoint == 'data_preview' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-table"></i> — Aperçu des données
+      <i class="bi bi-table"></i> — {{ _('Aperçu des données') }}
     </a>
     <a href="{{ url_for('data_prepare') }}" class="nav-item {% if request.endpoint == 'data_prepare' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-magic"></i> — Préparer les données
+      <i class="bi bi-magic"></i> — {{ _('Préparer les données') }}
     </a>
     {% endif %}
     <a href="{{ url_for('validation_donnees') }}" class="nav-item {% if request.endpoint == 'validation_donnees' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-shield-check"></i> — Validation des données
+      <i class="bi bi-shield-check"></i> — {{ _('Validation des données') }}
     </a>
     {% if session.get('data_path') %}
     <a href="{{ url_for('raw_data') }}" class="nav-item {% if request.endpoint == 'raw_data' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-database-fill"></i> — Diagnostic des données
+      <i class="bi bi-database-fill"></i> — {{ _('Diagnostic des données') }}
     </a>
     <a href="{{ url_for('descriptive') }}" class="nav-item {% if request.endpoint == 'descriptive' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-clipboard-data-fill"></i> — Statistiques descriptives
+      <i class="bi bi-clipboard-data-fill"></i> — {{ _('Statistiques descriptives') }}
     </a>
     <a href="{{ url_for('crosstabs') }}" class="nav-item {% if request.endpoint == 'crosstabs' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-grid-3x3-gap-fill"></i> — Analyse Croisée Dynamique
+      <i class="bi bi-grid-3x3-gap-fill"></i> — {{ _('Analyse Croisée Dynamique') }}
     </a>
     <a href="{{ url_for('multivariate') }}" class="nav-item {% if request.endpoint == 'multivariate' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-diagram-3-fill"></i> — Analyses multivariées
+      <i class="bi bi-diagram-3-fill"></i> — {{ _('Analyses multivariées') }}
     </a>
     <a href="{{ url_for('map_view') }}" class="nav-item {% if request.endpoint == 'map_view' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-map-fill"></i> — Carte géographique
+      <i class="bi bi-map-fill"></i> — {{ _('Carte géographique') }}
     </a>
     {% endif %}
     <a href="{{ url_for('multi_survey') }}" class="nav-item {% if request.endpoint == 'multi_survey' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-collection-fill"></i> — Analyse multi-enquête
+      <i class="bi bi-collection-fill"></i> — {{ _('Analyse multi-enquête') }}
     </a>
     <a href="{{ url_for('gdb_index') }}" class="nav-item {% if request.endpoint in ['gdb_index', 'gdb_variable'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-boxes"></i> — Base centrale (GDB)
+      <i class="bi bi-boxes"></i> — {{ _('Base centrale (GDB)') }}
     </a>
 
     <!-- 🎨 - PHAKTS STUDIO -->
@@ -167,47 +167,47 @@
       <i class="bi bi-palette-fill"></i> — PHAKTS Studio
     </a>
     {% else %}
-    <span class="nav-item text-muted" style="cursor:default;padding-left:28px" title="Disponible uniquement dans l'application de bureau SPAD PHAKTS Analyzer (Electron)">
+    <span class="nav-item text-muted" style="cursor:default;padding-left:28px" title="{{ _('Disponible uniquement dans l\'application de bureau SPAD PHAKTS Analyzer (Electron)') }}">
       <i class="bi bi-palette-fill"></i> — PHAKTS Studio
     </span>
     {% endif %}
 
     {% if session.get('data_path') %}
-    <div class="nav-section-label mt-3">Export</div>
+    <div class="nav-section-label mt-3">{{ _('Export') }}</div>
     <a href="{{ url_for('report') }}" class="nav-item {% if request.endpoint == 'report' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-file-earmark-pdf-fill"></i> — Rapport PDF
+      <i class="bi bi-file-earmark-pdf-fill"></i> — {{ _('Rapport PDF') }}
     </a>
     <a href="{{ url_for('export_data_stat', fmt='sav') }}" class="nav-item" style="padding-left:28px">
-      <i class="bi bi-file-earmark-binary"></i> — Données SPSS (.sav)
+      <i class="bi bi-file-earmark-binary"></i> — {{ _('Données SPSS (.sav)') }}
     </a>
     <a href="{{ url_for('export_data_stat', fmt='dta') }}" class="nav-item" style="padding-left:28px">
-      <i class="bi bi-file-earmark-binary"></i> — Données Stata (.dta)
+      <i class="bi bi-file-earmark-binary"></i> — {{ _('Données Stata (.dta)') }}
     </a>
     <a href="{{ url_for('reset_data') }}"
        class="nav-item text-danger"
        style="padding-left:28px"
-       onclick="return confirm('Effacer les données chargées ?')">
-      <i class="bi bi-trash3-fill"></i> — Effacer les données
+       onclick="return confirm('{{ _('Effacer les données chargées ?') }}')">
+      <i class="bi bi-trash3-fill"></i> — {{ _('Effacer les données') }}
     </a>
     {% endif %}
 
     {% if session.get('role') == 'admin' %}
-    <div class="nav-section-label mt-3">Administration</div>
+    <div class="nav-section-label mt-3">{{ _('Administration') }}</div>
     <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint in ['admin_users'] %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-people-fill"></i> — Comptes Data
+      <i class="bi bi-people-fill"></i> — {{ _('Comptes Data') }}
     </a>
     <a href="{{ url_for('admin_activity') }}" class="nav-item {% if request.endpoint == 'admin_activity' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-clock-history"></i> — Journal d'activité
+      <i class="bi bi-clock-history"></i> — {{ _("Journal d'activité") }}
     </a>
     <a href="{{ url_for('admin_forms') }}" class="nav-item {% if request.endpoint == 'admin_forms' %}active{% endif %}" style="padding-left:28px">
-      <i class="bi bi-collection"></i> — Registre des formulaires
+      <i class="bi bi-collection"></i> — {{ _('Registre des formulaires') }}
     </a>
     {% endif %}
 
     {% if session.get('authenticated') %}
-    <div class="nav-section-label mt-3">Session</div>
+    <div class="nav-section-label mt-3">{{ _('Session') }}</div>
     <a href="{{ url_for('logout') }}" class="nav-item">
-      <i class="bi bi-box-arrow-right"></i> Se déconnecter
+      <i class="bi bi-box-arrow-right"></i> {{ _('Se déconnecter') }}
     </a>
     {% endif %}
     {% endif %}
@@ -225,7 +225,7 @@
     <button class="btn btn-sm btn-outline-secondary me-3" id="sidebarToggle">
       <i class="bi bi-list fs-5"></i>
     </button>
-    <span class="topbar-title">{% block page_title %}Accueil{% endblock %}</span>
+    <span class="topbar-title">{% block page_title %}{{ _('Accueil') }}{% endblock %}</span>
     <div class="topbar-right d-flex align-items-center gap-2">
       {% if session.get('data_path') %}
       <span class="badge bg-success-subtle text-success border border-success-subtle">
@@ -236,20 +236,30 @@
       {% endif %}
       <span class="text-muted small text-truncate" style="max-width:280px;display:inline-block">{{ session.get('original_filename', '') }}</span>
 
+      <!-- ── Sélecteur de langue (topbar) ── -->
+      <div class="lang-switcher d-flex align-items-center gap-1" role="group" aria-label="{{ _('Langue') }}">
+        {% for code, label in available_languages.items() %}
+        <a href="{{ url_for('set_language', lang=code) }}"
+           class="btn btn-sm {{ 'btn-secondary' if code == current_locale else 'btn-outline-secondary' }}"
+           style="padding:2px 7px;font-size:.72rem;font-weight:700;border-radius:6px"
+           title="{{ label }}">{{ code|upper }}</a>
+        {% endfor %}
+      </div>
+
       <!-- ── Bouton Assistant IA (topbar) ── -->
-      <a href="{{ url_for('ai_assistant_view') }}" class="btn btn-sm text-white fw-semibold shadow-sm" style="background:linear-gradient(135deg,#1A5276,#6f42c1);border:none;border-radius:8px;padding:4px 12px;" title="Ouvrir SPAD AI Copilot">
-        <i class="bi bi-stars me-1"></i>Assistant IA
+      <a href="{{ url_for('ai_assistant_view') }}" class="btn btn-sm text-white fw-semibold shadow-sm" style="background:linear-gradient(135deg,#1A5276,#6f42c1);border:none;border-radius:8px;padding:4px 12px;" title="{{ _('Ouvrir SPAD AI Copilot') }}">
+        <i class="bi bi-stars me-1"></i>{{ _('Assistant IA') }}
       </a>
 
       <!-- ── Bouton KoboToolbox (topbar) ── -->
       {% if session.get('kobo_token') %}
-      <button class="btn btn-sm btn-kobo-connected" data-bs-toggle="modal" data-bs-target="#koboModal" title="KoboToolbox connecté">
+      <button class="btn btn-sm btn-kobo-connected" data-bs-toggle="modal" data-bs-target="#koboModal" title="{{ _('KoboToolbox connecté') }}">
         <span class="kobo-dot connected"></span>
         <i class="bi bi-link-45deg"></i>
         <span class="d-none d-md-inline ms-1 text-truncate" style="max-width:160px;display:inline-block">{{ session.get('kobo_username','Kobo') }}</span>
       </button>
       {% else %}
-      <button class="btn btn-sm btn-kobo-disconnected" data-bs-toggle="modal" data-bs-target="#koboModal" title="Connecter KoboToolbox">
+      <button class="btn btn-sm btn-kobo-disconnected" data-bs-toggle="modal" data-bs-target="#koboModal" title="{{ _('Connecter KoboToolbox') }}">
         <span class="kobo-dot disconnected"></span>
         <i class="bi bi-plug-fill"></i>
         <span class="d-none d-md-inline ms-1">KoboToolbox</span>

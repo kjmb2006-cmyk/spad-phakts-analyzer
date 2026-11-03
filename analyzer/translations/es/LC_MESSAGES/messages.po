@@ -1,0 +1,474 @@
+# Spanish translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-11-03 13:04+0000\n"
+"PO-Revision-Date: 2026-11-03 13:04+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: app.py:355
+msgid "Ce compte est en attente de validation par un administrateur."
+msgstr "Esta cuenta está pendiente de validación por un administrador."
+
+#: app.py:357
+msgid "Ce compte a été bloqué. Contactez un administrateur."
+msgstr "Esta cuenta ha sido bloqueada. Contacte a un administrador."
+
+#: app.py:359
+msgid "Identifiant ou mot de passe incorrect."
+msgstr "Usuario o contraseña incorrectos."
+
+#: app.py:366
+msgid "Mot de passe incorrect."
+msgstr "Contraseña incorrecta."
+
+#: app.py:383
+msgid "Les deux mots de passe ne correspondent pas."
+msgstr "Las dos contraseñas no coinciden."
+
+#: modules/accounts.py:100
+msgid "Identifiant invalide (3 à 32 caractères : lettres, chiffres, . _ -)."
+msgstr "Usuario no válido (3 a 32 caracteres: letras, números, . _ -)."
+
+#: modules/accounts.py:102
+msgid "Le mot de passe doit contenir au moins 8 caractères."
+msgstr "La contraseña debe contener al menos 8 caracteres."
+
+#: modules/accounts.py:115
+msgid "Cet identifiant est déjà utilisé."
+msgstr "Este nombre de usuario ya está en uso."
+
+#: templates/base.html:18
+msgid "ORGANISATION MONDIALE DE LA SANTÉ"
+msgstr "ORGANIZACIÓN MUNDIAL DE LA SALUD"
+
+#: templates/base.html:21
+msgid "Système de Production et d'Analyse des Données"
+msgstr "Sistema de Producción y Análisis de Datos"
+
+#: templates/base.html:35 templates/base.html:60 templates/index.html:2
+#: templates/index.html:3 templates/invite_dashboard.html:2
+#: templates/invite_dashboard.html:3
+msgid "Tableau de bord"
+msgstr "Panel de control"
+
+#: templates/base.html:37
+msgid "Accès Invité"
+msgstr "Acceso de Invitado"
+
+#: templates/base.html:39 templates/base.html:75 templates/index.html:118
+#: templates/invite_dashboard.html:39
+msgid "Suivi d'un formulaire"
+msgstr "Seguimiento de un formulario"
+
+#: templates/base.html:42 templates/base.html:84 templates/index.html:126
+#: templates/invite_dashboard.html:50 templates/invite_dashboard.html:54
+msgid "Complétude nationale"
+msgstr "Completitud nacional"
+
+#: templates/base.html:45 templates/invite_dashboard.html:58
+msgid "Complétude par district / établissement"
+msgstr "Completitud por distrito / establecimiento"
+
+#: templates/base.html:48 templates/base.html:104
+#: templates/invite_dashboard.html:62
+msgid "Performances superviseurs"
+msgstr "Rendimiento de supervisores"
+
+#: templates/base.html:51 templates/base.html:107
+#: templates/invite_dashboard.html:66
+msgid "Performances enquêteurs"
+msgstr "Rendimiento de los encuestadores"
+
+#: templates/base.html:54 templates/base.html:208
+msgid "Session"
+msgstr "Sesión"
+
+#: templates/base.html:56 templates/base.html:210
+msgid "Se déconnecter"
+msgstr "Cerrar sesión"
+
+#: templates/base.html:64
+msgid "FORMULAIRES"
+msgstr "FORMULARIOS"
+
+#: templates/base.html:66
+msgid "Formulaire importé de l'ordinateur"
+msgstr "Formulario importado desde el ordenador"
+
+#: templates/base.html:69 templates/index.html:103
+msgid "Mes formulaires (KoboToolbox)"
+msgstr "Mis formularios (KoboToolbox)"
+
+#: templates/base.html:73
+msgid "SUIVI DE COLLECTE DE DONNÉES"
+msgstr "SEGUIMIENTO DE LA RECOLECCIÓN DE DATOS"
+
+#: templates/base.html:78 templates/index.html:33 templates/index.html:122
+msgid "Suivi multi-formulaires"
+msgstr "Seguimiento multi-formulario"
+
+#: templates/base.html:87
+msgid "Afficher/masquer les sous-rubriques"
+msgstr "Mostrar/ocultar subsecciones"
+
+#: templates/base.html:95
+msgid "Complétude de l'équipe SPAD"
+msgstr "Completitud del equipo SPAD"
+
+#: templates/base.html:98
+msgid "Complétude par région"
+msgstr "Completitud por región"
+
+#: templates/base.html:101
+msgid "Complétude par district"
+msgstr "Completitud por distrito"
+
+#: templates/base.html:110
+msgid "Anomalies et signalements"
+msgstr "Anomalías e informes"
+
+#: templates/base.html:113
+msgid "Graphiques et analyses"
+msgstr "Gráficos y análisis"
+
+#: templates/base.html:117
+msgid "Rafraîchir les données"
+msgstr "Actualizar datos"
+
+#: templates/base.html:124
+msgid "ANALYSES"
+msgstr "ANÁLISIS"
+
+#: templates/base.html:126
+msgid "Hub Analyse de données"
+msgstr "Centro de Análisis de Datos"
+
+#: templates/base.html:130 templates/index.html:37 templates/index.html:141
+msgid "Aperçu des données"
+msgstr "Vista previa de los datos"
+
+#: templates/base.html:133
+msgid "Préparer les données"
+msgstr "Preparar los datos"
+
+#: templates/base.html:137
+msgid "Validation des données"
+msgstr "Validación de datos"
+
+#: templates/base.html:141
+msgid "Diagnostic des données"
+msgstr "Diagnóstico de datos"
+
+#: templates/base.html:144
+msgid "Statistiques descriptives"
+msgstr "Estadísticas descriptivas"
+
+#: templates/base.html:147
+msgid "Analyse Croisée Dynamique"
+msgstr "Tabla Cruzada Dinámica"
+
+#: templates/base.html:150
+msgid "Analyses multivariées"
+msgstr "Análisis multivariado"
+
+#: templates/base.html:153
+msgid "Carte géographique"
+msgstr "Mapa geográfico"
+
+#: templates/base.html:157
+msgid "Analyse multi-enquête"
+msgstr "Análisis multi-encuesta"
+
+#: templates/base.html:160
+msgid "Base centrale (GDB)"
+msgstr "Base central (GDB)"
+
+#: templates/base.html:170
+msgid "Disponible uniquement dans l'application de bureau SPAD PHAKTS Analyzer (Electron)"
+msgstr "Disponible únicamente en la aplicación de escritorio SPAD PHAKTS Analyzer (Electron)"
+
+#: templates/base.html:176
+msgid "Export"
+msgstr "Exportar"
+
+#: templates/base.html:178
+msgid "Rapport PDF"
+msgstr "Informe PDF"
+
+#: templates/base.html:181
+msgid "Données SPSS (.sav)"
+msgstr "Datos SPSS (.sav)"
+
+#: templates/base.html:184
+msgid "Données Stata (.dta)"
+msgstr "Datos Stata (.dta)"
+
+#: templates/base.html:189
+msgid "Effacer les données chargées ?"
+msgstr "¿Borrar los datos cargados?"
+
+#: templates/base.html:190
+msgid "Effacer les données"
+msgstr "Borrar datos"
+
+#: templates/base.html:195
+msgid "Administration"
+msgstr "Administración"
+
+#: templates/base.html:197
+msgid "Comptes Data"
+msgstr "Cuentas Data"
+
+#: templates/base.html:200
+msgid "Journal d'activité"
+msgstr "Registro de actividad"
+
+#: templates/base.html:203
+msgid "Registre des formulaires"
+msgstr "Registro de formularios"
+
+#: templates/base.html:228
+msgid "Accueil"
+msgstr "Inicio"
+
+#: templates/base.html:240 templates/login.html:93 templates/register.html:50
+msgid "Langue"
+msgstr "Idioma"
+
+#: templates/base.html:250
+msgid "Ouvrir SPAD AI Copilot"
+msgstr "Abrir SPAD AI Copilot"
+
+#: templates/base.html:251
+msgid "Assistant IA"
+msgstr "Asistente IA"
+
+#: templates/base.html:256
+msgid "KoboToolbox connecté"
+msgstr "KoboToolbox conectado"
+
+#: templates/base.html:262
+msgid "Connecter KoboToolbox"
+msgstr "Conectar KoboToolbox"
+
+#: templates/index.html:15
+msgid "Données Excel chargées"
+msgstr "Datos Excel cargados"
+
+#: templates/index.html:20
+msgid "KoboToolbox Connecté"
+msgstr "KoboToolbox Conectado"
+
+#: templates/index.html:24 templates/invite_dashboard.html:17
+msgid "SPAD Analyzer — Plateforme de Collecte & d'Analyse"
+msgstr "SPAD Analyzer — Plataforma de Recolección y Análisis"
+
+#: templates/index.html:26
+msgid "Pilotez vos formulaires, suivez la complétude de la collecte en direct et exploitez vos données d'enquête avec des analyses statistiques avancées."
+msgstr "Gestione sus formularios, siga la completitud de la recolección en tiempo real y explore los datos de su encuesta con análisis estadísticos avanzados."
+
+#: templates/index.html:30 templates/index.html:99
+msgid "Importer un formulaire"
+msgstr "Importar un formulario"
+
+#: templates/index.html:40 templates/index.html:137
+msgid "Analyses"
+msgstr "Análisis"
+
+#: templates/index.html:60
+msgid "Observations"
+msgstr "Observaciones"
+
+#: templates/index.html:67
+msgid "Variables"
+msgstr "Variables"
+
+#: templates/index.html:74
+msgid "Catégorielles"
+msgstr "Categóricas"
+
+#: templates/index.html:81
+msgid "Continues"
+msgstr "Continuas"
+
+#: templates/index.html:95
+msgid "Formulaire"
+msgstr "Formulario"
+
+#: templates/index.html:114 templates/invite_dashboard.html:35
+msgid "Suivre une collecte en temps réel"
+msgstr "Seguir una recolección en tiempo real"
+
+#: templates/index.html:145
+msgid "Hub d'Analyse"
+msgstr "Centro de Análisis"
+
+#: templates/index.html:156
+msgid "Générer un rapport"
+msgstr "Generar un informe"
+
+#: templates/index.html:193
+msgid "Autres enquêtes & Projets personnalisés"
+msgstr "Otras encuestas y Proyectos personalizados"
+
+#: templates/index.html:194
+msgid "Définissez vos propres référentiels et suivez la complétude de n'importe quel formulaire ODK/Kobo personnalisé."
+msgstr "Defina sus propios referenciales y siga la completitud de cualquier formulario ODK/Kobo personalizado."
+
+#: templates/index.html:198
+msgid "Accéder aux projets"
+msgstr "Acceder a los proyectos"
+
+#: templates/index.html:210
+msgid "Prêt à analyser vos données SPAD ?"
+msgstr "¿Listo para analizar sus datos SPAD?"
+
+#: templates/index.html:211
+msgid "Importez directement votre fichier Excel d'enquête ou connectez votre compte KoboToolbox pour charger vos données en temps réel."
+msgstr "Importe directamente su archivo Excel de encuesta o conecte su cuenta KoboToolbox para cargar sus datos en tiempo real."
+
+#: templates/index.html:214
+msgid "Importer un fichier Excel"
+msgstr "Importar un archivo Excel"
+
+#: templates/index.html:217
+msgid "Sélectionner depuis Kobo"
+msgstr "Seleccionar desde Kobo"
+
+#: templates/invite_dashboard.html:14
+msgid "Accès Invité — Lecture seule"
+msgstr "Acceso de Invitado — Solo lectura"
+
+#: templates/invite_dashboard.html:19
+msgid "Suivez la complétude de la collecte et l'avancement des formulaires SPAD en temps réel."
+msgstr "Siga la completitud de la recolección y el avance de los formularios SPAD en tiempo real."
+
+#: templates/login.html:6
+msgid "Connexion"
+msgstr "Iniciar sesión"
+
+#: templates/login.html:100
+msgid "Accès réservé à l'équipe SPAD — choisissez votre accès et saisissez le mot de passe correspondant."
+msgstr "Acceso reservado al equipo SPAD — elija su nivel de acceso e introduzca la contraseña correspondiente."
+
+#: templates/login.html:110
+msgid "Administrateur"
+msgstr "Administrador"
+
+#: templates/login.html:111
+msgid "Gestion des comptes Data, journal d'activité"
+msgstr "Gestión de cuentas Data, registro de actividad"
+
+#: templates/login.html:118
+msgid "Mot de passe Administrateur"
+msgstr "Contraseña de Administrador"
+
+#: templates/login.html:120 templates/login.html:142 templates/login.html:161
+msgid "Se connecter"
+msgstr "Iniciar sesión"
+
+#: templates/login.html:128
+msgid "Accès complet — Data"
+msgstr "Acceso completo — Data"
+
+#: templates/login.html:129
+msgid "Import, analyses, exports, connexion KoboToolbox"
+msgstr "Importación, análisis, exportaciones, conexión KoboToolbox"
+
+#: templates/login.html:136 templates/register.html:71
+msgid "Identifiant"
+msgstr "Usuario"
+
+#: templates/login.html:140 templates/register.html:79
+msgid "Mot de passe"
+msgstr "Contraseña"
+
+#: templates/login.html:144
+msgid "Pas encore de compte ?"
+msgstr "¿Aún no tiene una cuenta?"
+
+#: templates/login.html:144 templates/register.html:56
+msgid "Créer un compte Data"
+msgstr "Crear una cuenta Data"
+
+#: templates/login.html:151
+msgid "Accès Invité — lecture seule"
+msgstr "Acceso de Invitado — solo lectura"
+
+#: templates/login.html:152
+msgid "Complétude nationale et suivi d'un formulaire, sans export"
+msgstr "Completitud nacional y seguimiento de un formulario, sin exportación"
+
+#: templates/login.html:159
+msgid "Mot de passe Invité"
+msgstr "Contraseña de Invitado"
+
+#: templates/register.html:6
+msgid "Créer un compte"
+msgstr "Crear una cuenta"
+
+#: templates/register.html:57
+msgid "Votre compte restera en attente jusqu'à validation par un administrateur."
+msgstr "Su cuenta permanecerá pendiente hasta su validación por un administrador."
+
+#: templates/register.html:61
+msgid "Compte créé avec succès"
+msgstr "Cuenta creada con éxito"
+
+#: templates/register.html:61
+msgid "il est"
+msgstr "está"
+
+#: templates/register.html:61
+msgid "en attente de validation"
+msgstr "pendiente de validación"
+
+#: templates/register.html:61
+msgid "par un administrateur."
+msgstr "por un administrador."
+
+#: templates/register.html:62
+msgid "Vous pourrez vous connecter dès qu'il aura été autorisé."
+msgstr "Podrá iniciar sesión en cuanto haya sido autorizada."
+
+#: templates/register.html:64
+msgid "Retour à la connexion"
+msgstr "Volver al inicio de sesión"
+
+#: templates/register.html:75
+msgid "3 à 32 caractères : lettres non accentuées, chiffres, point, tiret ou underscore — sans espace"
+msgstr "3 a 32 caracteres: letras sin acentos, números, punto, guion o guion bajo — sin espacios"
+
+#: templates/register.html:76
+msgid "3 à 32 caractères : lettres, chiffres, . _ -"
+msgstr "3 a 32 caracteres: letras, números, . _ -"
+
+#: templates/register.html:82
+msgid "8 caractères minimum"
+msgstr "8 caracteres mínimo"
+
+#: templates/register.html:85
+msgid "Confirmer le mot de passe"
+msgstr "Confirmar contraseña"
+
+#: templates/register.html:89
+msgid "Créer le compte"
+msgstr "Crear cuenta"
+
+#: templates/register.html:91
+msgid "J'ai déjà un compte"
+msgstr "Ya tengo una cuenta"
+
