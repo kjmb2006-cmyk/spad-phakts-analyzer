@@ -1012,7 +1012,7 @@
 
   <!-- ════════════ UPLOAD PANEL ════════════ -->
   <div id="panelUpload" style="display:none" class="input-panel">
-    <label class="section-label">▸ Uploadez vos fichiers <span>(PDF, images, texte, Excel)</span></label>
+    <label class="section-label">▸ <span data-i18n="upload_label">Uploadez vos fichiers</span> <span data-i18n="upload_label_sub">(PDF, images, texte, Excel)</span></label>
     
     <div style="
       border: 2px dashed var(--border2);
@@ -1031,11 +1031,11 @@
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="margin: 0 auto 12px">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/>
       </svg>
-      <p style="color: var(--text); font-size: 14px; margin-bottom: 8px;">Glissez vos fichiers ici ou</p>
+      <p style="color: var(--text); font-size: 14px; margin-bottom: 8px;" data-i18n="upload_dz_drag">Glissez vos fichiers ici ou</p>
       <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.csv,.xlsx,.xls,.xlsm" style="display:none" onchange="handleFileSelect(event)"/>
-      <button class="btn-primary" onclick="document.getElementById('fileInput').click()" style="margin-bottom: 12px;">Sélectionner des fichiers</button>
-      <p style="color: var(--text3); font-size: 11px;">Hors ligne: TXT, CSV, PDF, DOCX, JPG, PNG et <strong>XLSX/XLS</strong> · En ligne: PDF, Word, images, texte, CSV et Excel · Max 50MB par fichier</p>
-      <p style="color: var(--accent2); font-size: 10.5px; margin-top: 6px;">📊 Fichiers Excel : extraction directe des questions depuis la 1ʳᵉ colonne (ou colonne « Question/Libellé »).</p>
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()" style="margin-bottom: 12px;" data-i18n="upload_dz_select">Sélectionner des fichiers</button>
+      <p style="color: var(--text3); font-size: 11px;"><span data-i18n="upload_dz_formats_1">Hors ligne: TXT, CSV, PDF, DOCX, JPG, PNG et</span> <strong>XLSX/XLS</strong> <span data-i18n="upload_dz_formats_2">· En ligne: PDF, Word, images, texte, CSV et Excel · Max 50MB par fichier</span></p>
+      <p style="color: var(--accent2); font-size: 10.5px; margin-top: 6px;" data-i18n="upload_dz_excel_tip">📊 Fichiers Excel : extraction directe des questions depuis la 1ʳᵉ colonne (ou colonne « Question/Libellé »).</p>
     </div>
 
     <div id="uploadStatus" style="display:none; padding: 14px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border);">
@@ -1045,7 +1045,7 @@
             <div id="progressBar" style="width: 0%; height: 100%; background: var(--accent2); transition: width 0.3s;"></div>
           </div>
         </div>
-        <span id="uploadMessage" style="font-size: 12px; color: var(--text2);">Envoi...</span>
+        <span id="uploadMessage" style="font-size: 12px; color: var(--text2);" data-i18n="upload_sending">Envoi...</span>
       </div>
     </div>
 
@@ -1058,8 +1058,8 @@
   <div id="panelResults" style="display:none">
 
     <div class="action-bar">
-      <button class="btn-ghost" onclick="switchTabById('input')">← Modifier</button>
-      <div class="stat-badge"><span id="resultStatCount">0</span> variables codifiées · <span id="resultStatTitle"></span></div>
+      <button class="btn-ghost" onclick="switchTabById('input')">← <span data-i18n="btn_modify">Modifier</span></button>
+      <div class="stat-badge"><span id="resultStatCount">0</span> <span data-i18n="results_vars_coded">variables codifiées</span> · <span id="resultStatTitle"></span></div>
       <div class="action-bar-right">
         <button class="btn-green" onclick="downloadCoded()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1069,28 +1069,28 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           XLSForm (KoboToolbox)
         </button>
-        <button class="btn-ghost" onclick="exportDpfGenesis('questionnaire')" title="Variables de ce questionnaire au format de la feuille DPF-2, avec Factum et code court, pour soumission au Comité DPF">
+        <button class="btn-ghost" onclick="exportDpfGenesis('questionnaire')" data-i18n-title="results_dpf_genesis_title" title="Variables de ce questionnaire au format de la feuille DPF-2, avec Factum et code court, pour soumission au Comité DPF">
           ⬇ DPF-genesis
         </button>
-        <button class="btn-purple" onclick="switchTabById('xlsform')" title="Voir le fichier XLSForm généré pour KoboToolbox avant de le télécharger ou de le déployer">
+        <button class="btn-purple" onclick="switchTabById('xlsform')" data-i18n-title="results_xlsform_transform_title" title="Voir le fichier XLSForm généré pour KoboToolbox avant de le télécharger ou de le déployer">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-          🔄 Transformation XLSForm
+          🔄 <span data-i18n="results_xlsform_transform">Transformation XLSForm</span>
         </button>
-        <button class="btn-add" onclick="addManualRow()" title="Ajouter manuellement une codification">
+        <button class="btn-add" onclick="addManualRow()" data-i18n-title="results_add_title" title="Ajouter manuellement une codification">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Ajouter
+          <span data-i18n="btn_add">Ajouter</span>
         </button>
-        <button class="btn-cyan" onclick="autoDetectSkipLogic()" title="Détecter automatiquement les Skip Logic à partir des libellés (« Si oui… », « Si autre… », « En cas de… »)">
+        <button class="btn-cyan" onclick="autoDetectSkipLogic()" data-i18n-title="results_skip_auto_title" title="Détecter automatiquement les Skip Logic à partir des libellés (« Si oui… », « Si autre… », « En cas de… »)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Skip Logic auto
+          <span data-i18n="results_skip_auto">Skip Logic auto</span>
         </button>
-        <button class="btn-learn" onclick="learnSelectedResults()" id="btnLearn" title="Mémoriser toutes les codifications dans le modèle">
+        <button class="btn-learn" onclick="learnSelectedResults()" id="btnLearn" data-i18n-title="results_learn_title" title="Mémoriser toutes les codifications dans le modèle">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          Mémoriser
+          <span data-i18n="results_learn">Mémoriser</span>
         </button>
-        <button class="btn-reset" onclick="resetResults()" title="Réinitialiser tous les résultats">
+        <button class="btn-reset" onclick="resetResults()" data-i18n-title="results_reset_title" title="Réinitialiser tous les résultats">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          Réinitialiser
+          <span data-i18n="corr_btn_reset">Réinitialiser</span>
         </button>
       </div>
     </div>
@@ -1099,12 +1099,12 @@
       <span class="pill" style="background:#1e3a5f;color:#7dd3fc;border:1px solid #7dd3fc33">● Boolean __B</span>
       <span class="pill" style="background:#1a3a2a;color:#86efac;border:1px solid #86efac33">● Select_one __X!1*1</span>
       <span class="pill" style="background:#2d1a3a;color:#d8b4fe;border:1px solid #d8b4fe33">● Multi __X!1*</span>
-      <span class="pill" style="background:#1a2a3a;color:#67e8f9;border:1px solid #67e8f933">● Entier __1Y/M/W/D</span>
-      <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
-      <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
-      <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
+      <span class="pill" style="background:#1a2a3a;color:#67e8f9;border:1px solid #67e8f933">● <span data-i18n="pill_entier">Entier</span> __1Y/M/W/D</span>
+      <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● <span data-i18n="pill_texte">Texte</span> __Z</span>
+      <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● <span data-i18n="pill_date">Date</span> __A</span>
+      <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● <span data-i18n="pill_photo">Photo</span> __P</span>
       <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● Kobo auto / GPS __G</span>
-      <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
+      <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● <span data-i18n="pill_skip">Skip</span> ↦ pf_skip</span>
     </div>
 
     <div class="table-wrap">
@@ -1112,12 +1112,12 @@
         <thead>
           <tr>
             <th class="center" style="width:4%">#</th>
-            <th style="width:22%">Libellé</th>
-            <th style="width:22%">PF/Question (Code PHAKTS)</th>
-            <th style="width:18%">PF/Modalités</th>
+            <th style="width:22%" data-i18n="th_libelle">Libellé</th>
+            <th style="width:22%" data-i18n="th_pf_question">PF/Question (Code PHAKTS)</th>
+            <th style="width:18%" data-i18n="th_pf_modalites">PF/Modalités</th>
             <th style="width:17%">Skip Logic</th>
-            <th class="center" style="width:8%">Type</th>
-            <th class="center" style="width:8%">Actions</th>
+            <th class="center" style="width:8%" data-i18n="th_type">Type</th>
+            <th class="center" style="width:8%" data-i18n="th_actions">Actions</th>
           </tr>
         </thead>
         <tbody id="resultsBody"></tbody>
@@ -1127,8 +1127,8 @@
     <!-- Bottom download bar -->
     <div class="bottom-bar">
       <div>
-        <div class="bottom-bar-title">Fichiers prêts au téléchargement</div>
-        <div class="bottom-bar-sub">
+        <div class="bottom-bar-title" data-i18n="results_files_ready">Fichiers prêts au téléchargement</div>
+        <div class="bottom-bar-sub" data-i18n="results_files_ready_sub">
           📗 XLSX Codifié · colonnes Libellé / PF-Question / PF-Modalités &nbsp;|&nbsp;
           📘 XLSForm · feuilles survey / choices / settings — compatible KoboToolbox
         </div>
@@ -1144,13 +1144,13 @@
   <!-- ════════════ AGENT IA PHAKTS PANEL ════════════ -->
   <div id="panelAgent" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-      <label class="section-label">▸ Agent IA Expert PHAKTS <span>codifie, dialogue et apprend de nouvelles codifications dans le DPF</span></label>
+      <label class="section-label">▸ <span data-i18n="agent_title">Agent IA Expert PHAKTS</span> <span data-i18n="agent_subtitle">codifie, dialogue et apprend de nouvelles codifications dans le DPF</span></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <label class="stat-badge" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
           <input type="checkbox" id="agentAutoSave" checked style="margin:0">
-          <span>Sauvegarder automatiquement dans le DPF</span>
+          <span data-i18n="agent_autosave">Sauvegarder automatiquement dans le DPF</span>
         </label>
-        <button class="btn-ghost" onclick="resetAgentChat()" style="padding:7px 14px">↺ Nouvelle conversation</button>
+        <button class="btn-ghost" onclick="resetAgentChat()" style="padding:7px 14px">↺ <span data-i18n="agent_new_conv">Nouvelle conversation</span></button>
       </div>
     </div>
 
@@ -1168,59 +1168,60 @@
 
     <div style="display:flex;gap:10px;align-items:flex-end;margin-top:12px">
       <textarea id="agentInput" rows="3"
+        data-i18n-placeholder="agent_input_ph"
         placeholder="Demandez à l'agent : « Codifie : Quel est l'âge du patient ? Est-il fumeur ? » — ou bien : « Quel code PHAKTS pour le statut vaccinal du nourrisson ? »"
         style="flex:1;height:auto;min-height:72px;font-size:13px"
         onkeydown="if(event.ctrlKey && event.key==='Enter'){event.preventDefault(); sendToAgent();}"></textarea>
       <div style="display:flex;flex-direction:column;gap:6px">
         <button class="btn-primary" onclick="sendToAgent()" id="agentSendBtn" style="white-space:nowrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Envoyer
+          <span data-i18n="agent_send">Envoyer</span>
         </button>
         <span style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Ctrl + ⏎</span>
       </div>
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      <button class="btn-ghost" onclick="agentInsertSample('codify')" style="padding:6px 12px;font-size:11px">💡 Exemple : codifier 3 questions</button>
-      <button class="btn-ghost" onclick="agentInsertSample('rule')" style="padding:6px 12px;font-size:11px">❓ Question sur la grammaire</button>
-      <button class="btn-ghost" onclick="agentInsertSample('teach')" style="padding:6px 12px;font-size:11px">🎓 Enseigner une nouvelle codification</button>
-      <span class="stat-badge" id="agentDpfCount" style="margin-left:auto"><span id="agentDpfNum">…</span> codifications dans le DPF</span>
+      <button class="btn-ghost" onclick="agentInsertSample('codify')" style="padding:6px 12px;font-size:11px">💡 <span data-i18n="agent_sample_codify">Exemple : codifier 3 questions</span></button>
+      <button class="btn-ghost" onclick="agentInsertSample('rule')" style="padding:6px 12px;font-size:11px">❓ <span data-i18n="agent_sample_rule">Question sur la grammaire</span></button>
+      <button class="btn-ghost" onclick="agentInsertSample('teach')" style="padding:6px 12px;font-size:11px">🎓 <span data-i18n="agent_sample_teach">Enseigner une nouvelle codification</span></button>
+      <span class="stat-badge" id="agentDpfCount" style="margin-left:auto"><span id="agentDpfNum">…</span> <span data-i18n="agent_dpf_codifs">codifications dans le DPF</span></span>
     </div>
   </div>
 
   <!-- ════════════ GRAMMAR PANEL ════════════ -->
   <div id="panelGrammar" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-      <label class="section-label">▸ Dictionnaire des Propriétés Fonctionnelles <span>PHAKTS · STUDIO · v2026 · Grammaire v2025.10.22-ext2 · EQUIPE SPAD · Dr Korandji J.-M. B., Dr Wognin V., Dr M’Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah / WHO</span></label>
+      <label class="section-label">▸ <span data-i18n="grammar_title">Dictionnaire des Propriétés Fonctionnelles</span> <span>PHAKTS · STUDIO · v2026 · Grammaire v2025.10.22-ext2 · EQUIPE SPAD · Dr Korandji J.-M. B., Dr Wognin V., Dr M’Bra V. D. P., Mlle Dieng S., Mme Aman A. Sarah / WHO</span></label>
       <button class="btn-cyan" onclick="downloadDPF()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Télécharger DPF
+        <span data-i18n="grammar_download_dpf">Télécharger DPF</span>
       </button>
     </div>
     <div class="grammar-grid">
 
       <!-- ═══ A. TYPES DE QUESTIONS ═══ -->
       <div class="grammar-card">
-        <h3>A. Types de Questions</h3>
+        <h3>A. <span data-i18n="grammar_h_a">Types de Questions</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:28%">Code</th><th>Description</th></tr></thead>
+          <thead><tr><th style="width:28%">Code</th><th data-i18n="grammar_th_description">Description</th></tr></thead>
           <tbody>
-            <tr><td class="gc">__B!boolean</td><td class="gd">Question booléenne → <strong>Oui</strong> | <strong>Non</strong></td></tr>
-            <tr><td class="gc">__C!trilean</td><td class="gd">Triléen → <strong>Oui</strong> | <strong>Non</strong> | <strong>Autre</strong> (3 états : 1/0/2) <em>Règle 11 ext.</em></td></tr>
-            <tr><td class="gc">__X!1*1Liste_</td><td class="gd">Choix unique (select_one) — séparateur virgule <code>,</code></td></tr>
-            <tr><td class="gc">__X!1*Liste_</td><td class="gd">Choix multiples (select_multiple) — séparateur pipe <code>|</code></td></tr>
-            <tr><td class="gc">__SRC!1*Source_</td><td class="gd">Source d'information (choix multiple)</td></tr>
-            <tr><td class="gc">__Z!1*Expression</td><td class="gd">Texte libre (free text)</td></tr>
-            <tr><td class="gc">__A!YYYY/MM/DD</td><td class="gd">Date au format ISO</td></tr>
+            <tr><td class="gc">__B!boolean</td><td class="gd"><span data-i18n="grammar_a_bool">Question booléenne →</span> <strong data-i18n="grammar_oui">Oui</strong> | <strong data-i18n="grammar_non">Non</strong></td></tr>
+            <tr><td class="gc">__C!trilean</td><td class="gd"><span data-i18n="grammar_a_trilean">Triléen →</span> <strong data-i18n="grammar_oui">Oui</strong> | <strong data-i18n="grammar_non">Non</strong> | <strong data-i18n="grammar_autre">Autre</strong> <span data-i18n="grammar_a_trilean_states">(3 états : 1/0/2)</span> <em>Règle 11 ext.</em></td></tr>
+            <tr><td class="gc">__X!1*1Liste_</td><td class="gd"><span data-i18n="grammar_a_select1">Choix unique (select_one) — séparateur virgule</span> <code>,</code></td></tr>
+            <tr><td class="gc">__X!1*Liste_</td><td class="gd"><span data-i18n="grammar_a_selectm">Choix multiples (select_multiple) — séparateur pipe</span> <code>|</code></td></tr>
+            <tr><td class="gc">__SRC!1*Source_</td><td class="gd" data-i18n="grammar_a_src">Source d'information (choix multiple)</td></tr>
+            <tr><td class="gc">__Z!1*Expression</td><td class="gd" data-i18n="grammar_a_text">Texte libre (free text)</td></tr>
+            <tr><td class="gc">__A!YYYY/MM/DD</td><td class="gd" data-i18n="grammar_a_date">Date au format ISO</td></tr>
           </tbody>
         </table>
       </div>
 
       <!-- ═══ B. ENTIERS & RÉELS ═══ -->
       <div class="grammar-card">
-        <h3>B. Types Numériques</h3>
+        <h3>B. <span data-i18n="grammar_h_b">Types Numériques</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:28%">Code</th><th style="width:30%">Type</th><th>Exemple</th></tr></thead>
+          <thead><tr><th style="width:28%">Code</th><th style="width:30%" data-i18n="grammar_th_type">Type</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
             <tr><td class="gc">__1</td><td class="gd">Entier générique</td><td class="gm">Score__1, Nb_Contacts__1</td></tr>
             <tr><td class="gc">__1Y!Y</td><td class="gd">Entier en Années</td><td class="gm">Age__1Y!0&lt;N&lt;120</td></tr>
@@ -1247,9 +1248,9 @@
 
       <!-- ═══ C. CONVENTIONS SYNTAXIQUES ═══ -->
       <div class="grammar-card">
-        <h3>C. Conventions Syntaxiques</h3>
+        <h3>C. <span data-i18n="grammar_h_c">Conventions Syntaxiques</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:28%">Symbole</th><th>Rôle</th><th>Exemple</th></tr></thead>
+          <thead><tr><th style="width:28%" data-i18n="grammar_th_symbol">Symbole</th><th data-i18n="grammar_th_role">Rôle</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
             <tr><td class="gc">Snake_Case</td><td class="gd">Radicaux abstraits / génériques</td><td class="gm">Collecte_Routine, Statut_Matrimonial</td></tr>
             <tr><td class="gc">__</td><td class="gd">Double underscore — sépare les parties</td><td class="gm">Radical__Déterminant__Affix</td></tr>
@@ -1265,13 +1266,13 @@
       <!-- ═══ D. LISTES STANDARD DU DPF ═══ -->
       <div class="grammar-card" id="dpfCardListes">
         <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>D. Listes standard du DPF</span>
-          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfListesCount">0</span> liste(s)</span>
+          <span data-i18n="grammar_h_d">D. Listes standard du DPF</span>
+          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfListesCount">0</span> <span data-i18n="grammar_n_listes">liste(s)</span></span>
           <span style="flex:1"></span>
-          <button class="btn-ghost" onclick="document.getElementById('dpfImportInput').click()" style="padding:5px 10px;font-size:10.5px" title="Importer la feuille DPF_lists_Abreviations d'un Dictionnaire des Propriétés Fonctionnelles (.xlsx) — remplace les listes DPF actuelles">📁 Importer le DPF</button>
+          <button class="btn-ghost" onclick="document.getElementById('dpfImportInput').click()" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_import_dpf_title" title="Importer la feuille DPF_lists_Abreviations d'un Dictionnaire des Propriétés Fonctionnelles (.xlsx) — remplace les listes DPF actuelles">📁 <span data-i18n="grammar_import_dpf">Importer le DPF</span></button>
           <input type="file" id="dpfImportInput" accept=".xlsx" style="display:none" onchange="importDpfCatalogue(this.files[0]); this.value=''">
-          <button class="btn-ghost" onclick="resetDpfListes()" style="padding:5px 10px;font-size:10.5px" title="Rétablir le catalogue par défaut (DPF officiel + listes Studio)">↺ Par défaut</button>
-          <button class="btn-icon btn-edit" onclick="addDpfListe()" title="Ajouter une liste">＋</button>
+          <button class="btn-ghost" onclick="resetDpfListes()" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_reset_default_title" title="Rétablir le catalogue par défaut (DPF officiel + listes Studio)">↺ <span data-i18n="grammar_reset_default">Par défaut</span></button>
+          <button class="btn-icon btn-edit" onclick="addDpfListe()" data-i18n-title="grammar_add_list_title" title="Ajouter une liste">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
           Vocabulaire contrôlé injecté dans la grammaire (codification en ligne, Agent IA et mode hors-ligne) : une liste qui correspond au sens de la question est réutilisée au lieu d'en inventer une. Partagé entre tous les postes via le serveur.
@@ -1279,7 +1280,7 @@
           Source : <span style="color:#22c55e">DPF</span> = Dictionnaire officiel · <span style="color:#38bdf8">Studio</span> = liste de Studio sans équivalent DPF · <span style="color:#fbbf24">local</span> = ajoutée ou modifiée ici.
         </p>
         <table class="grammar-table">
-          <thead><tr><th style="width:30%">Identifiant</th><th>Valeurs</th><th style="width:10%;text-align:center">Actions</th></tr></thead>
+          <thead><tr><th style="width:30%" data-i18n="grammar_th_id">Identifiant</th><th data-i18n="grammar_th_values">Valeurs</th><th style="width:10%;text-align:center" data-i18n="th_actions">Actions</th></tr></thead>
           <tbody id="dpfListesBody"></tbody>
         </table>
         <p id="dpfAbreviations" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></p>
@@ -1365,9 +1366,9 @@
 
       <!-- ═══ G. MÉTHODE DE CODAGE ═══ -->
       <div class="grammar-card">
-        <h3>G. Méthode de Codage en 5 Étapes</h3>
+        <h3>G. <span data-i18n="grammar_h_g">Méthode de Codage en 5 Étapes</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:6%">N°</th><th>Étape</th><th>Exemple</th></tr></thead>
+          <thead><tr><th style="width:6%">N°</th><th data-i18n="grammar_th_step">Étape</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
             <tr><td class="gc">1</td><td class="gd">Partir de la question terrain</td><td class="gm">« Êtes-vous enceinte ? »</td></tr>
             <tr><td class="gc">2</td><td class="gd">Identifier le sens métier (radical abstrait)</td><td class="gm">Grossesse</td></tr>
@@ -1380,9 +1381,9 @@
 
       <!-- ═══ H. SKIP LOGIC ═══ -->
       <div class="grammar-card">
-        <h3>H. Skip Logic (Branchement Conditionnel)</h3>
+        <h3>H. <span data-i18n="grammar_h_h">Skip Logic (Branchement Conditionnel)</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:35%">Syntaxe</th><th style="width:35%">Signification</th><th>Exemple</th></tr></thead>
+          <thead><tr><th style="width:35%" data-i18n="grammar_th_syntax">Syntaxe</th><th style="width:35%" data-i18n="grammar_th_meaning">Signification</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
             <tr><td class="gc">Lexia__B = Oui -&gt; @Cible</td><td class="gd">Si réponse = valeur → afficher cible</td><td class="gm">Grossesse__B = Oui -&gt; @Age_Grossesse__1W</td></tr>
             <tr><td class="gc">Lexia__X != Val -&gt; @Cible</td><td class="gd">Si réponse ≠ valeur → afficher cible</td><td class="gm">Fumer_Type__X != Cigarette -&gt; @Autre_Produit__Z</td></tr>
@@ -1391,7 +1392,7 @@
           </tbody>
         </table>
         <table class="grammar-table" style="margin-top:8px">
-          <thead><tr><th style="width:28%">Symbole</th><th>Rôle</th></tr></thead>
+          <thead><tr><th style="width:28%" data-i18n="grammar_th_symbol">Symbole</th><th data-i18n="grammar_th_role">Rôle</th></tr></thead>
           <tbody>
             <tr><td class="gc">-&gt;</td><td class="gd">Opérateur de flux : « alors afficher »</td></tr>
             <tr><td class="gc">@</td><td class="gd">Ancre vers la question cible</td></tr>
@@ -1404,9 +1405,9 @@
 
       <!-- ═══ K. EXTENSIONS OFFICIELLES PHAKTS v2025.10.22-ext2 (Règles 15–20) ═══ -->
       <div class="grammar-card" style="border:1px solid #f59e0b44">
-        <h3>K. Extensions Officielles PHAKTS <span style="font-size:11px;font-weight:400;color:var(--text3)">v2025.10.22-ext2 · Règles 15–20</span></h3>
+        <h3>K. <span data-i18n="grammar_h_k">Extensions Officielles PHAKTS</span> <span style="font-size:11px;font-weight:400;color:var(--text3)">v2025.10.22-ext2 · Règles 15–20</span></h3>
         <table class="grammar-table">
-          <thead><tr><th style="width:8%">Règle</th><th style="width:24%">Syntaxe</th><th style="width:30%">Signification</th><th>Exemple</th></tr></thead>
+          <thead><tr><th style="width:8%" data-i18n="grammar_th_rule">Règle</th><th style="width:24%" data-i18n="grammar_th_syntax">Syntaxe</th><th style="width:30%" data-i18n="grammar_th_meaning">Signification</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
             <tr>
               <td class="gc">14 ext.</td>
@@ -1473,21 +1474,21 @@
       <!-- ═══ L. RÉFÉRENTIEL ADMINISTRATIF (Admin_ — Règle 16) ═══ -->
       <div class="grammar-card" id="dpfCardAdmin" style="border:1px solid #38bdf844">
         <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>L. Référentiel Administratif (Admin_)</span>
-          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="adminRefCount">0</span> entrée(s)</span>
+          <span data-i18n="grammar_h_l">L. Référentiel Administratif (Admin_)</span>
+          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="adminRefCount">0</span> <span data-i18n="grammar_n_entrees">entrée(s)</span></span>
           <span style="flex:1"></span>
           <select id="adminRefFilter" onchange="renderAdminReferentiel()" style="padding:5px 8px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text)">
-            <option value="">Toutes catégories</option>
-            <option value="Admin_Region_Sanitaire_">Régions</option>
-            <option value="Admin_District_Sanitaire_">Districts</option>
-            <option value="Admin_Etablissement_Sante_">Établissements</option>
-            <option value="Admin_Superviseur_">Superviseurs</option>
-            <option value="Admin_Enqueteur_">Enquêteurs</option>
-            <option value="Admin_Commune_Abidjan_">Communes (Abidjan)</option>
+            <option value="" data-i18n="grammar_all_categories">Toutes catégories</option>
+            <option value="Admin_Region_Sanitaire_" data-i18n="grammar_regions">Régions</option>
+            <option value="Admin_District_Sanitaire_" data-i18n="grammar_districts">Districts</option>
+            <option value="Admin_Etablissement_Sante_" data-i18n="grammar_etablissements">Établissements</option>
+            <option value="Admin_Superviseur_" data-i18n="grammar_superviseurs">Superviseurs</option>
+            <option value="Admin_Enqueteur_" data-i18n="grammar_enqueteurs">Enquêteurs</option>
+            <option value="Admin_Commune_Abidjan_" data-i18n="grammar_communes_abidjan">Communes (Abidjan)</option>
           </select>
-          <button class="btn-ghost" onclick="document.getElementById('adminRefFileInput').click()" style="padding:5px 10px;font-size:10.5px" title="Importer un fichier — REMPLACE tout le référentiel actuel">📁 Importer / Remplacer</button>
+          <button class="btn-ghost" onclick="document.getElementById('adminRefFileInput').click()" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_import_replace_title" title="Importer un fichier — REMPLACE tout le référentiel actuel">📁 <span data-i18n="grammar_import_replace">Importer / Remplacer</span></button>
           <input type="file" id="adminRefFileInput" accept=".xlsx,.csv" style="display:none" onchange="importAdminReferentiel(this.files[0]); this.value=''">
-          <button class="btn-icon btn-edit" onclick="addAdminRef()" title="Ajouter une entrée">＋</button>
+          <button class="btn-icon btn-edit" onclick="addAdminRef()" data-i18n-title="grammar_add_entry_title" title="Ajouter une entrée">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
           Référentiel administratif partagé (Règle 16 — « Dictionnaire Genesis ») : régions, districts, établissements, superviseurs et enquêteurs — pour résoudre les listes <code>Admin_*</code> par référentiel externe (pulldata / select_one_external) plutôt que par des valeurs inventées en dur.
@@ -1497,12 +1498,12 @@
         <div style="overflow-x:auto">
         <table class="grammar-table">
           <thead><tr>
-            <th style="width:14%">Catégorie</th>
-            <th style="width:18%">Nom</th>
-            <th style="width:22%">Libellé</th>
+            <th style="width:14%" data-i18n="grammar_th_category">Catégorie</th>
+            <th style="width:18%" data-i18n="grammar_th_name">Nom</th>
+            <th style="width:22%" data-i18n="th_libelle">Libellé</th>
             <th style="width:10%">Code</th>
-            <th style="width:24%">Contexte (parent)</th>
-            <th style="width:12%;text-align:center">Actions</th>
+            <th style="width:24%" data-i18n="grammar_th_context">Contexte (parent)</th>
+            <th style="width:12%;text-align:center" data-i18n="th_actions">Actions</th>
           </tr></thead>
           <tbody id="adminRefBody"></tbody>
         </table>
@@ -1511,8 +1512,8 @@
 
       <!-- ═══ J. EXTENSIONS DE GRAMMAIRE (personnalisation) ═══ -->
       <div class="grammar-card" id="dpfCardRules" style="border:1px solid #818cf844">
-        <h3>J. Extensions de Grammaire
-          <button class="btn-icon btn-edit" style="margin-left:8px;vertical-align:middle" onclick="addDpfRule()" title="Ajouter un type ou une règle personnalisée">＋</button>
+        <h3><span data-i18n="grammar_h_j">J. Extensions de Grammaire</span>
+          <button class="btn-icon btn-edit" style="margin-left:8px;vertical-align:middle" onclick="addDpfRule()" data-i18n-title="grammar_add_rule_title" title="Ajouter un type ou une règle personnalisée">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
           Ajoutez ici vos <strong>types PHAKTS personnalisés</strong>, des règles spécifiques
@@ -1523,12 +1524,12 @@
         <table class="grammar-table">
           <thead><tr>
             <th style="width:22%">Type / Code</th>
-            <th style="width:36%">Description</th>
-            <th style="width:34%">Exemple</th>
-            <th style="width:8%;text-align:center">Actions</th>
+            <th style="width:36%" data-i18n="grammar_th_description">Description</th>
+            <th style="width:34%" data-i18n="grammar_th_example">Exemple</th>
+            <th style="width:8%;text-align:center" data-i18n="th_actions">Actions</th>
           </tr></thead>
           <tbody id="dpfRulesBody">
-            <tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">
+            <tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px" data-i18n="grammar_no_extensions">
               Aucune extension pour le moment — cliquez ＋ pour en ajouter.
             </td></tr>
           </tbody>
@@ -1538,19 +1539,19 @@
       <!-- ═══ I. CODIFICATIONS APPRISES PAR L'AGENT IA (DPF dynamique) ═══ -->
       <div class="grammar-card" id="dpfCardLearned" style="border:1px solid #22c55e44">
         <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>I. Codifications apprises · Comité DPF</span>
-          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfLearnedCount">0</span> entrée(s)</span>
+          <span data-i18n="grammar_h_i">I. Codifications apprises · Comité DPF</span>
+          <span class="stat-badge" style="font-size:10px;padding:3px 9px"><span id="dpfLearnedCount">0</span> <span data-i18n="grammar_n_entrees">entrée(s)</span></span>
           <span class="stat-badge" id="dpfReviewSummary" style="font-size:10px;padding:3px 9px"></span>
           <span style="flex:1"></span>
           <select id="dpfReviewFilter" onchange="renderLearnedDPF()" style="padding:5px 8px;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text)">
-            <option value="">Tous les statuts</option>
-            <option value="propose">Proposées</option>
-            <option value="valide">Validées</option>
-            <option value="rejete">Rejetées</option>
+            <option value="" data-i18n="grammar_all_statuses">Tous les statuts</option>
+            <option value="propose" data-i18n="grammar_status_proposed">Proposées</option>
+            <option value="valide" data-i18n="grammar_status_validated">Validées</option>
+            <option value="rejete" data-i18n="grammar_status_rejected">Rejetées</option>
           </select>
-          <button class="btn-ghost" onclick="refreshLearnedDPF()" style="padding:5px 10px;font-size:10.5px">↻ Rafraîchir</button>
-          <button class="btn-ghost" onclick="exportDpfGenesis('registre')" style="padding:5px 10px;font-size:10.5px" title="Registre au format de la feuille DPF-2 (filtre de statut appliqué)">⬇ DPF-genesis</button>
-          <button class="btn-reset" onclick="clearLearnedDPF()" style="padding:5px 10px;font-size:10.5px" title="Supprimer toutes les codifications apprises">✕ Vider</button>
+          <button class="btn-ghost" onclick="refreshLearnedDPF()" style="padding:5px 10px;font-size:10.5px">↻ <span data-i18n="grammar_refresh">Rafraîchir</span></button>
+          <button class="btn-ghost" onclick="exportDpfGenesis('registre')" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_dpf_genesis_title" title="Registre au format de la feuille DPF-2 (filtre de statut appliqué)">⬇ DPF-genesis</button>
+          <button class="btn-reset" onclick="clearLearnedDPF()" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_clear_learned_title" title="Supprimer toutes les codifications apprises">✕ <span data-i18n="grammar_clear">Vider</span></button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
           Cette section est mise à jour automatiquement par l'<strong>Agent IA</strong> à chaque
@@ -1566,16 +1567,16 @@
         <div style="overflow-x:auto">
         <table class="grammar-table">
           <thead><tr>
-            <th style="width:22%">Question / Libellé</th>
+            <th style="width:22%" data-i18n="grammar_th_question_label">Question / Libellé</th>
             <th style="width:20%">Code PHAKTS</th>
             <th style="width:12%">Transcode</th>
-            <th style="width:14%">Modalités</th>
+            <th style="width:14%" data-i18n="th_pf_modalites">Modalités</th>
             <th style="width:14%">Factum</th>
-            <th style="width:8%">Statut</th>
-            <th style="width:10%;text-align:center">Décision</th>
+            <th style="width:8%" data-i18n="grammar_th_status">Statut</th>
+            <th style="width:10%;text-align:center" data-i18n="grammar_th_decision">Décision</th>
           </tr></thead>
           <tbody id="dpfLearnedBody">
-            <tr><td colspan="7" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);font-style:italic;padding:18px" data-i18n="grammar_no_learned">
               Aucune codification apprise pour le moment.
             </td></tr>
           </tbody>
@@ -1591,36 +1592,36 @@
 
     <label class="section-label" style="margin-bottom:16px">
       ▸ Fichier XLSForm
-      <span>Aperçu du format KoboToolbox généré à partir de vos résultats — vérifiez avant de télécharger ou de déployer directement</span>
+      <span data-i18n="xlsform_intro">Aperçu du format KoboToolbox généré à partir de vos résultats — vérifiez avant de télécharger ou de déployer directement</span>
     </label>
 
     <input type="file" id="xlsformImportInput" accept=".xlsx" style="display:none" onchange="importXLSFormFile(this.files[0])">
 
     <div id="xlsformEmptyState" style="display:none;text-align:center;padding:60px 20px;color:var(--text3);border:1px dashed var(--border);border-radius:12px">
-      Aucun résultat codifié pour le moment. Retournez à l'onglet <strong>⊞ Résultats</strong> pour générer des codifications,
-      ou importez un XLSForm existant à corriger aux normes PHAKTS.
+      <span data-i18n="xlsform_empty_1">Aucun résultat codifié pour le moment. Retournez à l'onglet</span> <strong>⊞ <span data-i18n="tab_resultats">Résultats</span></strong> <span data-i18n="xlsform_empty_2">pour générer des codifications,
+      ou importez un XLSForm existant à corriger aux normes PHAKTS.</span>
       <div style="margin-top:16px">
-        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 Importer XLSForm</button>
+        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 <span data-i18n="xlsform_import">Importer XLSForm</span></button>
       </div>
     </div>
 
     <div id="xlsformPreviewSection">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-        <button class="btn-ghost" onclick="renderXlsformPreview()" style="padding:8px 16px;font-size:12px">↻ Actualiser l'aperçu</button>
-        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 Importer XLSForm</button>
-        <button class="btn-ghost" onclick="verifyXlsformPhaktsCompliance()" title="Corrige les codes PF/Question de tous les résultats actuels aux normes de la grammaire PHAKTS, à partir du libellé (hors-ligne, sans appel IA)" style="padding:8px 16px;font-size:12px">✓ Vérification de la conformité PHAKTS</button>
+        <button class="btn-ghost" onclick="renderXlsformPreview()" style="padding:8px 16px;font-size:12px">↻ <span data-i18n="xlsform_refresh">Actualiser l'aperçu</span></button>
+        <button class="btn-ghost" onclick="document.getElementById('xlsformImportInput').click()" style="padding:8px 16px;font-size:12px">📥 <span data-i18n="xlsform_import">Importer XLSForm</span></button>
+        <button class="btn-ghost" onclick="verifyXlsformPhaktsCompliance()" data-i18n-title="xlsform_verify_title" title="Corrige les codes PF/Question de tous les résultats actuels aux normes de la grammaire PHAKTS, à partir du libellé (hors-ligne, sans appel IA)" style="padding:8px 16px;font-size:12px">✓ <span data-i18n="xlsform_verify">Vérification de la conformité PHAKTS</span></button>
         <span style="flex:1"></span>
         <button class="btn-green" onclick="downloadXLSForm()" style="padding:8px 18px;font-size:12px">
-          ⬇ Télécharger XLSForm
+          ⬇ <span data-i18n="xlsform_download">Télécharger XLSForm</span>
         </button>
         <button class="btn-purple" onclick="deployXLSFormToKobo()" id="btnDeployKobo" style="padding:8px 18px;font-size:12px">
-          🚀 Déployer sur Kobo
+          🚀 <span data-i18n="xlsform_deploy">Déployer sur Kobo</span>
         </button>
       </div>
 
       <div id="xlsformQualityBox" style="display:none"></div>
 
-      <div style="font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:8px">📋 Feuille « survey » — <span id="xlsformSurveyCount">0</span> question(s)</div>
+      <div style="font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:8px">📋 <span data-i18n="xlsform_sheet_survey">Feuille « survey »</span> — <span id="xlsformSurveyCount">0</span> <span data-i18n="xlsform_question_n">question(s)</span></div>
       <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px;margin-bottom:24px">
         <table style="width:100%;border-collapse:collapse;font-size:11.5px">
           <thead>
@@ -1637,7 +1638,7 @@
         </table>
       </div>
 
-      <div style="font-size:13px;font-weight:600;color:#86efac;margin-bottom:8px">📚 Feuille « choices » — <span id="xlsformChoicesCount">0</span> option(s)</div>
+      <div style="font-size:13px;font-weight:600;color:#86efac;margin-bottom:8px">📚 <span data-i18n="xlsform_sheet_choices">Feuille « choices »</span> — <span id="xlsformChoicesCount">0</span> <span data-i18n="xlsform_option_n">option(s)</span></div>
       <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px">
         <table style="width:100%;border-collapse:collapse;font-size:11.5px">
           <thead>
@@ -1660,7 +1661,7 @@
 
     <label class="section-label" style="margin-bottom:16px">
       ▸ Questionnaire Codifié
-      <span>Importez un fichier XLSX ou CSV contenant un questionnaire déjà codifié en PHAKTS — génération instantanée du XLSForm KoboToolbox</span>
+      <span data-i18n="qcodif_intro">Importez un fichier XLSX ou CSV contenant un questionnaire déjà codifié en PHAKTS — génération instantanée du XLSForm KoboToolbox</span>
     </label>
 
     <!-- Zone de dépôt -->
@@ -1671,24 +1672,24 @@
       ondragleave="this.style.borderColor='#1e3a5f';this.style.background='#050e1c'"
       ondrop="event.preventDefault();this.style.borderColor='#1e3a5f';this.style.background='#050e1c';qcodifHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:36px;margin-bottom:10px">📂</div>
-      <div style="font-size:14px;color:#7dd3fc;font-weight:600;margin-bottom:6px">Glisser-déposer un fichier ici</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">ou cliquer pour sélectionner</div>
-      <div style="display:inline-block;padding:6px 18px;border:1px solid #38bdf8;border-radius:8px;font-size:12px;color:#38bdf8">Parcourir…</div>
-      <div style="margin-top:12px;font-size:11px;color:var(--text3)">Formats acceptés : <strong>.xlsx</strong> · <strong>.csv</strong></div>
+      <div style="font-size:14px;color:#7dd3fc;font-weight:600;margin-bottom:6px" data-i18n="qcodif_dropzone_title">Glisser-déposer un fichier ici</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px" data-i18n="qcodif_dropzone_or">ou cliquer pour sélectionner</div>
+      <div style="display:inline-block;padding:6px 18px;border:1px solid #38bdf8;border-radius:8px;font-size:12px;color:#38bdf8" data-i18n="qcodif_browse">Parcourir…</div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text3)"><span data-i18n="qcodif_formats">Formats acceptés :</span> <strong>.xlsx</strong> · <strong>.csv</strong></div>
       <input type="file" id="qcodifFileInput" accept=".xlsx,.csv" style="display:none"
         onchange="qcodifHandleFile(this.files[0])">
     </div>
 
     <!-- Format attendu -->
     <div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12px;color:var(--text3)">
-      <strong style="color:#7dd3fc">Format attendu des colonnes :</strong>
+      <strong style="color:#7dd3fc" data-i18n="qcodif_cols_title">Format attendu des colonnes :</strong>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Libellé</strong> — texte de la question</span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Libellé</strong> — <span data-i18n="qcodif_col_libelle">texte de la question</span></span>
         <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#38bdf8"><strong>Code PHAKTS</strong> — ex: Age__1Y!0&lt;N&lt;120</span>
-        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Modalités</strong> — liste des choix (optionnel)</span>
-        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#fcd34d"><strong>Skip Logic</strong> — condition de saut (optionnel)</span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#93c5fd"><strong>Modalités</strong> — <span data-i18n="qcodif_col_modalites">liste des choix (optionnel)</span></span>
+        <span style="padding:3px 10px;background:#0c2240;border:1px solid #1e4976;border-radius:5px;color:#fcd34d"><strong>Skip Logic</strong> — <span data-i18n="qcodif_col_skip">condition de saut (optionnel)</span></span>
       </div>
-      <div style="margin-top:10px;color:var(--text3)">Les noms de colonnes sont détectés automatiquement (insensible à la casse).</div>
+      <div style="margin-top:10px;color:var(--text3)" data-i18n="qcodif_cols_note">Les noms de colonnes sont détectés automatiquement (insensible à la casse).</div>
     </div>
 
     <!-- Message état -->
@@ -1697,9 +1698,9 @@
     <!-- Aperçu -->
     <div id="qcodifPreviewSection" style="display:none">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-        <div style="font-size:13px;font-weight:600;color:#7dd3fc" id="qcodifPreviewTitle">Aperçu</div>
+        <div style="font-size:13px;font-weight:600;color:#7dd3fc" id="qcodifPreviewTitle" data-i18n="qcodif_preview_title">Aperçu</div>
         <span style="flex:1"></span>
-        <button class="btn-ghost" style="padding:5px 12px;font-size:11px" onclick="qcodifClear()">✕ Effacer</button>
+        <button class="btn-ghost" style="padding:5px 12px;font-size:11px" onclick="qcodifClear()">✕ <span data-i18n="qcodif_clear">Effacer</span></button>
       </div>
 
       <div style="overflow-x:auto;border:1px solid #1e3a5f;border-radius:10px;margin-bottom:16px">
@@ -1707,9 +1708,9 @@
           <thead>
             <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
               <th style="padding:10px 12px;text-align:left;color:#7dd3fc;font-weight:600;white-space:nowrap">#</th>
-              <th style="padding:10px 12px;text-align:left;color:#7dd3fc;font-weight:600">Libellé</th>
+              <th style="padding:10px 12px;text-align:left;color:#7dd3fc;font-weight:600" data-i18n="th_libelle">Libellé</th>
               <th style="padding:10px 12px;text-align:left;color:#38bdf8;font-weight:600;font-family:var(--mono)">Code PHAKTS</th>
-              <th style="padding:10px 12px;text-align:left;color:#93c5fd;font-weight:600">Modalités</th>
+              <th style="padding:10px 12px;text-align:left;color:#93c5fd;font-weight:600" data-i18n="th_pf_modalites">Modalités</th>
               <th style="padding:10px 12px;text-align:left;color:#fcd34d;font-weight:600">Skip</th>
             </tr>
           </thead>
@@ -1719,17 +1720,17 @@
 
       <!-- Boutons d'action -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 0;border-top:1px solid #1e3a5f">
-        <button class="btn-purple" style="padding:8px 18px;font-size:12px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc" id="btnQcodifVerify" onclick="verifyQcodifCodification()" title="Vérifie chaque codification importée contre la grammaire PHAKTS, corrige ce qui ne s'y conforme pas, puis charge le résultat dans Résultats">
-          🔍 Vérification de la codification
+        <button class="btn-purple" style="padding:8px 18px;font-size:12px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc" id="btnQcodifVerify" onclick="verifyQcodifCodification()" data-i18n-title="qcodif_verify_title" title="Vérifie chaque codification importée contre la grammaire PHAKTS, corrige ce qui ne s'y conforme pas, puis charge le résultat dans Résultats">
+          🔍 <span data-i18n="qcodif_verify">Vérification de la codification</span>
         </button>
         <button class="btn-add" style="padding:8px 18px;font-size:12px" id="btnQcodifResults" onclick="qcodifLoadToResults()">
-          ⊞ Charger dans Résultats
+          ⊞ <span data-i18n="results_load">Charger dans Résultats</span>
         </button>
         <button class="btn-purple" style="padding:8px 18px;font-size:12px" id="btnQcodifXlsform" onclick="qcodifDownloadXLSForm()">
           📘 XLSForm KoboToolbox
         </button>
         <button class="btn-purple" style="padding:8px 18px;font-size:12px;background:#1a3a2a;border-color:#22c55e55;color:#86efac" id="btnQcodifXlsx" onclick="qcodifDownloadXLSX()">
-          📊 Télécharger XLSX
+          📊 <span data-i18n="qcodif_download_xlsx">Télécharger XLSX</span>
         </button>
         <span id="qcodifCount" style="font-size:11px;color:var(--text3);margin-left:4px"></span>
       </div>
@@ -1754,7 +1755,7 @@
       ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:30px;margin-bottom:8px">🛠</div>
       <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px" data-i18n="corr_dropzone_title">Glisser-déposer le questionnaire à vérifier</div>
-      <div style="font-size:12px;color:var(--text2)" data-i18n="corr_dropzone_help">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
+      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
       <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
     </div>
 
@@ -1952,12 +1953,14 @@ function renderLearnedDPF() {
   const counts = { propose: 0, valide: 0, rejete: 0 };
   items.forEach(it => { counts[it.statut || 'propose'] += 1; });
   const summary = document.getElementById('dpfReviewSummary');
-  if (summary) summary.textContent = `${counts.valide} validée(s) · ${counts.propose} proposée(s) · ${counts.rejete} rejetée(s)`;
+  const tg = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (summary) summary.textContent = tg('grammar_review_summary', { valide: counts.valide, propose: counts.propose, rejete: counts.rejete },
+    `${counts.valide} validée(s) · ${counts.propose} proposée(s) · ${counts.rejete} rejetée(s)`);
   const filter = (document.getElementById('dpfReviewFilter') || {}).value || '';
   const shown = items.map((it, idx) => ({ it, idx })).filter(({ it }) => !filter || (it.statut || 'propose') === filter);
   if (!shown.length) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">'
-      + (items.length ? 'Aucune codification avec ce statut.' : 'Aucune codification apprise pour le moment.') + '</td></tr>';
+      + (items.length ? tg('grammar_no_match_status', null, 'Aucune codification avec ce statut.') : tg('grammar_no_learned', null, 'Aucune codification apprise pour le moment.')) + '</td></tr>';
     return;
   }
   const codes = registryTranscodes(items);
@@ -2134,14 +2137,15 @@ function removeLearnedDPFEntry(idx) {
 }
 
 function clearLearnedDPF() {
-  if (!confirm('Supprimer TOUTES les codifications apprises ?\n\nCette action est irréversible.')) return;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!confirm(t('grammar_confirm_clear_learned', null, 'Supprimer TOUTES les codifications apprises ?\n\nCette action est irréversible.'))) return;
   try { localStorage.removeItem('phakts_learned'); } catch (_) {}
   if (isApiAvailable) {
     apiFetch('/api/learned', { method: 'DELETE' }).catch(() => {});
   }
   renderLearnedDPF();
   refreshAgentDpfCount();
-  showStatus('DPF vidé.', 'info');
+  showStatus(t('grammar_dpf_cleared', null, 'DPF vidé.'), 'info');
 }
 
 function resetAgentChat() {
@@ -2149,16 +2153,17 @@ function resetAgentChat() {
   const chat = document.getElementById('agentChat');
   if (chat) {
     chat.innerHTML = '';
+    const ta = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
     const offlineHint = isApiAvailable
       ? ""
-      : "\n\n🛜 *Serveur API non détecté — je passerai automatiquement en mode hors ligne (codifications via le modèle PHAKTS local + exemples mémorisés du DPF).*";
-    addAgentMessage('assistant',
+      : ta('agent_offline_hint', null, "\n\n🛜 *Serveur API non détecté — je passerai automatiquement en mode hors ligne (codifications via le modèle PHAKTS local + exemples mémorisés du DPF).*");
+    addAgentMessage('assistant', ta('agent_welcome', null,
       "👋 Bonjour, je suis votre **Agent IA Expert PHAKTS**.\n\n" +
       "Je peux :\n" +
       "• **Codifier** une ou plusieurs questions selon la grammaire PHAKTS\n" +
       "• **Expliquer** une règle ou une convention syntaxique (mode en ligne)\n" +
       "• **Apprendre** une nouvelle codification que vous validez (sauvegardée dans le DPF)\n\n" +
-      "Posez-moi votre première question ou collez vos questions à codifier 👇" + offlineHint
+      "Posez-moi votre première question ou collez vos questions à codifier 👇") + offlineHint
     );
   }
 }
@@ -2246,7 +2251,8 @@ function addAgentMessage(role, content, items, saved) {
   if (isUser) {
     const b = document.createElement('div');
     b.style.cssText='max-width:88%;margin-left:auto;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;white-space:pre-wrap;word-wrap:break-word';
-    b.innerHTML='<div style="font-size:10px;opacity:.65;margin-bottom:5px;font-family:var(--mono);letter-spacing:.06em">VOUS</div>'+_esc(content);
+    const tu = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+    b.innerHTML='<div style="font-size:10px;opacity:.65;margin-bottom:5px;font-family:var(--mono);letter-spacing:.06em">'+_esc(tu('agent_you', null, 'VOUS'))+'</div>'+_esc(content);
     wrap.appendChild(b);
     chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight; return;
   }
@@ -2258,7 +2264,7 @@ function addAgentMessage(role, content, items, saved) {
   /* label agent */
   const lbl = document.createElement('div');
   lbl.style.cssText='font-size:10px;opacity:.6;padding:10px 14px 0;font-family:var(--mono);letter-spacing:.06em';
-  lbl.textContent='🤖 AGENT PHAKTS';
+  lbl.textContent='🤖 ' + ((window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d))('agent_label', null, 'AGENT PHAKTS');
   bubble.appendChild(lbl);
 
   /* prose (JSON retiré) */
@@ -2282,15 +2288,18 @@ function addAgentMessage(role, content, items, saved) {
     const bar = document.createElement('div');
     bar.style.cssText='margin-top:6px;padding:9px 14px;background:#081a10;border:1px solid #22c55e33;border-radius:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
 
+    const tb18 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
     const countSpan = document.createElement('span');
     countSpan.style.cssText='font-size:12px;color:#86efac;font-weight:600';
-    countSpan.textContent=`📦 ${items.length} codification${items.length>1?'s':''} générée${items.length>1?'s':''}`;
+    countSpan.textContent='📦 ' + tb18(items.length > 1 ? 'agent_n_codifs_other' : 'agent_n_codifs_one', { n: items.length },
+      `${items.length} codification${items.length>1?'s':''} générée${items.length>1?'s':''}`);
     bar.appendChild(countSpan);
 
     if (saved) {
       const savedSpan = document.createElement('span');
       savedSpan.style.cssText='font-size:11px;color:#4ade80;font-weight:700';
-      savedSpan.textContent=`✓ ${saved} sauvegardée${saved>1?'s':''} dans le DPF`;
+      savedSpan.textContent='✓ ' + tb18(saved > 1 ? 'agent_n_saved_other' : 'agent_n_saved_one', { n: saved },
+        `${saved} sauvegardée${saved>1?'s':''} dans le DPF`);
       bar.appendChild(savedSpan);
     }
 
@@ -2301,7 +2310,7 @@ function addAgentMessage(role, content, items, saved) {
     const btnAll = document.createElement('button');
     btnAll.className='btn-add';
     btnAll.style.cssText='padding:5px 14px;font-size:11px';
-    btnAll.textContent='↪ Insérer tout dans Résultats';
+    btnAll.textContent='↪ ' + tb18('agent_insert_all', null, 'Insérer tout dans Résultats');
     btnAll.addEventListener('click', () => agentImportToResults(items));
     bar.appendChild(btnAll);
     wrap.appendChild(bar);
@@ -3194,20 +3203,21 @@ function showStatus(msg, type = 'info') {
 
 // ─── Type tag helper ──────────────────────────────────────────────────────────
 function typeTag(code) {
+  const tt = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   if (code.includes('__B')) return {label:'Boolean', bg:'#1e3a5f', fg:'#7dd3fc'};
   const generatedKind = PHAKTS_CORE.classifyCode(code).kind;
   if (generatedKind === 'geopoint') return {label:'GPS', bg:'#1a3a3a', fg:'#5eead4'};
-  if (generatedKind === 'trilean') return {label:'Triléen', bg:'#1e3a5f', fg:'#7dd3fc'};
-  if (generatedKind === 'metadata' || generatedKind === 'generated') return {label:'Kobo auto', bg:'#1a3a3a', fg:'#5eead4'};
-  if (code.includes('__X') && code.includes('1*1')) return {label:'Select 1', bg:'#1a3a2a', fg:'#86efac'};
+  if (generatedKind === 'trilean') return {label: tt('type_trilean', null, 'Triléen'), bg:'#1e3a5f', fg:'#7dd3fc'};
+  if (generatedKind === 'metadata' || generatedKind === 'generated') return {label: tt('type_kobo_auto', null, 'Kobo auto'), bg:'#1a3a3a', fg:'#5eead4'};
+  if (code.includes('__X') && code.includes('1*1')) return {label: tt('type_select1', null, 'Select 1'), bg:'#1a3a2a', fg:'#86efac'};
   if (code.includes('__SRC')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
   if (code.includes('__X')) return {label:'Multi', bg:'#2d1a3a', fg:'#d8b4fe'};
-  if (code.includes('__Z!1*Tel')) return {label:'Téléphone', bg:'#1a3040', fg:'#67e8f9'};
-  if (code.includes('__Z')) return {label:'Texte', bg:'#3a2a1a', fg:'#fbbf24'};
-  if (code.includes('__A')) return {label:'Date', bg:'#3a1a1a', fg:'#f87171'};
-  if (code.includes('__P')) return {label:'Photo', bg:'#3a1a2a', fg:'#f9a8d4'};
-  if (/__1(?:[YMWDH])?(?=!|$)/.test(code)) return {label:'Entier', bg:'#1a2a3a', fg:'#67e8f9'};
-  return {label:'Autre', bg:'#2a2a2a', fg:'#94a3b8'};
+  if (code.includes('__Z!1*Tel')) return {label: tt('type_telephone', null, 'Téléphone'), bg:'#1a3040', fg:'#67e8f9'};
+  if (code.includes('__Z')) return {label: tt('pill_texte', null, 'Texte'), bg:'#3a2a1a', fg:'#fbbf24'};
+  if (code.includes('__A')) return {label: tt('pill_date', null, 'Date'), bg:'#3a1a1a', fg:'#f87171'};
+  if (code.includes('__P')) return {label: tt('pill_photo', null, 'Photo'), bg:'#3a1a2a', fg:'#f9a8d4'};
+  if (/__1(?:[YMWDH])?(?=!|$)/.test(code)) return {label: tt('pill_entier', null, 'Entier'), bg:'#1a2a3a', fg:'#67e8f9'};
+  return {label: tt('type_autre', null, 'Autre'), bg:'#2a2a2a', fg:'#94a3b8'};
 }
 
 // ─── Clean pf_question: extract inline modalities into pf_modalites ──────────
@@ -3305,6 +3315,7 @@ function adminRefDisplayHint(pfQuestion) {
 }
 
 function renderTable() {
+  const tr18 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const tbody = document.getElementById('resultsBody');
   tbody.innerHTML = '';
   const title = document.getElementById('formTitle').value;
@@ -3334,7 +3345,7 @@ function renderTable() {
           <span class="type-tag" style="background:${tag.bg};color:${tag.fg};border:1px solid ${tag.fg}44">${tag.label}</span>
         </td>
         <td class="td-actions">
-          <button class="btn-icon btn-save" onclick="saveEdit(${i})" title="Sauvegarder">✓</button>
+          <button class="btn-icon btn-save" onclick="saveEdit(${i})" title="${esc(tr18('btn_save', null, 'Sauvegarder'))}">✓</button>
         </td>`;
     } else {
       tr.innerHTML = `
@@ -3347,8 +3358,8 @@ function renderTable() {
           <span class="type-tag" style="background:${tag.bg};color:${tag.fg};border:1px solid ${tag.fg}44">${tag.label}</span>
         </td>
         <td class="td-actions">
-          <button class="btn-icon btn-edit" onclick="startEdit(${i})" title="Modifier">✎</button>
-          <button class="btn-icon btn-delete" onclick="deleteRow(${i})" title="Supprimer">✕</button>
+          <button class="btn-icon btn-edit" onclick="startEdit(${i})" title="${esc(tr18('btn_modify', null, 'Modifier'))}">✎</button>
+          <button class="btn-icon btn-delete" onclick="deleteRow(${i})" title="${esc(tr18('btn_delete', null, 'Supprimer'))}">✕</button>
         </td>`;
     }
     tbody.appendChild(tr);
@@ -3746,13 +3757,14 @@ function syncDpfToGrammar() {
 }
 
 function resetDpfListes() {
-  if (!confirm('Rétablir le catalogue par défaut (DPF officiel + listes Studio) ?\nLes listes ajoutées ou modifiées ici seront perdues, pour tous les postes.')) return;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!confirm(t('grammar_confirm_reset_lists', null, 'Rétablir le catalogue par défaut (DPF officiel + listes Studio) ?\nLes listes ajoutées ou modifiées ici seront perdues, pour tous les postes.'))) return;
   applyDpfCatalogue(defaultDpfCatalogue());
   persistDpfListes();
   try { localStorage.removeItem(CORR_REGISTRY_KEY); } catch (_) {}
   _corrRegistryCache = null;
   corrRenderReference();
-  showStatus('Catalogue DPF rétabli — grammaire synchronisée.', 'success');
+  showStatus(t('grammar_catalogue_reset', null, 'Catalogue DPF rétabli — grammaire synchronisée.'), 'success');
 }
 
 /** Import de la feuille « DPF_lists_Abreviations » d'un Dictionnaire des
@@ -4354,7 +4366,8 @@ async function downloadDPF() {
 
   const saved = await saveWorkbook(workbook, 'DPF_PHAKTS_Grammaire.xlsx');
   if (saved) {
-    showStatus('Dictionnaire des Propri\u00e9t\u00e9s Fonctionnelles t\u00e9l\u00e9charg\u00e9 (XLSX).', 'success');
+    const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+    showStatus(t('grammar_dpf_downloaded', null, 'Dictionnaire des Propri\u00e9t\u00e9s Fonctionnelles t\u00e9l\u00e9charg\u00e9 (XLSX).'), 'success');
   }
 }
 
@@ -4383,7 +4396,8 @@ function persistResults() {
 }
 
 function resetResults() {
-  if (!confirm('Réinitialiser tous les résultats et les codifications mémorisées ? Cette action est irréversible.')) return;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!confirm(t('results_confirm_reset', null, 'Réinitialiser tous les résultats et les codifications mémorisées ? Cette action est irréversible.'))) return;
   results = [];
   learnedSet.clear();
   localStorage.removeItem('phakts_results');
@@ -4408,7 +4422,7 @@ function resetResults() {
       .catch(() => {});
   }
   switchTabById('input');
-  showStatus('Résultats et codifications mémorisées réinitialisés', 'info');
+  showStatus(t('results_reset_done', null, 'Résultats et codifications mémorisées réinitialisés'), 'info');
 }
 
 /**
@@ -6405,23 +6419,24 @@ async function parseXlsformSurveyAndChoices(file) {
  * de la conformité PHAKTS" pour le corriger. */
 async function importXLSFormFile(file) {
   if (!file) return;
-  if (results.length && !confirm(`Importer « ${file.name} » va REMPLACER les ${results.length} résultat(s) actuel(s). Continuer ?`)) {
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (results.length && !confirm(t('xlsform_confirm_replace', { n: results.length, name: file.name }, `Importer « ${file.name} » va REMPLACER les ${results.length} résultat(s) actuel(s). Continuer ?`))) {
     document.getElementById('xlsformImportInput').value = '';
     return;
   }
   try {
     const items = await parseXlsformSurveyAndChoices(file);
     if (!items.length) {
-      showStatus('Aucune question exploitable trouvée dans ce XLSForm (feuille "survey" vide ou uniquement des éléments structurels).', 'error');
+      showStatus(t('xlsform_err_no_questions', null, 'Aucune question exploitable trouvée dans ce XLSForm (feuille "survey" vide ou uniquement des éléments structurels).'), 'error');
       return;
     }
     results = items;
     persistResults();
     renderTable();
     switchTabById('results');
-    showStatus(`📥 ${items.length} question(s) importée(s) depuis « ${file.name} » — pas encore aux normes PHAKTS. Cliquez « ✓ Vérification de la conformité PHAKTS » (onglet Fichier XLSForm) pour les corriger.`, 'info');
+    showStatus(t('xlsform_imported', { n: items.length, name: file.name }, `📥 ${items.length} question(s) importée(s) depuis « ${file.name} » — pas encore aux normes PHAKTS. Cliquez « ✓ Vérification de la conformité PHAKTS » (onglet Fichier XLSForm) pour les corriger.`), 'info');
   } catch (e) {
-    showStatus("Échec de l'import XLSForm : " + e.message, 'error');
+    showStatus(t('xlsform_import_failed', { msg: e.message }, "Échec de l'import XLSForm : " + e.message), 'error');
   } finally {
     document.getElementById('xlsformImportInput').value = '';
   }
@@ -6464,7 +6479,8 @@ function translateXlsformRelevantToSkip(raw, oldNameToLexia, myLexia) {
 }
 
 function verifyXlsformPhaktsCompliance() {
-  if (!results.length) { showStatus('Aucun résultat à vérifier.', 'error'); return; }
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!results.length) { showStatus(t('xlsform_err_nothing_to_verify', null, 'Aucun résultat à vérifier.'), 'error'); return; }
   const originalResults = results;
   const before = results.map(it => ({ pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip }));
   const stage1 = results.map(item => {
@@ -6533,10 +6549,10 @@ function verifyXlsformPhaktsCompliance() {
   renderXlsformPreview();
 
   let msg = correctedCount > 0
-    ? `🔍 Vérification terminée — ${correctedCount} question(s) sur ${results.length} corrigée(s) aux normes PHAKTS.`
-    : `✓ Vérification terminée — les ${results.length} question(s) respectent déjà la grammaire PHAKTS.`;
-  if (relevantTranslated > 0) msg += ` ${relevantTranslated} condition(s) « relevant » reconstruite(s).`;
-  if (relevantUntranslated > 0) msg += ` ⚠ ${relevantUntranslated} condition(s) « relevant » trop complexe(s) — à recréer manuellement (colonne Skip Logic).`;
+    ? t('xlsform_verify_corrected', { n: correctedCount, total: results.length }, `🔍 Vérification terminée — ${correctedCount} question(s) sur ${results.length} corrigée(s) aux normes PHAKTS.`)
+    : t('xlsform_verify_ok', { total: results.length }, `✓ Vérification terminée — les ${results.length} question(s) respectent déjà la grammaire PHAKTS.`);
+  if (relevantTranslated > 0) msg += ' ' + t('xlsform_relevant_rebuilt', { n: relevantTranslated }, `${relevantTranslated} condition(s) « relevant » reconstruite(s).`);
+  if (relevantUntranslated > 0) msg += ' ' + t('xlsform_relevant_too_complex', { n: relevantUntranslated }, `⚠ ${relevantUntranslated} condition(s) « relevant » trop complexe(s) — à recréer manuellement (colonne Skip Logic).`);
   showStatus(msg, relevantUntranslated > 0 ? 'warning' : 'success');
 }
 
@@ -6829,7 +6845,8 @@ function addAdminWorksheet(workbook, { title, settingsRow, surveyRows, choicesRo
 }
 
 async function downloadXLSForm() {
-  if (!results.length) return alert('Aucun résultat à exporter.');
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!results.length) return alert(t('xlsform_err_nothing_to_export', null, 'Aucun résultat à exporter.'));
   await ensureExcelJsReady();
   const title = document.getElementById('formTitle').value || 'Questionnaire';
   const { surveyRows, choicesRows, settingsRow } = buildXLSForm();
@@ -6869,7 +6886,7 @@ async function downloadXLSForm() {
 
   // Optionnel — jamais bloquant pour la génération du XLSForm : Annuler ne
   // fait que sauter cette feuille, le fichier se génère quand même sans elle.
-  if (confirm("Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour générer le XLSForm sans lui)")) {
+  if (confirm(t('xlsform_confirm_guide', null, "Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour générer le XLSForm sans lui)"))) {
     addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
       { header: 'N°', key: 'n', width: 6 },
       { header: 'Variable', key: 'variable', width: 40 },
@@ -6897,8 +6914,8 @@ async function downloadXLSForm() {
   if (saved) {
     showStatus(
       warnings.length
-        ? `Téléchargement XLSForm Kobo prêt — ⚠ ${warnings.length} avertissement(s) qualité PHAKTS (voir feuille Admin).`
-        : 'Téléchargement XLSForm Kobo prêt, même hors ligne.',
+        ? t('xlsform_download_ready_warn', { n: warnings.length }, `Téléchargement XLSForm Kobo prêt — ⚠ ${warnings.length} avertissement(s) qualité PHAKTS (voir feuille Admin).`)
+        : t('xlsform_download_ready', null, 'Téléchargement XLSForm Kobo prêt, même hors ligne.'),
       warnings.length ? 'warning' : 'success'
     );
   }
@@ -6906,6 +6923,7 @@ async function downloadXLSForm() {
 
 // ─── Send XLSForm to embedded SPAD Analyzer (V2 handoff) ─────────────────────
 async function buildXLSFormBuffer() {
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   await ensureExcelJsReady();
   const title = document.getElementById('formTitle').value || 'Questionnaire';
   const { surveyRows, choicesRows, settingsRow } = buildXLSForm();
@@ -6943,7 +6961,7 @@ async function buildXLSFormBuffer() {
 
   // Optionnel — jamais bloquant : Annuler saute juste cette feuille, le
   // fichier (téléchargé ou déployé sur Kobo) se génère quand même sans elle.
-  if (confirm("Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour continuer sans lui)")) {
+  if (confirm(t('xlsform_confirm_guide', null, "Inclure le « Guide de l'enquêteur » dans ce XLSForm ?\n\n(facultatif — OK pour l'ajouter, Annuler pour continuer sans lui)"))) {
     addObjectWorksheet(workbook, "Guide de l'enquêteur", buildGuideEnqueteurRows(surveyRows), [
       { header: 'N°', key: 'n', width: 6 },
       { header: 'Variable', key: 'variable', width: 40 },
@@ -6964,11 +6982,12 @@ async function buildXLSFormBuffer() {
 // déploie en une seule requête (via l'API Kobo : /imports/ puis
 // /deployment/) plutôt que deux appels cross-origin séparés.
 async function deployXLSFormToKobo() {
-  if (!results.length) { alert('Aucun résultat à envoyer.'); return; }
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!results.length) { alert(t('xlsform_err_nothing_to_send', null, 'Aucun résultat à envoyer.')); return; }
   const btn = document.getElementById('btnDeployKobo');
   if (btn) btn.disabled = true;
   try {
-    showStatus('Préparation du XLSForm…', 'info');
+    showStatus(t('xlsform_preparing', null, 'Préparation du XLSForm…'), 'info');
     const { buffer, title } = await buildXLSFormBuffer();
     const spadUrl = await resolveSpadUrl();
 
@@ -6982,7 +7001,7 @@ async function deployXLSFormToKobo() {
     // avéré fragile en pratique entre studio.spad-analyzer... et
     // spad-analyzer... (cas réel : "Aucun XLSForm à déployer" juste après
     // un import qui venait pourtant de réussir).
-    showStatus('Déploiement dans KoboToolbox…', 'info');
+    showStatus(t('xlsform_deploying', null, 'Déploiement dans KoboToolbox…'), 'info');
     const deployRes = await fetch(`${spadUrl}/api/kobo/import-and-deploy-xlsform`, {
       method: 'POST',
       body: fd,
@@ -6995,7 +7014,7 @@ async function deployXLSFormToKobo() {
       // côté SPAD (visible dans l'aperçu), il ne manque que la connexion
       // pour finaliser le déploiement. On y amène l'utilisateur directement
       // plutôt que de le laisser deviner où aller.
-      showStatus('⚠️ Connectez-vous d\'abord à KoboToolbox pour déployer directement — ouverture…', 'error');
+      showStatus(t('xlsform_need_kobo_connect', null, '⚠️ Connectez-vous d\'abord à KoboToolbox pour déployer directement — ouverture…'), 'error');
       window.open(`${spadUrl}/kobo/connect`, '_blank', 'noopener');
       return;
     }
@@ -7003,14 +7022,14 @@ async function deployXLSFormToKobo() {
       throw new Error(data.error || `Échec du déploiement (${deployRes.status})`);
     }
 
-    showStatus(`✅ « ${esc(title)} » codifié, converti en XLSForm et déployé dans KoboToolbox.`, 'success');
+    showStatus(t('xlsform_deployed_ok', { title: esc(title) }, `✅ « ${esc(title)} » codifié, converti en XLSForm et déployé dans KoboToolbox.`), 'success');
 
     // Montre la confirmation de déploiement sur l'aperçu SPAD — ouvert dans
     // le navigateur du système, plus d'onglet "Analyse SPAD" intégré (retiré).
     window.open(`${spadUrl}/xlsform/preview`, '_blank', 'noopener');
   } catch (e) {
     console.error('[deploy-to-kobo]', e);
-    showStatus('❌ Échec du déploiement sur Kobo : ' + esc(e.message), 'error');
+    showStatus(t('xlsform_deploy_failed', { msg: esc(e.message) }, '❌ Échec du déploiement sur Kobo : ' + esc(e.message)), 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -7497,26 +7516,28 @@ function qcodifDetectCol(headers, keywords) {
  * plutôt qu'un message générique qui ne dit pas quoi faire ensuite.
  */
 function qcodifMissingCodeColError(headers) {
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const h = headers.map(s => String(s || '').toLowerCase().trim());
   const looksLikeXLSForm = h.includes('type') && h.includes('name') && h.includes('label');
   if (looksLikeXLSForm) {
-    return new Error(
+    return new Error(t('qcodif_err_looks_like_xlsform', null,
       'Ce fichier ressemble à un XLSForm KoboToolbox brut (feuille « survey », colonnes type/name/label), ' +
       'pas à un questionnaire codifié PHAKTS. Pour le vérifier et le corriger, utilisez l\'onglet « 🛠 Correction DPF » ; ' +
       'pour l\'importer ici, utilisez plutôt le fichier généré par le bouton ' +
       '« 📗 XLSX Codifié (PHAKTS) » (onglet Résultats) — colonnes Libellé / PF-Question / PF-Modalités / Skip Logic.'
-    );
+    ));
   }
-  return new Error('Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', '));
+  return new Error(t('qcodif_err_missing_code_col', { headers: headers.join(', ') }, 'Colonne « Code PHAKTS » introuvable. En-têtes détectés : ' + headers.join(', ')));
 }
 
 /* Parse un fichier XLSX ou CSV et peuple qcodifItems */
 async function qcodifHandleFile(file) {
   if (!file) return;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   qcodifClear();
 
   const ext = file.name.split('.').pop().toLowerCase();
-  qcodifSetStatus(`Lecture de « ${file.name } »…`, 'info');
+  qcodifSetStatus(t('qcodif_reading', { name: file.name }, `Lecture de « ${file.name } »…`), 'info');
 
   try {
     if (ext === 'csv') {
@@ -7524,18 +7545,18 @@ async function qcodifHandleFile(file) {
     } else if (ext === 'xlsx' || ext === 'xls') {
       await qcodifParseXLSX(file);
     } else {
-      qcodifSetStatus('Format non supporté. Utilisez .xlsx ou .csv', 'error');
+      qcodifSetStatus(t('qcodif_err_format', null, 'Format non supporté. Utilisez .xlsx ou .csv'), 'error');
       return;
     }
 
     if (!qcodifItems.length) {
-      qcodifSetStatus('Aucune donnée trouvée. Vérifiez le format du fichier.', 'error');
+      qcodifSetStatus(t('qcodif_err_no_data', null, 'Aucune donnée trouvée. Vérifiez le format du fichier.'), 'error');
       return;
     }
     qcodifRenderPreview();
-    qcodifSetStatus(`✓ ${qcodifItems.length} question(s) importée(s) depuis « ${file.name} »`, 'success');
+    qcodifSetStatus(t('qcodif_imported', { n: qcodifItems.length, name: file.name }, `✓ ${qcodifItems.length} question(s) importée(s) depuis « ${file.name} »`), 'success');
   } catch (err) {
-    qcodifSetStatus('Erreur de lecture : ' + err.message, 'error');
+    qcodifSetStatus(t('qcodif_err_read', { msg: err.message }, 'Erreur de lecture : ' + err.message), 'error');
     console.error('[qcodif]', err);
   }
 }
@@ -7634,8 +7655,11 @@ function qcodifRenderPreview() {
   const count   = document.getElementById('qcodifCount');
   if (!section || !tbody) return;
 
-  title.textContent = `Aperçu — ${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''}`;
-  count.textContent = `${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''} prête${qcodifItems.length > 1 ? 's' : ''}`;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  title.textContent = t(qcodifItems.length > 1 ? 'qcodif_preview_title_n_other' : 'qcodif_preview_title_n_one', { n: qcodifItems.length },
+    `Aperçu — ${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''}`);
+  count.textContent = t(qcodifItems.length > 1 ? 'qcodif_ready_n_other' : 'qcodif_ready_n_one', { n: qcodifItems.length },
+    `${qcodifItems.length} question${qcodifItems.length > 1 ? 's' : ''} prête${qcodifItems.length > 1 ? 's' : ''}`);
 
   tbody.innerHTML = '';
   qcodifItems.forEach((item, i) => {
@@ -7650,7 +7674,7 @@ function qcodifRenderPreview() {
     const moreChips = (item.pf_modalites || '').split(/[,|]/).filter(Boolean).length > 5
       ? `<span style="font-size:10px;color:var(--text3)">+${(item.pf_modalites||'').split(/[,|]/).filter(Boolean).length - 5}</span>` : '';
     const correctedBadge = item._corrected
-      ? `<span title="Corrigée par la vérification de la grammaire PHAKTS" style="display:inline-block;margin-left:6px;padding:1px 6px;font-size:9px;font-weight:700;border-radius:3px;background:#0f2e1a;border:1px solid #4ade8055;color:#4ade80;vertical-align:middle">✓ CORRIGÉE</span>`
+      ? `<span title="${_esc(t('qcodif_corrected_title', null, 'Corrigée par la vérification de la grammaire PHAKTS'))}" style="display:inline-block;margin-left:6px;padding:1px 6px;font-size:9px;font-weight:700;border-radius:3px;background:#0f2e1a;border:1px solid #4ade8055;color:#4ade80;vertical-align:middle">✓ ${t('qcodif_corrected', null, 'CORRIGÉE')}</span>`
       : '';
 
     tr.innerHTML = `
@@ -7741,18 +7765,22 @@ function verifyQcodifCodification() {
 
   qcodifRenderPreview();
 
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   if (correctedCount > 0) {
     console.log('[qcodif-verify] Corrections appliquées (grammaire PHAKTS) :', changes);
     const questionWord = correctedCount > 1 ? 'questions' : 'question';
     const verbWord = correctedCount > 1 ? 'ne respectaient pas' : 'ne respectait pas';
     const fixedWord = correctedCount > 1 ? 'ont été corrigées' : 'a été corrigée';
     qcodifSetStatus(
-      `🔍 Vérification terminée — ${correctedCount} ${questionWord} sur ${qcodifItems.length} ${verbWord} la grammaire PHAKTS et ${fixedWord} (repérée${correctedCount > 1 ? 's' : ''} en vert ci-dessus, détail dans la console navigateur). Chargement dans Résultats…`,
+      t(correctedCount > 1 ? 'qcodif_verify_corrected_n_other' : 'qcodif_verify_corrected_n_one',
+        { n: correctedCount, total: qcodifItems.length },
+        `🔍 Vérification terminée — ${correctedCount} ${questionWord} sur ${qcodifItems.length} ${verbWord} la grammaire PHAKTS et ${fixedWord} (repérée${correctedCount > 1 ? 's' : ''} en vert ci-dessus, détail dans la console navigateur). Chargement dans Résultats…`),
       'success'
     );
   } else {
     qcodifSetStatus(
-      `✓ Vérification terminée — les ${qcodifItems.length} codification(s) importée(s) respectent déjà la grammaire PHAKTS. Chargement dans Résultats…`,
+      t('qcodif_verify_ok', { total: qcodifItems.length },
+        `✓ Vérification terminée — les ${qcodifItems.length} codification(s) importée(s) respectent déjà la grammaire PHAKTS. Chargement dans Résultats…`),
       'success'
     );
   }
@@ -7769,7 +7797,10 @@ function qcodifLoadToResults(silent) {
   // silent: appelé depuis verifyQcodifCodification(), qui a déjà affiché un
   // message plus précis (nombre de corrections) — ne pas l'écraser aussitôt
   // par ce message générique.
-  if (!silent) showStatus(`✓ ${cleaned.length} question(s) chargée(s) dans Résultats`, 'success');
+  if (!silent) {
+    const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+    showStatus(t('qcodif_loaded_to_results', { n: cleaned.length }, `✓ ${cleaned.length} question(s) chargée(s) dans Résultats`), 'success');
+  }
   switchTabById('results');
 }
 
@@ -8658,16 +8689,19 @@ async function corrDownloadReport() {
 
 function corrLoadToResults() {
   if (!corr) return;
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const sheets = corr.sheets.filter(sh => sh.kind === 'codified' || sh.kind === 'libelles');
   if (!sheets.length) return;
   const items = sheets.flatMap(sh => PHAKTS_AUDIT.correctedItems(sh.res, sh.items));
-  if (results.length && !confirm('Charger ' + items.length + ' question(s) corrigée(s) va REMPLACER les ' + results.length + ' résultat(s) actuel(s). Continuer ?')) return;
+  if (results.length && !confirm(t('corr_confirm_replace', { n: items.length, total: results.length }, 'Charger ' + items.length + ' question(s) corrigée(s) va REMPLACER les ' + results.length + ' résultat(s) actuel(s). Continuer ?'))) return;
   results = items.map(it => ({ libelle: it.libelle, pf_question: it.pf_question, pf_modalites: it.pf_modalites, pf_skip: it.pf_skip }));
   persistResults();
   renderTable();
   switchTabById('results');
   const open = corr.sheets.reduce((n, sh) => n + sh.res.items.filter(i => i.status === 'a_valider').length, 0);
-  showStatus('⊞ ' + items.length + ' question(s) corrigée(s) chargée(s) dans Résultats' + (open ? ' — ' + open + ' encore à valider.' : '.'), open ? 'warning' : 'success');
+  const base = t('corr_loaded_to_results', { n: items.length }, '⊞ ' + items.length + ' question(s) corrigée(s) chargée(s) dans Résultats');
+  const suffix = open ? ' — ' + t('corr_still_pending', { n: open }, open + ' encore à valider.') : '.';
+  showStatus(base + suffix, open ? 'warning' : 'success');
 }
 
 /* Réinitialise le panel */
