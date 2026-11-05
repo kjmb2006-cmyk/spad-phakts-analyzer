@@ -31,12 +31,24 @@
     }
   } catch (_) {}
 </script>
+<script>
+  // Applique la langue enregistrée le plus tôt possible (même motif que le thème
+  // ci-dessus) : évite un flash de contenu français avant que phakts-i18n.js et
+  // applyTranslations() ne s'exécutent.
+  try {
+    var __l = localStorage.getItem('phakts_lang');
+    if (__l && ['fr','en','es','pt'].indexOf(__l) >= 0) {
+      document.documentElement.setAttribute('lang', __l);
+    }
+  } catch (_) {}
+</script>
 <script src="./vendor/exceljs.min.js"></script>
 <script src="./vendor/mammoth.browser.min.js"></script>
 <script src="./vendor/ocrad.js"></script>
 <script src="./phakts-core.js"></script>
 <script src="./dpf-registry.js"></script>
 <script src="./phakts-audit.js"></script>
+<script src="./phakts-i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -165,11 +177,37 @@
     background: var(--accent); color: #ffffff;
     box-shadow: 0 2px 6px rgba(37,99,235,0.35);
   }
+
+  /* ── Sélecteur de langue (même motif que le sélecteur d'apparence, classe
+     distincte pour que setTheme() ne touche jamais à ces boutons) ── */
+  .lang-switcher {
+    display: inline-flex; gap: 0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border2);
+    border-radius: 20px; padding: 3px;
+    align-items: center;
+  }
+  .lang-switcher button {
+    background: transparent; border: none; color: var(--text3);
+    padding: 5px 10px; font-size: 11px; cursor: pointer;
+    border-radius: 16px; font-family: var(--mono); font-weight: 700;
+    letter-spacing: 0.04em; transition: all 0.18s;
+  }
+  .lang-switcher button:hover { color: var(--accent2); }
+  .lang-switcher button.active {
+    background: var(--accent); color: #ffffff;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.35);
+  }
   :root[data-theme="light"] .theme-switcher {
     background: rgba(255,255,255,0.18);
     border-color: rgba(255,255,255,0.35);
   }
   :root[data-theme="light"] .theme-switcher button { color: #e0eaff; }
+  :root[data-theme="light"] .lang-switcher {
+    background: rgba(255,255,255,0.18);
+    border-color: rgba(255,255,255,0.35);
+  }
+  :root[data-theme="light"] .lang-switcher button { color: #e0eaff; }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -802,6 +840,12 @@
     </div>
   </div>
   <div class="header-right">
+    <div class="lang-switcher" id="langSwitcher" role="group" aria-label="Langue / Language">
+      <button data-lang-set="fr" title="Français" onclick="PHAKTS_I18N.setLang('fr')">FR</button>
+      <button data-lang-set="en" title="English" onclick="PHAKTS_I18N.setLang('en')">EN</button>
+      <button data-lang-set="es" title="Español" onclick="PHAKTS_I18N.setLang('es')">ES</button>
+      <button data-lang-set="pt" title="Português" onclick="PHAKTS_I18N.setLang('pt')">PT</button>
+    </div>
     <div class="theme-switcher" id="themeSwitcher" role="group" aria-label="Apparence">
       <button data-theme-set="light" title="Apparence claire" onclick="setTheme('light')">☀️ Clair</button>
       <button data-theme-set="mixed" title="Apparence mixte (en-tête sombre, contenu clair)" onclick="setTheme('mixed')">◐ Mixte</button>
@@ -840,14 +884,14 @@
 
 <!-- ── TABS ── -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('input', this)">▶ Codification</button>
-  <button class="tab" onclick="switchTab('upload', this)">⬆ Uploads</button>
-  <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ Résultats <span id="resultsCount" style="display:none"></span></button>
-  <button class="tab" onclick="switchTab('xlsform', this)" id="tabXlsform">📄 Fichier XLSForm</button>
-  <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 Questionnaire Codifié</button>
-  <button class="tab" onclick="switchTab('correction', this)" id="tabCorrection">🛠 Correction DPF</button>
-  <button class="tab" onclick="switchTab('agent', this)">🤖 Agent IA PHAKTS</button>
-  <button class="tab" onclick="switchTab('grammar', this)">⊘ Dictionnaire des Propriétés Fonctionnelles</button>
+  <button class="tab active" onclick="switchTab('input', this)">▶ <span data-i18n="tab_codification">Codification</span></button>
+  <button class="tab" onclick="switchTab('upload', this)">⬆ <span data-i18n="tab_uploads">Uploads</span></button>
+  <button class="tab" onclick="switchTab('results', this)" id="tabResults">⊞ <span data-i18n="tab_resultats">Résultats</span> <span id="resultsCount" style="display:none"></span></button>
+  <button class="tab" onclick="switchTab('xlsform', this)" id="tabXlsform">📄 <span data-i18n="tab_xlsform">Fichier XLSForm</span></button>
+  <button class="tab" onclick="switchTab('qcodif', this)" id="tabQcodif">📋 <span data-i18n="tab_qcodif">Questionnaire Codifié</span></button>
+  <button class="tab" onclick="switchTab('correction', this)" id="tabCorrection">🛠 <span data-i18n="tab_correction">Correction DPF</span></button>
+  <button class="tab" onclick="switchTab('agent', this)">🤖 <span data-i18n="tab_agent">Agent IA PHAKTS</span></button>
+  <button class="tab" onclick="switchTab('grammar', this)">⊘ <span data-i18n="tab_grammar">Dictionnaire des Propriétés Fonctionnelles</span></button>
 </div>
 
 <main>
@@ -858,17 +902,18 @@
       <span class="pill" style="background:#1e3a5f;color:#7dd3fc;border:1px solid #7dd3fc33">● Boolean __B</span>
       <span class="pill" style="background:#1a3a2a;color:#86efac;border:1px solid #86efac33">● Select_one __X!1*1</span>
       <span class="pill" style="background:#2d1a3a;color:#d8b4fe;border:1px solid #d8b4fe33">● Multi __X!1*</span>
-      <span class="pill" style="background:#1a2a3a;color:#67e8f9;border:1px solid #67e8f933">● Entier __1Y/M/W/D</span>
-      <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● Texte __Z</span>
-      <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● Date __A</span>
-      <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● Photo __P</span>
+      <span class="pill" style="background:#1a2a3a;color:#67e8f9;border:1px solid #67e8f933">● <span data-i18n="pill_entier">Entier</span> __1Y/M/W/D</span>
+      <span class="pill" style="background:#3a2a1a;color:#fbbf24;border:1px solid #fbbf2433">● <span data-i18n="pill_texte">Texte</span> __Z</span>
+      <span class="pill" style="background:#3a1a1a;color:#f87171;border:1px solid #f8717133">● <span data-i18n="pill_date">Date</span> __A</span>
+      <span class="pill" style="background:#3a1a2a;color:#f9a8d4;border:1px solid #f9a8d433">● <span data-i18n="pill_photo">Photo</span> __P</span>
       <span class="pill" style="background:#1a3a3a;color:#5eead4;border:1px solid #5eead433">● Kobo auto / GPS __G</span>
-      <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● Skip ↦ pf_skip</span>
+      <span class="pill" style="background:#2a2a1a;color:#a3e635;border:1px solid #a3e63533">● <span data-i18n="pill_skip">Skip</span> ↦ pf_skip</span>
     </div>
 
-    <label class="section-label">▸ Collez vos questions <span>(une par ligne ou numérotées)</span></label>
+    <label class="section-label">▸ <span data-i18n="input_label">Collez vos questions</span> <span data-i18n="input_label_sub">(une par ligne ou numérotées)</span></label>
     <div class="textarea-wrap">
       <textarea id="questionsInput"
+        data-i18n-placeholder="input_placeholder"
         placeholder="L'établissement dispose-t-il d'un système standardisé de collecte des données de routine ?&#10;Niveau de motivation des agents à produire des données complètes et exactes&#10;Les agents ont-ils reçu une formation adéquate sur le SIS ?&#10;Quelle est la date de dernière mise à jour du registre ?&#10;Quel est l'âge du patient ?&#10;..."
         oninput="updateCharCount()"></textarea>
       <div class="char-count" id="charCount"></div>
@@ -877,27 +922,27 @@
     <div class="error-box" id="errorBox"></div>
 
     <div style="margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg2)">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Modèle de référence</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px" data-i18n="ref_model_label">Modèle de référence</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="referenceModelSelect" class="title-input" style="max-width:340px;height:42px">
-          <option value="short">Modèle de référence (court)</option>
-          <option value="full">Modèle de référence complet (Q1-Q56)</option>
-          <option value="annotated">Modèle de référence annoté (sauts Kobo)</option>
+          <option value="short" data-i18n="ref_model_short">Modèle de référence (court)</option>
+          <option value="full" data-i18n="ref_model_full">Modèle de référence complet (Q1-Q56)</option>
+          <option value="annotated" data-i18n="ref_model_annotated">Modèle de référence annoté (sauts Kobo)</option>
         </select>
-        <button class="btn-ghost" onclick="loadSelectedReferenceModel()">Charger le modèle</button>
-        <button class="btn-purple" onclick="codifyAndExportAnnotatedReferenceModel()">Coder et exporter les 2 fichiers</button>
-        <span style="font-size:11px;color:var(--text3)">Le modèle annoté ajoute des tags `ref` et `si` pour démontrer automatiquement les sauts de questions dans Kobo.</span>
+        <button class="btn-ghost" onclick="loadSelectedReferenceModel()" data-i18n="ref_model_load">Charger le modèle</button>
+        <button class="btn-purple" onclick="codifyAndExportAnnotatedReferenceModel()" data-i18n="ref_model_export">Coder et exporter les 2 fichiers</button>
+        <span style="font-size:11px;color:var(--text3)" data-i18n="ref_model_help">Le modèle annoté ajoute des tags `ref` et `si` pour démontrer automatiquement les sauts de questions dans Kobo.</span>
       </div>
     </div>
 
     <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
       <button class="btn-primary" id="btnCodify" onclick="codify()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
-        CODIFIER AVEC PHAKTS
+        <span data-i18n="btn_codify">CODIFIER AVEC PHAKTS</span>
       </button>
-      <button class="btn-ghost" onclick="clearInput()">✕ Effacer</button>
+      <button class="btn-ghost" onclick="clearInput()">✕ <span data-i18n="btn_clear">Effacer</span></button>
       <button class="btn-ghost" id="btnViewResults" style="display:none" onclick="switchTabById('results')">
-        Voir résultats →
+        <span data-i18n="btn_view_results">Voir résultats →</span>
       </button>
     </div>
   </div>
@@ -1698,7 +1743,7 @@
 
     <label class="section-label" style="margin-bottom:16px">
       ▸ Correction DPF
-      <span>Déposez un questionnaire codifié ou un XLSForm : chaque code est contrôlé contre la grammaire PHAKTS et le DPF, les écarts sont listés, les corrections justes sont proposées</span>
+      <span data-i18n="corr_intro">Déposez un questionnaire codifié ou un XLSForm : chaque code est contrôlé contre la grammaire PHAKTS et le DPF, les écarts sont listés, les corrections justes sont proposées</span>
     </label>
 
     <div id="corrDropzone"
@@ -1708,8 +1753,8 @@
       ondragleave="this.style.borderColor='var(--border2)'"
       ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:30px;margin-bottom:8px">🛠</div>
-      <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px">Glisser-déposer le questionnaire à vérifier</div>
-      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
+      <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px" data-i18n="corr_dropzone_title">Glisser-déposer le questionnaire à vérifier</div>
+      <div style="font-size:12px;color:var(--text2)" data-i18n="corr_dropzone_help">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
       <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
     </div>
 
@@ -1722,34 +1767,34 @@
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
         <div id="corrViewToggle" style="display:inline-flex;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
-          <button class="btn-ghost" id="corrViewFindings" onclick="corrSetView('constats')" style="border:0;border-radius:0;padding:7px 14px;font-size:11px">Écarts</button>
-          <button class="btn-ghost" id="corrViewCorrected" onclick="corrSetView('corrige')" style="border:0;border-radius:0;border-left:1px solid var(--border2);padding:7px 14px;font-size:11px">Questionnaire corrigé</button>
+          <button class="btn-ghost" id="corrViewFindings" onclick="corrSetView('constats')" style="border:0;border-radius:0;padding:7px 14px;font-size:11px" data-i18n="corr_view_findings">Écarts</button>
+          <button class="btn-ghost" id="corrViewCorrected" onclick="corrSetView('corrige')" style="border:0;border-radius:0;border-left:1px solid var(--border2);padding:7px 14px;font-size:11px" data-i18n="corr_view_corrected">Questionnaire corrigé</button>
         </div>
         <span id="corrFilters" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="corrFStatus" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px">
-            <option value="pending">À valider</option>
-            <option value="applied">Corrigés</option>
-            <option value="all">Tous les écarts</option>
+            <option value="pending" data-i18n="corr_f_pending">À valider</option>
+            <option value="applied" data-i18n="corr_f_applied">Corrigés</option>
+            <option value="all" data-i18n="corr_f_all">Tous les écarts</option>
           </select>
           <select id="corrFSev" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px">
-            <option value="">Toutes sévérités</option><option>Critique</option><option>Majeure</option><option>Mineure</option>
+            <option value="" data-i18n="corr_f_all_sev">Toutes sévérités</option><option value="Critique" data-i18n="sev_Critique">Critique</option><option value="Majeure" data-i18n="sev_Majeure">Majeure</option><option value="Mineure" data-i18n="sev_Mineure">Mineure</option>
           </select>
           <select id="corrFCat" onchange="corrSetFilter()" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px"></select>
-          <input id="corrFSearch" oninput="corrSetFilter()" placeholder="Rechercher (libellé, code, règle)…" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;min-width:200px">
+          <input id="corrFSearch" oninput="corrSetFilter()" data-i18n-placeholder="corr_search_ph" placeholder="Rechercher (libellé, code, règle)…" style="background:var(--bg1);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;min-width:200px">
         </span>
         <span style="flex:1"></span>
-        <button class="btn-purple" id="corrBtnCodify" onclick="corrCodifyAll()" title="Propose puis applique un code PHAKTS (et ses modalités) à chaque libellé qui n'en a pas — codifieur hors-ligne, gratuit et instantané ; relisez ensuite l'onglet « Questionnaire corrigé »" style="display:none;padding:7px 14px;font-size:11px">✨ Codifier (hors-ligne) les libellés sans code</button>
-        <button class="btn-purple" id="corrBtnCodifyAI" onclick="corrCodifyAllAI()" title="Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant" style="display:none;padding:7px 14px;font-size:11px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc">🤖 Codifier avec l'IA PHAKTS</button>
-        <button class="btn-ghost" onclick="corrAcceptShown()" title="Applique toutes les propositions affichées (celles qui ne sont pas encore appliquées)" style="padding:7px 14px;font-size:11px">✓ Accepter les propositions affichées</button>
-        <button class="btn-ghost" onclick="corrResetDecisions()" title="Revient aux corrections sûres appliquées d'office" style="padding:7px 14px;font-size:11px">↺ Réinitialiser</button>
+        <button class="btn-purple" id="corrBtnCodify" onclick="corrCodifyAll()" data-i18n-title="corr_btn_codify_title" title="Propose puis applique un code PHAKTS (et ses modalités) à chaque libellé qui n'en a pas — codifieur hors-ligne, gratuit et instantané ; relisez ensuite l'onglet « Questionnaire corrigé »" style="display:none;padding:7px 14px;font-size:11px">✨ <span data-i18n="corr_btn_codify">Codifier (hors-ligne) les libellés sans code</span></button>
+        <button class="btn-purple" id="corrBtnCodifyAI" onclick="corrCodifyAllAI()" data-i18n-title="corr_btn_codify_ai_title" title="Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant" style="display:none;padding:7px 14px;font-size:11px;background:#1a2a4a;border-color:#38bdf855;color:#7dd3fc">🤖 <span data-i18n="corr_btn_codify_ai">Codifier avec l'IA PHAKTS</span></button>
+        <button class="btn-ghost" onclick="corrAcceptShown()" data-i18n-title="corr_btn_accept_title" title="Applique toutes les propositions affichées (celles qui ne sont pas encore appliquées)" style="padding:7px 14px;font-size:11px">✓ <span data-i18n="corr_btn_accept">Accepter les propositions affichées</span></button>
+        <button class="btn-ghost" onclick="corrResetDecisions()" data-i18n-title="corr_btn_reset_title" title="Revient aux corrections sûres appliquées d'office" style="padding:7px 14px;font-size:11px">↺ <span data-i18n="corr_btn_reset">Réinitialiser</span></button>
       </div>
 
       <div id="corrBody"></div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:16px 0;margin-top:14px;border-top:1px solid var(--border)">
-        <button class="btn-green" id="corrBtnDownload" onclick="corrDownloadCorrected()" style="padding:9px 18px;font-size:12px">⬇ Télécharger le fichier corrigé</button>
-        <button class="btn-purple" onclick="corrDownloadReport()" style="padding:9px 18px;font-size:12px">📑 Rapport de conformité (XLSX)</button>
-        <button class="btn-add" id="corrBtnResults" onclick="corrLoadToResults()" style="padding:9px 18px;font-size:12px" title="Charge le questionnaire corrigé dans l'onglet Résultats pour générer le XLSForm">⊞ Charger dans Résultats</button>
+        <button class="btn-green" id="corrBtnDownload" onclick="corrDownloadCorrected()" style="padding:9px 18px;font-size:12px">⬇ <span data-i18n="corr_btn_download">Télécharger le fichier corrigé</span></button>
+        <button class="btn-purple" onclick="corrDownloadReport()" style="padding:9px 18px;font-size:12px">📑 <span data-i18n="corr_btn_report">Rapport de conformité (XLSX)</span></button>
+        <button class="btn-add" id="corrBtnResults" onclick="corrLoadToResults()" style="padding:9px 18px;font-size:12px" data-i18n-title="corr_btn_results_title" title="Charge le questionnaire corrigé dans l'onglet Résultats pour générer le XLSForm">⊞ <span data-i18n="corr_btn_results">Charger dans Résultats</span></button>
         <span id="corrFootNote" style="font-size:11px;color:var(--text2)"></span>
       </div>
     </div>
@@ -2755,7 +2800,10 @@ function openSpadExternal() {
 function updateCharCount() {
   const q = document.getElementById('questionsInput').value;
   const n = q.split('\n').filter(l => l.trim()).length;
-  document.getElementById('charCount').textContent = n > 0 ? `${n} question${n>1?'s':''} détectée${n>1?'s':''}` : '';
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  const key = n === 1 ? 'char_count_one' : 'char_count_other';
+  document.getElementById('charCount').textContent = n > 0
+    ? t(key, { n }, `${n} question${n>1?'s':''} détectée${n>1?'s':''}`) : '';
 }
 
 function clearInput() {
@@ -4670,7 +4718,8 @@ if ('serviceWorker' in navigator) {
 // ─── Codification ─────────────────────────────────────────────────────────────
 async function codify() {
   const questions = document.getElementById('questionsInput').value.trim();
-  if (!questions) { showError('Veuillez saisir au moins une question.'); return; }
+  const t0 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  if (!questions) { showError(t0('err_no_question', null, 'Veuillez saisir au moins une question.')); return; }
 
   hideError();
   showLoading(true);
@@ -4725,12 +4774,13 @@ async function codify() {
     document.getElementById('btnViewResults').style.display = 'inline-flex';
     switchTabById('results');
     if (usedOffline) {
+      const t1 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
       let reason = '';
-      if (apiErrorData && apiErrorData.code === 'low_balance')   reason = ' — crédit Anthropic insuffisant';
-      else if (apiErrorData && apiErrorData.code === 'invalid_key') reason = ' — clé API invalide';
-      else if (apiErrorData && apiErrorData.code === 'rate_limit') reason = ' — limite de débit atteinte';
-      else if (apiErrorData && apiErrorData.code === 'overloaded') reason = ' — serveurs Anthropic saturés';
-      showStatus('⚠ Codification hors ligne (modèle de référence local)' + reason + '. Voir le détail en haut.', 'warning');
+      if (apiErrorData && apiErrorData.code === 'low_balance')   reason = t1('reason_low_balance', null, ' — crédit Anthropic insuffisant');
+      else if (apiErrorData && apiErrorData.code === 'invalid_key') reason = t1('reason_invalid_key', null, ' — clé API invalide');
+      else if (apiErrorData && apiErrorData.code === 'rate_limit') reason = t1('reason_rate_limit', null, ' — limite de débit atteinte');
+      else if (apiErrorData && apiErrorData.code === 'overloaded') reason = t1('reason_overloaded', null, ' — serveurs Anthropic saturés');
+      showStatus(t1('status_offline_fallback', null, '⚠ Codification hors ligne (modèle de référence local)') + reason + t1('status_see_detail_above', null, '. Voir le détail en haut.'), 'warning');
     }
   } catch (err) {
     showError(err.message);
@@ -4843,8 +4893,15 @@ function sanitizePhaktsItemClient(item) {
 function showApiError(payload, status) {
   const code = payload.code || '';
   const help = payload.help_url || '';
-  const details = payload.details || '';
-  const main = payload.error || 'Erreur API inconnue';
+  // api/server.js renvoie déjà `code` (low_balance/invalid_key/rate_limit/overloaded) à
+  // côté du texte français — on traduit par ce code plutôt que de faire traduire le
+  // serveur lui-même (pas de changement côté api/server.js). Repli sur le texte français
+  // d'origine pour tout code absent du dictionnaire (ex. bad_request, erreur 500 générique)
+  // — jamais un message vide ou cassé, même pour une langue/un code pas encore couvert.
+  const lookup = (window.PHAKTS_I18N && PHAKTS_I18N.lookup) || (() => null);
+  const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+  const main = (code && lookup('api_err_' + code + '_main')) || payload.error || 'Erreur API inconnue';
+  const details = (code && lookup('api_err_' + code + '_details')) || payload.details || '';
 
   let icon = '⚠️';
   if (code === 'low_balance')   icon = '💳';
@@ -4854,7 +4911,7 @@ function showApiError(payload, status) {
 
   let html = '<strong>' + icon + ' ' + esc(main) + '</strong>';
   if (details) html += '<div style="margin-top:6px;font-size:.9em;opacity:.92">' + esc(details) + '</div>';
-  if (help)    html += '<div style="margin-top:8px"><a href="' + esc(help) + '" target="_blank" style="color:#67e8f9;text-decoration:underline">Ouvrir dans le navigateur →</a></div>';
+  if (help)    html += '<div style="margin-top:8px"><a href="' + esc(help) + '" target="_blank" style="color:#67e8f9;text-decoration:underline">' + esc(t('api_err_open_browser', null, 'Ouvrir dans le navigateur →')) + '</a></div>';
 
   const box = document.getElementById('errorBox');
   if (box) {
@@ -8104,8 +8161,9 @@ function corrRender() {
       (sub ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">${sub}</div>` : '') + '</div>';
   const KIND_LABEL = { xlsform: 'XLSForm « ', codified: 'Questionnaire codifié « ', libelles: 'Liste de libellés « ', data: 'Fichier de données « ' };
   const modeLabel = corr.sheets.map(sh => KIND_LABEL[sh.kind] + sh.name + ' » (' + sh.items.length + (sh.kind === 'data' ? ' variables' : '') + ')').join(' · ');
+  const lf0 = (window.PHAKTS_I18N && PHAKTS_I18N.labelFor) || ((k, v) => v);
   const sevChips = ['Critique', 'Majeure', 'Mineure'].map(k =>
-    `<span style="color:${CORR_SEV_COLOR[k]}">${t.sevOpen[k]} ${k.toLowerCase()}${t.sevOpen[k] > 1 ? 's' : ''}</span>`).join(' · ');
+    `<span style="color:${CORR_SEV_COLOR[k]}">${t.sevOpen[k]} ${_esc(lf0('severity', k).toLowerCase())}${t.sevOpen[k] > 1 ? 's' : ''}</span>`).join(' · ');
   const doneW = pct(t.conformes + t.corriges), initW = pct(t.conformes);
   document.getElementById('corrSummary').innerHTML =
     `<div style="font-size:12px;color:var(--text2);margin-bottom:10px">📄 <strong style="color:var(--text)">${_esc(corr.fileName)}</strong> — ${_esc(modeLabel)}</div>` +
@@ -8127,23 +8185,30 @@ function corrRender() {
   corr.sheets.forEach(sh => sh.res.findings.forEach(f => cats.add(f.category)));
   const catSel = document.getElementById('corrFCat');
   const keep = corr.filter.cat;
-  catSel.innerHTML = '<option value="">Toutes catégories</option>' + [...cats].sort().map(c => `<option${c === keep ? ' selected' : ''}>${_esc(c)}</option>`).join('');
+  // value= reste le jeton français (ce que fi.category porte réellement, comparé en l'état à
+  // corr.filter.cat) ; seul le texte affiché est traduit — voir PHAKTS_I18N.labelFor().
+  const labelFor = (window.PHAKTS_I18N && PHAKTS_I18N.labelFor) || ((k, v) => v);
+  catSel.innerHTML = '<option value="">' + _esc(((window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k,p,d)=>d))('corr_f_all_cat', null, 'Toutes catégories')) + '</option>' +
+    [...cats].sort().map(c => `<option value="${_esc(c)}"${c === keep ? ' selected' : ''}>${_esc(labelFor('category', c))}</option>`).join('');
 
   // les deux boutons portent sur les MÊMES lignes « code.vide » encore en attente — l'un ou
   // l'autre (ou les deux tour à tour) selon la qualité souhaitée ; chacun reste une proposition
   const uncoded = corr.sheets.reduce((n, sh) => n + sh.res.findings.filter(f => f.rule === 'code.vide' && !f.applied).length, 0);
   const codifiable = corr.sheets.reduce((n, sh) => n + sh.res.findings.filter(f => f.rule === 'code.vide' && f.after != null && !f.applied).length, 0);
+  const t2 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const btnCodify = document.getElementById('corrBtnCodify');
   btnCodify.style.display = codifiable ? '' : 'none';
-  btnCodify.textContent = '✨ Codifier (hors-ligne) les ' + codifiable + ' libellé' + (codifiable > 1 ? 's' : '') + ' sans code';
+  btnCodify.textContent = t2(codifiable > 1 ? 'corr_btn_codify_n_other' : 'corr_btn_codify_n_one', { n: codifiable },
+    '✨ Codifier (hors-ligne) les ' + codifiable + ' libellé' + (codifiable > 1 ? 's' : '') + ' sans code');
   const btnCodifyAI = document.getElementById('corrBtnCodifyAI');
   btnCodifyAI.style.display = uncoded ? '' : 'none';
   btnCodifyAI.disabled = !isApiAvailable;
   btnCodifyAI.style.opacity = isApiAvailable ? '1' : '.45';
   btnCodifyAI.title = isApiAvailable
-    ? "Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant"
-    : 'Serveur API injoignable (voir « SERVEUR API » en haut de page) — la codification par IA est indisponible hors ligne.';
-  btnCodifyAI.textContent = "🤖 Codifier avec l'IA PHAKTS (" + uncoded + ' libellé' + (uncoded > 1 ? 's' : '') + ')';
+    ? t2('corr_btn_codify_ai_title', null, "Même chose avec l'IA PHAKTS (/api/codify, le même modèle que l'onglet Codification) : reconnaît mieux « Pourquoi / Si oui, quel… », les listes du DPF et les sauts explicites — utilise le serveur, appel payant")
+    : t2('corr_ai_unavailable', null, 'Serveur API injoignable (voir « SERVEUR API » en haut de page) — la codification par IA est indisponible hors ligne.');
+  btnCodifyAI.textContent = t2(uncoded > 1 ? 'corr_btn_codify_ai_n_other' : 'corr_btn_codify_ai_n_one', { n: uncoded },
+    "🤖 Codifier avec l'IA PHAKTS (" + uncoded + ' libellé' + (uncoded > 1 ? 's' : '') + ')');
   const xls = corr.sheets.some(sh => sh.kind === 'xlsform' || sh.kind === 'data');
   const isData = corr.sheets.some(sh => sh.kind === 'data');
   const btnRes = document.getElementById('corrBtnResults');
@@ -8264,12 +8329,13 @@ function corrRenderFindings() {
     } else {
       decision = '<span style="font-size:10.5px;color:var(--text2)" title="Pas de correction automatique : à traiter à la main dans le fichier">✎ à traiter</span>';
     }
+    const lf = (window.PHAKTS_I18N && PHAKTS_I18N.labelFor) || ((k, v) => v);
     html += `<tr style="border-top:1px solid var(--border)${fi.applied ? ';opacity:.78' : ''}">` +
-      `<td style="padding:8px 10px;vertical-align:top"><span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;border:1px solid ${color}88;color:${color}">${fi.severity}</span>` +
-        `<div style="font-size:10px;color:var(--text2);margin-top:3px">${_esc(fi.category)}</div></td>` +
+      `<td style="padding:8px 10px;vertical-align:top"><span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;border:1px solid ${color}88;color:${color}">${_esc(lf('severity', fi.severity))}</span>` +
+        `<div style="font-size:10px;color:var(--text2);margin-top:3px">${_esc(lf('category', fi.category))}</div></td>` +
       `<td style="padding:8px 10px;vertical-align:top"><div style="color:var(--text)">${_esc(fi.message)}</div>` +
         (fi.action ? `<div style="font-size:11px;color:var(--text2);margin-top:3px">⇒ ${_esc(fi.action)}</div>` : '') +
-        `<div style="font-size:9.5px;color:var(--text3);margin-top:3px;font-family:var(--mono)">${_esc(fi.rule)} · ${_esc(fi.source)}</div></td>` +
+        `<div style="font-size:9.5px;color:var(--text3);margin-top:3px;font-family:var(--mono)">${_esc(fi.rule)} · ${_esc(lf('source', fi.source))}</div></td>` +
       `<td style="padding:8px 10px;vertical-align:top">${ba}</td>` +
       `<td style="padding:8px 10px;vertical-align:top">${decision}</td></tr>`;
   });
