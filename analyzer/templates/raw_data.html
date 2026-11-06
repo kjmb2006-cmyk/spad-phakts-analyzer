@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Diagnostic des données — SPAD Analyzer{% endblock %}
-{% block page_title %}Diagnostic des données{% endblock %}
+{% block title %}{{ _('Diagnostic des données') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Diagnostic des données') }}{% endblock %}
 
 {% macro pct(x) %}{{ ('%.1f'|format(x))|replace('.', ',') }} %{% endmacro %}
 
@@ -20,10 +20,10 @@
 <div class="container-fluid px-4 py-3">
 
   <p class="text-muted small mb-3">
-    Ces données sont-elles en état d'être analysées ? Le diagnostic porte sur <strong>toutes</strong> les soumissions collectées
-    ({{ overview.n_obs }}){% if n_excluded %}, y compris les <strong>{{ n_excluded }}</strong> ligne(s) écartée(s) des analyses{% endif %}.
-    Le détail variable par variable (fréquences, intervalles de confiance, décomposition par groupe) est dans
-    <a href="{{ url_for('descriptive') }}">Statistiques descriptives</a>.
+    {{ _("Ces données sont-elles en état d'être analysées ? Le diagnostic porte sur") }} <strong>{{ _('toutes') }}</strong> {{ _('les soumissions collectées') }}
+    ({{ overview.n_obs }}){% if n_excluded %}, {{ _('y compris les') }} <strong>{{ n_excluded }}</strong> {{ _('ligne(s) écartée(s) des analyses') }}{% endif %}.
+    {{ _('Le détail variable par variable (fréquences, intervalles de confiance, décomposition par groupe) est dans') }}
+    <a href="{{ url_for('descriptive') }}">{{ _('Statistiques descriptives') }}</a>.
   </p>
 
   <!-- ═══ Score et mesures ═══ -->
@@ -36,34 +36,34 @@
     </div>
     <div class="col-lg-8">
       <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-speedometer2 me-2 text-primary"></i>De quoi le score est fait</h6></div>
+        <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-speedometer2 me-2 text-primary"></i>{{ _('De quoi le score est fait') }}</h6></div>
         <div class="card-body">
           {% for c in quality.components %}
           <div class="mb-3">
-            <div class="d-flex justify-content-between small"><span class="fw-semibold">{{ c.name }} <span class="text-muted fw-normal">· poids {{ c.weight }} %</span></span><span class="fw-bold">{{ pct(c.value) }}</span></div>
+            <div class="d-flex justify-content-between small"><span class="fw-semibold">{{ c.name }} <span class="text-muted fw-normal">· {{ _('poids') }} {{ c.weight }} %</span></span><span class="fw-bold">{{ pct(c.value) }}</span></div>
             <div class="comp-bar"><span style="width:{{ c.value }}%;background:{{ '#17A589' if c.value >= 85 else '#E67E22' if c.value >= 60 else '#C0392B' }}"></span></div>
             <div class="small text-muted mt-1">{{ c.detail }}</div>
           </div>
           {% endfor %}
-          {% if not quality.with_validation %}<div class="small text-muted">La validité (lignes sans défaut de collecte) n'a pas pu être calculée.</div>{% endif %}
+          {% if not quality.with_validation %}<div class="small text-muted">{{ _("La validité (lignes sans défaut de collecte) n'a pas pu être calculée.") }}</div>{% endif %}
         </div>
       </div>
     </div>
   </div>
 
   <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3"><div class="dg-kpi"><div class="kv">{{ overview.n_obs }}</div><div class="kl">Soumissions</div></div></div>
-    <div class="col-6 col-md-3"><div class="dg-kpi"><div class="kv">{{ overview.n_vars }}</div><div class="kl">Variables ({{ diagnostic.profile.n_categorical }} cat. · {{ diagnostic.profile.n_continuous }} cont. · {{ diagnostic.profile.n_binary }} bin.)</div></div></div>
+    <div class="col-6 col-md-3"><div class="dg-kpi"><div class="kv">{{ overview.n_obs }}</div><div class="kl">{{ _('Soumissions') }}</div></div></div>
+    <div class="col-6 col-md-3"><div class="dg-kpi"><div class="kv">{{ overview.n_vars }}</div><div class="kl">{{ _('Variables') }} ({{ diagnostic.profile.n_categorical }} {{ _('cat.') }} · {{ diagnostic.profile.n_continuous }} {{ _('cont.') }} · {{ diagnostic.profile.n_binary }} {{ _('bin.') }})</div></div></div>
     <div class="col-6 col-md-3"><div class="dg-kpi {{ 'warn' if diagnostic.missing.real_missing_pct > 20 else 'ok' }}">
-      <div class="kv">{{ pct(diagnostic.missing.real_missing_pct) }}</div><div class="kl">Manquants réels <span title="Parmi les questions applicables à la personne interrogée">ⓘ</span>
-      <div style="text-transform:none;letter-spacing:0">{{ pct(diagnostic.missing.missing_pct) }} en brut</div></div></div></div>
-    <div class="col-6 col-md-3"><div class="dg-kpi {{ 'warn' if diagnostic.duplicates.n else 'ok' }}"><div class="kv">{{ diagnostic.duplicates.n }}</div><div class="kl">Soumissions en double</div></div></div>
+      <div class="kv">{{ pct(diagnostic.missing.real_missing_pct) }}</div><div class="kl">{{ _('Manquants réels') }} <span title="{{ _('Parmi les questions applicables à la personne interrogée') }}">ⓘ</span>
+      <div style="text-transform:none;letter-spacing:0">{{ _('%(pct)s en brut', pct=pct(diagnostic.missing.missing_pct)) }}</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="dg-kpi {{ 'warn' if diagnostic.duplicates.n else 'ok' }}"><div class="kv">{{ diagnostic.duplicates.n }}</div><div class="kl">{{ _('Soumissions en double') }}</div></div></div>
   </div>
 
   <!-- ═══ Recommandations ═══ -->
   {% if diagnostic.recommendations %}
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-lightbulb me-2 text-warning"></i>Par où continuer</h6></div>
+    <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-lightbulb me-2 text-warning"></i>{{ _('Par où continuer') }}</h6></div>
     <div class="card-body">
       <div class="row g-3">
         {% for r in diagnostic.recommendations %}
@@ -75,9 +75,9 @@
             <form method="post" action="{{ url_for(r.module) }}" class="m-0">
               {% for key, value in r.form.items() %}{% if value is string or value is number %}<input type="hidden" name="{{ key }}" value="{{ value }}">
               {% else %}{% for v in value %}<input type="hidden" name="{{ 'variables' if key == 'variables' else key }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
-              <button class="btn btn-sm btn-outline-primary">Lancer cette analyse</button>
+              <button class="btn btn-sm btn-outline-primary">{{ _('Lancer cette analyse') }}</button>
             </form>
-            {% else %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for(r.module) }}">Ouvrir</a>{% endif %}
+            {% else %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for(r.module) }}">{{ _('Ouvrir') }}</a>{% endif %}
           </div>
         </div>
         {% endfor %}
@@ -89,29 +89,29 @@
   <!-- ═══ Manquants ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-diamond me-2 text-primary"></i>Réponses manquantes : réelles ou prévues par le formulaire</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-diamond me-2 text-primary"></i>{{ _('Réponses manquantes : réelles ou prévues par le formulaire') }}</h6>
       <span class="small text-muted">
-        {% if has_form %}Sauts de logique du formulaire pris en compte.{% else %}Sans XLSForm joint, seuls les champs « Autre, précisez » sont présumés vides par construction.
-        <a href="{{ url_for('analyse_donnees') }}">Joindre l'XLSForm</a>.{% endif %}
-        {% if diagnostic.missing.unreadable_rules %}{{ diagnostic.missing.unreadable_rules }} saut(s) de logique illisible(s) : variables comptées comme applicables.{% endif %}
+        {% if has_form %}{{ _('Sauts de logique du formulaire pris en compte.') }}{% else %}{{ _('Sans XLSForm joint, seuls les champs « Autre, précisez » sont présumés vides par construction.') }}
+        <a href="{{ url_for('analyse_donnees') }}">{{ _("Joindre l'XLSForm") }}</a>.{% endif %}
+        {% if diagnostic.missing.unreadable_rules %}{{ _('%(n)s saut(s) de logique illisible(s) : variables comptées comme applicables.', n=diagnostic.missing.unreadable_rules) }}{% endif %}
       </span>
     </div>
     <div class="card-body">
-      {% if chart_miss %}<div id="chart-miss"></div>{% else %}<div class="alert alert-success small mb-0">Aucune réponse manquante parmi les personnes concernées.</div>{% endif %}
-      <details class="mt-3"><summary class="small fw-semibold" style="cursor:pointer">Carte des données manquantes</summary><div id="chart-heat" class="mt-2"></div></details>
+      {% if chart_miss %}<div id="chart-miss"></div>{% else %}<div class="alert alert-success small mb-0">{{ _('Aucune réponse manquante parmi les personnes concernées.') }}</div>{% endif %}
+      <details class="mt-3"><summary class="small fw-semibold" style="cursor:pointer">{{ _('Carte des données manquantes') }}</summary><div id="chart-heat" class="mt-2"></div></details>
     </div>
   </div>
 
   <!-- ═══ Anomalies ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-bug me-2 text-primary"></i>Anomalies de structure ({{ diagnostic.anomalies|length }})</h6>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('validation_donnees') }}">Contrôles ligne par ligne → Validation</a>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-bug me-2 text-primary"></i>{{ _('Anomalies de structure (%(n)s)', n=diagnostic.anomalies|length) }}</h6>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('validation_donnees') }}">{{ _('Contrôles ligne par ligne → Validation') }}</a>
     </div>
     {% if diagnostic.anomalies %}
     <div class="table-responsive" style="max-height:380px;overflow-y:auto">
       <table class="table table-sm mb-0 align-middle">
-        <thead class="table-light"><tr><th>Gravité</th><th>Anomalie</th><th>Variable</th><th>Détail</th></tr></thead>
+        <thead class="table-light"><tr><th>{{ _('Gravité') }}</th><th>{{ _('Anomalie') }}</th><th>{{ _('Variable') }}</th><th>{{ _('Détail') }}</th></tr></thead>
         <tbody>
           {% for a in diagnostic.anomalies %}
           <tr><td><span class="sev sev-{{ 'eleve' if a.severity == 'élevé' else 'modere' if a.severity == 'modéré' else 'faible' }}">{{ a.severity }}</span></td>
@@ -120,40 +120,40 @@
         </tbody>
       </table>
     </div>
-    {% else %}<div class="card-body"><div class="alert alert-success small mb-0">Aucune anomalie de structure détectée.</div></div>{% endif %}
+    {% else %}<div class="card-body"><div class="alert alert-success small mb-0">{{ _('Aucune anomalie de structure détectée.') }}</div></div>{% endif %}
   </div>
 
   <!-- ═══ Associations ═══ -->
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-diagram-2 me-2 text-primary"></i>Quelles variables vont ensemble ?</h6></div>
+    <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold"><i class="bi bi-diagram-2 me-2 text-primary"></i>{{ _('Quelles variables vont ensemble ?') }}</h6></div>
     <div class="card-body">
       {% if diagnostic.association %}
       <div class="row g-3">
         <div class="col-lg-7"><div id="chart-assoc"></div></div>
         <div class="col-lg-5">
-          <p class="small fw-semibold text-muted mb-1">Couples les plus liés ({{ diagnostic.association.n_vars }} variables, {{ diagnostic.association.n_pairs }} couples{% if diagnostic.association.sampled %}, échantillon de 5 000 lignes{% endif %})</p>
+          <p class="small fw-semibold text-muted mb-1">{{ _('Couples les plus liés (%(nv)s variables, %(np)s couples', nv=diagnostic.association.n_vars, np=diagnostic.association.n_pairs) }}{% if diagnostic.association.sampled %}, {{ _('échantillon de 5 000 lignes') }}{% endif %})</p>
           <div class="table-responsive" style="max-height:420px;overflow-y:auto"><table class="table table-sm align-middle mb-0">
-            <thead class="table-light"><tr><th>Variables</th><th class="text-end">V</th><th class="text-end">q</th></tr></thead>
+            <thead class="table-light"><tr><th>{{ _('Variables') }}</th><th class="text-end">V</th><th class="text-end">q</th></tr></thead>
             <tbody>{% for p in diagnostic.association.pairs %}
-              <tr><td class="small">{{ p.label_a }} <span class="text-muted">×</span> {{ p.label_b }}{% if p.redundant %} <span class="badge bg-secondary-subtle text-secondary border" title="L'une des deux variables découle de l'autre (district dans région, par exemple)">redondantes</span>{% endif %}</td><td class="text-end small fw-semibold">{{ ('%.2f'|format(p.v))|replace('.', ',') }}</td>
+              <tr><td class="small">{{ p.label_a }} <span class="text-muted">×</span> {{ p.label_b }}{% if p.redundant %} <span class="badge bg-secondary-subtle text-secondary border" title="{{ _("L'une des deux variables découle de l'autre (district dans région, par exemple)") }}">{{ _('redondantes') }}</span>{% endif %}</td><td class="text-end small fw-semibold">{{ ('%.2f'|format(p.v))|replace('.', ',') }}</td>
                   <td class="text-end small {{ 'text-success' if p.q < 0.05 else 'text-muted' }}">{{ '< 0,001' if p.q < 0.001 else ('%.3f'|format(p.q))|replace('.', ',') }}</td></tr>{% endfor %}
             </tbody></table></div>
-          <p class="small text-muted mt-2 mb-0">V de Cramér corrigé du biais : 0 = aucun lien, 1 = lien total. q : probabilité corrigée des tests multiples (Benjamini-Hochberg) ; en vert, le lien est établi.</p>
+          <p class="small text-muted mt-2 mb-0">{{ _('V de Cramér corrigé du biais : 0 = aucun lien, 1 = lien total. q : probabilité corrigée des tests multiples (Benjamini-Hochberg) ; en vert, le lien est établi.') }}</p>
         </div>
       </div>
-      {% else %}<p class="small text-muted mb-0">Pas assez de variables catégorielles renseignées pour mesurer des associations.</p>{% endif %}
+      {% else %}<p class="small text-muted mb-0">{{ _('Pas assez de variables catégorielles renseignées pour mesurer des associations.') }}</p>{% endif %}
 
       {% if diagnostic.correlations %}
       <hr>
-      <p class="small fw-semibold text-muted mb-1">Variables continues — corrélations de Spearman (robustes aux valeurs extrêmes)</p>
+      <p class="small fw-semibold text-muted mb-1">{{ _('Variables continues — corrélations de Spearman (robustes aux valeurs extrêmes)') }}</p>
       <div class="row g-3">
         <div class="col-lg-7">{% if chart_corr %}<div id="chart-corr"></div>{% endif %}</div>
         <div class="col-lg-5"><div class="table-responsive"><table class="table table-sm mb-0">
-          <thead class="table-light"><tr><th>Variables</th><th class="text-end">ρ</th><th class="text-end">n</th><th class="text-end">q</th></tr></thead>
+          <thead class="table-light"><tr><th>{{ _('Variables') }}</th><th class="text-end">ρ</th><th class="text-end">n</th><th class="text-end">q</th></tr></thead>
           <tbody>{% for p in diagnostic.correlations[:10] %}<tr><td class="small">{{ p.label_a }} × {{ p.label_b }}</td><td class="text-end small fw-semibold">{{ ('%.2f'|format(p.rho))|replace('.', ',') }}</td>
             <td class="text-end small">{{ p.n }}</td><td class="text-end small {{ 'text-success' if p.q < 0.05 else 'text-muted' }}">{{ '< 0,001' if p.q < 0.001 else ('%.3f'|format(p.q))|replace('.', ',') }}</td></tr>{% endfor %}</tbody></table></div></div>
       </div>
-      {% elif diagnostic.profile.n_continuous < 2 %}<p class="small text-muted mt-2 mb-0">Moins de deux variables continues : pas de corrélation à calculer (les variables codées en nombres mais qui sont des catégories ne comptent pas ; <a href="{{ url_for('data_preview') }}">corriger un type</a> si besoin).</p>{% endif %}
+      {% elif diagnostic.profile.n_continuous < 2 %}<p class="small text-muted mt-2 mb-0">{{ _('Moins de deux variables continues : pas de corrélation à calculer (les variables codées en nombres mais qui sont des catégories ne comptent pas ;') }} <a href="{{ url_for('data_preview') }}">{{ _('corriger un type') }}</a> {{ _('si besoin).') }}</p>{% endif %}
     </div>
   </div>
 
@@ -161,49 +161,49 @@
   <div class="row g-3 mb-4">
     <div class="col-lg-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div id="chart-composition"></div></div></div></div>
     <div class="col-lg-8"><div class="card border-0 shadow-sm h-100"><div class="card-body">
-      {% if chart_distrib %}<div id="chart-distrib"></div>{% else %}<p class="small text-muted mb-0">Aucune variable continue à représenter.</p>{% endif %}
+      {% if chart_distrib %}<div id="chart-distrib"></div>{% else %}<p class="small text-muted mb-0">{{ _('Aucune variable continue à représenter.') }}</p>{% endif %}
     </div></div></div>
   </div>
 
   <!-- ═══ Profil des variables ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-list-columns me-2 text-primary"></i>Profil des variables ({{ variables|length }})</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-list-columns me-2 text-primary"></i>{{ _('Profil des variables (%(n)s)', n=variables|length) }}</h6>
       <div class="d-flex flex-wrap gap-2 align-items-center">
-        <input type="search" id="pvSearch" class="form-control form-control-sm" style="width:200px" placeholder="Rechercher…" autocomplete="off">
+        <input type="search" id="pvSearch" class="form-control form-control-sm" style="width:200px" placeholder="{{ _('Rechercher…') }}" autocomplete="off">
         <select id="pvType" class="form-select form-select-sm" style="width:auto">
-          <option value="">Tous les types</option>
-          <option value="categorielle">Catégorielles</option><option value="continue">Continues</option><option value="binaire">Binaires</option>
-          <option value="date">Dates</option><option value="identifiant">Identifiants</option><option value="texte_libre">Textes libres</option>
+          <option value="">{{ _('Tous les types') }}</option>
+          <option value="categorielle">{{ _('Catégorielles') }}</option><option value="continue">{{ _('Continues') }}</option><option value="binaire">{{ _('Binaires') }}</option>
+          <option value="date">{{ _('Dates') }}</option><option value="identifiant">{{ _('Identifiants') }}</option><option value="texte_libre">{{ _('Textes libres') }}</option>
         </select>
-        <div class="form-check form-switch small mb-0"><input class="form-check-input" type="checkbox" id="pvAlerts"><label class="form-check-label" for="pvAlerts">Alertes seulement</label></div>
+        <div class="form-check form-switch small mb-0"><input class="form-check-input" type="checkbox" id="pvAlerts"><label class="form-check-label" for="pvAlerts">{{ _('Alertes seulement') }}</label></div>
       </div>
     </div>
     <div class="table-responsive" style="max-height:520px;overflow-y:auto">
       <table class="table table-sm table-hover mb-0 align-middle" id="pvTable">
-        <thead class="table-light sticky-top"><tr><th>Variable</th><th>Type</th><th class="text-end">Valides</th><th class="text-end">Manquants</th><th>Résumé</th><th>Alertes</th></tr></thead>
+        <thead class="table-light sticky-top"><tr><th>{{ _('Variable') }}</th><th>{{ _('Type') }}</th><th class="text-end">{{ _('Valides') }}</th><th class="text-end">{{ _('Manquants') }}</th><th>{{ _('Résumé') }}</th><th>{{ _('Alertes') }}</th></tr></thead>
         <tbody>
           {% for v in variables %}
           <tr data-type="{{ v.type }}" data-alerts="{{ 1 if (v.alerts or v.verdict in ['manque élevé', 'manque modéré']) else 0 }}" data-name="{{ (v.label ~ ' ' ~ v.variable)|lower }}">
             <td class="small" title="{{ v.variable }}"><div class="fw-semibold">{{ v.label|truncate(60) }}</div><div class="text-muted" style="font-size:.68rem;font-family:monospace">{{ v.variable.split('/')[-1]|truncate(46) }}</div></td>
-            <td class="small">{{ {'categorielle': 'Catégorielle', 'continue': 'Continue', 'binaire': 'Binaire', 'date': 'Date', 'identifiant': 'Identifiant', 'texte_libre': 'Texte libre'}.get(v.type, v.type) }}</td>
+            <td class="small">{{ {'categorielle': _('Catégorielle'), 'continue': _('Continue'), 'binaire': _('Binaire'), 'date': _('Date'), 'identifiant': _('Identifiant'), 'texte_libre': _('Texte libre')}.get(v.type, v.type) }}</td>
             <td class="text-end small">{{ v.n_valid }}</td>
             <td class="text-end small">
-              {% if v.verdict.startswith('structurel') %}<span class="v-structurel" title="{{ v.verdict }} : vide parce que la question ne s'applique pas à tous">{{ pct(v.pct_missing) }} <i class="bi bi-info-circle"></i></span>
+              {% if v.verdict.startswith('structurel') %}<span class="v-structurel" title="{{ v.verdict }} : {{ _("vide parce que la question ne s'applique pas à tous") }}">{{ pct(v.pct_missing) }} <i class="bi bi-info-circle"></i></span>
               {% elif v.pct_real is not none and v.pct_real >= 50 %}<span class="v-eleve">{{ pct(v.pct_real) }}</span>
               {% elif v.pct_real is not none and v.pct_real >= 20 %}<span class="v-modere">{{ pct(v.pct_real) }}</span>
               {% else %}<span class="text-muted">{{ pct(v.pct_real if v.pct_real is not none else v.pct_missing) }}</span>{% endif %}
             </td>
             <td class="small text-muted">{{ v.summary or '—' }}</td>
             <td class="small">{% for a in v.alerts %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle me-1">{{ a }}</span>{% endfor %}
-              {% if v.verdict.startswith('structurel') %}<span class="badge bg-light text-muted border">vide par construction</span>{% endif %}</td>
+              {% if v.verdict.startswith('structurel') %}<span class="badge bg-light text-muted border">{{ _('vide par construction') }}</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <div class="card-footer bg-white small text-muted">Manquants : part des personnes à qui la question s'appliquait et qui n'ont pas répondu ; entre parenthèses (ⓘ), variables vides par construction.
-      Correction d'un type ou d'un libellé : <a href="{{ url_for('data_preview') }}">Aperçu des données → Dictionnaire</a>.</div>
+    <div class="card-footer bg-white small text-muted">{{ _("Manquants : part des personnes à qui la question s'appliquait et qui n'ont pas répondu ; entre parenthèses (ⓘ), variables vides par construction.") }}
+      {{ _("Correction d'un type ou d'un libellé :") }} <a href="{{ url_for('data_preview') }}">{{ _('Aperçu des données → Dictionnaire') }}</a>.</div>
   </div>
 </div>
 {% endblock %}

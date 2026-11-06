@@ -1,34 +1,34 @@
 {% extends "base.html" %}
 {% import "_completude_macros.html" as m %}
 {% block title %}{{ region.nom }} — SPAD Analyzer{% endblock %}
-{% block page_title %}Région — {{ region.nom }}{% endblock %}
+{% block page_title %}{{ _('Région') }} — {{ region.nom }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {{ districts|length }} district(s)
-      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {{ districts|length }} {{ _('district(s)') }}
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
     <a href="{{ url_for('completude_regions') }}"
        onclick="smartBack('{{ url_for('completude_regions') }}'); return false;"
        class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Retour
+      <i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}
     </a>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Complétude de la région</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>{{ _('Complétude de la région') }}</span>
   {{ m.forms_cards(region.forms, form_codes, form_labels) }}
 
-  <span class="section-label d-block mb-2"><i class="bi bi-diagram-3 me-1"></i>Districts de la région</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-diagram-3 me-1"></i>{{ _('Districts de la région') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th style="min-width:180px">District</th>
+              <th style="min-width:180px">{{ _('District') }}</th>
               {% for code in form_codes %}
               <th class="text-center" style="min-width:110px" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
               {% endfor %}
@@ -55,7 +55,7 @@
               {% endfor %}
               <td class="text-end">
                 <a href="{{ url_for('completude_district_detail', district_code=code) }}" class="btn btn-sm btn-link py-0">
-                  Détail <i class="bi bi-arrow-right"></i>
+                  {{ _('Détail') }} <i class="bi bi-arrow-right"></i>
                 </a>
               </td>
             </tr>
@@ -66,7 +66,7 @@
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies dans cette région</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ _('Anomalies dans cette région') }}</span>
   {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
 
 </div>

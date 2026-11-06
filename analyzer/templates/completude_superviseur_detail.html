@@ -1,39 +1,39 @@
 {% extends "base.html" %}
 {% import "_completude_macros.html" as m %}
 {% block title %}{{ sup.nom }} — SPAD Analyzer{% endblock %}
-{% block page_title %}Superviseur — {{ sup.nom }}{% endblock %}
+{% block page_title %}{{ _('Superviseur') }} — {{ sup.nom }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {{ sup_code }} · District {{ district.nom if district else district_code }} · {{ etablissements|length }} établissement(s)
-      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {{ sup_code }} · {{ _('District') }} {{ district.nom if district else district_code }} · {{ etablissements|length }} {{ _('établissement(s)') }}
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
     <div class="d-flex gap-2">
       <a href="{{ url_for('completude_district_detail', district_code=district_code) }}"
          onclick="smartBack('{{ url_for('completude_district_detail', district_code=district_code) }}'); return false;"
          class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Retour
+        <i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}
       </a>
       <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-outline-primary btn-sm">
-        Tous les superviseurs
+        {{ _('Tous les superviseurs') }}
       </a>
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Formulaires renseignés (volet RDM) — {{ superviseur_form_codes | join(', ') }}</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>{{ _('Formulaires renseignés (volet RDM)') }} — {{ superviseur_form_codes | join(', ') }}</span>
   {{ m.forms_cards(sup.forms, superviseur_form_codes, form_labels) }}
 
-  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements du district — détail {{ superviseur_etab_form_codes | join(', ') }}</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>{{ _('Établissements du district — détail') }} {{ superviseur_etab_form_codes | join(', ') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th style="min-width:220px">Établissement</th>
+              <th style="min-width:220px">{{ _('Établissement') }}</th>
               {% for fc in superviseur_etab_form_codes %}
               <th class="text-center">{{ fc }} — {{ form_labels.get(fc, fc) }}</th>
               {% endfor %}
@@ -53,14 +53,14 @@
                 {% else %}
                 <span class="status-pill status-pill--{{ 'cible' if cell.statut == 'cible' else ('exces' if cell.statut == 'exces' else ('en-cours' if cell.statut == 'en_cours' else ('verifier' if cell.statut == 'verifier' else ('critique' if cell.statut == 'critique' else 'zero')))) }}"
                       style="font-size:.68rem;padding:2px 8px" title="{{ cell.recu }} / {{ cell.cible }}">
-                  {{ cell.recu }} soum.{% if cell.taux is not none %} · {{ cell.taux }} %{% endif %}
+                  {{ cell.recu }} {{ _('soum.') }}{% if cell.taux is not none %} · {{ cell.taux }} %{% endif %}
                 </span>
                 {% endif %}
               </td>
               {% endfor %}
               <td class="text-end">
                 <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}" class="btn btn-sm btn-link py-0">
-                  Détail <i class="bi bi-arrow-right"></i>
+                  {{ _('Détail') }} <i class="bi bi-arrow-right"></i>
                 </a>
               </td>
             </tr>
@@ -71,7 +71,7 @@
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies dans son district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ _('Anomalies dans son district') }}</span>
   {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
 
 </div>

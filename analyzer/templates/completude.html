@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Complétude nationale — SPAD Analyzer{% endblock %}
-{% block page_title %}Complétude nationale{% endblock %}
+{% block title %}{{ _('Complétude nationale') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Complétude nationale') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -10,32 +10,32 @@
     <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
       <div class="d-flex flex-wrap gap-1 align-items-center">
         <a href="{{ url_for('completude') }}" class="btn btn-sm btn-primary fw-semibold">
-          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ Complétude nationale
+          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ {{ _('Complétude nationale') }}
         </a>
         <a href="{{ url_for('completude_equipe_spad') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-diagram-3 me-1"></i>Équipe SPAD
+          <i class="bi bi-diagram-3 me-1"></i>{{ _('Équipe SPAD') }}
         </a>
         <a href="{{ url_for('completude_regions') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-map me-1"></i>🗺️ Régions
+          <i class="bi bi-map me-1"></i>🗺️ {{ _('Régions') }}
         </a>
         <a href="{{ url_for('completude_districts') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-pin-map me-1"></i>📍 Districts
+          <i class="bi bi-pin-map me-1"></i>📍 {{ _('Districts') }}
         </a>
         <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-badge me-1"></i>👔 Superviseurs
+          <i class="bi bi-person-badge me-1"></i>👔 {{ _('Superviseurs') }}
         </a>
         <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-walking me-1"></i>🚶 Enquêteurs
+          <i class="bi bi-person-walking me-1"></i>🚶 {{ _('Enquêteurs') }}
         </a>
         <a href="{{ url_for('completude_anomalies') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ Anomalies
+          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ {{ _('Anomalies') }}
         </a>
         <a href="{{ url_for('completude_graphiques') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-graph-up me-1"></i>📈 Graphiques (10j)
+          <i class="bi bi-graph-up me-1"></i>📈 {{ _('Graphiques (10j)') }}
         </a>
       </div>
       <a href="{{ url_for('suivi') }}" class="btn btn-sm btn-outline-primary fw-semibold">
-        <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+        <i class="bi bi-broadcast me-1"></i>{{ _('Suivi multi-formulaires') }}
       </a>
     </div>
   </div>
@@ -43,10 +43,9 @@
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-clipboard2-pulse fs-3"></i>
     <div>
-      <strong>Vue de complétude nationale.</strong>
-      Associez chaque formulaire SPAD actif (voir <a href="{{ url_for('admin_forms') }}">registre des formulaires</a>
-      si vous êtes administrateur) à son formulaire KoboToolbox réel suivi dans Suivi multi-formulaires, puis
-      calculez les taux de complétude par rapport au référentiel (120 établissements, 12 districts).
+      <strong>{{ _('Vue de complétude nationale.') }}</strong>
+      {{ _("Associez chaque formulaire SPAD actif (voir") }} <a href="{{ url_for('admin_forms') }}">{{ _('registre des formulaires') }}</a>
+      {{ _("si vous êtes administrateur) à son formulaire KoboToolbox réel suivi dans Suivi multi-formulaires, puis calculez les taux de complétude par rapport au référentiel (120 établissements, 12 districts).") }}
     </div>
   </div>
 
@@ -54,7 +53,7 @@
   <div class="alert alert-danger border-0 d-flex align-items-start gap-3 mb-3">
     <i class="bi bi-x-octagon-fill fs-3"></i>
     <div>
-      <strong>Correspondance incorrecte — le calcul est bloqué tant que ce n'est pas corrigé :</strong>
+      <strong>{{ _("Correspondance incorrecte — le calcul est bloqué tant que ce n'est pas corrigé :") }}</strong>
       <ul class="mb-0 mt-1">
         {% for e in mapping_erreurs %}<li>{{ e }}</li>{% endfor %}
       </ul>
@@ -65,7 +64,7 @@
   <div class="alert alert-warning border-0 d-flex align-items-start gap-3 mb-3">
     <i class="bi bi-exclamation-triangle-fill fs-3"></i>
     <div>
-      <strong>Vérifiez ces correspondances — le nom du formulaire sélectionné est inhabituel pour ce code :</strong>
+      <strong>{{ _("Vérifiez ces correspondances — le nom du formulaire sélectionné est inhabituel pour ce code :") }}</strong>
       <ul class="mb-0 mt-1">
         {% for a in mapping_avertissements %}<li>{{ a }}</li>{% endfor %}
       </ul>
@@ -77,9 +76,9 @@
   <!-- ═══ Correspondance formulaires ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>Correspondance formulaire SPAD ↔ formulaire KoboToolbox</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>{{ _('Correspondance formulaire SPAD ↔ formulaire KoboToolbox') }}</h6>
       {% if computed_at %}
-      <span class="text-muted small"><i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}</span>
+      <span class="text-muted small"><i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}</span>
       {% endif %}
     </div>
     <div class="card-body">
@@ -87,14 +86,13 @@
       <div class="alert alert-danger small mb-0">{{ assets_error }}</div>
       {% elif not assets %}
       <p class="text-muted small mb-0">
-        Aucun formulaire suivi pour l'instant — ajoutez-en d'abord depuis
-        <a href="{{ url_for('suivi') }}">Suivi multi-formulaires</a>, ils deviendront alors sélectionnables ici.
+        {{ _("Aucun formulaire suivi pour l'instant — ajoutez-en d'abord depuis") }}
+        <a href="{{ url_for('suivi') }}">{{ _('Suivi multi-formulaires') }}</a>, {{ _('ils deviendront alors sélectionnables ici.') }}
       </p>
       {% elif not form_codes %}
       <p class="text-muted small mb-0">
-        {{ assets|length }} formulaire(s) suivi(s), mais aucun n'a encore de type SPAD assigné — attribuez-en un
-        depuis <a href="{{ url_for('suivi') }}">Suivi multi-formulaires</a> (détection automatique, suggestion IA,
-        ou choix manuel) : la correspondance ici se remplira automatiquement.
+        {{ assets|length }} {{ _("formulaire(s) suivi(s), mais aucun n'a encore de type SPAD assigné — attribuez-en un depuis") }}
+        <a href="{{ url_for('suivi') }}">{{ _('Suivi multi-formulaires') }}</a> {{ _('(détection automatique, suggestion IA, ou choix manuel) : la correspondance ici se remplira automatiquement.') }}
       </p>
       {% else %}
       <!-- Formulaire de calcul déclaré séparément (pas imbriqué — le HTML
@@ -110,10 +108,10 @@
               {{ code }} — {{ form_labels[code] }}
             </label>
             <select name="uid_{{ code }}" class="form-select form-select-sm">
-              <option value="">— Non associé —</option>
+              <option value="">{{ _('— Non associé —') }}</option>
               {% for a in assets %}
               <option value="{{ a.uid }}" {% if mapping.get(code) == a.uid %}selected{% endif %}>
-                {{ a.name }} ({{ a.submission_count }} soum.)
+                {{ a.name }} ({{ a.submission_count }} {{ _('soum.') }})
               </option>
               {% endfor %}
             </select>
@@ -122,10 +120,10 @@
         </div>
         <div class="d-flex gap-2 mt-3">
           <button type="submit" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-save me-1"></i>Enregistrer la correspondance
+            <i class="bi bi-save me-1"></i>{{ _('Enregistrer la correspondance') }}
           </button>
           <button type="submit" form="calculerForm" class="btn btn-primary btn-sm" {% if not mapping %}disabled{% endif %}>
-            <i class="bi bi-calculator me-1"></i>Calculer la complétude
+            <i class="bi bi-calculator me-1"></i>{{ _('Calculer la complétude') }}
           </button>
         </div>
       </form>
@@ -138,7 +136,7 @@
   {# ── Section formulaires roster (enquêteur / superviseur) ─────────────── #}
   {% if roster_forms %}
   <span class="section-label d-block mb-2">
-    <i class="bi bi-people me-1"></i>Formulaires roster (cible nationale)
+    <i class="bi bi-people me-1"></i>{{ _('Formulaires roster (cible nationale)') }}
   </span>
   <div class="row g-3 mb-4">
     {% for f in roster_forms %}
@@ -150,7 +148,7 @@
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
             {{ f.code }} — {{ f.label }}
             <span class="badge bg-secondary ms-1" style="font-size:.6em">
-              {{ 'Enquêteur' if f.grain == 'enqueteur' else 'Superviseur' }}
+              {{ _('Enquêteur') if f.grain == 'enqueteur' else _('Superviseur') }}
             </span>
           </h6>
         </div>
@@ -167,22 +165,22 @@
         {% endif %}
         <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('exces' if nat.statut == 'exces' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else ('critique' if nat.statut == 'critique' else 'zero')))) }}">
           {% if nat.statut == 'zero' %}0 %
-          {% elif nat.statut == 'critique' %}Critique · {{ nat.taux }} %
-          {% elif nat.statut == 'en_cours' %}En cours{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
-          {% elif nat.statut == 'cible' %}Cible atteinte{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
-          {% elif nat.statut == 'exces' %}Dépassement · {{ nat.taux }} %
-          {% elif nat.statut == 'verifier' %}À vérifier · {{ nat.taux }} %
-          {% else %}Non calculé
+          {% elif nat.statut == 'critique' %}{{ _('Critique') }} · {{ nat.taux }} %
+          {% elif nat.statut == 'en_cours' %}{{ _('En cours') }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'cible' %}{{ _('Cible atteinte') }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'exces' %}{{ _('Dépassement') }} · {{ nat.taux }} %
+          {% elif nat.statut == 'verifier' %}{{ _('À vérifier') }} · {{ nat.taux }} %
+          {% else %}{{ _('Non calculé') }}
           {% endif %}
         </span>
         <div class="mt-2">
           <a href="{{ url_for('completude_roster_detail', form_code=f.code) }}"
              class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
-            <i class="bi bi-geo-alt me-1"></i>Voir par district
+            <i class="bi bi-geo-alt me-1"></i>{{ _('Voir par district') }}
           </a>
         </div>
         {% else %}
-        <span class="text-muted small">Calcul non disponible — cliquez « Calculer la complétude ».</span>
+        <span class="text-muted small">{{ _('Calcul non disponible — cliquez « Calculer la complétude ».') }}</span>
         {% endif %}
       </div>
     </div>
@@ -193,7 +191,7 @@
   {# ── Section formulaires roster national (UGP / Programmes) ──────────────── #}
   {% if named_roster_forms %}
   <span class="section-label d-block mb-2">
-    <i class="bi bi-diagram-3 me-1"></i>Formulaires roster national (liste nominative)
+    <i class="bi bi-diagram-3 me-1"></i>{{ _('Formulaires roster national (liste nominative)') }}
   </span>
   <div class="row g-3 mb-4">
     {% for f in named_roster_forms %}
@@ -204,7 +202,7 @@
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
             {{ f.code }} — {{ f.label }}
-            <span class="badge bg-secondary ms-1" style="font-size:.6em">nominatif</span>
+            <span class="badge bg-secondary ms-1" style="font-size:.6em">{{ _('nominatif') }}</span>
           </h6>
         </div>
         {% if nat %}
@@ -220,22 +218,22 @@
         {% endif %}
         <span class="status-pill status-pill--{{ 'cible' if nat.statut == 'cible' else ('exces' if nat.statut == 'exces' else ('en-cours' if nat.statut == 'en_cours' else ('verifier' if nat.statut == 'verifier' else ('critique' if nat.statut == 'critique' else 'zero')))) }}">
           {% if nat.statut == 'zero' %}0 %
-          {% elif nat.statut == 'critique' %}Critique · {{ nat.taux }} %
-          {% elif nat.statut == 'en_cours' %}En cours{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
-          {% elif nat.statut == 'cible' %}Cible atteinte{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
-          {% elif nat.statut == 'exces' %}Dépassement · {{ nat.taux }} %
-          {% elif nat.statut == 'verifier' %}À vérifier · {{ nat.taux }} %
-          {% else %}Non calculé
+          {% elif nat.statut == 'critique' %}{{ _('Critique') }} · {{ nat.taux }} %
+          {% elif nat.statut == 'en_cours' %}{{ _('En cours') }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'cible' %}{{ _('Cible atteinte') }}{% if nat.taux is not none %} · {{ nat.taux }} %{% endif %}
+          {% elif nat.statut == 'exces' %}{{ _('Dépassement') }} · {{ nat.taux }} %
+          {% elif nat.statut == 'verifier' %}{{ _('À vérifier') }} · {{ nat.taux }} %
+          {% else %}{{ _('Non calculé') }}
           {% endif %}
         </span>
         <div class="mt-2">
           <a href="{{ url_for('completude_roster_national_detail', form_code=f.code) }}"
              class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
-            <i class="bi bi-list-ul me-1"></i>Voir par entité
+            <i class="bi bi-list-ul me-1"></i>{{ _('Voir par entité') }}
           </a>
         </div>
         {% else %}
-        <span class="text-muted small">Calcul non disponible — cliquez « Calculer la complétude ».</span>
+        <span class="text-muted small">{{ _('Calcul non disponible — cliquez « Calculer la complétude ».') }}</span>
         {% endif %}
       </div>
     </div>
@@ -245,15 +243,15 @@
 
   {% if result %}
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <span class="section-label"><i class="bi bi-bar-chart-line me-1"></i>Complétude par formulaire</span>
+    <span class="section-label"><i class="bi bi-bar-chart-line me-1"></i>{{ _('Complétude par formulaire') }}</span>
     {% if session.get('role') != 'invite' %}
     <a href="{{ url_for('completude_export_docx') }}" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-file-earmark-word me-1"></i>Télécharger le rapport (Word)
+      <i class="bi bi-file-earmark-word me-1"></i>{{ _('Télécharger le rapport (Word)') }}
     </a>
     {% endif %}
   </div>
   {% if not form_codes %}
-  <p class="text-muted small mb-4">Aucun formulaire suivi n'a de type SPAD assigné pour l'instant — voir la correspondance ci-dessus.</p>
+  <p class="text-muted small mb-4">{{ _('Aucun formulaire suivi n\'a de type SPAD assigné pour l\'instant — voir la correspondance ci-dessus.') }}</p>
   {% endif %}
   <div class="row g-3 mb-4">
     {% for code in form_codes %}
@@ -262,7 +260,7 @@
       {% if not r %}
       <div class="stat-card-v kpi-primary">
         <h6 class="mb-1 fw-semibold" style="font-size:.85rem">{{ code }} — {{ form_labels.get(code, code) }}</h6>
-        <span class="text-muted small">Formulaire ajouté au registre après le dernier calcul — cliquez « Calculer la complétude » pour l'inclure.</span>
+        <span class="text-muted small">{{ _('Formulaire ajouté au registre après le dernier calcul — cliquez « Calculer la complétude » pour l\'inclure.') }}</span>
       </div>
       {% else %}
       <div class="stat-card-v {% if r.statut == 'cible' %}kpi-success{% elif r.statut == 'exces' %}kpi-exces{% elif r.statut == 'en_cours' %}kpi-warning{% elif r.statut == 'critique' %}kpi-critique{% elif r.statut == 'verifier' %}kpi-primary{% else %}kpi-primary{% endif %}">
@@ -280,20 +278,20 @@
         </div>
         {% endif %}
         <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('exces' if r.statut == 'exces' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else ('critique' if r.statut == 'critique' else 'zero')))) }}">
-          {% if r.statut == 'inconnu' %}Non calculé
+          {% if r.statut == 'inconnu' %}{{ _('Non calculé') }}
           {% elif r.statut == 'zero' %}0 %
-          {% elif r.statut == 'critique' %}Critique · {{ r.taux }} %
-          {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
-          {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
-          {% elif r.statut == 'exces' %}Dépassement · {{ r.taux }} %
-          {% elif r.statut == 'verifier' %}À vérifier · {{ r.taux }} %
+          {% elif r.statut == 'critique' %}{{ _('Critique') }} · {{ r.taux }} %
+          {% elif r.statut == 'en_cours' %}{{ _('En cours') }}{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          {% elif r.statut == 'cible' %}{{ _('Cible atteinte') }}{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+          {% elif r.statut == 'exces' %}{{ _('Dépassement') }} · {{ r.taux }} %
+          {% elif r.statut == 'verifier' %}{{ _('À vérifier') }} · {{ r.taux }} %
           {% else %}{{ r.statut }}
           {% endif %}
         </span>
         {% set dr = district_reel.get(code) if district_reel else none %}
         {% if dr %}
-        <div class="mt-2" title="Proportion de districts ayant individuellement atteint ou dépassé 100 % pour ce formulaire ({{ dr.atteints }}/{{ dr.total }}) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.">
-          <span class="status-pill status-pill--{{ dr.css }}">Cible réelle atteinte · {{ dr.pct }} %</span>
+        <div class="mt-2" title="{{ _('Proportion de districts ayant individuellement atteint ou dépassé 100 %% pour ce formulaire') }} ({{ dr.atteints }}/{{ dr.total }}) — {{ _('par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.') }}">
+          <span class="status-pill status-pill--{{ dr.css }}">{{ _('Cible réelle atteinte') }} · {{ dr.pct }} %</span>
         </div>
         {% endif %}
       </div>

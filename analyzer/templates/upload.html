@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Importer les données — SPAD Analyzer{% endblock %}
-{% block page_title %}Importer les données{% endblock %}
+{% block title %}{{ _('Importer les données') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Importer les données') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -9,7 +9,7 @@
 
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white border-bottom py-3">
-          <h5 class="mb-0"><i class="bi bi-upload me-2 text-primary"></i>Importer un fichier Excel</h5>
+          <h5 class="mb-0"><i class="bi bi-upload me-2 text-primary"></i>{{ _('Importer un fichier Excel') }}</h5>
         </div>
         <div class="card-body p-4">
           <form method="POST" enctype="multipart/form-data" id="uploadForm">
@@ -18,35 +18,35 @@
               <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" class="d-none" required>
               <div id="dropContent">
                 <i class="bi bi-file-earmark-excel display-4 text-success mb-3"></i>
-                <h5 class="mb-1">Glissez-déposez votre fichier ici</h5>
-                <p class="text-muted mb-3">ou cliquez pour sélectionner</p>
+                <h5 class="mb-1">{{ _('Glissez-déposez votre fichier ici') }}</h5>
+                <p class="text-muted mb-3">{{ _('ou cliquez pour sélectionner') }}</p>
                 <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
-                  <i class="bi bi-folder2-open me-2"></i>Parcourir…
+                  <i class="bi bi-folder2-open me-2"></i>{{ _('Parcourir…') }}
                 </button>
-                <p class="text-muted small mt-3 mb-0">Formats acceptés : .xlsx, .xls &nbsp;|&nbsp; Taille max : 50 Mo</p>
+                <p class="text-muted small mt-3 mb-0">{{ _('Formats acceptés : .xlsx, .xls') }} &nbsp;|&nbsp; {{ _('Taille max : 50 Mo') }}</p>
               </div>
               <div id="filePreview" class="d-none">
                 <i class="bi bi-file-earmark-check-fill display-4 text-success mb-2"></i>
                 <h5 id="fileName" class="mb-1 text-success"></h5>
                 <p id="fileSize" class="text-muted small"></p>
                 <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="resetFile()">
-                  <i class="bi bi-x-circle me-1"></i>Changer de fichier
+                  <i class="bi bi-x-circle me-1"></i>{{ _('Changer de fichier') }}
                 </button>
               </div>
             </div>
 
             <!-- Options -->
             <div class="mt-4">
-              <h6 class="text-muted text-uppercase small fw-semibold mb-3">Options d'import</h6>
+              <h6 class="text-muted text-uppercase small fw-semibold mb-3">{{ _("Options d'import") }}</h6>
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label small fw-medium">Feuille Excel</label>
+                  <label class="form-label small fw-medium">{{ _('Feuille Excel') }}</label>
                   <select name="sheet" class="form-select form-select-sm">
-                    <option value="0">Première feuille (par défaut)</option>
+                    <option value="0">{{ _('Première feuille (par défaut)') }}</option>
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-medium">Encodage</label>
+                  <label class="form-label small fw-medium">{{ _('Encodage') }}</label>
                   <select name="encoding" class="form-select form-select-sm">
                     <option value="utf-8">UTF-8</option>
                     <option value="latin-1">Latin-1</option>
@@ -59,7 +59,7 @@
               <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
                 <span class="spinner-border spinner-border-sm d-none me-2" id="spinner"></span>
                 <i class="bi bi-cloud-upload-fill me-2" id="uploadIcon"></i>
-                <span id="submitText">Charger les données</span>
+                <span id="submitText">{{ _('Charger les données') }}</span>
               </button>
             </div>
           </form>
@@ -69,12 +69,12 @@
       <!-- Tips -->
       <div class="card border-0 bg-info-subtle mt-4">
         <div class="card-body">
-          <h6 class="text-info-emphasis mb-2"><i class="bi bi-info-circle-fill me-2"></i>Format attendu</h6>
+          <h6 class="text-info-emphasis mb-2"><i class="bi bi-info-circle-fill me-2"></i>{{ _('Format attendu') }}</h6>
           <ul class="small mb-0 text-info-emphasis">
-            <li>La <strong>première ligne</strong> doit contenir les noms de variables</li>
-            <li>Chaque ligne correspond à une <strong>observation</strong> (individu enquêté)</li>
-            <li>Les variables catégorielles doivent contenir des <strong>chaînes de caractères</strong> ou des codes</li>
-            <li>Les valeurs manquantes peuvent être laissées <strong>vides</strong></li>
+            <li>{{ _('La') }} <strong>{{ _('première ligne') }}</strong> {{ _('doit contenir les noms de variables') }}</li>
+            <li>{{ _('Chaque ligne correspond à une') }} <strong>{{ _('observation') }}</strong> {{ _('(individu enquêté)') }}</li>
+            <li>{{ _('Les variables catégorielles doivent contenir des') }} <strong>{{ _('chaînes de caractères') }}</strong> {{ _('ou des codes') }}</li>
+            <li>{{ _('Les valeurs manquantes peuvent être laissées') }} <strong>{{ _('vides') }}</strong></li>
           </ul>
         </div>
       </div>

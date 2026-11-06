@@ -1,20 +1,19 @@
 {% extends "base.html" %}
-{% block title %}{{ radical }} — Base centrale — SPAD Analyzer{% endblock %}
-{% block page_title %}Base centrale · {{ radical }}{% endblock %}
+{% block title %}{{ radical }} — {{ _('Base centrale') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Base centrale') }} · {{ radical }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <p class="text-muted small mb-0">
-    La variable <strong>{{ radical }}</strong> dans {{ serie|length }} enquête(s), de la plus ancienne à la plus récente
-    (date de référence du Factum).
+    {{ _('La variable') }} <strong>{{ radical }}</strong> {{ _('dans') }} {{ serie|length }} {{ _("enquête(s), de la plus ancienne à la plus récente (date de référence du Factum).") }}
   </p>
   <div class="d-flex gap-2">
     <a class="btn btn-sm btn-outline-primary" href="{{ url_for('gdb_variable_csv', radical=radical) }}"
-       title="Chaque valeur avec son Factum, son répondant et son code d'origine">
-      <i class="bi bi-download me-1"></i>Valeurs (.csv)
+       title="{{ _("Chaque valeur avec son Factum, son répondant et son code d'origine") }}">
+      <i class="bi bi-download me-1"></i>{{ _('Valeurs (.csv)') }}
     </a>
     <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('gdb_index') }}"
-       onclick="backGet('{{ url_for('gdb_index') }}'); return false;"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+       onclick="backGet('{{ url_for('gdb_index') }}'); return false;"><i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}</a>
   </div>
 </div>
 
@@ -22,7 +21,7 @@
   <div class="table-responsive">
     <table class="table table-sm mb-0 align-middle">
       <thead class="table-light">
-        <tr><th>Étude</th><th>Date de réf.</th><th>Valeurs</th><th>Résumé</th></tr>
+        <tr><th>{{ _('Étude') }}</th><th>{{ _('Date de réf.') }}</th><th>{{ _('Valeurs') }}</th><th>{{ _('Résumé') }}</th></tr>
       </thead>
       <tbody>
         {% for i in serie %}
@@ -31,14 +30,14 @@
           <td>
             <div class="fw-semibold small">{{ i.enquete.titre or i.factum }}</div>
             <div class="font-monospace text-muted" style="font-size:.7rem;word-break:break-all">{{ i.factum }}</div>
-            <div class="text-muted" style="font-size:.7rem">Code{{ 's' if i.codes|length > 1 }} : {{ i.codes|join(', ') }}
-              {% if i.enquete.source %}· Source : {{ i.enquete.source }}{% endif %}</div>
+            <div class="text-muted" style="font-size:.7rem">{{ _('Code') }}{{ 's' if i.codes|length > 1 }} : {{ i.codes|join(', ') }}
+              {% if i.enquete.source %}· {{ _('Source') }} : {{ i.enquete.source }}{% endif %}</div>
           </td>
           <td class="small">{{ p.date_lisible }}<div class="text-muted">{{ p.domaine_lisible }}</div></td>
           <td class="small">{{ i.n }}</td>
           <td class="small">
             {% if i.type == 'numerique' %}
-              Moyenne <strong>{{ i.moyenne }}</strong> · médiane {{ i.mediane }}
+              {{ _('Moyenne') }} <strong>{{ i.moyenne }}</strong> · {{ _('médiane') }} {{ i.mediane }}
               <span class="text-muted">· min {{ i.minimum }} · max {{ i.maximum }}</span>
             {% else %}
               {% for m in i.modalites %}
@@ -50,7 +49,7 @@
                 <span class="text-muted">{{ m.pct }} % ({{ m.n }})</span>
               </div>
               {% endfor %}
-              {% if i.autres %}<div class="text-muted">+ {{ i.autres }} autre(s) valeur(s)</div>{% endif %}
+              {% if i.autres %}<div class="text-muted">+ {{ i.autres }} {{ _('autre(s) valeur(s)') }}</div>{% endif %}
             {% endif %}
           </td>
         </tr>
@@ -63,16 +62,16 @@
 {% if lieux_possibles %}
 <div class="card mt-4">
   <div class="card-body">
-    <h6 class="fw-semibold"><i class="bi bi-geo-alt me-1"></i>Répartition spatiale</h6>
+    <h6 class="fw-semibold"><i class="bi bi-geo-alt me-1"></i>{{ _('Répartition spatiale') }}</h6>
     <p class="small text-muted">
-      3<sup>e</sup> axe du CUBE (géographie × variable), en plus du tableau ci-dessus (variable × enquête) : ventile
-      <strong>{{ radical }}</strong> par une variable de lieu, tous répondants confondus.
+      3<sup>e</sup> {{ _('axe du CUBE (géographie × variable), en plus du tableau ci-dessus (variable × enquête) : ventile') }}
+      <strong>{{ radical }}</strong> {{ _('par une variable de lieu, tous répondants confondus.') }}
     </p>
     <form method="get" class="input-group input-group-sm mb-3" style="max-width:30rem">
       <select name="lieu" class="form-select" onchange="this.form.submit()">
-        <option value="">Choisir une variable de lieu…</option>
+        <option value="">{{ _('Choisir une variable de lieu…') }}</option>
         {% for r, n in lieux_possibles %}
-        <option value="{{ r }}" {{ 'selected' if r == lieu_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+        <option value="{{ r }}" {{ 'selected' if r == lieu_radical }}>{{ r }} ({{ n }} {{ _('valeur(s)') }})</option>
         {% endfor %}
       </select>
     </form>
@@ -80,7 +79,7 @@
       {% if repartition %}
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-          <thead class="table-light"><tr><th>Lieu</th><th>Valeurs</th><th>Résumé</th></tr></thead>
+          <thead class="table-light"><tr><th>{{ _('Lieu') }}</th><th>{{ _('Valeurs') }}</th><th>{{ _('Résumé') }}</th></tr></thead>
           <tbody>
             {% for i in repartition %}
             <tr>
@@ -88,7 +87,7 @@
               <td class="small">{{ i.n }}</td>
               <td class="small">
                 {% if i.type == 'numerique' %}
-                  Moyenne <strong>{{ i.moyenne }}</strong> · médiane {{ i.mediane }}
+                  {{ _('Moyenne') }} <strong>{{ i.moyenne }}</strong> · {{ _('médiane') }} {{ i.mediane }}
                 {% else %}
                   {% for m in i.modalites %}
                   <div class="d-flex align-items-center gap-2">
@@ -99,7 +98,7 @@
                     <span class="text-muted">{{ m.pct }} % ({{ m.n }})</span>
                   </div>
                   {% endfor %}
-                  {% if i.autres %}<div class="text-muted">+ {{ i.autres }} autre(s) valeur(s)</div>{% endif %}
+                  {% if i.autres %}<div class="text-muted">+ {{ i.autres }} {{ _('autre(s) valeur(s)') }}</div>{% endif %}
                 {% endif %}
               </td>
             </tr>
@@ -108,11 +107,11 @@
         </table>
       </div>
       {% else %}
-      <p class="small text-muted mb-0">Aucun répondant n'a à la fois une valeur pour « {{ radical }} » et pour « {{ lieu_radical }} ».</p>
+      <p class="small text-muted mb-0">{{ _("Aucun répondant n'a à la fois une valeur pour «") }} {{ radical }} {{ _('» et pour «') }} {{ lieu_radical }} {{ _('».') }}</p>
       {% endif %}
     {% else %}
     <p class="small text-muted mb-0">
-      Variables de lieu détectées par mot-clé sur leur nom (district, région, commune…) — à vérifier, pas une certitude.
+      {{ _('Variables de lieu détectées par mot-clé sur leur nom (district, région, commune…) — à vérifier, pas une certitude.') }}
     </p>
     {% endif %}
   </div>

@@ -79,7 +79,7 @@ os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
 # session (mêmes garanties — et mêmes limites — que tout le reste de cette app :
 # cookie signé côté client, voir [[production-deploy-workflow]] / mémoire du projet,
 # pas une vraie session serveur malgré SESSION_TYPE dans config.py).
-app.config['LANGUAGES'] = {'fr': 'Français', 'en': 'English', 'es': 'Español', 'pt': 'Português'}
+app.config['LANGUAGES'] = {'fr': 'Français', 'en': 'English'}
 
 
 def get_locale():

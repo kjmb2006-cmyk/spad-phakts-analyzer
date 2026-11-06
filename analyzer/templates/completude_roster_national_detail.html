@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ form.label if form else form_code }} — Détail nominatif — SPAD Analyzer{% endblock %}
+{% block title %}{{ form.label if form else form_code }} — {{ _('Détail nominatif') }} — SPAD Analyzer{% endblock %}
 {% block page_title %}
   {{ form.label if form else form_code }}
-  <span class="badge bg-primary ms-2" style="font-size:.6em;vertical-align:middle">roster national — liste nominative</span>
+  <span class="badge bg-primary ms-2" style="font-size:.6em;vertical-align:middle">{{ _('roster national — liste nominative') }}</span>
 {% endblock %}
 
 {% block content %}
@@ -11,12 +11,12 @@
   {# ── En-tête navigation ─────────────────────────────────────────────────── #}
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
     <a href="{{ url_for('completude') }}"
        onclick="smartBack('{{ url_for('completude') }}'); return false;"
        class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Retour
+      <i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}
     </a>
   </div>
 
@@ -25,7 +25,7 @@
     <div class="col-md-4">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body text-center py-4">
-          <div class="text-muted small mb-1">Total national</div>
+          <div class="text-muted small mb-1">{{ _('Total national') }}</div>
           {% set nat = data.national %}
           <div class="display-6 fw-bold
             {% if nat.statut == 'cible' %}text-success
@@ -57,20 +57,20 @@
     <div class="col-md-8">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <div class="fw-semibold mb-2">Paramètres du formulaire</div>
+          <div class="fw-semibold mb-2">{{ _('Paramètres du formulaire') }}</div>
           <dl class="row mb-0 small">
-            <dt class="col-4 text-muted">Code</dt>
+            <dt class="col-4 text-muted">{{ _('Code') }}</dt>
             <dd class="col-8">{{ form_code }}</dd>
-            <dt class="col-4 text-muted">Libellé</dt>
+            <dt class="col-4 text-muted">{{ _('Libellé') }}</dt>
             <dd class="col-8">{{ form.label if form else '—' }}</dd>
-            <dt class="col-4 text-muted">Rôle ciblé</dt>
+            <dt class="col-4 text-muted">{{ _('Rôle ciblé') }}</dt>
             <dd class="col-8">
               {% if form and form.role_filter %}
               {{ form.role_filter.field }} = « {{ form.role_filter.value }} »
               {% else %}—{% endif %}
             </dd>
-            <dt class="col-4 text-muted">Entités attendues</dt>
-            <dd class="col-8">{{ data.entries|length }} entité(s), {{ data.national.cible }} personnes au total</dd>
+            <dt class="col-4 text-muted">{{ _('Entités attendues') }}</dt>
+            <dd class="col-8">{{ data.entries|length }} {{ _('entité(s),') }} {{ data.national.cible }} {{ _('personnes au total') }}</dd>
           </dl>
         </div>
       </div>
@@ -79,7 +79,7 @@
 
   {# ── Détail par entité ────────────────────────────────────────────────────── #}
   <span class="section-label d-block mb-2">
-    <i class="bi bi-list-ul me-1"></i>Détail par entité
+    <i class="bi bi-list-ul me-1"></i>{{ _('Détail par entité') }}
   </span>
 
   <div class="card border-0 shadow-sm mb-4">
@@ -88,10 +88,10 @@
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th style="min-width:200px">Entité</th>
-              <th class="text-center" style="min-width:100px">Reçus</th>
-              <th style="min-width:200px">Progression</th>
-              <th class="text-center" style="min-width:120px">Statut</th>
+              <th style="min-width:200px">{{ _('Entité') }}</th>
+              <th class="text-center" style="min-width:100px">{{ _('Reçus') }}</th>
+              <th style="min-width:200px">{{ _('Progression') }}</th>
+              <th class="text-center" style="min-width:120px">{{ _('Statut') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,27 +116,27 @@
               <td class="text-center">
                 {% if e.statut == 'cible' %}
                 <span class="status-pill status-pill--cible" style="font-size:.7rem;padding:2px 10px">
-                  <i class="bi bi-check-lg me-1"></i>Reçu{% if e.cible > 1 %} · {{ e.taux }} %{% endif %}
+                  <i class="bi bi-check-lg me-1"></i>{{ _('Reçu') }}{% if e.cible > 1 %} · {{ e.taux }} %{% endif %}
                 </span>
                 {% elif e.statut == 'exces' %}
                 <span class="status-pill status-pill--exces" style="font-size:.7rem;padding:2px 10px">
-                  Dépassement · {{ e.taux }} %
+                  {{ _('Dépassement') }} · {{ e.taux }} %
                 </span>
                 {% elif e.statut == 'en_cours' %}
                 <span class="status-pill status-pill--en-cours" style="font-size:.7rem;padding:2px 10px">
-                  En cours · {{ e.taux }} %
+                  {{ _('En cours') }} · {{ e.taux }} %
                 </span>
                 {% elif e.statut == 'critique' %}
                 <span class="status-pill status-pill--critique" style="font-size:.7rem;padding:2px 10px">
-                  Critique · {{ e.taux }} %
+                  {{ _('Critique') }} · {{ e.taux }} %
                 </span>
                 {% elif e.statut == 'verifier' %}
                 <span class="status-pill status-pill--verifier" style="font-size:.7rem;padding:2px 10px">
-                  À vérifier · {{ e.taux }} %
+                  {{ _('À vérifier') }} · {{ e.taux }} %
                 </span>
                 {% else %}
                 <span class="status-pill status-pill--zero" style="font-size:.7rem;padding:2px 10px">
-                  En attente
+                  {{ _('En attente') }}
                 </span>
                 {% endif %}
               </td>
@@ -145,7 +145,7 @@
           </tbody>
           <tfoot class="table-light fw-semibold">
             <tr>
-              <td>Total national</td>
+              <td>{{ _('Total national') }}</td>
               <td class="text-center">{{ data.national.recu }} / {{ data.national.cible }}</td>
               <td></td>
               <td class="text-center">

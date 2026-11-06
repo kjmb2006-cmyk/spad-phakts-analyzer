@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Complétude de l'équipe SPAD — SPAD Analyzer{% endblock %}
-{% block page_title %}Complétude de l'équipe SPAD{% endblock %}
+{% block title %}{{ _("Complétude de l'équipe SPAD") }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _("Complétude de l'équipe SPAD") }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -10,40 +10,40 @@
     <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
       <div class="d-flex flex-wrap gap-1 align-items-center">
         <a href="{{ url_for('completude') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ Complétude nationale
+          <i class="bi bi-clipboard2-pulse me-1"></i>🏛️ {{ _('Complétude nationale') }}
         </a>
         <a href="{{ url_for('completude_equipe_spad') }}" class="btn btn-sm btn-primary fw-semibold">
-          <i class="bi bi-diagram-3 me-1"></i>Équipe SPAD
+          <i class="bi bi-diagram-3 me-1"></i>{{ _('Équipe SPAD') }}
         </a>
         <a href="{{ url_for('completude_regions') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-map me-1"></i>🗺️ Régions
+          <i class="bi bi-map me-1"></i>🗺️ {{ _('Régions') }}
         </a>
         <a href="{{ url_for('completude_districts') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-pin-map me-1"></i>📍 Districts
+          <i class="bi bi-pin-map me-1"></i>📍 {{ _('Districts') }}
         </a>
         <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-badge me-1"></i>👔 Superviseurs
+          <i class="bi bi-person-badge me-1"></i>👔 {{ _('Superviseurs') }}
         </a>
         <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-walking me-1"></i>🚶 Enquêteurs
+          <i class="bi bi-person-walking me-1"></i>🚶 {{ _('Enquêteurs') }}
         </a>
         <a href="{{ url_for('completude_anomalies') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ Anomalies
+          <i class="bi bi-exclamation-triangle me-1"></i>⚠️ {{ _('Anomalies') }}
         </a>
         <a href="{{ url_for('completude_graphiques') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-graph-up me-1"></i>📈 Graphiques (10j)
+          <i class="bi bi-graph-up me-1"></i>📈 {{ _('Graphiques (10j)') }}
         </a>
       </div>
       <a href="{{ url_for('suivi') }}" class="btn btn-sm btn-outline-primary fw-semibold">
-        <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+        <i class="bi bi-broadcast me-1"></i>{{ _('Suivi multi-formulaires') }}
       </a>
     </div>
   </div>
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      Équipe de coordination (UGP) et programmes de santé représentés — suivi nominatif, sans dimension géographique.
-      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {{ _('Équipe de coordination (UGP) et programmes de santé représentés — suivi nominatif, sans dimension géographique.') }}
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
   </div>
 
@@ -51,8 +51,8 @@
   <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
       <i class="bi bi-diagram-3 display-3 mb-3 d-block opacity-25"></i>
-      <h5 class="fw-semibold mb-2">Aucun formulaire « roster national » dans le registre</h5>
-      <p class="small mb-0">Ajoutez-en un (grain « roster_national ») depuis le registre des formulaires si vous êtes administrateur.</p>
+      <h5 class="fw-semibold mb-2">{{ _('Aucun formulaire « roster national » dans le registre') }}</h5>
+      <p class="small mb-0">{{ _('Ajoutez-en un (grain « roster_national ») depuis le registre des formulaires si vous êtes administrateur.') }}</p>
     </div>
   </div>
   {% else %}
@@ -77,7 +77,7 @@
         <div class="card-body p-0">
           {% if not data %}
           <div class="p-4 text-muted small text-center">
-            Calcul non disponible — cliquez « Calculer la complétude » depuis Complétude nationale.
+            {{ _('Calcul non disponible — cliquez « Calculer la complétude » depuis Complétude nationale.') }}
           </div>
           {% else %}
           {% if nat.taux is not none %}
@@ -98,9 +98,9 @@
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Entité</th>
-                  <th class="text-center" style="width:90px">Reçus</th>
-                  <th class="text-center" style="width:130px">Statut</th>
+                  <th>{{ _('Entité') }}</th>
+                  <th class="text-center" style="width:90px">{{ _('Reçus') }}</th>
+                  <th class="text-center" style="width:130px">{{ _('Statut') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,7 +111,7 @@
                   <td class="text-center">
                     {% if e.statut == 'cible' %}
                     <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 8px">
-                      <i class="bi bi-check-lg me-1"></i>Reçu
+                      <i class="bi bi-check-lg me-1"></i>{{ _('Reçu') }}
                     </span>
                     {% elif e.statut == 'exces' %}
                     <span class="status-pill status-pill--exces" style="font-size:.68rem;padding:2px 8px">{{ e.taux }} %</span>
@@ -120,9 +120,9 @@
                     {% elif e.statut == 'critique' %}
                     <span class="status-pill status-pill--critique" style="font-size:.68rem;padding:2px 8px">{{ e.taux }} %</span>
                     {% elif e.statut == 'verifier' %}
-                    <span class="status-pill status-pill--verifier" style="font-size:.68rem;padding:2px 8px">À vérifier</span>
+                    <span class="status-pill status-pill--verifier" style="font-size:.68rem;padding:2px 8px">{{ _('À vérifier') }}</span>
                     {% else %}
-                    <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">En attente</span>
+                    <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">{{ _('En attente') }}</span>
                     {% endif %}
                   </td>
                 </tr>
@@ -133,7 +133,7 @@
           <div class="p-2 text-end border-top">
             <a href="{{ url_for('completude_roster_national_detail', form_code=form.code) }}"
                class="btn btn-sm btn-link py-0" style="font-size:.78rem">
-              Détail complet <i class="bi bi-arrow-right ms-1"></i>
+              {{ _('Détail complet') }} <i class="bi bi-arrow-right ms-1"></i>
             </a>
           </div>
           {% endif %}

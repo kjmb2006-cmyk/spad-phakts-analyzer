@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Registre des formulaires — SPAD Analyzer{% endblock %}
-{% block page_title %}Registre des formulaires{% endblock %}
+{% block title %}{{ _('Registre des formulaires') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Registre des formulaires') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -8,15 +8,14 @@
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-collection me-1 fs-4"></i>
     <div>
-      <strong>Les 7 formulaires SPAD ne sont plus figés.</strong>
-      Désactivez ceux que cette collecte n'utilise pas, ou ajoutez-en d'autres — ils apparaîtront
-      alors dans « Suivi multi-formulaires » et dans la correspondance de « Complétude nationale ».
+      <strong>{{ _('Les 7 formulaires SPAD ne sont plus figés.') }}</strong>
+      {{ _("Désactivez ceux que cette collecte n'utilise pas, ou ajoutez-en d'autres — ils apparaîtront alors dans « Suivi multi-formulaires » et dans la correspondance de « Complétude nationale ».") }}
     </div>
   </div>
 
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>Formulaires du registre</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>{{ _('Formulaires du registre') }}</h6>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -24,12 +23,12 @@
           <thead>
             <tr>
               <th>Code</th>
-              <th>Libellé</th>
-              <th>Grain</th>
-              <th>Acteur</th>
-              <th>Règle de cible</th>
-              <th>Statut</th>
-              <th class="text-end">Action</th>
+              <th>{{ _('Libellé') }}</th>
+              <th>{{ _('Grain') }}</th>
+              <th>{{ _('Acteur') }}</th>
+              <th>{{ _('Règle de cible') }}</th>
+              <th>{{ _('Statut') }}</th>
+              <th class="text-end">{{ _('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -38,37 +37,37 @@
               <td class="fw-semibold small">{{ f.code }}</td>
               <td class="small">{{ f.label }}</td>
               <td class="small text-muted">
-                {%- if f.grain == 'etablissement' -%}Établissement
-                {%- elif f.grain == 'district' -%}District
-                {%- elif f.grain == 'enqueteur' -%}Enquêteur (roster)
-                {%- elif f.grain == 'superviseur' -%}Superviseur (roster)
+                {%- if f.grain == 'etablissement' -%}{{ _('Établissement') }}
+                {%- elif f.grain == 'district' -%}{{ _('District') }}
+                {%- elif f.grain == 'enqueteur' -%}{{ _('Enquêteur (roster)') }}
+                {%- elif f.grain == 'superviseur' -%}{{ _('Superviseur (roster)') }}
                 {%- else -%}{{ f.grain }}
                 {%- endif -%}
               </td>
-              <td class="small text-muted">{{ 'Enquêteur' if f.actor == 'enqueteur' else 'Superviseur' }}</td>
+              <td class="small text-muted">{{ _('Enquêteur') if f.actor == 'enqueteur' else _('Superviseur') }}</td>
               <td class="small text-muted">{{ rule_type_labels.get(f.target_rule.type, f.target_rule.type) }}
                 {% if f.target_rule.params.get('n') is not none %} ({{ f.target_rule.params.n }}){% endif %}
                 {% if f.target_rule.params.get('field') %} ({{ f.target_rule.params.field }}){% endif %}
               </td>
               <td>
                 {% if f.active %}
-                <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 8px">Actif</span>
+                <span class="status-pill status-pill--cible" style="font-size:.68rem;padding:2px 8px">{{ _('Actif') }}</span>
                 {% else %}
-                <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">Désactivé</span>
+                <span class="status-pill status-pill--zero" style="font-size:.68rem;padding:2px 8px">{{ _('Désactivé') }}</span>
                 {% endif %}
               </td>
               <td class="text-end">
                 {% if f.active %}
                 <form method="POST" action="{{ url_for('admin_form_deactivate', code=f.code) }}" class="d-inline"
-                      onsubmit="return confirm('Désactiver « {{ f.code }} » ? Il disparaîtra de Suivi et Complétude.')">
+                      onsubmit="return confirm(&quot;{{ _('Désactiver « %(code)s » ? Il disparaîtra de Suivi et Complétude.', code=f.code) }}&quot;);">
                   <button type="submit" class="btn btn-outline-warning btn-sm py-0 px-2" style="font-size:.72rem">
-                    <i class="bi bi-eye-slash me-1"></i>Désactiver
+                    <i class="bi bi-eye-slash me-1"></i>{{ _('Désactiver') }}
                   </button>
                 </form>
                 {% else %}
                 <form method="POST" action="{{ url_for('admin_form_activate', code=f.code) }}" class="d-inline">
                   <button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size:.72rem">
-                    <i class="bi bi-eye me-1"></i>Activer
+                    <i class="bi bi-eye me-1"></i>{{ _('Activer') }}
                   </button>
                 </form>
                 {% endif %}
@@ -83,75 +82,75 @@
 
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Ajouter un formulaire</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>{{ _('Ajouter un formulaire') }}</h6>
     </div>
     <div class="card-body">
       <form method="POST" action="{{ url_for('admin_form_add') }}">
         <div class="row g-3">
           <div class="col-md-3">
             <label class="form-label small fw-semibold">Code</label>
-            <input type="text" class="form-control form-control-sm" name="code" required placeholder="ex. F09">
+            <input type="text" class="form-control form-control-sm" name="code" required placeholder="{{ _('ex.') }} F09">
           </div>
           <div class="col-md-5">
-            <label class="form-label small fw-semibold">Libellé</label>
-            <input type="text" class="form-control form-control-sm" name="label" required placeholder="ex. Nutrition — Enfants 0-5 ans">
+            <label class="form-label small fw-semibold">{{ _('Libellé') }}</label>
+            <input type="text" class="form-control form-control-sm" name="label" required placeholder="{{ _('ex. Nutrition — Enfants 0-5 ans') }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label small fw-semibold">Préfixe de détection auto. (nom Kobo)</label>
-            <input type="text" class="form-control form-control-sm" name="name_hint" placeholder="ex. 9_">
+            <label class="form-label small fw-semibold">{{ _('Préfixe de détection auto. (nom Kobo)') }}</label>
+            <input type="text" class="form-control form-control-sm" name="name_hint" placeholder="{{ _('ex.') }} 9_">
           </div>
 
           <div class="col-md-3">
-            <label class="form-label small fw-semibold">Grain</label>
+            <label class="form-label small fw-semibold">{{ _('Grain') }}</label>
             <select class="form-select form-select-sm" name="grain" id="grain-select" required
                     onchange="toggleRosterSection(this.value)">
-              <option value="etablissement">Établissement</option>
-              <option value="district">District</option>
-              <option value="enqueteur">Enquêteur (roster)</option>
-              <option value="superviseur">Superviseur (roster)</option>
+              <option value="etablissement">{{ _('Établissement') }}</option>
+              <option value="district">{{ _('District') }}</option>
+              <option value="enqueteur">{{ _('Enquêteur (roster)') }}</option>
+              <option value="superviseur">{{ _('Superviseur (roster)') }}</option>
             </select>
           </div>
           <div class="col-md-3">
-            <label class="form-label small fw-semibold">Rempli par</label>
+            <label class="form-label small fw-semibold">{{ _('Rempli par') }}</label>
             <select class="form-select form-select-sm" name="actor" required>
-              <option value="enqueteur">Enquêteur</option>
-              <option value="superviseur">Superviseur</option>
+              <option value="enqueteur">{{ _('Enquêteur') }}</option>
+              <option value="superviseur">{{ _('Superviseur') }}</option>
             </select>
           </div>
           <div class="col-md-3">
-            <label class="form-label small fw-semibold">Champ Kobo — code établissement</label>
-            <input type="text" class="form-control form-control-sm" name="etab_field" placeholder="ex. Etablissement_Sanitaire__X">
+            <label class="form-label small fw-semibold">{{ _('Champ Kobo — code établissement') }}</label>
+            <input type="text" class="form-control form-control-sm" name="etab_field" placeholder="{{ _('ex.') }} Etablissement_Sanitaire__X">
           </div>
           <div class="col-md-3">
-            <label class="form-label small fw-semibold">Champ Kobo — code district</label>
-            <input type="text" class="form-control form-control-sm" name="district_field" placeholder="ex. District_Sanitaire__X">
+            <label class="form-label small fw-semibold">{{ _('Champ Kobo — code district') }}</label>
+            <input type="text" class="form-control form-control-sm" name="district_field" placeholder="{{ _('ex.') }} District_Sanitaire__X">
           </div>
 
           <!-- Section roster (enquêteur/superviseur) — masquée par défaut -->
           <div class="col-12" id="roster-section" style="display:none">
             <div class="card border-warning bg-warning bg-opacity-10 p-3">
               <div class="fw-semibold small mb-2">
-                <i class="bi bi-people me-1 text-warning"></i>Configuration roster
-                <span class="text-muted fw-normal">— un même formulaire Kobo peut porter plusieurs codes SPAD (un par rôle)</span>
+                <i class="bi bi-people me-1 text-warning"></i>{{ _('Configuration roster') }}
+                <span class="text-muted fw-normal">— {{ _('un même formulaire Kobo peut porter plusieurs codes SPAD (un par rôle)') }}</span>
               </div>
               <div class="row g-3">
                 <div class="col-md-4">
-                  <label class="form-label small fw-semibold">Champ de rôle (role_filter field)</label>
+                  <label class="form-label small fw-semibold">{{ _('Champ de rôle (role_filter field)') }}</label>
                   <input type="text" class="form-control form-control-sm" name="role_filter_field"
-                         placeholder="ex. Fonction">
-                  <div class="form-text" style="font-size:.7rem">Nom du champ Kobo qui distingue les rôles.</div>
+                         placeholder="{{ _('ex.') }} Fonction">
+                  <div class="form-text" style="font-size:.7rem">{{ _('Nom du champ Kobo qui distingue les rôles.') }}</div>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label small fw-semibold">Valeur attendue (role_filter value)</label>
+                  <label class="form-label small fw-semibold">{{ _('Valeur attendue (role_filter value)') }}</label>
                   <input type="text" class="form-control form-control-sm" name="role_filter_value"
-                         placeholder="ex. Superviseur">
-                  <div class="form-text" style="font-size:.7rem">Valeur exacte du champ pour ce rôle (insensible à la casse).</div>
+                         placeholder="{{ _('ex.') }} Superviseur">
+                  <div class="form-text" style="font-size:.7rem">{{ _('Valeur exacte du champ pour ce rôle (insensible à la casse).') }}</div>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label small fw-semibold">Champ d'identité (identity_field)</label>
+                  <label class="form-label small fw-semibold">{{ _("Champ d'identité (identity_field)") }}</label>
                   <input type="text" class="form-control form-control-sm" name="identity_field"
-                         placeholder="ex. _submitted_by">
-                  <div class="form-text" style="font-size:.7rem">Champ Kobo identifiant chaque répondant (compte les individus distincts, pas les soumissions).</div>
+                         placeholder="{{ _('ex.') }} _submitted_by">
+                  <div class="form-text" style="font-size:.7rem">{{ _('Champ Kobo identifiant chaque répondant (compte les individus distincts, pas les soumissions).') }}</div>
                 </div>
               </div>
             </div>
@@ -160,7 +159,7 @@
           <div class="col-12"><hr class="my-1"></div>
 
           <div class="col-md-4">
-            <label class="form-label small fw-semibold">Type de règle de cible</label>
+            <label class="form-label small fw-semibold">{{ _('Type de règle de cible') }}</label>
             <select class="form-select form-select-sm" name="rule_type" id="rule-type-select" required
                     onchange="toggleRuleFields(this.value)">
               {% for rt in rule_types %}
@@ -171,18 +170,18 @@
             </select>
           </div>
           <div class="col-md-4" id="field-rule-n">
-            <label class="form-label small fw-semibold">Nombre (si règle « fixe »)</label>
-            <input type="number" min="0" class="form-control form-control-sm" name="rule_n" placeholder="ex. 1">
+            <label class="form-label small fw-semibold">{{ _('Nombre (si règle « fixe »)') }}</label>
+            <input type="number" min="0" class="form-control form-control-sm" name="rule_n" placeholder="{{ _('ex.') }} 1">
           </div>
           <div class="col-md-4" id="field-rule-field">
-            <label class="form-label small fw-semibold">Champ du référentiel (si règle « champ »)</label>
-            <input type="text" class="form-control form-control-sm" name="rule_field" placeholder="ex. sig_deces_maternels">
-            <div class="form-text" style="font-size:.7rem">Seuls les champs déjà présents dans le référentiel établissement (voir org_unit.xlsx / tirage_etablissements.xlsx) sont utilisables.</div>
+            <label class="form-label small fw-semibold">{{ _('Champ du référentiel (si règle « champ »)') }}</label>
+            <input type="text" class="form-control form-control-sm" name="rule_field" placeholder="{{ _('ex.') }} sig_deces_maternels">
+            <div class="form-text" style="font-size:.7rem">{{ _('Seuls les champs déjà présents dans le référentiel établissement (voir org_unit.xlsx / tirage_etablissements.xlsx) sont utilisables.') }}</div>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary btn-sm mt-3">
-          <i class="bi bi-plus-lg me-1"></i>Ajouter au registre
+          <i class="bi bi-plus-lg me-1"></i>{{ _('Ajouter au registre') }}
         </button>
       </form>
     </div>
@@ -190,8 +189,7 @@
 
   <p class="text-muted small mt-3">
     <i class="bi bi-info-circle me-1"></i>
-    La règle « selon le type d'établissement » (motif F6) est réservée aux 7 formulaires historiques —
-    trop spécifique pour être configurée depuis cet écran.
+    {{ _("La règle « selon le type d'établissement » (motif F6) est réservée aux 7 formulaires historiques — trop spécifique pour être configurée depuis cet écran.") }}
   </p>
 
 </div>

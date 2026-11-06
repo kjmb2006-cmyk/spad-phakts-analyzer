@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 {% import "_completude_macros.html" as m %}
 {% block title %}{{ etab.nom }} — SPAD Analyzer{% endblock %}
-{% block page_title %}Établissement — {{ etab.nom }}{% endblock %}
+{% block page_title %}{{ _('Établissement') }} — {{ etab.nom }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {% if computed_at %}<i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
     <div class="d-flex gap-2">
       <a href="{{ url_for('completude_district_detail', district_code=etab.district_code) }}"
          onclick="smartBack('{{ url_for('completude_district_detail', district_code=etab.district_code) }}'); return false;"
          class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Retour
+        <i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}
       </a>
-      <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">Vue nationale</a>
+      <a href="{{ url_for('completude') }}" class="btn btn-outline-primary btn-sm">{{ _('Vue nationale') }}</a>
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Complétude de l'établissement</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>{{ _("Complétude de l'établissement") }}</span>
   {{ m.forms_cards(etab.forms, form_codes, form_labels) }}
 
   <div class="row g-3 mb-4">
     <div class="col-md-6">
-      <span class="section-label d-block mb-2"><i class="bi bi-person me-1"></i>Enquêteur assigné</span>
+      <span class="section-label d-block mb-2"><i class="bi bi-person me-1"></i>{{ _('Enquêteur assigné') }}</span>
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           {% if enqueteur %}
@@ -44,16 +44,16 @@
             {% endfor %}
           </div>
           <p class="text-muted small mt-2 mb-0">
-            <i class="bi bi-info-circle me-1"></i>Scores agrégés sur les 2 établissements suivis par cet enquêteur.
+            <i class="bi bi-info-circle me-1"></i>{{ _('Scores agrégés sur les 2 établissements suivis par cet enquêteur.') }}
           </p>
           {% else %}
-          <p class="text-muted small mb-0">Aucun enquêteur identifié pour cet établissement.</p>
+          <p class="text-muted small mb-0">{{ _('Aucun enquêteur identifié pour cet établissement.') }}</p>
           {% endif %}
         </div>
       </div>
     </div>
     <div class="col-md-6">
-      <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>Superviseur du district</span>
+      <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>{{ _('Superviseur du district') }}</span>
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           {% if superviseur %}
@@ -69,14 +69,14 @@
             {% endfor %}
           </div>
           {% else %}
-          <p class="text-muted small mb-0">Aucun superviseur identifié pour ce district.</p>
+          <p class="text-muted small mb-0">{{ _('Aucun superviseur identifié pour ce district.') }}</p>
           {% endif %}
         </div>
       </div>
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies sur cet établissement</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ _('Anomalies sur cet établissement') }}</span>
   {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
 
 </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Analyse multi-enquête — SPAD Analyzer{% endblock %}
-{% block page_title %}Analyse multi-enquête (DPF / PHAKTS){% endblock %}
+{% block title %}{{ _('Analyse multi-enquête') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Analyse multi-enquête (DPF / PHAKTS)') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -18,7 +18,7 @@
 {% set sig = (r.test.significant_fdr if corrected else r.test.p_value < 0.05) %}
 <span class="badge {% if sig %}bg-warning-subtle text-warning border border-warning-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %}">
   {% set pv = r.test.p_value %}{% set qv = r.test.q_value %}
-  {{ r.test.test }} · p {{ '< 0,0001' if pv < 0.0001 else '= ' ~ pv }}{% if corrected %} · q {{ '< 0,0001' if qv < 0.0001 else '= ' ~ qv }}{% endif %}{% if sig %} (écart significatif){% elif corrected and r.test.p_value < 0.05 %} (non significatif après correction){% else %} (pas d'écart significatif){% endif %}
+  {{ r.test.test }} · p {{ '< 0,0001' if pv < 0.0001 else '= ' ~ pv }}{% if corrected %} · q {{ '< 0,0001' if qv < 0.0001 else '= ' ~ qv }}{% endif %}{% if sig %} {{ _('(écart significatif)') }}{% elif corrected and r.test.p_value < 0.05 %} {{ _('(non significatif après correction)') }}{% else %} {{ _("(pas d'écart significatif)") }}{% endif %}
 </span>
 {% endif %}
 {% endmacro %}
@@ -28,7 +28,7 @@
 <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #1A5276 !important">
   <div class="card-body py-3">
     <div class="small fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.04em">
-      <i class="bi bi-journal-text me-1"></i>Synthèse de la comparaison
+      <i class="bi bi-journal-text me-1"></i>{{ _('Synthèse de la comparaison') }}
     </div>
     <div class="small" style="color:#2C3E50;line-height:1.6;white-space:pre-line">{{ text }}</div>
   </div>
@@ -39,14 +39,14 @@
 {% macro evolution_table(rows) %}
 {% if rows %}
 <h6 class="small fw-semibold text-muted mt-3">
-  <i class="bi bi-graph-up me-1"></i>Évolution entre enquêtes consécutives
-  <span class="fw-normal">— ordre chronologique du Factum · intervalle de confiance à 95 %</span>
+  <i class="bi bi-graph-up me-1"></i>{{ _('Évolution entre enquêtes consécutives') }}
+  <span class="fw-normal">— {{ _('ordre chronologique du Factum · intervalle de confiance à 95 %%') }}</span>
 </h6>
 <div class="table-responsive">
   <table class="table table-sm align-middle mb-1">
     <thead class="table-light">
-      <tr><th>De → vers</th><th>Modalité</th><th class="text-end">Avant</th><th class="text-end">Après</th>
-          <th class="text-end">Écart</th><th class="text-end">IC 95 %</th><th class="text-end">p</th></tr>
+      <tr><th>{{ _('De → vers') }}</th><th>{{ _('Modalité') }}</th><th class="text-end">{{ _('Avant') }}</th><th class="text-end">{{ _('Après') }}</th>
+          <th class="text-end">{{ _('Écart') }}</th><th class="text-end">{{ _('IC 95 %%') }}</th><th class="text-end">p</th></tr>
     </thead>
     <tbody>
       {% for e in rows %}
@@ -66,7 +66,7 @@
     </tbody>
   </table>
 </div>
-<p class="small text-muted mb-0">▲ ▼ : l'intervalle de confiance exclut 0 (écart net entre les deux enquêtes). Un écart dont l'intervalle contient 0 peut n'être dû qu'au hasard de l'échantillonnage.</p>
+<p class="small text-muted mb-0">{{ _("▲ ▼ : l'intervalle de confiance exclut 0 (écart net entre les deux enquêtes). Un écart dont l'intervalle contient 0 peut n'être dû qu'au hasard de l'échantillonnage.") }}</p>
 {% endif %}
 {% endmacro %}
 
@@ -75,9 +75,9 @@
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-collection-fill fs-3"></i>
     <div>
-      <strong>Comparez plusieurs enquêtes</strong> alignées grâce à la codification
-      <strong>PHAKTS / DPF</strong>. Importez des fichiers Excel ou connectez-vous à
-      <strong>KoboToolbox</strong> pour charger vos formulaires directement.
+      <strong>{{ _('Comparez plusieurs enquêtes') }}</strong> {{ _('alignées grâce à la codification') }}
+      <strong>PHAKTS / DPF</strong>. {{ _('Importez des fichiers Excel ou connectez-vous à') }}
+      <strong>KoboToolbox</strong> {{ _('pour charger vos formulaires directement.') }}
     </div>
   </div>
 
@@ -88,7 +88,7 @@
     <div class="card-header bg-white border-bottom py-3">
       <h6 class="mb-0 fw-semibold">
         <i class="bi bi-upload me-2 text-primary"></i>
-        1. Importer les fichiers d'enquête — et lancer une analyse multivariée
+        {{ _("1. Importer les fichiers d'enquête — et lancer une analyse multivariée") }}
       </h6>
     </div>
     <div class="card-body">
@@ -98,7 +98,7 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link active fw-semibold small px-3 py-2" id="tab-excel"
                   data-bs-toggle="tab" data-bs-target="#pane-excel" type="button">
-            <i class="bi bi-file-earmark-excel me-1 text-success"></i>Fichier Excel (.xlsx)
+            <i class="bi bi-file-earmark-excel me-1 text-success"></i>{{ _('Fichier Excel (.xlsx)') }}
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -106,16 +106,16 @@
                   data-bs-toggle="tab" data-bs-target="#pane-kobo" type="button">
             <i class="bi bi-cloud-arrow-down me-1 text-primary"></i>KoboToolbox
             {% if not kobo_connected %}
-              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size:.65em">non connecté</span>
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size:.65em">{{ _('non connecté') }}</span>
             {% else %}
-              <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:.65em">connecté</span>
+              <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:.65em">{{ _('connecté') }}</span>
             {% endif %}
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link fw-semibold small px-3 py-2" id="tab-gdb"
                   data-bs-toggle="tab" data-bs-target="#pane-gdb" type="button">
-            <i class="bi bi-boxes me-1" style="color:#4f46e5"></i>Base centrale (GDB)
+            <i class="bi bi-boxes me-1" style="color:#4f46e5"></i>{{ _('Base centrale (GDB)') }}
             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size:.65em">{{ gdb_enquetes|length }}</span>
           </button>
         </li>
@@ -128,18 +128,18 @@
           <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
             <input type="hidden" name="action" value="upload">
             <div class="col-md-9">
-              <label class="form-label small fw-semibold">Sélectionnez un ou plusieurs fichiers (Excel ou CSV)</label>
+              <label class="form-label small fw-semibold">{{ _('Sélectionnez un ou plusieurs fichiers (Excel ou CSV)') }}</label>
               <input type="file" class="form-control form-control-sm"
                      name="files" multiple accept=".xlsx,.xls,.xlsm,.csv" required>
               <small class="text-muted">
-                Excel ou <strong>CSV</strong> (export KoboToolbox : séparateur et codage détectés, lignes d'en-tête en trop retirées).
-                Idéalement codifiés PHAKTS (colonnes <code>Radical__TYPE!contrainte</code>). Pour lire les vraies modalités
-                d'un export « valeurs XML », joignez ensuite l'XLSForm de l'enquête dans la pile.
+                {{ _('Excel ou') }} <strong>CSV</strong> ({{ _("export KoboToolbox : séparateur et codage détectés, lignes d'en-tête en trop retirées).") }}
+                {{ _('Idéalement codifiés PHAKTS (colonnes') }} <code>Radical__TYPE!contrainte</code>{{ _(').') }} {{ _('Pour lire les vraies modalités') }}
+                {{ _("d'un export « valeurs XML », joignez ensuite l'XLSForm de l'enquête dans la pile.") }}
               </small>
             </div>
             <div class="col-md-3 d-grid">
               <button class="btn btn-primary btn-sm" type="submit">
-                <i class="bi bi-plus-circle me-1"></i>Ajouter à la pile
+                <i class="bi bi-plus-circle me-1"></i>{{ _('Ajouter à la pile') }}
               </button>
             </div>
           </form>
@@ -151,9 +151,9 @@
           <div class="alert alert-warning d-flex align-items-center gap-3 mb-0">
             <i class="bi bi-exclamation-triangle-fill fs-4"></i>
             <div>
-              Vous n'êtes pas encore connecté à KoboToolbox.
+              {{ _("Vous n'êtes pas encore connecté à KoboToolbox.") }}
               <a href="{{ url_for('kobo_connect') }}" class="fw-semibold">
-                Se connecter maintenant →
+                {{ _('Se connecter maintenant →') }}
               </a>
             </div>
           </div>
@@ -161,14 +161,14 @@
           <div class="row g-2 align-items-end mb-2">
             <div class="col-auto">
               <span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3">
-                <i class="bi bi-person-check me-1"></i>Connecté à KoboToolbox
+                <i class="bi bi-person-check me-1"></i>{{ _('Connecté à KoboToolbox') }}
               </span>
             </div>
             <div class="col-auto">
               <form method="POST">
                 <input type="hidden" name="action" value="kobo_refresh_ms">
                 <button class="btn btn-sm btn-outline-primary" type="submit">
-                  <i class="bi bi-arrow-clockwise me-1"></i>Actualiser la liste des formulaires
+                  <i class="bi bi-arrow-clockwise me-1"></i>{{ _('Actualiser la liste des formulaires') }}
                 </button>
               </form>
             </div>
@@ -179,19 +179,19 @@
             <input type="hidden" name="action" value="kobo_add">
             <div class="col-md-9">
               <label class="form-label small fw-semibold">
-                Formulaires disponibles
-                <span class="text-muted fw-normal">({{ ms_kobo_assets|length }} formulaire(s))</span>
+                {{ _('Formulaires disponibles') }}
+                <span class="text-muted fw-normal">({{ ms_kobo_assets|length }} {{ _('formulaire(s)') }})</span>
               </label>
               <select name="kobo_uid" id="koboUidSelect" class="form-select form-select-sm"
                       required size="5"
                       onchange="var o=this.options[this.selectedIndex];
                                 document.getElementById('koboNameField').value=o.dataset.name||''">
-                <option value="">— Choisissez un formulaire —</option>
+                <option value="">{{ _('— Choisissez un formulaire —') }}</option>
                 {% for a in ms_kobo_assets %}
                 <option value="{{ a.uid }}" data-name="{{ a.name }}">
                   {{ a.name }}
-                  {% if a.submission_count %} — {{ a.submission_count }} soumissions{% endif %}
-                  {% if not a.deployed %} (non déployé){% endif %}
+                  {% if a.submission_count %} — {{ a.submission_count }} {{ _('soumissions') }}{% endif %}
+                  {% if not a.deployed %} {{ _('(non déployé)') }}{% endif %}
                 </option>
                 {% endfor %}
               </select>
@@ -199,14 +199,14 @@
             </div>
             <div class="col-md-3 d-grid">
               <button class="btn btn-success btn-sm" type="submit">
-                <i class="bi bi-cloud-plus me-1"></i>Importer ce formulaire
+                <i class="bi bi-cloud-plus me-1"></i>{{ _('Importer ce formulaire') }}
               </button>
             </div>
           </form>
           {% else %}
           <div class="alert alert-light border small d-flex align-items-center gap-2 mb-0">
             <i class="bi bi-info-circle text-primary"></i>
-            Cliquez sur <strong>Actualiser la liste</strong> pour voir vos formulaires KoboToolbox.
+            {{ _('Cliquez sur') }} <strong>{{ _('Actualiser la liste') }}</strong> {{ _('pour voir vos formulaires KoboToolbox.') }}
           </div>
           {% endif %}
           {% endif %}
@@ -218,8 +218,8 @@
           <form method="POST">
             <input type="hidden" name="action" value="gdb_add">
             <p class="small text-muted mb-2">
-              Choisissez des enquêtes déjà versées, par leur Factum : leurs données sont rouvertes telles
-              qu'elles ont été versées, sans recharger les fichiers.
+              {{ _("Choisissez des enquêtes déjà versées, par leur Factum : leurs données sont rouvertes telles
+              qu'elles ont été versées, sans recharger les fichiers.") }}
             </p>
             <div class="list-group mb-2" style="max-height:260px;overflow-y:auto">
               {% for e in gdb_enquetes %}
@@ -227,21 +227,21 @@
                 <input class="form-check-input mt-1" type="checkbox" name="factums" value="{{ e.factum }}"
                        {% if e.in_pile %}disabled checked{% endif %}>
                 <span>
-                  <strong>{{ e.titre }}</strong> — {{ e.parts.date_lisible }} · {{ e.n_repondants }} répondants · {{ e.n_variables }} variables
-                  {% if e.in_pile %}<span class="badge bg-light text-dark border">déjà dans la pile</span>{% endif %}
-                  {% if e.has_labels %}<span class="badge bg-success-subtle text-success border border-success-subtle" title="Modalités affichées avec leur vrai nom">libellés</span>{% endif %}
+                  <strong>{{ e.titre }}</strong> — {{ e.parts.date_lisible }} · {{ e.n_repondants }} {{ _('répondants') }} · {{ e.n_variables }} {{ _('variables') }}
+                  {% if e.in_pile %}<span class="badge bg-light text-dark border">{{ _('déjà dans la pile') }}</span>{% endif %}
+                  {% if e.has_labels %}<span class="badge bg-success-subtle text-success border border-success-subtle" title="{{ _('Modalités affichées avec leur vrai nom') }}">{{ _('libellés') }}</span>{% endif %}
                   <span class="d-block font-monospace text-muted" style="font-size:.7rem;word-break:break-all">{{ e.factum }}</span>
                 </span>
               </label>
               {% endfor %}
             </div>
-            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-in-down me-1"></i>Ajouter à la pile</button>
+            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-in-down me-1"></i>{{ _('Ajouter à la pile') }}</button>
           </form>
           {% else %}
           <div class="alert alert-light border small mb-0">
             <i class="bi bi-info-circle text-primary me-1"></i>
-            Aucune enquête n'a encore été versée dans la base centrale.
-            <a href="{{ url_for('gdb_index') }}">Ouvrir la base centrale →</a>
+            {{ _("Aucune enquête n'a encore été versée dans la base centrale.") }}
+            <a href="{{ url_for('gdb_index') }}">{{ _('Ouvrir la base centrale →') }}</a>
           </div>
           {% endif %}
         </div>
@@ -253,13 +253,13 @@
       <hr class="my-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="fw-semibold small text-secondary">
-          <i class="bi bi-stack me-1"></i>{{ surveys_meta|length }} enquête(s) dans la pile
+          <i class="bi bi-stack me-1"></i>{{ surveys_meta|length }} {{ _('enquête(s) dans la pile') }}
         </span>
         <form method="POST" class="d-inline">
           <input type="hidden" name="action" value="reset">
           <button class="btn btn-sm btn-outline-danger" type="submit"
-                  onclick="return confirm('Effacer toutes les enquêtes ?')">
-            <i class="bi bi-trash me-1"></i>Tout effacer
+                  onclick='return confirm({{ _('Effacer toutes les enquêtes ?') | tojson }})'>
+            <i class="bi bi-trash me-1"></i>{{ _('Tout effacer') }}
           </button>
         </form>
       </div>
@@ -267,13 +267,13 @@
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th style="width:44px" title="Ordre chronologique (date de référence du Factum) : c'est celui des comparaisons et des écarts">Ordre</th>
-              <th>Fichier / Formulaire — Factum</th>
-              <th class="text-center" style="width:80px">Obs.</th>
-              <th class="text-center" style="width:80px">Variables</th>
+              <th style="width:44px" title="{{ _('Ordre chronologique (date de référence du Factum) : c\'est celui des comparaisons et des écarts') }}">{{ _('Ordre') }}</th>
+              <th>{{ _('Fichier / Formulaire — Factum') }}</th>
+              <th class="text-center" style="width:80px">{{ _('Obs.') }}</th>
+              <th class="text-center" style="width:80px">{{ _('Variables') }}</th>
               <th class="text-center" style="width:110px">PHAKTS</th>
-              <th class="text-center" style="width:120px" title="Part des lignes sans anomalie (contrôles de « Validation des données »)">Qualité</th>
-              <th class="text-center" style="width:60px">Source</th>
+              <th class="text-center" style="width:120px" title="{{ _('Part des lignes sans anomalie (contrôles de « Validation des données »)') }}">{{ _('Qualité') }}</th>
+              <th class="text-center" style="width:60px">{{ _('Source') }}</th>
               <th class="text-center" style="width:50px"></th>
             </tr>
           </thead>
@@ -288,17 +288,17 @@
                   <input type="hidden" name="action" value="set_factum">
                   <input type="hidden" name="idx" value="{{ loop.index0 }}">
                   <input name="factum" value="{{ p.factum if p else '' }}" class="form-control form-control-sm font-monospace"
-                         style="font-size:.7rem;min-width:240px" placeholder="Factum de l'étude (date de référence = ordre)">
-                  <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="submit" title="Enregistrer le Factum"><i class="bi bi-check2"></i></button>
+                         style="font-size:.7rem;min-width:240px" placeholder="{{ _("Factum de l'étude (date de référence = ordre)") }}">
+                  <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="submit" title="{{ _('Enregistrer le Factum') }}"><i class="bi bi-check2"></i></button>
                 </form>
                 {% if p and p.parts %}
                 <div class="text-muted" style="font-size:.7rem">
-                  {{ p.parts.sujet_lisible }} · {{ p.parts.date_lisible }}{% if p.parts.collectes > 1 %} · collecte {{ p.parts.collecte }}/{{ p.parts.collectes }}{% endif %}
+                  {{ p.parts.sujet_lisible }} · {{ p.parts.date_lisible }}{% if p.parts.collectes > 1 %} · {{ _('collecte') }} {{ p.parts.collecte }}/{{ p.parts.collectes }}{% endif %}
                 </div>
                 {% elif p and p.factum %}
-                <div class="text-danger" style="font-size:.7rem">Factum invalide</div>
+                <div class="text-danger" style="font-size:.7rem">{{ _('Factum invalide') }}</div>
                 {% else %}
-                <div class="text-warning" style="font-size:.7rem">Sans Factum — classée après les autres</div>
+                <div class="text-warning" style="font-size:.7rem">{{ _('Sans Factum — classée après les autres') }}</div>
                 {% endif %}
                 {% if p %}
                 <form method="POST" enctype="multipart/form-data" class="mt-1" style="font-size:.7rem">
@@ -306,16 +306,16 @@
                   <input type="hidden" name="idx" value="{{ loop.index0 }}">
                   {% if p.labels.n %}
                     <i class="bi bi-tags text-success"></i>
-                    <span class="text-success">Modalités lisibles</span>
-                    <span class="text-muted">({{ p.labels.source }} · {{ p.labels.n }} liste(s) de choix)</span>
+                    <span class="text-success">{{ _('Modalités lisibles') }}</span>
+                    <span class="text-muted">({{ p.labels.source }} · {{ p.labels.n }} {{ _('liste(s) de choix)') }}</span>
                   {% else %}
                     <i class="bi bi-tags text-warning"></i>
-                    <span class="text-warning">Libellés inconnus : noms internes mis en forme (« Faible poids naissance »)</span>
+                    <span class="text-warning">{{ _('Libellés inconnus : noms internes mis en forme (« Faible poids naissance »)') }}</span>
                   {% endif %}
                   {% if not p.labels.n or p.labels.source == 'XLSForm' %}
                   <label class="text-primary ms-1" style="cursor:pointer;text-decoration:underline"
-                         title="XLSForm de l'enquête, c'est-à-dire le fichier du FORMULAIRE (feuilles survey et choices) : celui de PHAKTS Studio ou « Télécharger XLS » dans KoboToolbox — pas l'export des données">
-                    {{ 'Remplacer par un XLSForm' if p.labels.n else "Joindre l'XLSForm" }}
+                         title="{{ _("XLSForm de l'enquête, c'est-à-dire le fichier du FORMULAIRE (feuilles survey et choices) : celui de PHAKTS Studio ou « Télécharger XLS » dans KoboToolbox — pas l'export des données") }}">
+                    {{ _('Remplacer par un XLSForm') if p.labels.n else _("Joindre l'XLSForm") }}
                     <input type="file" name="xlsform" accept=".xlsx" hidden onchange="this.form.submit()">
                   </label>
                   {% endif %}
@@ -326,18 +326,18 @@
               <td class="text-center small">{{ s.n_vars }}</td>
               <td class="text-center">
                 {% if s.phakts_vars %}
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">{{ s.phakts_vars }} codées</span>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">{{ s.phakts_vars }} {{ _('codées') }}</span>
                 {% else %}
-                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle">non codé</span>
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ _('non codé') }}</span>
                 {% endif %}
               </td>
               <td class="text-center">
                 {% if p %}
                 <a href="{{ url_for('validation_donnees', ms=loop.index0) }}" class="text-decoration-none"
-                   title="Ouvrir le détail des contrôles de cette enquête">
+                   title="{{ _('Ouvrir le détail des contrôles de cette enquête') }}">
                   <span class="sev {{ 'sev-erreur' if p.quality.n_erreurs else ('sev-a_verifier' if p.quality.n_a_verifier else 'sev-ok') }}">{{ p.quality.pct_sans_anomalie }} %</span>
                 </a>
-                <div class="text-muted" style="font-size:.68rem">{{ p.quality.n_signalees }} ligne(s) signalée(s)</div>
+                <div class="text-muted" style="font-size:.68rem">{{ p.quality.n_signalees }} {{ _('ligne(s) signalée(s)') }}</div>
                 {% endif %}
               </td>
               <td class="text-center">
@@ -354,7 +354,7 @@
                   <input type="hidden" name="action" value="remove">
                   <input type="hidden" name="idx" value="{{ loop.index0 }}">
                   <button class="btn btn-sm btn-outline-danger py-0 px-1" type="submit"
-                          onclick="return confirm('Retirer cette enquête ?')" title="Retirer">
+                          onclick='return confirm({{ _('Retirer cette enquête ?') | tojson }})' title="{{ _('Retirer') }}">
                     <i class="bi bi-x-lg" style="font-size:.75rem"></i>
                   </button>
                 </form>
@@ -372,19 +372,19 @@
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
           <span class="fw-semibold text-dark">
-            <i class="bi bi-diagram-3-fill text-primary me-1"></i>Analyse multivariée des données importées
+            <i class="bi bi-diagram-3-fill text-primary me-1"></i>{{ _('Analyse multivariée des données importées') }}
           </span>
-          <span class="text-muted small ms-2">— ACP · ACM · AFC · Classification K-Means</span>
+          <span class="text-muted small ms-2">— {{ _('ACP · ACM · AFC · Classification K-Means') }}</span>
         </div>
         {% if mv_result %}
         <div class="d-flex gap-2 flex-wrap">
           <a href="{{ url_for('multi_survey_download_xlsx') }}" class="btn btn-success btn-sm">
-            <i class="bi bi-file-earmark-excel me-1"></i>Télécharger XLSX
+            <i class="bi bi-file-earmark-excel me-1"></i>{{ _('Télécharger XLSX') }}
           </a>
           <form method="POST" class="d-inline">
             <input type="hidden" name="action" value="clear_mv_ms">
             <button class="btn btn-sm btn-outline-secondary" type="submit">
-              <i class="bi bi-x-circle me-1"></i>Réinitialiser
+              <i class="bi bi-x-circle me-1"></i>{{ _('Réinitialiser') }}
             </button>
           </form>
         </div>
@@ -399,21 +399,21 @@
 
           <!-- Méthode -->
           <div class="col-sm-4 col-lg-3">
-            <label class="form-label small fw-semibold mb-1">Méthode d'analyse</label>
+            <label class="form-label small fw-semibold mb-1">{{ _("Méthode d'analyse") }}</label>
             <select name="mv_method" id="mvMethod" class="form-select form-select-sm"
                     onchange="toggleMvFields(this.value)">
-              <option value="pca"        {% if mv_params.method=='pca'        %}selected{% endif %}>ACP — Composantes Principales</option>
-              <option value="mca"        {% if mv_params.method=='mca'        %}selected{% endif %}>ACM — Correspondances Multiples</option>
-              <option value="ca"         {% if mv_params.method=='ca'         %}selected{% endif %}>AFC — Correspondances (2 var.)</option>
-              <option value="clustering" {% if mv_params.method=='clustering' %}selected{% endif %}>K-Means — Classification</option>
+              <option value="pca"        {% if mv_params.method=='pca'        %}selected{% endif %}>{{ _('ACP — Composantes Principales') }}</option>
+              <option value="mca"        {% if mv_params.method=='mca'        %}selected{% endif %}>{{ _('ACM — Correspondances Multiples') }}</option>
+              <option value="ca"         {% if mv_params.method=='ca'         %}selected{% endif %}>{{ _('AFC — Correspondances (2 var.)') }}</option>
+              <option value="clustering" {% if mv_params.method=='clustering' %}selected{% endif %}>{{ _('K-Means — Classification') }}</option>
             </select>
           </div>
 
           <!-- Variables numériques (ACP / K-Means) -->
           <div class="col-sm-8 col-lg-6" id="mvNumVarsBlock">
             <label class="form-label small fw-semibold mb-1">
-              Variables numériques
-              <span class="text-muted fw-normal">(Ctrl/Cmd pour plusieurs)</span>
+              {{ _('Variables numériques') }}
+              <span class="text-muted fw-normal">({{ _('Ctrl/Cmd pour plusieurs') }})</span>
             </label>
             <select name="mv_variables" id="mvNumVars"
                     class="form-select form-select-sm" multiple size="5">
@@ -429,8 +429,8 @@
           <!-- Variables catégorielles (ACM) -->
           <div class="col-sm-8 col-lg-6 d-none" id="mvCatVarsBlock">
             <label class="form-label small fw-semibold mb-1">
-              Variables catégorielles
-              <span class="text-muted fw-normal">(Ctrl/Cmd pour plusieurs)</span>
+              {{ _('Variables catégorielles') }}
+              <span class="text-muted fw-normal">({{ _('Ctrl/Cmd pour plusieurs') }})</span>
             </label>
             <select name="mv_variables" id="mvCatVars"
                     class="form-select form-select-sm" multiple size="5">
@@ -445,16 +445,16 @@
 
           <!-- Deux variables (AFC) -->
           <div class="col-sm-8 col-lg-6 d-none" id="mvCaBlock">
-            <label class="form-label small fw-semibold mb-1">Variable ligne (AFC)</label>
+            <label class="form-label small fw-semibold mb-1">{{ _('Variable ligne (AFC)') }}</label>
             <select name="mv_ca_row" class="form-select form-select-sm mb-2">
-              <option value="">— choisir —</option>
+              <option value="">{{ _('— choisir —') }}</option>
               {% for v in mv_cat_vars %}
               <option value="{{ v }}" {% if mv_params.ca_row==v %}selected{% endif %}>{{ v }}</option>
               {% endfor %}
             </select>
-            <label class="form-label small fw-semibold mb-1">Variable colonne (AFC)</label>
+            <label class="form-label small fw-semibold mb-1">{{ _('Variable colonne (AFC)') }}</label>
             <select name="mv_ca_col" class="form-select form-select-sm">
-              <option value="">— choisir —</option>
+              <option value="">{{ _('— choisir —') }}</option>
               {% for v in mv_cat_vars %}
               <option value="{{ v }}" {% if mv_params.ca_col==v %}selected{% endif %}>{{ v }}</option>
               {% endfor %}
@@ -463,12 +463,12 @@
 
           <!-- Paramètre complémentaire -->
           <div class="col-sm-4 col-lg-2" id="mvNcBlock">
-            <label class="form-label small fw-semibold mb-1">Nombre d'axes</label>
+            <label class="form-label small fw-semibold mb-1">{{ _("Nombre d'axes") }}</label>
             <input type="number" name="mv_n_components" class="form-control form-control-sm"
                    value="{{ mv_params.n_components or 2 }}" min="2" max="10">
           </div>
           <div class="col-sm-4 col-lg-2 d-none" id="mvNkBlock">
-            <label class="form-label small fw-semibold mb-1">Nombre de classes (k)</label>
+            <label class="form-label small fw-semibold mb-1">{{ _('Nombre de classes (k)') }}</label>
             <input type="number" name="mv_n_clusters" class="form-control form-control-sm"
                    value="{{ mv_params.n_clusters or 3 }}" min="2" max="12">
           </div>
@@ -476,7 +476,7 @@
           <!-- Bouton -->
           <div class="col-12 col-lg-1 d-flex align-items-end">
             <button class="btn btn-primary btn-sm w-100" type="submit">
-              <i class="bi bi-play-fill me-1"></i>Lancer
+              <i class="bi bi-play-fill me-1"></i>{{ _('Lancer') }}
             </button>
           </div>
 
@@ -487,15 +487,15 @@
       {% if mv_result %}
       <div class="alert alert-info border-0 small d-flex flex-wrap align-items-center gap-3 mb-3 py-2">
         <span><i class="bi bi-info-circle-fill me-1"></i><strong>{{ mv_result.method }}</strong></span>
-        <span><i class="bi bi-database me-1"></i>{{ mv_result.n_obs }} observations</span>
+        <span><i class="bi bi-database me-1"></i>{{ mv_result.n_obs }} {{ _('observations') }}</span>
         {% if mv_result.variables is defined %}
-        <span><i class="bi bi-columns me-1"></i>{{ mv_result.variables|length }} variables</span>
+        <span><i class="bi bi-columns me-1"></i>{{ mv_result.variables|length }} {{ _('variables') }}</span>
         {% endif %}
         {% if mv_result.silhouette is defined %}
-        <span><i class="bi bi-award me-1"></i>Silhouette = <strong>{{ mv_result.silhouette }}</strong></span>
+        <span><i class="bi bi-award me-1"></i>{{ _('Silhouette') }} = <strong>{{ mv_result.silhouette }}</strong></span>
         {% endif %}
         <a href="{{ url_for('multi_survey_download_xlsx') }}" class="ms-auto btn btn-success btn-sm">
-          <i class="bi bi-file-earmark-excel me-1"></i>Télécharger XLSX
+          <i class="bi bi-file-earmark-excel me-1"></i>{{ _('Télécharger XLSX') }}
         </a>
       </div>
 
@@ -503,11 +503,11 @@
       {% if mv_method == 'pca' %}
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">Valeurs propres</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">{{ _('Valeurs propres') }}</h6>
           <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
         </div>
         <div class="col-md-6">
-          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">Saturations (loadings)</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase letter-spacing-1">{{ _('Saturations (loadings)') }}</h6>
           <div class="table-responsive">{{ mv_result.loadings_table | safe }}</div>
         </div>
       </div>
@@ -520,7 +520,7 @@
       <!-- ACM -->
       {% elif mv_method == 'mca' %}
       <div class="mb-3">
-        <h6 class="small fw-semibold text-muted text-uppercase">Axes factoriels (ACM)</h6>
+        <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Axes factoriels (ACM)') }}</h6>
         <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
       </div>
       <div class="row g-3">
@@ -532,11 +532,11 @@
       {% elif mv_method == 'ca' %}
       <div class="row g-3 mb-3">
         <div class="col-md-7">
-          <h6 class="small fw-semibold text-muted text-uppercase">Tableau de contingence</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Tableau de contingence') }}</h6>
           <div class="table-responsive">{{ mv_result.ct_html | safe }}</div>
         </div>
         <div class="col-md-5">
-          <h6 class="small fw-semibold text-muted text-uppercase">Valeurs propres (AFC)</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Valeurs propres (AFC)') }}</h6>
           <div class="table-responsive">{{ mv_result.eig_table | safe }}</div>
         </div>
       </div>
@@ -546,11 +546,11 @@
       {% elif mv_method == 'clustering' %}
       <div class="row g-3 mb-3">
         <div class="col-md-3">
-          <h6 class="small fw-semibold text-muted text-uppercase">Effectifs par classe</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Effectifs par classe') }}</h6>
           <div class="table-responsive">{{ mv_result.counts_table | safe }}</div>
         </div>
         <div class="col-md-9">
-          <h6 class="small fw-semibold text-muted text-uppercase">Moyennes par classe</h6>
+          <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Moyennes par classe') }}</h6>
           <div class="table-responsive">{{ mv_result.means_table | safe }}</div>
         </div>
       </div>
@@ -564,12 +564,12 @@
       {% elif not mv_num_vars and not mv_cat_vars %}
       <div class="alert alert-warning small mb-0">
         <i class="bi bi-exclamation-triangle me-1"></i>
-        Aucune variable exploitable détectée dans les enquêtes chargées.
+        {{ _('Aucune variable exploitable détectée dans les enquêtes chargées.') }}
       </div>
       {% else %}
       <div class="alert alert-light border small mb-0">
         <i class="bi bi-arrow-up-circle text-primary me-1"></i>
-        Choisissez une méthode et des variables, puis cliquez sur <strong>Lancer</strong>.
+        {{ _('Choisissez une méthode et des variables, puis cliquez sur') }} <strong>{{ _('Lancer') }}</strong>.
       </div>
       {% endif %}
 
@@ -583,22 +583,22 @@
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-shield-check me-2 text-primary"></i>2. Qualité des enquêtes et cohérence entre elles
+        <i class="bi bi-shield-check me-2 text-primary"></i>{{ _('2. Qualité des enquêtes et cohérence entre elles') }}
       </h6>
     </div>
     <div class="card-body">
       <p class="small text-muted mb-3">
-        À vérifier <strong>avant de comparer</strong> : une comparaison n'est fiable que si chaque enquête est propre
+        {{ _("À vérifier") }} <strong>{{ _('avant de comparer') }}</strong> : {{ _("une comparaison n'est fiable que si chaque enquête est propre
         (doublons, heures, seuils PHAKTS, valeurs extrêmes, règles de l'équipe) et si les enquêtes se comparent
-        réellement (mêmes unités, mêmes modalités, pas de soumissions communes). Rien n'est modifié.
+        réellement (mêmes unités, mêmes modalités, pas de soumissions communes). Rien n'est modifié.") }}
       </p>
       {% set ns = namespace(lignes=0, signalees=0) %}
       {% for idx, p in pile.items() %}{% set ns.lignes = ns.lignes + p.quality.n_lignes %}{% set ns.signalees = ns.signalees + p.quality.n_signalees %}{% endfor %}
       <div class="table-responsive mb-3">
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
-            <tr><th>Enquête</th><th class="text-center">Lignes</th><th class="text-center">Signalées</th>
-                <th class="text-center">Sans anomalie</th><th class="text-center">Erreurs</th><th class="text-center">À vérifier</th><th></th></tr>
+            <tr><th>{{ _('Enquête') }}</th><th class="text-center">{{ _('Lignes') }}</th><th class="text-center">{{ _('Signalées') }}</th>
+                <th class="text-center">{{ _('Sans anomalie') }}</th><th class="text-center">{{ _('Erreurs') }}</th><th class="text-center">{{ _('À vérifier') }}</th><th></th></tr>
           </thead>
           <tbody>
             {% for idx, p in pile.items() %}
@@ -609,7 +609,7 @@
               <td class="text-center"><span class="sev {{ 'sev-erreur' if p.quality.n_erreurs else ('sev-a_verifier' if p.quality.n_a_verifier else 'sev-ok') }}">{{ p.quality.pct_sans_anomalie }} %</span></td>
               <td class="text-center small">{{ p.quality.n_erreurs }}</td>
               <td class="text-center small">{{ p.quality.n_a_verifier }}</td>
-              <td class="text-end"><a class="btn btn-sm btn-outline-primary py-0 px-2" href="{{ url_for('validation_donnees', ms=idx) }}">Détail et règles</a></td>
+              <td class="text-end"><a class="btn btn-sm btn-outline-primary py-0 px-2" href="{{ url_for('validation_donnees', ms=idx) }}">{{ _('Détail et règles') }}</a></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -617,12 +617,12 @@
       </div>
 
       {% if cross_checks %}
-      <h6 class="small fw-semibold text-muted text-uppercase">Cohérence entre enquêtes</h6>
+      <h6 class="small fw-semibold text-muted text-uppercase">{{ _('Cohérence entre enquêtes') }}</h6>
       <div class="list-group">
         {% for c in cross_checks %}
         <div class="list-group-item">
           <div class="d-flex align-items-start gap-2">
-            <span class="sev sev-{{ c.severite }}">{{ {'erreur': 'Erreur', 'a_verifier': 'À vérifier', 'info': 'Info'}[c.severite] }}</span>
+            <span class="sev sev-{{ c.severite }}">{{ {'erreur': _('Erreur'), 'a_verifier': _('À vérifier'), 'info': _('Info')}[c.severite] }}</span>
             <div>
               <div class="fw-semibold small">{{ c.titre }}</div>
               <div class="small text-muted">{{ c.detail }}</div>
@@ -633,10 +633,10 @@
       </div>
       {% elif surveys_meta|length >= 2 %}
       <div class="alert alert-success small mb-0">
-        <i class="bi bi-check-circle me-1"></i>Aucune incohérence détectée entre ces {{ surveys_meta|length }} enquêtes.
+        <i class="bi bi-check-circle me-1"></i>{{ _('Aucune incohérence détectée entre ces') }} {{ surveys_meta|length }} {{ _('enquêtes.') }}
       </div>
       {% else %}
-      <div class="alert alert-light border small mb-0">Ajoutez une deuxième enquête pour contrôler la cohérence entre enquêtes.</div>
+      <div class="alert alert-light border small mb-0">{{ _('Ajoutez une deuxième enquête pour contrôler la cohérence entre enquêtes.') }}</div>
       {% endif %}
     </div>
   </div>
@@ -645,15 +645,15 @@
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-grid me-2 text-primary"></i>3. Couverture des variables (alignement DPF / PHAKTS)
+        <i class="bi bi-grid me-2 text-primary"></i>{{ _('3. Couverture des variables (alignement DPF / PHAKTS)') }}
       </h6>
       <form method="POST" class="d-flex align-items-center gap-2">
         <input type="hidden" name="action" value="change_mode">
-        <label class="small text-muted mb-0">Alignement :</label>
+        <label class="small text-muted mb-0">{{ _('Alignement :') }}</label>
         <select name="align_mode" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>PHAKTS (code complet)</option>
-          <option value="exact"  {% if mode=='exact'  %}selected{% endif %}>Nom exact</option>
-          <option value="union"  {% if mode=='union'  %}selected{% endif %}>Union (libre)</option>
+          <option value="phakts" {% if mode=='phakts' %}selected{% endif %}>{{ _('PHAKTS (code complet)') }}</option>
+          <option value="exact"  {% if mode=='exact'  %}selected{% endif %}>{{ _('Nom exact') }}</option>
+          <option value="union"  {% if mode=='union'  %}selected{% endif %}>{{ _('Union (libre)') }}</option>
         </select>
       </form>
     </div>
@@ -661,7 +661,7 @@
       {% if common_vars %}
       <div class="mb-2 small">
         <span class="badge bg-success-subtle text-success border border-success-subtle">
-          {{ common_vars|length }} variable(s) commune(s) à toutes les enquêtes
+          {{ common_vars|length }} {{ _('variable(s) commune(s) à toutes les enquêtes') }}
         </span>
       </div>
       {% endif %}
@@ -669,9 +669,9 @@
         <div class="table-responsive" style="max-height:360px;overflow-y:auto">
           {{ coverage_html | safe }}
         </div>
-        <p class="small text-muted mt-2">Top 80 variables par couverture (1 = présente, 0 = absente).</p>
+        <p class="small text-muted mt-2">{{ _('Top 80 variables par couverture (1 = présente, 0 = absente).') }}</p>
       {% else %}
-        <p class="text-muted small mb-0">Importez au moins une enquête pour voir la matrice de couverture.</p>
+        <p class="text-muted small mb-0">{{ _('Importez au moins une enquête pour voir la matrice de couverture.') }}</p>
       {% endif %}
     </div>
   </div>
@@ -682,7 +682,7 @@
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
       <h6 class="mb-0 fw-semibold">
-        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>4. Comparer des variables entre enquêtes
+        <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>{{ _('4. Comparer des variables entre enquêtes') }}
       </h6>
       <form method="POST" class="d-flex align-items-center gap-2">
         <input type="hidden" name="action" value="toggle_auto">
@@ -692,7 +692,7 @@
                  name="auto_mode" {% if auto_mode %}checked{% endif %}
                  onchange="this.form.submit()">
           <label class="form-check-label small fw-semibold" for="autoModeSwitch">
-            <i class="bi bi-magic me-1"></i>Analyse automatique
+            <i class="bi bi-magic me-1"></i>{{ _('Analyse automatique') }}
           </label>
         </div>
       </form>
@@ -702,25 +702,25 @@
       <div class="alert alert-primary small d-flex align-items-start gap-2 mb-3">
         <i class="bi bi-info-circle fs-5"></i>
         <div>
-          <strong>Interopérabilité PHAKTS</strong> — les indicateurs communs à au moins 2 enquêtes
+          <strong>{{ _('Interopérabilité PHAKTS') }}</strong> — {{ _("les indicateurs communs à au moins 2 enquêtes
           sont détectés automatiquement depuis le type porté par le nom de chaque variable (xType),
           avec le traitement statistique et le test de comparaison adaptés. Aucune sélection manuelle
           n'est nécessaire ; désactivez le commutateur ci-dessus pour revenir au choix variable par
-          variable.<br>
-          <strong>Tests multiples</strong> — avec de nombreux indicateurs testés à 5 %, certains paraissent « significatifs »
-          par pur hasard. Les p-values sont donc corrigées (Benjamini-Hochberg) : <strong>q</strong> est la proportion attendue de
-          fausses découvertes parmi les indicateurs signalés ; on juge sur q, pas sur p.
+          variable.") }}<br>
+          <strong>{{ _('Tests multiples') }}</strong> — {{ _('avec de nombreux indicateurs testés à 5 %%, certains paraissent « significatifs »
+          par pur hasard. Les p-values sont donc corrigées (Benjamini-Hochberg) :') }} <strong>q</strong> {{ _('est la proportion attendue de
+          fausses découvertes parmi les indicateurs signalés ; on juge sur q, pas sur p.') }}
         </div>
       </div>
 
       {% if auto_results %}
       <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
-        <div><i class="bi bi-collection me-1"></i><strong>{{ surveys_meta|length }}</strong> enquêtes</div>
-        <div><i class="bi bi-tag me-1"></i><strong>{{ auto_results|length }}</strong> indicateur(s) commun(s) détecté(s)</div>
+        <div><i class="bi bi-collection me-1"></i><strong>{{ surveys_meta|length }}</strong> {{ _('enquêtes') }}</div>
+        <div><i class="bi bi-tag me-1"></i><strong>{{ auto_results|length }}</strong> {{ _('indicateur(s) commun(s) détecté(s)') }}</div>
         {% set tested = auto_results|selectattr('test')|list %}
-        <div><i class="bi bi-activity me-1"></i><strong>{{ tested|selectattr('test.significant_fdr')|list|length }}</strong> écart(s) significatif(s) après correction
-          <span class="text-muted">sur {{ tested|length }} testé(s) ({{ tested|selectattr('test.p_value', 'lt', 0.05)|list|length }} avant correction)</span></div>
-        <div><i class="bi bi-calendar3 me-1"></i>Ordre : {{ order|join(' → ') }}</div>
+        <div><i class="bi bi-activity me-1"></i><strong>{{ tested|selectattr('test.significant_fdr')|list|length }}</strong> {{ _('écart(s) significatif(s) après correction') }}
+          <span class="text-muted">{{ _('sur') }} {{ tested|length }} {{ _('testé(s)') }} ({{ tested|selectattr('test.p_value', 'lt', 0.05)|list|length }} {{ _('avant correction') }})</span></div>
+        <div><i class="bi bi-calendar3 me-1"></i>{{ _('Ordre :') }} {{ order|join(' → ') }}</div>
       </div>
       {{ synthese_card(synthese_text) }}
       <div class="accordion" id="msAutoAccordion">
@@ -736,13 +736,13 @@
                 {% if r.label %}<span class="small text-muted">{{ r.label }}</span>{% endif %}
                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ r.suffix }}</span>
                 {% if r.kind == 'continuous' %}
-                <span class="badge bg-info-subtle text-info border border-info-subtle">continue</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle">{{ _('continue') }}</span>
                 {% elif r.kind == 'categorical' %}
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">catégorielle</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ _('catégorielle') }}</span>
                 {% endif %}
-                <span class="badge bg-light text-dark border">{{ r.n_surveys }}/{{ surveys_meta|length }} enquêtes</span>
+                <span class="badge bg-light text-dark border">{{ r.n_surveys }}/{{ surveys_meta|length }} {{ _('enquêtes') }}</span>
                 {% if r.error %}
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">erreur</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ _('erreur') }}</span>
                 {% elif r.test %}
                 {{ test_badge(r) }}
                 {% endif %}
@@ -758,11 +758,11 @@
               {% elif r.kind == 'categorical' %}
               <div class="row g-3">
                 <div class="col-lg-6">
-                  <h6 class="small fw-semibold text-muted">Effectifs</h6>
+                  <h6 class="small fw-semibold text-muted">{{ _('Effectifs') }}</h6>
                   <div class="table-responsive" style="max-height:420px;overflow-y:auto">{{ r.count_html | safe }}</div>
                 </div>
                 <div class="col-lg-6">
-                  <h6 class="small fw-semibold text-muted">% colonne</h6>
+                  <h6 class="small fw-semibold text-muted">{{ _('%% colonne') }}</h6>
                   <div class="table-responsive" style="max-height:420px;overflow-y:auto">{{ r.pct_html | safe }}</div>
                 </div>
               </div>
@@ -772,7 +772,7 @@
                 {% include "_comment_block.html" %}
               {% endwith %}
               {% elif r.kind == 'continuous' %}
-              <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
+              <h6 class="small fw-semibold text-muted">{{ _('Résumé statistique') }}</h6>
               <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
               <div class="mt-3" id="msAutoChart_{{ loop.index0 }}"></div>
               {{ evolution_table(r.evolution) }}
@@ -787,8 +787,8 @@
       </div>
       {% elif surveys_meta|length >= 2 %}
       <div class="alert alert-warning small mb-0">
-        Aucun indicateur codifié PHAKTS commun à au moins 2 enquêtes n'a été détecté (mode
-        d'alignement « PHAKTS (code complet) » requis — voir section 3 ci-dessus).
+        {{ _("Aucun indicateur codifié PHAKTS commun à au moins 2 enquêtes n'a été détecté (mode
+        d'alignement « PHAKTS (code complet) » requis — voir section 3 ci-dessus).") }}
       </div>
       {% endif %}
 
@@ -798,28 +798,28 @@
         <input type="hidden" name="align_mode" value="{{ mode }}">
         <div class="col-md-9">
           <label class="form-label small fw-semibold">
-            Variables à ajouter au panier
-            <span class="text-muted fw-normal">— Ctrl/Cmd pour plusieurs</span>
+            {{ _('Variables à ajouter au panier') }}
+            <span class="text-muted fw-normal">— {{ _('Ctrl/Cmd pour plusieurs') }}</span>
           </label>
           <select name="variables" class="form-select form-select-sm" multiple size="8" required>
             {% for v in candidate_vars %}
             <option value="{{ v }}" {% if v in compared_vars %}disabled{% endif %}>
-              {{ v }}{% if var_labels.get(v) %} — {{ var_labels[v] }}{% endif %}{% if v in common_vars %} ★{% endif %}{% if v in compared_vars %} (déjà ajoutée){% endif %}
+              {{ v }}{% if var_labels.get(v) %} — {{ var_labels[v] }}{% endif %}{% if v in common_vars %} ★{% endif %}{% if v in compared_vars %} {{ _('(déjà ajoutée)') }}{% endif %}
             </option>
             {% endfor %}
           </select>
-          <small class="text-muted">★ = variable présente dans toutes les enquêtes</small>
+          <small class="text-muted">{{ _('★ = variable présente dans toutes les enquêtes') }}</small>
         </div>
         <div class="col-md-3 d-grid gap-1">
           <button class="btn btn-primary btn-sm" type="submit">
-            <i class="bi bi-plus-circle me-1"></i>Ajouter au panier
+            <i class="bi bi-plus-circle me-1"></i>{{ _('Ajouter au panier') }}
           </button>
           {% if compared_vars %}
           <button class="btn btn-outline-secondary btn-sm" type="submit"
                   formaction="{{ url_for('multi_survey') }}" formmethod="POST"
                   name="action" value="clear_compare"
-                  onclick="return confirm('Vider le panier ?')">
-            <i class="bi bi-x-circle me-1"></i>Vider le panier
+                  onclick='return confirm({{ _('Vider le panier ?') | tojson }})'>
+            <i class="bi bi-x-circle me-1"></i>{{ _('Vider le panier') }}
           </button>
           {% endif %}
         </div>
@@ -829,10 +829,10 @@
       <hr>
       {% if merged_meta %}
       <div class="alert alert-light border d-flex flex-wrap gap-3 small mb-3">
-        <div><i class="bi bi-collection me-1"></i><strong>{{ merged_meta.n_surveys }}</strong> enquêtes</div>
-        <div><i class="bi bi-database me-1"></i><strong>{{ merged_meta.n_obs }}</strong> obs. fusionnées</div>
-        <div><i class="bi bi-columns me-1"></i><strong>{{ merged_meta.n_vars }}</strong> variables alignées</div>
-        <div><i class="bi bi-tag me-1"></i><strong>{{ results|length }}</strong> comparaison(s)</div>
+        <div><i class="bi bi-collection me-1"></i><strong>{{ merged_meta.n_surveys }}</strong> {{ _('enquêtes') }}</div>
+        <div><i class="bi bi-database me-1"></i><strong>{{ merged_meta.n_obs }}</strong> {{ _('obs. fusionnées') }}</div>
+        <div><i class="bi bi-columns me-1"></i><strong>{{ merged_meta.n_vars }}</strong> {{ _('variables alignées') }}</div>
+        <div><i class="bi bi-tag me-1"></i><strong>{{ results|length }}</strong> {{ _('comparaison(s)') }}</div>
       </div>
       {% endif %}
       {{ synthese_card(synthese_text) }}
@@ -848,12 +848,12 @@
                 <strong>{{ r.variable }}</strong>
                 {% if r.label %}<span class="small text-muted">{{ r.label }}</span>{% endif %}
                 {% if r.kind == 'continuous' %}
-                <span class="badge bg-info-subtle text-info border border-info-subtle">continue</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle">{{ _('continue') }}</span>
                 {% elif r.kind == 'categorical' %}
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">catégorielle</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ _('catégorielle') }}</span>
                 {% endif %}
                 {% if r.error %}
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">erreur</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ _('erreur') }}</span>
                 {% elif r.test %}
                 {{ test_badge(r, results|selectattr('test')|list|length >= 2) }}
                 {% endif %}
@@ -868,7 +868,7 @@
                   <input type="hidden" name="action" value="remove_compare">
                   <input type="hidden" name="variable" value="{{ r.variable }}">
                   <button class="btn btn-sm btn-outline-danger" type="submit">
-                    <i class="bi bi-trash me-1"></i>Retirer du panier
+                    <i class="bi bi-trash me-1"></i>{{ _('Retirer du panier') }}
                   </button>
                 </form>
               </div>
@@ -877,11 +877,11 @@
               {% elif r.kind == 'categorical' %}
               <div class="row g-3">
                 <div class="col-lg-6">
-                  <h6 class="small fw-semibold text-muted">Effectifs</h6>
+                  <h6 class="small fw-semibold text-muted">{{ _('Effectifs') }}</h6>
                   <div class="table-responsive" style="max-height:420px;overflow-y:auto">{{ r.count_html | safe }}</div>
                 </div>
                 <div class="col-lg-6">
-                  <h6 class="small fw-semibold text-muted">% colonne</h6>
+                  <h6 class="small fw-semibold text-muted">{{ _('%% colonne') }}</h6>
                   <div class="table-responsive" style="max-height:420px;overflow-y:auto">{{ r.pct_html | safe }}</div>
                 </div>
               </div>
@@ -891,7 +891,7 @@
                 {% include "_comment_block.html" %}
               {% endwith %}
               {% elif r.kind == 'continuous' %}
-              <h6 class="small fw-semibold text-muted">Résumé statistique</h6>
+              <h6 class="small fw-semibold text-muted">{{ _('Résumé statistique') }}</h6>
               <div class="table-responsive mb-3">{{ r.summary_html | safe }}</div>
               <div class="mt-3" id="msChart_{{ loop.index0 }}"></div>
               {{ evolution_table(r.evolution) }}
@@ -906,7 +906,7 @@
       </div>
       {% elif compared_vars %}
         <hr>
-        <div class="alert alert-warning small mb-0">Importez au moins 2 enquêtes.</div>
+        <div class="alert alert-warning small mb-0">{{ _('Importez au moins 2 enquêtes.') }}</div>
       {% endif %}
 
       {% if compared_vars %}
@@ -914,8 +914,8 @@
       <div class="alert alert-success small d-flex align-items-center gap-2 mb-0">
         <i class="bi bi-check-circle-fill fs-5"></i>
         <div>
-          Ces <strong>{{ compared_vars|length }}</strong> comparaison(s) seront incluses dans le
-          <strong>rapport PDF/Word</strong> si vous cochez « Multi-enquête » dans la page Rapport.
+          {{ _('Ces') }} <strong>{{ compared_vars|length }}</strong> {{ _('comparaison(s) seront incluses dans le') }}
+          <strong>{{ _('rapport PDF/Word') }}</strong> {{ _('si vous cochez « Multi-enquête » dans la page Rapport.') }}
         </div>
       </div>
       {% endif %}
@@ -928,25 +928,25 @@
   <!-- ═══════════ Section 5 — Export du jeu fusionné ═══════════ -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-download me-2 text-primary"></i>5. Exporter le jeu de données fusionné</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-download me-2 text-primary"></i>{{ _('5. Exporter le jeu de données fusionné') }}</h6>
     </div>
     <div class="card-body">
       <p class="small text-muted mb-3">
-        Toutes les enquêtes empilées, colonnes alignées sur le code PHAKTS, avec pour chaque ligne l'<strong>enquête d'origine</strong>
-        et son <strong>Factum</strong> — pour poursuivre l'analyse dans Excel, SPSS ou Stata.
-        {% if mode != 'phakts' %}<span class="text-warning">Alignement actuel : « {{ mode }} » (voir section 3).</span>{% endif %}
+        {{ _("Toutes les enquêtes empilées, colonnes alignées sur le code PHAKTS, avec pour chaque ligne l'") }}<strong>{{ _("enquête d'origine") }}</strong>
+        {{ _('et son') }} <strong>Factum</strong> — {{ _('pour poursuivre l\'analyse dans Excel, SPSS ou Stata.') }}
+        {% if mode != 'phakts' %}<span class="text-warning">{{ _('Alignement actuel : «') }} {{ mode }} » ({{ _('voir section 3).') }}</span>{% endif %}
       </p>
       <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-sm btn-outline-success" href="{{ url_for('multi_survey_export', fmt='xlsx') }}"
-           title="Feuilles : Données fusionnées, Enquêtes (ordre, Factum), Couverture">
+           title="{{ _('Feuilles : Données fusionnées, Enquêtes (ordre, Factum), Couverture') }}">
           <i class="bi bi-file-earmark-excel me-1"></i>Excel (.xlsx)
         </a>
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('multi_survey_export', fmt='sav') }}"
-           title="Libellés de variables et modalités catégorielles recodées">
+           title="{{ _('Libellés de variables et modalités catégorielles recodées') }}">
           <i class="bi bi-file-earmark-binary me-1"></i>SPSS (.sav)
         </a>
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('multi_survey_export', fmt='dta') }}"
-           title="Libellés de variables et modalités catégorielles recodées">
+           title="{{ _('Libellés de variables et modalités catégorielles recodées') }}">
           <i class="bi bi-file-earmark-binary me-1"></i>Stata (.dta)
         </a>
       </div>
@@ -957,27 +957,27 @@
   {% set n_report = (auto_results|length) if auto_mode else (results|length) %}
   <div class="card border-0 shadow-sm mb-3" id="msReport">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>6. Générer le rapport d'analyse</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>{{ _("6. Générer le rapport d'analyse") }}</h6>
     </div>
     <div class="card-body">
       <p class="small text-muted mb-3">
-        Un document prêt à partager : <strong>enquêtes comparées</strong> (dans l'ordre du temps, avec leur qualité),
-        <strong>contrôles de cohérence</strong>, <strong>synthèse</strong> et récapitulatif, puis le détail de chaque comparaison —
-        tableaux, graphique, évolution entre enquêtes, <strong>lecture automatique</strong> et <strong>votre commentaire</strong> —
-        des écarts les plus nets aux indicateurs stables, et les notes de méthode.
-        {% if auto_mode %}Il reprend les <strong>{{ n_report }}</strong> indicateur(s) communs détectés (section 4).
-        {% else %}Il reprend les <strong>{{ n_report }}</strong> variable(s) du panier (section 4).{% endif %}
+        {{ _('Un document prêt à partager :') }} <strong>{{ _('enquêtes comparées') }}</strong> {{ _('(dans l\'ordre du temps, avec leur qualité),') }}
+        <strong>{{ _('contrôles de cohérence') }}</strong>, <strong>{{ _('synthèse') }}</strong> {{ _('et récapitulatif, puis le détail de chaque comparaison —
+        tableaux, graphique, évolution entre enquêtes,') }} <strong>{{ _('lecture automatique') }}</strong> {{ _('et') }} <strong>{{ _('votre commentaire') }}</strong> —
+        {{ _('des écarts les plus nets aux indicateurs stables, et les notes de méthode.') }}
+        {% if auto_mode %}{{ _('Il reprend les') }} <strong>{{ n_report }}</strong> {{ _('indicateur(s) communs détectés (section 4).') }}
+        {% else %}{{ _('Il reprend les') }} <strong>{{ n_report }}</strong> {{ _('variable(s) du panier (section 4).') }}{% endif %}
       </p>
       {% if n_report %}
       <form method="get" class="row g-2 align-items-end">
         <div class="col-md-5">
-          <label class="form-label small fw-semibold mb-1" for="msReportTitle">Titre</label>
+          <label class="form-label small fw-semibold mb-1" for="msReportTitle">{{ _('Titre') }}</label>
           <input id="msReportTitle" name="title" class="form-control form-control-sm" maxlength="150"
-                 placeholder="Rapport d'analyse multi-enquête">
+                 placeholder="{{ _("Rapport d'analyse multi-enquête") }}">
         </div>
         <div class="col-md-3">
-          <label class="form-label small fw-semibold mb-1" for="msReportAuthor">Auteur</label>
-          <input id="msReportAuthor" name="author" class="form-control form-control-sm" maxlength="80" placeholder="Équipe SPAD">
+          <label class="form-label small fw-semibold mb-1" for="msReportAuthor">{{ _('Auteur') }}</label>
+          <input id="msReportAuthor" name="author" class="form-control form-control-sm" maxlength="80" placeholder="{{ _('Équipe SPAD') }}">
         </div>
         <div class="col-md-4 d-flex flex-wrap gap-2">
           <button class="btn btn-sm btn-outline-danger" formaction="{{ url_for('multi_survey_report', fmt='pdf') }}">
@@ -988,11 +988,11 @@
             <i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
         </div>
       </form>
-      <p class="small text-muted mt-2 mb-0">La génération prend quelques secondes (les graphiques sont tracés en image).</p>
+      <p class="small text-muted mt-2 mb-0">{{ _('La génération prend quelques secondes (les graphiques sont tracés en image).') }}</p>
       {% else %}
       <div class="alert alert-warning small mb-0">
-        Rien à rapporter pour l'instant : {% if auto_mode %}aucun indicateur commun n'a été détecté entre ces enquêtes.
-        {% else %}ajoutez des variables au panier ou activez l'analyse automatique (section 4).{% endif %}
+        {{ _("Rien à rapporter pour l'instant :") }} {% if auto_mode %}{{ _("aucun indicateur commun n'a été détecté entre ces enquêtes.") }}
+        {% else %}{{ _('ajoutez des variables au panier ou activez l\'analyse automatique (section 4).') }}{% endif %}
       </div>
       {% endif %}
     </div>

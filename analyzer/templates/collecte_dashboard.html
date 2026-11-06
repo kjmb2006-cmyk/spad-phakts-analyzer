@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Suivi d'un formulaire — SPAD Analyzer{% endblock %}
-{% block page_title %}Suivi d'un formulaire{% endblock %}
+{% block title %}{{ _("Suivi d'un formulaire") }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _("Suivi d'un formulaire") }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <div>
-      <h3 class="fw-bold mb-1">Suivi d'un formulaire — Tableau de bord</h3>
+      <h3 class="fw-bold mb-1">{{ _("Suivi d'un formulaire") }} — {{ _('Tableau de bord') }}</h3>
       {% if form_name %}
       <div class="fs-6 fw-semibold mb-1" style="color:#1a6fa8;">
         <i class="bi bi-file-earmark-text-fill me-1"></i>{{ form_name }}
@@ -15,33 +15,33 @@
       {% if read_only_shared %}
       <div class="mb-1">
         <span class="badge" style="background:#f3f0fb;color:#6f42c1;font-size:.8rem;">
-          <i class="bi bi-eye-fill me-1"></i>Vue partagée en lecture seule — dernier formulaire synchronisé par l'équipe Data
+          <i class="bi bi-eye-fill me-1"></i>{{ _("Vue partagée en lecture seule — dernier formulaire synchronisé par l'équipe Data") }}
         </span>
       </div>
       {% endif %}
-      <p class="text-muted mb-0">Vue synthétique du suivi des soumissions, des alertes et de la qualité des données.</p>
+      <p class="text-muted mb-0">{{ _('Vue synthétique du suivi des soumissions, des alertes et de la qualité des données.') }}</p>
     </div>
     {% if not read_only_shared %}
     <div class="d-flex gap-2 flex-wrap">
       <form method="post" action="{{ url_for('collecte_refresh') }}">
         <button class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir depuis Kobo
+          <i class="bi bi-arrow-clockwise me-1"></i>{{ _('Rafraîchir depuis Kobo') }}
         </button>
       </form>
       <a href="{{ url_for('collecte_sync') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-arrow-repeat me-1"></i>Synchroniser Kobo
+        <i class="bi bi-arrow-repeat me-1"></i>{{ _('Synchroniser Kobo') }}
       </a>
       <a href="{{ url_for('collecte_alertes') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-bell me-1"></i>Alertes actives
+        <i class="bi bi-bell me-1"></i>{{ _('Alertes actives') }}
       </a>
       <a href="{{ url_for('collecte_geographique') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-geo-alt me-1"></i>Suivi géographique
+        <i class="bi bi-geo-alt me-1"></i>{{ _('Suivi géographique') }}
       </a>
       <a href="{{ url_for('collecte_equipes') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-people me-1"></i>Suivi équipes
+        <i class="bi bi-people me-1"></i>{{ _('Suivi équipes') }}
       </a>
       <a href="{{ url_for('collecte_qualite') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-clipboard-check me-1"></i>Qualité des données
+        <i class="bi bi-clipboard-check me-1"></i>{{ _('Qualité des données') }}
       </a>
     </div>
     {% endif %}
@@ -53,7 +53,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="text-muted small">Soumissions reçues</div>
+              <div class="text-muted small">{{ _('Soumissions reçues') }}</div>
               <div class="fs-3 fw-bold">{{ received }}</div>
             </div>
             <div class="rounded-circle bg-primary-subtle p-2 text-primary"><i class="bi bi-inboxes-fill"></i></div>
@@ -66,7 +66,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="text-muted small">Cible à atteindre</div>
+              <div class="text-muted small">{{ _('Cible à atteindre') }}</div>
               <div class="fs-3 fw-bold">{{ cible }}</div>
             </div>
             <div class="rounded-circle bg-info-subtle p-2 text-info"><i class="bi bi-bullseye"></i></div>
@@ -79,7 +79,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="text-muted small">Taux de complétude</div>
+              <div class="text-muted small">{{ _('Taux de complétude') }}</div>
               <div class="fs-3 fw-bold">{{ taux }}%</div>
             </div>
             <div class="rounded-circle bg-success-subtle p-2 text-success"><i class="bi bi-graph-up"></i></div>
@@ -92,7 +92,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="text-muted small">Alertes actives</div>
+              <div class="text-muted small">{{ _('Alertes actives') }}</div>
               <div class="fs-3 fw-bold">{{ active_alerts }}</div>
             </div>
             <div class="rounded-circle bg-warning-subtle p-2 text-warning"><i class="bi bi-bell-fill"></i></div>
@@ -108,16 +108,16 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-              <h5 class="fw-bold mb-1">Évolution des soumissions</h5>
-              <p class="text-muted small mb-0">Suivi sur les 7 derniers jours</p>
+              <h5 class="fw-bold mb-1">{{ _('Évolution des soumissions') }}</h5>
+              <p class="text-muted small mb-0">{{ _('Suivi sur les 7 derniers jours') }}</p>
             </div>
-            <span class="badge bg-success-subtle text-success">À jour</span>
+            <span class="badge bg-success-subtle text-success">{{ _('À jour') }}</span>
           </div>
           <div class="d-flex align-items-end gap-2" style="height:220px">
             {% for value in evolution %}
             <div class="flex-fill">
               <div class="bg-gradient rounded-top" style="height: {{ value }}px; min-height: 12px; background: linear-gradient(180deg, #17A589 0%, #1A5276 100%);"></div>
-              <div class="text-center text-muted small mt-2">J{{ loop.index }}</div>
+              <div class="text-center text-muted small mt-2">{{ _('J') }}{{ loop.index }}</div>
             </div>
             {% endfor %}
           </div>
@@ -127,21 +127,21 @@
     <div class="col-12 col-lg-4">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h5 class="fw-bold mb-3">État de la synchronisation</h5>
+          <h5 class="fw-bold mb-3">{{ _('État de la synchronisation') }}</h5>
           <div class="d-flex align-items-center gap-2 mb-3">
             {% if read_only_shared %}
-            <span class="badge bg-info-subtle text-info">Vue partagée</span>
+            <span class="badge bg-info-subtle text-info">{{ _('Vue partagée') }}</span>
             {% else %}
-            <span class="badge {{ 'bg-success' if kobo_connected else 'bg-secondary' }}">{{ 'Connecté' if kobo_connected else 'Non connecté' }}</span>
+            <span class="badge {{ 'bg-success' if kobo_connected else 'bg-secondary' }}">{{ _('Connecté') if kobo_connected else _('Non connecté') }}</span>
             <span class="text-muted small">{{ kobo_user }}</span>
             {% endif %}
           </div>
-          <div class="small text-muted mb-2">Dernière synchronisation</div>
+          <div class="small text-muted mb-2">{{ _('Dernière synchronisation') }}</div>
           <div class="fw-semibold">{{ last_sync }}</div>
-          <div class="small text-muted mt-2">Dernier état : {{ 'réussi' if history and history[-1].status == 'réussi' else 'à vérifier' }}</div>
+          <div class="small text-muted mt-2">{{ _('Dernier état :') }} {{ _('réussi') if history and history[-1].status == 'réussi' else _('à vérifier') }}</div>
           <div class="mt-3">
             <div class="d-flex justify-content-between small text-muted mb-1">
-              <span>Progression vs cible</span>
+              <span>{{ _('Progression vs cible') }}</span>
               <span>{{ taux }}%</span>
             </div>
             <div class="progress" style="height: 8px;">
@@ -158,19 +158,19 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0">Rythme journalier</h5>
-            <span class="badge bg-info-subtle text-info">Pilotage</span>
+            <h5 class="fw-bold mb-0">{{ _('Rythme journalier') }}</h5>
+            <span class="badge bg-info-subtle text-info">{{ _('Pilotage') }}</span>
           </div>
           <div class="row g-3">
             <div class="col-12 col-md-6">
               <div class="border rounded p-3">
-                <div class="small text-muted">Soumissions/jour</div>
+                <div class="small text-muted">{{ _('Soumissions/jour') }}</div>
                 <div class="fs-4 fw-bold">{{ daily_rate }}</div>
               </div>
             </div>
             <div class="col-12 col-md-6">
               <div class="border rounded p-3">
-                <div class="small text-muted">Cible journalière</div>
+                <div class="small text-muted">{{ _('Cible journalière') }}</div>
                 <div class="fs-4 fw-bold">{{ daily_target }}</div>
               </div>
             </div>
@@ -181,19 +181,19 @@
     <div class="col-12 col-lg-5">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h5 class="fw-bold mb-3">Activités récentes</h5>
+          <h5 class="fw-bold mb-3">{{ _('Activités récentes') }}</h5>
           <ul class="list-unstyled mb-0">
             <li class="mb-3">
-              <div class="fw-semibold">Import Kobo</div>
+              <div class="fw-semibold">{{ _('Import Kobo') }}</div>
               <div class="small text-muted">{{ last_sync }}</div>
             </li>
             <li class="mb-3">
-              <div class="fw-semibold">Qualité des données</div>
-              <div class="small text-muted">2 variables à vérifier</div>
+              <div class="fw-semibold">{{ _('Qualité des données') }}</div>
+              <div class="small text-muted">{{ _('2 variables à vérifier') }}</div>
             </li>
             <li>
-              <div class="fw-semibold">Suivi terrain</div>
-              <div class="small text-muted">3 équipes à relancer</div>
+              <div class="fw-semibold">{{ _('Suivi terrain') }}</div>
+              <div class="small text-muted">{{ _('3 équipes à relancer') }}</div>
             </li>
           </ul>
         </div>
@@ -205,27 +205,27 @@
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-          <h5 class="fw-bold mb-1">Tableaux stratifiés</h5>
+          <h5 class="fw-bold mb-1">{{ _('Tableaux stratifiés') }}</h5>
           <p class="text-muted small mb-0">
             {% if geo_column %}
-            Répartition réelle par « {{ geo_column }} » — cible répartie également entre les {{ stratified_summary|length }} unités présentes dans les données (pas une règle officielle par établissement, voir Complétude nationale pour ça).
+            {{ _("Répartition réelle par « %(col)s » — cible répartie également entre les %(n)s unités présentes dans les données (pas une règle officielle par établissement, voir Complétude nationale pour ça).", col=geo_column, n=stratified_summary|length) }}
             {% else %}
-            Vue synthétique par stratification pour piloter les zones en difficulté.
+            {{ _('Vue synthétique par stratification pour piloter les zones en difficulté.') }}
             {% endif %}
           </p>
         </div>
         <a href="{{ url_for('collecte_geographique') }}" class="btn btn-sm btn-outline-primary">
-          <i class="bi bi-geo-alt me-1"></i>Détail géographique
+          <i class="bi bi-geo-alt me-1"></i>{{ _('Détail géographique') }}
         </a>
       </div>
       <div class="table-responsive mb-3">
         <table class="table table-sm align-middle">
           <thead>
             <tr>
-              <th>Strate</th>
-              <th>Reçu</th>
-              <th>Cible</th>
-              <th>Taux</th>
+              <th>{{ _('Strate') }}</th>
+              <th>{{ _('Reçu') }}</th>
+              <th>{{ _('Cible') }}</th>
+              <th>{{ _('Taux') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -240,9 +240,9 @@
             <tr>
               <td colspan="4" class="text-muted text-center py-3">
                 {% if not geo_column %}
-                Aucune colonne géographique (district, région, établissement…) détectée dans le formulaire chargé.
+                {{ _('Aucune colonne géographique (district, région, établissement…) détectée dans le formulaire chargé.') }}
                 {% else %}
-                Aucune soumission avec une valeur renseignée dans « {{ geo_column }} » pour l'instant.
+                {{ _("Aucune soumission avec une valeur renseignée dans « %(col)s » pour l'instant.", col=geo_column) }}
                 {% endif %}
               </td>
             </tr>
@@ -251,24 +251,24 @@
         </table>
       </div>
       <div class="alert alert-light border mb-0">
-        <div class="fw-semibold">Interprétation simple</div>
-        <div class="small text-muted">Risque {{ interpretation.risk_level }} — {{ interpretation.recommendation }}</div>
+        <div class="fw-semibold">{{ _('Interprétation simple') }}</div>
+        <div class="small text-muted">{{ _('Risque') }} {{ interpretation.risk_level }} — {{ interpretation.recommendation }}</div>
       </div>
     </div>
   </div>
 
   <div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <h5 class="fw-bold mb-3">Zones en retard</h5>
+      <h5 class="fw-bold mb-3">{{ _('Zones en retard') }}</h5>
       <div class="table-responsive">
         <table class="table table-sm align-middle">
           <thead>
             <tr>
-              <th>{{ geo_column and 'Zone (' + geo_column + ')' or 'Zone' }}</th>
-              <th>Reçu</th>
-              <th>Cible</th>
-              <th>Taux</th>
-              <th>Statut</th>
+              <th>{{ _('Zone (%(col)s)', col=geo_column) if geo_column else _('Zone') }}</th>
+              <th>{{ _('Reçu') }}</th>
+              <th>{{ _('Cible') }}</th>
+              <th>{{ _('Taux') }}</th>
+              <th>{{ _('Statut') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -284,9 +284,9 @@
             <tr>
               <td colspan="5" class="text-muted text-center py-3">
                 {% if not geo_column %}
-                Aucune colonne géographique détectée — chargez d'abord un formulaire dans « Formulaire importé de l'ordinateur » ou « Mes formulaires (KoboToolbox) ».
+                {{ _("Aucune colonne géographique détectée — chargez d'abord un formulaire dans « Formulaire importé de l'ordinateur » ou « Mes formulaires (KoboToolbox) ».") }}
                 {% else %}
-                Aucune donnée géographique exploitable pour l'instant.
+                {{ _('Aucune donnée géographique exploitable pour l’instant.') }}
                 {% endif %}
               </td>
             </tr>
@@ -301,25 +301,25 @@
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-          <h5 class="fw-bold mb-1">Collectes par enquêteur / équipe</h5>
+          <h5 class="fw-bold mb-1">{{ _('Collectes par enquêteur / équipe') }}</h5>
           <p class="text-muted small mb-0">
             {% if enqueteur_column %}
-            Nombre de soumissions par valeur détectée dans « {{ enqueteur_column }} ».
+            {{ _("Nombre de soumissions par valeur détectée dans « %(col)s ».", col=enqueteur_column) }}
             {% else %}
-            Répartition des soumissions par enquêteur ou équipe de collecte, si ce formulaire comporte un champ dédié.
+            {{ _('Répartition des soumissions par enquêteur ou équipe de collecte, si ce formulaire comporte un champ dédié.') }}
             {% endif %}
           </p>
         </div>
         <a href="{{ url_for('collecte_equipes') }}" class="btn btn-sm btn-outline-primary">
-          <i class="bi bi-people me-1"></i>Détail équipes
+          <i class="bi bi-people me-1"></i>{{ _('Détail équipes') }}
         </a>
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th>Enquêteur / Équipe</th>
-              <th class="text-end">Collectes</th>
+              <th>{{ _('Enquêteur / Équipe') }}</th>
+              <th class="text-end">{{ _('Collectes') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -332,9 +332,9 @@
             <tr>
               <td colspan="2" class="text-muted text-center py-3">
                 {% if not enqueteur_column %}
-                Aucun champ "Enquêteur" ou "Équipe" détecté dans ce formulaire.
+                {{ _('Aucun champ "Enquêteur" ou "Équipe" détecté dans ce formulaire.') }}
                 {% else %}
-                Aucune soumission avec une valeur renseignée dans « {{ enqueteur_column }} » pour l'instant.
+                {{ _("Aucune soumission avec une valeur renseignée dans « %(col)s » pour l'instant.", col=enqueteur_column) }}
                 {% endif %}
               </td>
             </tr>

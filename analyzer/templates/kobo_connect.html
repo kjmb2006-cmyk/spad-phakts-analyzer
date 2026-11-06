@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}KoboToolbox — SPAD Analyzer{% endblock %}
+{% block title %}{{ _('KoboToolbox') }} — SPAD Analyzer{% endblock %}
 
 {% block content %}
 <style>
@@ -144,8 +144,8 @@
 <div class="kobo-header">
   <div class="kobo-logo">🔗</div>
   <div>
-    <h2>Connexion KoboToolbox</h2>
-    <p>Liez SPAD Analyzer à votre instance KoboToolbox pour charger vos données directement.</p>
+    <h2>{{ _('Connexion KoboToolbox') }}</h2>
+    <p>{{ _('Liez SPAD Analyzer à votre instance KoboToolbox pour charger vos données directement.') }}</p>
   </div>
 </div>
 
@@ -171,34 +171,34 @@
         <div class="dot"></div>
         <div>
           <div style="font-weight:700;font-size:.9rem;color:var(--kobo-navy)">
-            Connecté — {{ username }}
+            {{ _('Connecté') }} — {{ username }}
           </div>
           <div style="font-size:.78rem;color:#85929E">kf.kobotoolbox.org</div>
         </div>
       </div>
       <a href="{{ url_for('kobo_assets') }}" class="btn btn-kobo w-100 mb-2">
-        🔄 Actualiser la liste des formulaires
+        🔄 {{ _('Actualiser la liste des formulaires') }}
       </a>
       <a href="{{ url_for('kobo_disconnect') }}" class="btn btn-outline-secondary w-100 btn-sm">
-        Se déconnecter
+        {{ _('Se déconnecter') }}
       </a>
       {% else %}
       <!-- Formulaire de connexion -->
       <h6 class="fw-bold mb-3" style="color:var(--kobo-navy)">
-        Entrez votre Token API
+        {{ _('Entrez votre Token API') }}
       </h6>
       <form method="POST" action="{{ url_for('kobo_connect') }}">
 
         <div class="mb-3">
           <label class="form-label fw-semibold" style="font-size:.82rem">
-            Instance KoboToolbox
+            {{ _('Instance KoboToolbox') }}
           </label>
           <select name="custom_instance" class="form-select form-select-sm mb-1" id="instance-select">
-            <option value="">— Détection automatique —</option>
-            <option value="https://kf.kobotoolbox.org">🌐 kf.kobotoolbox.org (Publique mondiale)</option>
-            <option value="https://eu.kobotoolbox.org">🇪🇺 eu.kobotoolbox.org (Europe RGPD)</option>
-            <option value="https://kobo.humanitarianresponse.info">🌍 kobo.humanitarianresponse.info (ONU/WHO)</option>
-            <option value="custom">✏️ Autre URL (saisir manuellement)</option>
+            <option value="">{{ _('— Détection automatique —') }}</option>
+            <option value="https://kf.kobotoolbox.org">🌐 kf.kobotoolbox.org ({{ _('Publique mondiale') }})</option>
+            <option value="https://eu.kobotoolbox.org">🇪🇺 eu.kobotoolbox.org ({{ _('Europe RGPD') }})</option>
+            <option value="https://kobo.humanitarianresponse.info">🌍 kobo.humanitarianresponse.info ({{ _('ONU/WHO') }})</option>
+            <option value="custom">✏️ {{ _('Autre URL (saisir manuellement)') }}</option>
           </select>
           <input type="text" name="custom_instance" id="custom-url-input"
                  class="form-control form-control-sm d-none"
@@ -207,26 +207,26 @@
 
         <div class="mb-3">
           <label class="form-label fw-semibold" style="font-size:.82rem">
-            Token API KoboToolbox
+            {{ _('Token API KoboToolbox') }}
           </label>
           <input type="password" name="token" class="form-control"
-                 placeholder="Collez votre token ici…" required autocomplete="off"/>
+                 placeholder="{{ _('Collez votre token ici…') }}" required autocomplete="off"/>
         </div>
 
         <button type="submit" class="btn btn-kobo w-100" id="btn-validate">
-          ✓ Valider et se connecter
+          ✓ {{ _('Valider et se connecter') }}
         </button>
       </form>
 
       <div class="hint-box mt-3">
-        <strong>📍 Où trouver votre token ?</strong><br>
-        Connectez-vous sur votre KoboToolbox
-        → Profil (coin supérieur droit) → <strong>Paramètres du compte</strong>
-        → section <strong>Sécurité</strong> → <strong>Clé API</strong>.
+        <strong>📍 {{ _('Où trouver votre token ?') }}</strong><br>
+        {{ _('Connectez-vous sur votre KoboToolbox') }}
+        → {{ _('Profil (coin supérieur droit)') }} → <strong>{{ _('Paramètres du compte') }}</strong>
+        → {{ _('section') }} <strong>{{ _('Sécurité') }}</strong> → <strong>{{ _('Clé API') }}</strong>.
         <br><br>
-        <strong>❓ Quelle instance choisir ?</strong><br>
-        L'URL que vous utilisez pour accéder à KoboToolbox détermine l'instance.
-        Ex : si vous vous connectez sur <em>eu.kobotoolbox.org</em>, sélectionnez Europe.
+        <strong>❓ {{ _('Quelle instance choisir ?') }}</strong><br>
+        {{ _("L'URL que vous utilisez pour accéder à KoboToolbox détermine l'instance.") }}
+        {{ _('Ex : si vous vous connectez sur') }} <em>eu.kobotoolbox.org</em>, {{ _('sélectionnez Europe.') }}
       </div>
       {% endif %}
     </div>
@@ -238,11 +238,11 @@
     {% if assets is defined %}
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h6 class="fw-bold mb-0" style="color:var(--kobo-navy)">
-        Mes formulaires
+        {{ _('Mes formulaires') }}
         <span class="badge-count ms-2">{{ total }}</span>
       </h6>
       <input type="text" id="search-assets" class="form-control form-control-sm w-auto"
-             placeholder="🔍 Rechercher…" style="width:180px!important"/>
+             placeholder="🔍 {{ _('Rechercher…') }}" style="width:180px!important"/>
     </div>
 
     {% if assets %}
@@ -250,10 +250,10 @@
       <table class="table assets-table mb-0" id="assets-table">
         <thead>
           <tr>
-            <th>Nom du formulaire</th>
-            <th class="text-center">Soumissions</th>
-            <th class="text-center">Modifié</th>
-            <th class="text-center">Action</th>
+            <th>{{ _('Nom du formulaire') }}</th>
+            <th class="text-center">{{ _('Soumissions') }}</th>
+            <th class="text-center">{{ _('Modifié') }}</th>
+            <th class="text-center">{{ _('Action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -263,9 +263,9 @@
               <div class="fw-semibold" style="font-size:.85rem">{{ asset.name }}</div>
               <div style="margin-top:2px">
                 {% if asset.deployed %}
-                  <span class="badge-deployed">✓ Déployé</span>
+                  <span class="badge-deployed">✓ {{ _('Déployé') }}</span>
                 {% else %}
-                  <span class="badge bg-light text-secondary" style="font-size:.7rem">Brouillon</span>
+                  <span class="badge bg-light text-secondary" style="font-size:.7rem">{{ _('Brouillon') }}</span>
                 {% endif %}
                 {% if asset.asset_type and asset.asset_type != 'survey' %}
                   <span class="badge bg-light text-muted ms-1" style="font-size:.68rem">{{ asset.asset_type }}</span>
@@ -281,7 +281,7 @@
             <td class="text-center">
               <button class="btn btn-sm btn-kobo"
                 onclick="event.stopPropagation();loadAsset('{{ asset.uid }}','{{ asset.name|replace("'","") }}')">
-                Charger
+                {{ _('Charger') }}
               </button>
             </td>
           </tr>
@@ -305,14 +305,14 @@
         <input type="hidden" name="uid"  id="hidden-uid"/>
         <input type="hidden" name="name" id="hidden-name"/>
         <button type="submit" class="btn btn-kobo" id="btn-load">
-          ⬇ Charger ce formulaire dans SPAD Analyzer
+          ⬇ {{ _('Charger ce formulaire dans SPAD Analyzer') }}
         </button>
       </form>
     </div>
 
     {% else %}
     <div class="alert alert-warning">
-      Aucun formulaire déployé trouvé sur ce compte KoboToolbox.
+      {{ _('Aucun formulaire déployé trouvé sur ce compte KoboToolbox.') }}
     </div>
     {% endif %}
 
@@ -320,9 +320,9 @@
     <!-- Token valide mais pas encore de liste chargée -->
     <div class="token-card text-center py-5">
       <div style="font-size:2.5rem;margin-bottom:12px">📋</div>
-      <p class="text-muted mb-3">Cliquez pour voir vos formulaires disponibles.</p>
+      <p class="text-muted mb-3">{{ _('Cliquez pour voir vos formulaires disponibles.') }}</p>
       <a href="{{ url_for('kobo_assets') }}" class="btn btn-kobo">
-        Voir mes formulaires
+        {{ _('Voir mes formulaires') }}
       </a>
     </div>
 
@@ -330,7 +330,7 @@
     <!-- Pas encore connecté -->
     <div class="token-card text-center py-5">
       <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
-      <p class="text-muted">Connectez-vous avec votre token API pour voir vos formulaires.</p>
+      <p class="text-muted">{{ _('Connectez-vous avec votre token API pour voir vos formulaires.') }}</p>
     </div>
     {% endif %}
 

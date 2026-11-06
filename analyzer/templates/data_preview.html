@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Aperçu des données — SPAD Analyzer{% endblock %}
-{% block page_title %}Aperçu des données{% endblock %}
+{% block title %}{{ _('Aperçu des données') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Aperçu des données') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -12,7 +12,7 @@
     <div style="width:38px;height:38px;background:#17A589;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🔗</div>
     <div class="flex-grow-1">
       <div style="font-weight:700;font-size:.88rem;color:#1A5276">
-        Source : KoboToolbox
+        {{ _('Source : KoboToolbox') }}
         <span style="font-weight:400;color:#555;font-size:.8rem;margin-left:6px">— {{ session.get('kobo_asset_name','') }}</span>
       </div>
       <div style="font-size:.75rem;color:#85929E">
@@ -23,12 +23,12 @@
       <a href="{{ url_for('kobo_refresh') }}"
          class="btn btn-sm"
          style="background:#17A589;color:#fff;border-radius:8px;font-weight:600;font-size:.8rem">
-        <i class="bi bi-arrow-clockwise me-1"></i>Rafraîchir
+        <i class="bi bi-arrow-clockwise me-1"></i>{{ _('Rafraîchir') }}
       </a>
       <a href="{{ url_for('kobo_assets') }}"
          class="btn btn-sm"
          style="background:#1A5276;color:#fff;border-radius:8px;font-weight:600;font-size:.8rem">
-        <i class="bi bi-collection-fill me-1"></i>Changer de formulaire
+        <i class="bi bi-collection-fill me-1"></i>{{ _('Changer de formulaire') }}
       </a>
     </div>
   </div>
@@ -39,21 +39,21 @@
     <div class="form-check form-switch mb-0 flex-shrink-0">
       <input class="form-check-input" type="checkbox" role="switch" id="kobo-sync-toggle" style="cursor:pointer">
       <label class="form-check-label" for="kobo-sync-toggle" style="font-size:.82rem;font-weight:600;color:#1A5276">
-        Actualisation automatique
+        {{ _('Actualisation automatique') }}
       </label>
     </div>
     <select id="kobo-sync-interval" class="form-select form-select-sm" style="width:auto;font-size:.8rem">
-      <option value="120">Toutes les 2 min</option>
-      <option value="300" selected>Toutes les 5 min</option>
-      <option value="600">Toutes les 10 min</option>
-      <option value="1800">Toutes les 30 min</option>
+      <option value="120">{{ _('Toutes les 2 min') }}</option>
+      <option value="300" selected>{{ _('Toutes les 5 min') }}</option>
+      <option value="600">{{ _('Toutes les 10 min') }}</option>
+      <option value="1800">{{ _('Toutes les 30 min') }}</option>
     </select>
     <div id="kobo-sync-status" class="flex-grow-1" style="font-size:.78rem;color:#85929E">
-      Désactivée — les données ne se mettent à jour qu'au clic sur « Rafraîchir ».
+      {{ _("Désactivée — les données ne se mettent à jour qu'au clic sur « Rafraîchir ».") }}
     </div>
     <button id="kobo-sync-apply" type="button" class="btn btn-sm d-none"
             style="background:#E67E22;color:#fff;border-radius:8px;font-weight:600;font-size:.8rem">
-      <i class="bi bi-cloud-arrow-down-fill me-1"></i>Appliquer les nouvelles données
+      <i class="bi bi-cloud-arrow-down-fill me-1"></i>{{ _('Appliquer les nouvelles données') }}
     </button>
   </div>
 
@@ -139,18 +139,18 @@
   <!-- Summary cards -->
   <div class="row g-3 mb-4">
     {% set cards = [
-      ('bi-people-fill',          'bg-primary-subtle',   'text-primary',   shape[0],              'Ménages'),
-      ('bi-list-columns-reverse', 'bg-success-subtle',   'text-success',   shape[1],              'Variables'),
-      ('bi-tag-fill',             'bg-warning-subtle',   'text-warning',   meta.n_categorielle,   'Catégorielles'),
-      ('bi-check2-square',        'bg-secondary-subtle', 'text-secondary', meta.n_binaire,        'Binaires 0/1'),
-      ('bi-exclamation-triangle-fill','bg-danger-subtle','text-danger',    meta.missing_pct|string + '%', 'Manquantes'),
+      ('bi-people-fill',          'bg-primary-subtle',   'text-primary',   shape[0],              _('Ménages')),
+      ('bi-list-columns-reverse', 'bg-success-subtle',   'text-success',   shape[1],              _('Variables')),
+      ('bi-tag-fill',             'bg-warning-subtle',   'text-warning',   meta.n_categorielle,   _('Catégorielles')),
+      ('bi-check2-square',        'bg-secondary-subtle', 'text-secondary', meta.n_binaire,        _('Binaires 0/1')),
+      ('bi-exclamation-triangle-fill','bg-danger-subtle','text-danger',    meta.missing_pct|string + '%', _('Manquantes')),
     ] %}
     {% if meta.has_child_sheet %}
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card-v">
         <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-person-fill"></i></div>
         <div class="stat-value-v">{{ meta.n_child }}</div>
-        <div class="stat-label-v">Enfants 0–23 mois</div>
+        <div class="stat-label-v">{{ _('Enfants 0–23 mois') }}</div>
       </div>
     </div>
     {% endif %}
@@ -198,49 +198,49 @@
   <div class="card border-0 shadow-sm mb-4" id="grid-card">
     <div class="card-header bg-white border-bottom py-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>Lignes — {{ meta.get('sheet_name', 'Feuille principale') }}</h6>
-        <span class="badge bg-secondary" id="grid-count">{{ shape[0] }} lignes</span>
-        {% if excluded_n %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Lignes écartées des analyses (barrées dans la table)">{{ excluded_n }} écartée(s)</span>{% endif %}
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>{{ _('Lignes —') }} {{ meta.get('sheet_name', _('Feuille principale')) }}</h6>
+        <span class="badge bg-secondary" id="grid-count">{{ _('%(n)s lignes', n=shape[0]) }}</span>
+        {% if excluded_n %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="{{ _('Lignes écartées des analyses (barrées dans la table)') }}">{{ _('%(n)s écartée(s)', n=excluded_n) }}</span>{% endif %}
         <div class="d-flex gap-2 ms-auto flex-wrap">
-          <a href="{{ url_for('export_data_xlsx') }}" class="btn btn-sm btn-outline-primary" title="Télécharger les {{ shape[0] }} observations au format XLSX"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Données XLSX</a>
-          <a href="{{ url_for('export_data_csv') }}" class="btn btn-sm btn-outline-primary" title="Télécharger les {{ shape[0] }} observations au format CSV"><i class="bi bi-filetype-csv me-1"></i>Données CSV</a>
-          <a href="{{ url_for('export_data_stat', fmt='sav') }}" class="btn btn-sm btn-outline-primary" title="Fichier SPSS avec libellés des variables et des modalités"><i class="bi bi-file-earmark-binary me-1"></i>SPSS</a>
-          <a href="{{ url_for('export_data_stat', fmt='dta') }}" class="btn btn-sm btn-outline-primary" title="Fichier Stata avec libellés des variables et des modalités"><i class="bi bi-file-earmark-binary me-1"></i>Stata</a>
+          <a href="{{ url_for('export_data_xlsx') }}" class="btn btn-sm btn-outline-primary" title="{{ _('Télécharger les %(n)s observations au format XLSX', n=shape[0]) }}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ _('Données XLSX') }}</a>
+          <a href="{{ url_for('export_data_csv') }}" class="btn btn-sm btn-outline-primary" title="{{ _('Télécharger les %(n)s observations au format CSV', n=shape[0]) }}"><i class="bi bi-filetype-csv me-1"></i>{{ _('Données CSV') }}</a>
+          <a href="{{ url_for('export_data_stat', fmt='sav') }}" class="btn btn-sm btn-outline-primary" title="{{ _('Fichier SPSS avec libellés des variables et des modalités') }}"><i class="bi bi-file-earmark-binary me-1"></i>SPSS</a>
+          <a href="{{ url_for('export_data_stat', fmt='dta') }}" class="btn btn-sm btn-outline-primary" title="{{ _('Fichier Stata avec libellés des variables et des modalités') }}"><i class="bi bi-file-earmark-binary me-1"></i>Stata</a>
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
         <div class="input-group input-group-sm" style="width:260px">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
-          <input type="search" id="grid-q" class="form-control" placeholder="Chercher dans toutes les colonnes…" autocomplete="off">
+          <input type="search" id="grid-q" class="form-control" placeholder="{{ _('Chercher dans toutes les colonnes…') }}" autocomplete="off">
         </div>
         <div class="position-relative">
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="cols-btn"><i class="bi bi-layout-three-columns me-1"></i>Colonnes <span class="badge bg-secondary" id="cols-n"></span></button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="cols-btn"><i class="bi bi-layout-three-columns me-1"></i>{{ _('Colonnes') }} <span class="badge bg-secondary" id="cols-n"></span></button>
           <div class="cols-panel" id="cols-panel">
             <div class="p-2 border-bottom">
-              <input type="search" id="cols-q" class="form-control form-control-sm mb-2" placeholder="Chercher une colonne…" autocomplete="off">
+              <input type="search" id="cols-q" class="form-control form-control-sm mb-2" placeholder="{{ _('Chercher une colonne…') }}" autocomplete="off">
               <div class="d-flex gap-1">
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="default">Par défaut</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="all">Toutes</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="none">Aucune</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="default">{{ _('Par défaut') }}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="all">{{ _('Toutes') }}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-cols="none">{{ _('Aucune') }}</button>
               </div>
             </div>
             <div class="list" id="cols-list"></div>
           </div>
         </div>
-        <select id="grid-flag" class="form-select form-select-sm" style="width:auto" title="Lignes relevées par la validation des données">
-          <option value="">Toutes les lignes</option>
-          <option value="1">Lignes signalées (erreurs et à vérifier)</option>
-          <option value="erreur">Lignes en erreur</option>
+        <select id="grid-flag" class="form-select form-select-sm" style="width:auto" title="{{ _('Lignes relevées par la validation des données') }}">
+          <option value="">{{ _('Toutes les lignes') }}</option>
+          <option value="1">{{ _('Lignes signalées (erreurs et à vérifier)') }}</option>
+          <option value="erreur">{{ _('Lignes en erreur') }}</option>
         </select>
         <select id="grid-per" class="form-select form-select-sm" style="width:auto"></select>
         <div class="input-group input-group-sm" style="width:170px">
-          <span class="input-group-text">Ligne n°</span>
-          <input type="number" min="1" max="{{ shape[0] }}" id="grid-go" class="form-control" placeholder="{{ shape[0] }} max">
+          <span class="input-group-text">{{ _('Ligne n°') }}</span>
+          <input type="number" min="1" max="{{ shape[0] }}" id="grid-go" class="form-control" placeholder="{{ _('%(n)s max', n=shape[0]) }}">
           <button class="btn btn-outline-secondary" type="button" id="grid-go-btn"><i class="bi bi-box-arrow-up-right"></i></button>
         </div>
-        <a class="btn btn-sm btn-outline-success ms-auto" id="grid-csv" href="#" title="La vue filtrée et triée, colonnes choisies"><i class="bi bi-download me-1"></i>Cette vue (CSV)</a>
+        <a class="btn btn-sm btn-outline-success ms-auto" id="grid-csv" href="#" title="{{ _('La vue filtrée et triée, colonnes choisies') }}"><i class="bi bi-download me-1"></i>{{ _('Cette vue (CSV)') }}</a>
       </div>
-      <div class="small text-muted mt-2" id="grid-hint">Cliquez sur un en-tête pour trier, sur une ligne pour ouvrir la fiche de la soumission. Les lignes rouges ou jaunes sont celles que relève la validation.</div>
+      <div class="small text-muted mt-2" id="grid-hint">{{ _('Cliquez sur un en-tête pour trier, sur une ligne pour ouvrir la fiche de la soumission. Les lignes rouges ou jaunes sont celles que relève la validation.') }}</div>
     </div>
     <div class="card-body p-0">
       <div class="grid-wrap"><table class="table table-sm table-hover mb-0 grid-table" id="grid-table"><thead></thead><tbody></tbody></table></div>
@@ -252,20 +252,20 @@
   </div>
 
   <div id="row-overlay"></div>
-  <aside id="row-drawer" aria-label="Fiche d'une soumission">
+  <aside id="row-drawer" aria-label="{{ _("Fiche d'une soumission") }}">
     <div class="d-flex align-items-center gap-2 p-3 border-bottom flex-wrap">
-      <h6 class="mb-0 fw-semibold" id="row-title">Soumission</h6>
+      <h6 class="mb-0 fw-semibold" id="row-title">{{ _('Soumission') }}</h6>
       <span id="row-sev"></span>
       <div class="ms-auto d-flex gap-1">
-        <button class="btn btn-sm btn-outline-secondary" id="row-pf" title="Ligne signalée précédente"><i class="bi bi-flag"></i><i class="bi bi-chevron-left"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" id="row-prev" title="Ligne précédente"><i class="bi bi-chevron-left"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" id="row-next" title="Ligne suivante"><i class="bi bi-chevron-right"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" id="row-nf" title="Ligne signalée suivante"><i class="bi bi-chevron-right"></i><i class="bi bi-flag"></i></button>
-        <button class="btn btn-sm btn-outline-dark" id="row-close" title="Fermer"><i class="bi bi-x-lg"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-pf" title="{{ _('Ligne signalée précédente') }}"><i class="bi bi-flag"></i><i class="bi bi-chevron-left"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-prev" title="{{ _('Ligne précédente') }}"><i class="bi bi-chevron-left"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-next" title="{{ _('Ligne suivante') }}"><i class="bi bi-chevron-right"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="row-nf" title="{{ _('Ligne signalée suivante') }}"><i class="bi bi-chevron-right"></i><i class="bi bi-flag"></i></button>
+        <button class="btn btn-sm btn-outline-dark" id="row-close" title="{{ _('Fermer') }}"><i class="bi bi-x-lg"></i></button>
       </div>
     </div>
     <div class="px-3 py-2 border-bottom d-flex align-items-center gap-3 flex-wrap small">
-      <label class="mb-0"><input type="checkbox" id="row-empty"> Afficher les questions sans réponse</label>
+      <label class="mb-0"><input type="checkbox" id="row-empty"> {{ _('Afficher les questions sans réponse') }}</label>
       <span class="text-muted" id="row-count"></span>
       <button class="btn btn-sm btn-outline-danger ms-auto py-0" id="row-excl"></button>
     </div>
@@ -452,7 +452,7 @@
     <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
       <h6 class="mb-0 fw-semibold">
         <i class="bi bi-check2-square me-2 text-primary"></i>
-        Questions à choix multiples détectées ({{ bin_groups|length }} groupes)
+        {{ _('Questions à choix multiples détectées (%(n)s groupes)', n=bin_groups|length) }}
       </h6>
       <span class="badge bg-primary ms-2">KoBoToolbox</span>
     </div>
@@ -460,17 +460,17 @@
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead class="table-light">
-            <tr><th>#</th><th>Question</th><th>Nombre de modalités</th><th>Action</th></tr>
+            <tr><th>#</th><th>{{ _('Question') }}</th><th>{{ _('Nombre de modalités') }}</th><th>{{ _('Action') }}</th></tr>
           </thead>
           <tbody>
             {% for g in bin_groups %}
             <tr>
               <td class="text-muted small">{{ loop.index }}</td>
               <td style="font-size:.82rem">{{ g.parent }}</td>
-              <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ g.vars|length }} modalités</span></td>
+              <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ _('%(n)s modalités', n=g.vars|length) }}</span></td>
               <td>
                 <a href="{{ url_for('descriptive') }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:.75rem">
-                  <i class="bi bi-bar-chart me-1"></i>Analyser
+                  <i class="bi bi-bar-chart me-1"></i>{{ _('Analyser') }}
                 </a>
               </td>
             </tr>
@@ -486,25 +486,25 @@
   <div class="card border-0 shadow-sm mb-4" id="dict-card">
     <div class="card-header bg-white border-bottom py-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>Dictionnaire des variables</h6>
-        <span class="text-muted small">{{ shape[1] }} variables · le libellé et le type se corrigent ici et sont conservés avec le jeu de données</span>
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-list-check me-2 text-primary"></i>{{ _('Dictionnaire des variables') }}</h6>
+        <span class="text-muted small">{{ _('%(n)s variables · le libellé et le type se corrigent ici et sont conservés avec le jeu de données', n=shape[1]) }}</span>
         <div class="d-flex gap-2 ms-auto">
-          <a href="{{ url_for('export_var_types_xlsx') }}" class="btn btn-sm btn-outline-success" title="Questionnaire reconstruit (libellés, modalités, règles du formulaire, effectifs)"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Questionnaire XLSX</a>
-          <a href="{{ url_for('export_var_types_csv') }}" class="btn btn-sm btn-outline-success" title="Questionnaire reconstruit au format CSV"><i class="bi bi-filetype-csv me-1"></i>Questionnaire CSV</a>
+          <a href="{{ url_for('export_var_types_xlsx') }}" class="btn btn-sm btn-outline-success" title="{{ _('Questionnaire reconstruit (libellés, modalités, règles du formulaire, effectifs)') }}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ _('Questionnaire XLSX') }}</a>
+          <a href="{{ url_for('export_var_types_csv') }}" class="btn btn-sm btn-outline-success" title="{{ _('Questionnaire reconstruit au format CSV') }}"><i class="bi bi-filetype-csv me-1"></i>{{ _('Questionnaire CSV') }}</a>
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
         <div class="input-group input-group-sm" style="width:260px">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
-          <input type="search" id="dict-q" class="form-control" placeholder="Chercher une variable…" autocomplete="off">
+          <input type="search" id="dict-q" class="form-control" placeholder="{{ _('Chercher une variable…') }}" autocomplete="off">
         </div>
         <select id="dict-type" class="form-select form-select-sm" style="width:auto">
-          <option value="">Tous les types</option>
+          <option value="">{{ _('Tous les types') }}</option>
           {% for key, text in type_choices.items() %}<option value="{{ key }}">{{ text }}</option>{% endfor %}
         </select>
-        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="dict-forced"><label class="form-check-label small" for="dict-forced">Types corrigés seulement</label></div>
+        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="dict-forced"><label class="form-check-label small" for="dict-forced">{{ _('Types corrigés seulement') }}</label></div>
         {% if not has_form %}
-        <span class="small text-muted ms-auto"><i class="bi bi-info-circle me-1"></i>Joignez l'XLSForm (hub d'analyse) pour obtenir les libellés des questions, des choix et les règles du formulaire.</span>
+        <span class="small text-muted ms-auto"><i class="bi bi-info-circle me-1"></i>{{ _("Joignez l'XLSForm (hub d'analyse) pour obtenir les libellés des questions, des choix et les règles du formulaire.") }}</span>
         {% endif %}
       </div>
     </div>
@@ -514,13 +514,13 @@
           <thead class="table-light sticky-top">
             <tr>
               <th style="width:36px">#</th>
-              <th style="width:17%">Variable (code)</th>
-              <th style="width:24%">Question / Libellé</th>
-              <th style="width:170px">Type</th>
-              <th>Modalités attendues</th>
-              {% if has_form %}<th style="width:11%">Règles du formulaire</th>{% endif %}
-              <th class="text-end" style="width:6%">Obs.</th>
-              <th class="text-end" style="width:6%">% manq.</th>
+              <th style="width:17%">{{ _('Variable (code)') }}</th>
+              <th style="width:24%">{{ _('Question / Libellé') }}</th>
+              <th style="width:170px">{{ _('Type') }}</th>
+              <th>{{ _('Modalités attendues') }}</th>
+              {% if has_form %}<th style="width:11%">{{ _('Règles du formulaire') }}</th>{% endif %}
+              <th class="text-end" style="width:6%">{{ _('Obs.') }}</th>
+              <th class="text-end" style="width:6%">{{ _('%% manq.') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -530,22 +530,22 @@
               <td class="fw-medium" style="font-size:.72rem;font-family:monospace;word-break:break-all" title="{{ r.section }}">{{ r.variable }}</td>
               <td style="font-size:.82rem">
                 <span class="var-label-edit" contenteditable="true" spellcheck="false" data-variable="{{ r.variable }}" data-auto="{{ r.libelle_auto }}"
-                      title="Cliquez pour modifier — Entrée pour valider, Échap pour revenir au libellé d'origine"
+                      title="{{ _("Cliquez pour modifier — Entrée pour valider, Échap pour revenir au libellé d'origine") }}"
                       style="display:inline-block;min-width:60%;padding:2px 6px;border-radius:4px;cursor:text">{{ r.libelle }}</span>
-                <span class="badge rounded-pill {% if r.source == 'utilisateur' %}bg-success-subtle text-success-emphasis{% elif r.source == 'XLSForm' %}bg-primary-subtle text-primary-emphasis{% else %}bg-light text-muted border{% endif %}" style="font-size:.6rem" title="Origine du libellé">{{ r.source }}</span>
+                <span class="badge rounded-pill {% if r.source == 'utilisateur' %}bg-success-subtle text-success-emphasis{% elif r.source == 'XLSForm' %}bg-primary-subtle text-primary-emphasis{% else %}bg-light text-muted border{% endif %}" style="font-size:.6rem" title="{{ _('Origine du libellé') }}">{{ r.source }}</span>
               </td>
               <td>
                 <select class="form-select form-select-sm var-type-edit" data-variable="{{ r.variable }}" data-detected="{{ r.type_detected }}" style="font-size:.74rem;padding:1px 22px 1px 6px;min-width:150px">
-                  {% for key, text in type_choices.items() %}<option value="{{ key }}" {% if key == r.type %}selected{% endif %}>{{ text }}{% if key == r.type_detected %} (détecté){% endif %}</option>{% endfor %}
+                  {% for key, text in type_choices.items() %}<option value="{{ key }}" {% if key == r.type %}selected{% endif %}>{{ text }}{% if key == r.type_detected %} ({{ _('détecté') }}){% endif %}</option>{% endfor %}
                 </select>
-                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle type-forced {% if not r.type_forced %}d-none{% endif %}" style="font-size:.6rem" title="Type choisi, différent du type détecté">corrigé</span>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle type-forced {% if not r.type_forced %}d-none{% endif %}" style="font-size:.6rem" title="{{ _('Type choisi, différent du type détecté') }}">{{ _('corrigé') }}</span>
               </td>
               <td style="font-size:.74rem;color:#566573;line-height:1.4">{{ r.modalites | truncate(180) if r.modalites else '—' }}</td>
               {% if has_form %}
               <td style="font-size:.7rem">
-                {% if r.required %}<span class="badge bg-danger-subtle text-danger-emphasis">obligatoire</span>{% endif %}
-                {% if r.relevant %}<span class="badge bg-info-subtle text-info-emphasis" title="{{ r.relevant }}">saut</span>{% endif %}
-                {% if r.constraint %}<span class="badge bg-secondary-subtle text-secondary-emphasis" title="{{ r.constraint }}">contrainte</span>{% endif %}
+                {% if r.required %}<span class="badge bg-danger-subtle text-danger-emphasis">{{ _('obligatoire') }}</span>{% endif %}
+                {% if r.relevant %}<span class="badge bg-info-subtle text-info-emphasis" title="{{ r.relevant }}">{{ _('saut') }}</span>{% endif %}
+                {% if r.constraint %}<span class="badge bg-secondary-subtle text-secondary-emphasis" title="{{ r.constraint }}">{{ _('contrainte') }}</span>{% endif %}
               </td>
               {% endif %}
               <td class="text-end small">{{ r.n_obs }}</td>
@@ -609,10 +609,10 @@
     <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
       <h6 class="mb-0 fw-semibold">
         <i class="bi bi-person-fill me-2 text-info"></i>
-        Aperçu — {{ meta.get('child_sheet_name', 'Groupe enfant') }}
-        <span class="badge bg-info-subtle text-info border border-info-subtle ms-2">Tableau répété</span>
+        {{ _('Aperçu —') }} {{ meta.get('child_sheet_name', _('Groupe enfant')) }}
+        <span class="badge bg-info-subtle text-info border border-info-subtle ms-2">{{ _('Tableau répété') }}</span>
       </h6>
-      <span class="badge bg-secondary ms-2">{{ child_meta.n }} enfants · {{ child_meta.cols }} variables</span>
+      <span class="badge bg-secondary ms-2">{{ _('%(n)s enfants · %(c)s variables', n=child_meta.n, c=child_meta.cols) }}</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">{{ child_preview | safe }}</div>

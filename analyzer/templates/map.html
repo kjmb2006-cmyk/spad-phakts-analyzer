@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Carte géographique — SPAD Analyzer{% endblock %}
-{% block page_title %}Carte géographique{% endblock %}
+{% block title %}{{ _('Carte géographique') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Carte géographique') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -8,7 +8,7 @@
   {% if not geo_pairs %}
   <div class="alert alert-warning d-flex align-items-center gap-2">
     <i class="bi bi-geo-alt-fill fs-5"></i>
-    <div>Aucune colonne de coordonnées GPS détectée dans les données. Vérifiez que vos données contiennent des colonnes <strong>latitude</strong> et <strong>longitude</strong>.</div>
+    <div>{{ _('Aucune colonne de coordonnées GPS détectée dans les données. Vérifiez que vos données contiennent des colonnes') }} <strong>latitude</strong> {{ _('et') }} <strong>longitude</strong>.</div>
   </div>
   {% else %}
 
@@ -19,7 +19,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom py-3">
           <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-sliders me-2 text-primary"></i>Paramètres de la carte
+            <i class="bi bi-sliders me-2 text-primary"></i>{{ _('Paramètres de la carte') }}
           </h6>
         </div>
         <div class="card-body">
@@ -27,7 +27,7 @@
 
             {% if geo_pairs | length > 1 %}
             <div class="mb-3">
-              <label class="form-label fw-medium small">Paire GPS</label>
+              <label class="form-label fw-medium small">{{ _('Paire GPS') }}</label>
               <select name="pair_idx" class="form-select form-select-sm">
                 {% for p in geo_pairs %}
                 <option value="{{ loop.index0 }}"
@@ -43,9 +43,9 @@
             {% endif %}
 
             <div class="mb-3">
-              <label class="form-label fw-medium small">Variable de couleur</label>
+              <label class="form-label fw-medium small">{{ _('Variable de couleur') }}</label>
               <select name="color_col" class="form-select form-select-sm">
-                <option value="">— Aucune (points uniformes) —</option>
+                <option value="">{{ _('— Aucune (points uniformes) —') }}</option>
                 {% for v in cat_vars %}
                 <option value="{{ v }}"
                   {% if result and result.get('color_col') == v %}selected{% endif %}>
@@ -53,26 +53,26 @@
                 </option>
                 {% endfor %}
               </select>
-              <div class="form-text">Colorie les points selon une variable catégorielle.</div>
+              <div class="form-text">{{ _('Colorie les points selon une variable catégorielle.') }}</div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-medium small">Info-bulle — colonnes affichées</label>
+              <label class="form-label fw-medium small">{{ _('Info-bulle — colonnes affichées') }}</label>
               <input type="text" name="hover_cols" class="form-control form-control-sm"
                      placeholder="col1, col2, col3"
                      value="{{ result.get('hover_cols_str', '') if result else default_hover_cols | join(', ') }}">
               <div class="form-text">
-                Détectées automatiquement :
+                {{ _('Détectées automatiquement :') }}
                 {% for c in default_hover_cols %}
                 <span class="badge bg-light text-dark border">{{ c }}</span>
                 {% else %}
-                <em>aucune</em>
+                <em>{{ _('aucune') }}</em>
                 {% endfor %}
               </div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-sm w-100">
-              <i class="bi bi-geo-alt-fill me-1"></i>Actualiser la carte
+              <i class="bi bi-geo-alt-fill me-1"></i>{{ _('Actualiser la carte') }}
             </button>
           </form>
         </div>
@@ -83,7 +83,7 @@
       <div class="card border-0 shadow-sm mt-3">
         <div class="card-header bg-white border-bottom py-3">
           <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-pin-map-fill me-2 text-success"></i>Statistiques
+            <i class="bi bi-pin-map-fill me-2 text-success"></i>{{ _('Statistiques') }}
           </h6>
         </div>
         <div class="card-body p-0">
@@ -106,7 +106,7 @@
       <div class="card border-0 shadow-sm mt-3">
         <div class="card-header bg-white border-bottom py-3">
           <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-bar-chart-fill me-2 text-info"></i>Répartition
+            <i class="bi bi-bar-chart-fill me-2 text-info"></i>{{ _('Répartition') }}
           </h6>
         </div>
         <div class="card-body p-2">
@@ -130,28 +130,28 @@
           <div class="stat-card-v">
             <div class="stat-icon-v bg-primary-subtle text-primary"><i class="bi bi-geo-fill"></i></div>
             <div class="stat-value-v">{{ result.n_points }}</div>
-            <div class="stat-label-v">Points GPS</div>
+            <div class="stat-label-v">{{ _('Points GPS') }}</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card-v">
             <div class="stat-icon-v bg-success-subtle text-success"><i class="bi bi-compass-fill"></i></div>
             <div class="stat-value-v">{{ result.center_lat }}</div>
-            <div class="stat-label-v">Lat. centrale</div>
+            <div class="stat-label-v">{{ _('Lat. centrale') }}</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card-v">
             <div class="stat-icon-v bg-info-subtle text-info"><i class="bi bi-compass"></i></div>
             <div class="stat-value-v">{{ result.center_lon }}</div>
-            <div class="stat-label-v">Lon. centrale</div>
+            <div class="stat-label-v">{{ _('Lon. centrale') }}</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card-v">
             <div class="stat-icon-v bg-warning-subtle text-warning"><i class="bi bi-layers-fill"></i></div>
             <div class="stat-value-v">{{ geo_pairs | length }}</div>
-            <div class="stat-label-v">Paires GPS</div>
+            <div class="stat-label-v">{{ _('Paires GPS') }}</div>
           </div>
         </div>
       </div>
@@ -160,12 +160,12 @@
       <ul class="nav nav-tabs mb-0" id="mapTabs">
         <li class="nav-item">
           <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-points">
-            <i class="bi bi-geo-alt-fill me-1"></i>Points
+            <i class="bi bi-geo-alt-fill me-1"></i>{{ _('Points') }}
           </button>
         </li>
         <li class="nav-item">
           <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-density">
-            <i class="bi bi-fire me-1"></i>Densité (heatmap)
+            <i class="bi bi-fire me-1"></i>{{ _('Densité (heatmap)') }}
           </button>
         </li>
       </ul>
@@ -195,17 +195,17 @@
                style="width:72px;height:72px;">
             <i class="bi bi-map-fill fs-2 text-primary"></i>
           </div>
-          <h5 class="fw-semibold mb-2">Carte géographique</h5>
+          <h5 class="fw-semibold mb-2">{{ _('Carte géographique') }}</h5>
           <p class="text-muted mb-3" style="max-width:380px;">
             {% if geo_pairs %}
-            {{ geo_pairs | length }} paire(s) GPS détectée(s). Cliquez sur
-            <strong>Générer la carte</strong> pour visualiser les points.
+            {{ geo_pairs | length }} {{ _('paire(s) GPS détectée(s). Cliquez sur') }}
+            <strong>{{ _('Générer la carte') }}</strong> {{ _('pour visualiser les points.') }}
             {% endif %}
           </p>
           <form method="POST" class="d-inline">
             <input type="hidden" name="pair_idx" value="0">
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-geo-alt-fill me-1"></i>Générer la carte
+              <i class="bi bi-geo-alt-fill me-1"></i>{{ _('Générer la carte') }}
             </button>
           </form>
         </div>

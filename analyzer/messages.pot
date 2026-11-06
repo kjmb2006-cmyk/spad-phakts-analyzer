@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-03 13:04+0000\n"
+"POT-Creation-Date: 2026-11-06 12:52+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -49,6 +49,930 @@ msgstr ""
 msgid "Cet identifiant est déjà utilisé."
 msgstr ""
 
+#: templates/_comment_block.html:13
+msgid "Lecture automatique"
+msgstr ""
+
+#: templates/_comment_block.html:20
+msgid "Votre interprétation (sera reprise dans le rapport)"
+msgstr ""
+
+#: templates/_comment_block.html:24
+msgid "Ajoutez votre lecture qualitative…"
+msgstr ""
+
+#: templates/_completude_macros.html:13 templates/completude.html:173
+#: templates/completude.html:226 templates/completude.html:281
+msgid "Non calculé"
+msgstr ""
+
+#: templates/_completude_macros.html:15 templates/completude.html:168
+#: templates/completude.html:221 templates/completude.html:283
+#: templates/completude_roster_national_detail.html:131
+msgid "Critique"
+msgstr ""
+
+#: templates/_completude_macros.html:16 templates/completude.html:169
+#: templates/completude.html:222 templates/completude.html:284
+#: templates/completude_roster_national_detail.html:127
+msgid "En cours"
+msgstr ""
+
+#: templates/_completude_macros.html:17 templates/completude.html:170
+#: templates/completude.html:223 templates/completude.html:285
+msgid "Cible atteinte"
+msgstr ""
+
+#: templates/_completude_macros.html:18 templates/completude.html:171
+#: templates/completude.html:224 templates/completude.html:286
+#: templates/completude_roster_national_detail.html:123
+msgid "Dépassement"
+msgstr ""
+
+#: templates/_completude_macros.html:19 templates/completude.html:172
+#: templates/completude.html:225 templates/completude.html:287
+#: templates/completude_equipe_spad.html:123
+#: templates/completude_roster_national_detail.html:135
+#: templates/multi_survey.html:591 templates/multi_survey.html:601
+#: templates/multi_survey.html:625 templates/validation.html:24
+msgid "À vérifier"
+msgstr ""
+
+#: templates/_completude_macros.html:35
+#, python-format
+msgid "À 0 %%"
+msgstr ""
+
+#: templates/_completude_macros.html:40 templates/_completude_macros.html:70
+msgid "Aucune anomalie de ce type ici."
+msgstr ""
+
+#: templates/_completude_macros.html:51
+msgid "cible"
+msgstr ""
+
+#: templates/_completude_macros.html:65
+msgid "Excès — doublons potentiels"
+msgstr ""
+
+#: templates/_excluded_banner.html:4
+msgid "ligne(s) écartée(s) de cette analyse"
+msgstr ""
+
+#: templates/_excluded_banner.html:5
+msgid "voir la validation"
+msgstr ""
+
+#: templates/_excluded_banner.html:7 templates/analyse_donnees.html:54
+msgid "Rétablir toutes les lignes"
+msgstr ""
+
+#: templates/_factum_field.html:10
+msgid "Composer"
+msgstr ""
+
+#: templates/_factum_field.html:16
+msgid "Entête (programme, objectif, résultat)"
+msgstr ""
+
+#: templates/_factum_field.html:18
+msgid "Juridiction (pays, institution)"
+msgstr ""
+
+#: templates/_factum_field.html:20
+msgid "Collecte n°"
+msgstr ""
+
+#: templates/_factum_field.html:22
+msgid "Sur (collectes prévues)"
+msgstr ""
+
+#: templates/_factum_field.html:24
+msgid "Date de référence (AAAA-MM ou AAAA-MM-JJ)"
+msgstr ""
+
+#: templates/_factum_field.html:26
+msgid "Sujet de l'étude"
+msgstr ""
+
+#: templates/_factum_field.html:27
+msgid "Etude CAP Personnel Santé PEC Tabac"
+msgstr ""
+
+#: templates/_factum_field.html:28
+msgid "Domaine de définition"
+msgstr ""
+
+#: templates/_factum_field.html:32
+msgid "Utiliser ce Factum"
+msgstr ""
+
+#: templates/_factum_field.html:37
+msgid "Établissement de santé"
+msgstr ""
+
+#: templates/_factum_field.html:38
+msgid "Établissement scolaire / public"
+msgstr ""
+
+#: templates/_factum_field.html:39
+msgid "Ménage"
+msgstr ""
+
+#: templates/_factum_field.html:40
+msgid "Communauté"
+msgstr ""
+
+#: templates/admin_activity.html:2 templates/admin_activity.html:3
+#: templates/admin_users.html:15 templates/base.html:200
+msgid "Journal d'activité"
+msgstr ""
+
+#: templates/admin_activity.html:10
+#, python-format
+msgid "%(num)s événement le plus récent — comptes Data uniquement"
+msgid_plural "%(num)s événements les plus récents — comptes Data uniquement"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin_activity.html:14 templates/admin_users.html:2
+#: templates/admin_users.html:3 templates/base.html:197
+msgid "Comptes Data"
+msgstr ""
+
+#: templates/admin_activity.html:18
+msgid "Effacer tout le journal d'activité ? Cette action est irréversible."
+msgstr ""
+
+#: templates/admin_activity.html:20
+msgid "Réinitialisation"
+msgstr ""
+
+#: templates/admin_activity.html:33
+msgid "Horodatage"
+msgstr ""
+
+#: templates/admin_activity.html:34
+msgid "Utilisateur"
+msgstr ""
+
+#: templates/admin_activity.html:35
+msgid "Méthode"
+msgstr ""
+
+#: templates/admin_activity.html:36
+msgid "Chemin"
+msgstr ""
+
+#: templates/admin_activity.html:51
+msgid "Aucune activité enregistrée pour l'instant."
+msgstr ""
+
+#: templates/admin_activity.html:61
+msgid ""
+"Chaque requête effectuée par un compte Data est journalisée (connexions, "
+"navigation, actions). Les 500 événements les plus récents sont affichés "
+"ici ; l'historique complet reste sur le serveur."
+msgstr ""
+
+#: templates/admin_forms.html:2 templates/admin_forms.html:3
+#: templates/base.html:203
+msgid "Registre des formulaires"
+msgstr ""
+
+#: templates/admin_forms.html:11
+msgid "Les 7 formulaires SPAD ne sont plus figés."
+msgstr ""
+
+#: templates/admin_forms.html:12
+msgid ""
+"Désactivez ceux que cette collecte n'utilise pas, ou ajoutez-en d'autres "
+"— ils apparaîtront alors dans « Suivi multi-formulaires » et dans la "
+"correspondance de « Complétude nationale »."
+msgstr ""
+
+#: templates/admin_forms.html:18
+msgid "Formulaires du registre"
+msgstr ""
+
+#: templates/admin_forms.html:26 templates/admin_forms.html:95
+#: templates/completude_roster_national_detail.html:64
+#: templates/validation.html:184
+msgid "Libellé"
+msgstr ""
+
+#: templates/admin_forms.html:27 templates/admin_forms.html:104
+msgid "Grain"
+msgstr ""
+
+#: templates/admin_forms.html:28
+msgid "Acteur"
+msgstr ""
+
+#: templates/admin_forms.html:29
+msgid "Règle de cible"
+msgstr ""
+
+#: templates/admin_forms.html:30 templates/admin_users.html:26
+#: templates/collecte_alertes.html:34 templates/collecte_dashboard.html:271
+#: templates/collecte_equipes.html:30 templates/collecte_geographique.html:31
+#: templates/collecte_qualite.html:35 templates/collecte_sync.html:114
+#: templates/completude_equipe_spad.html:103
+#: templates/completude_roster_national_detail.html:94
+#: templates/projet_detail.html:156 templates/projet_detail.html:191
+msgid "Statut"
+msgstr ""
+
+#: templates/admin_forms.html:31 templates/data_preview.html:463
+#: templates/kobo_connect.html:256
+msgid "Action"
+msgstr ""
+
+#: templates/admin_forms.html:40 templates/admin_forms.html:107
+#: templates/completude_district_detail.html:93
+#: templates/completude_enqueteur_detail.html:31
+#: templates/completude_etablissement_detail.html:4
+#: templates/completude_superviseur_detail.html:36
+msgid "Établissement"
+msgstr ""
+
+#: templates/admin_forms.html:41 templates/admin_forms.html:108
+#: templates/completude_district_detail.html:4
+#: templates/completude_enqueteur_detail.html:11
+#: templates/completude_region_detail.html:31
+#: templates/completude_superviseur_detail.html:11
+msgid "District"
+msgstr ""
+
+#: templates/admin_forms.html:42 templates/admin_forms.html:109
+msgid "Enquêteur (roster)"
+msgstr ""
+
+#: templates/admin_forms.html:43 templates/admin_forms.html:110
+msgid "Superviseur (roster)"
+msgstr ""
+
+#: templates/admin_forms.html:47 templates/admin_forms.html:116
+#: templates/completude.html:151 templates/completude_district_detail.html:56
+#: templates/completude_district_detail.html:94
+#: templates/completude_enqueteur_detail.html:4
+msgid "Enquêteur"
+msgstr ""
+
+#: templates/admin_forms.html:47 templates/admin_forms.html:117
+#: templates/completude.html:151 templates/completude_superviseur_detail.html:4
+msgid "Superviseur"
+msgstr ""
+
+#: templates/admin_forms.html:54
+msgid "Actif"
+msgstr ""
+
+#: templates/admin_forms.html:56
+msgid "Désactivé"
+msgstr ""
+
+#: templates/admin_forms.html:62
+#, python-format
+msgid "Désactiver « %(code)s » ? Il disparaîtra de Suivi et Complétude."
+msgstr ""
+
+#: templates/admin_forms.html:64
+msgid "Désactiver"
+msgstr ""
+
+#: templates/admin_forms.html:70
+msgid "Activer"
+msgstr ""
+
+#: templates/admin_forms.html:85
+msgid "Ajouter un formulaire"
+msgstr ""
+
+#: templates/admin_forms.html:92 templates/admin_forms.html:100
+#: templates/admin_forms.html:122 templates/admin_forms.html:126
+#: templates/admin_forms.html:140 templates/admin_forms.html:146
+#: templates/admin_forms.html:152 templates/admin_forms.html:174
+#: templates/admin_forms.html:178
+msgid "ex."
+msgstr ""
+
+#: templates/admin_forms.html:96
+msgid "ex. Nutrition — Enfants 0-5 ans"
+msgstr ""
+
+#: templates/admin_forms.html:99
+msgid "Préfixe de détection auto. (nom Kobo)"
+msgstr ""
+
+#: templates/admin_forms.html:114
+msgid "Rempli par"
+msgstr ""
+
+#: templates/admin_forms.html:121
+msgid "Champ Kobo — code établissement"
+msgstr ""
+
+#: templates/admin_forms.html:125
+msgid "Champ Kobo — code district"
+msgstr ""
+
+#: templates/admin_forms.html:133
+msgid "Configuration roster"
+msgstr ""
+
+#: templates/admin_forms.html:134
+msgid "un même formulaire Kobo peut porter plusieurs codes SPAD (un par rôle)"
+msgstr ""
+
+#: templates/admin_forms.html:138
+msgid "Champ de rôle (role_filter field)"
+msgstr ""
+
+#: templates/admin_forms.html:141
+msgid "Nom du champ Kobo qui distingue les rôles."
+msgstr ""
+
+#: templates/admin_forms.html:144
+msgid "Valeur attendue (role_filter value)"
+msgstr ""
+
+#: templates/admin_forms.html:147
+msgid "Valeur exacte du champ pour ce rôle (insensible à la casse)."
+msgstr ""
+
+#: templates/admin_forms.html:150
+msgid "Champ d'identité (identity_field)"
+msgstr ""
+
+#: templates/admin_forms.html:153
+msgid ""
+"Champ Kobo identifiant chaque répondant (compte les individus distincts, "
+"pas les soumissions)."
+msgstr ""
+
+#: templates/admin_forms.html:162
+msgid "Type de règle de cible"
+msgstr ""
+
+#: templates/admin_forms.html:173
+msgid "Nombre (si règle « fixe »)"
+msgstr ""
+
+#: templates/admin_forms.html:177
+msgid "Champ du référentiel (si règle « champ »)"
+msgstr ""
+
+#: templates/admin_forms.html:179
+msgid ""
+"Seuls les champs déjà présents dans le référentiel établissement (voir "
+"org_unit.xlsx / tirage_etablissements.xlsx) sont utilisables."
+msgstr ""
+
+#: templates/admin_forms.html:184
+msgid "Ajouter au registre"
+msgstr ""
+
+#: templates/admin_forms.html:192
+msgid ""
+"La règle « selon le type d'établissement » (motif F6) est réservée aux 7 "
+"formulaires historiques — trop spécifique pour être configurée depuis cet"
+" écran."
+msgstr ""
+
+#: templates/admin_users.html:10
+#, python-format
+msgid "%(num)s compte"
+msgid_plural "%(num)s comptes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin_users.html:12
+#, python-format
+msgid "%(n)s en attente"
+msgstr ""
+
+#: templates/admin_users.html:25 templates/login.html:136
+#: templates/raw_data.html:189 templates/register.html:71
+msgid "Identifiant"
+msgstr ""
+
+#: templates/admin_users.html:27 templates/projet_detail.html:11
+#: templates/projets.html:49
+msgid "Créé le"
+msgstr ""
+
+#: templates/admin_users.html:28
+msgid "Actions"
+msgstr ""
+
+#: templates/admin_users.html:37
+msgid "Autorisé"
+msgstr ""
+
+#: templates/admin_users.html:39 templates/completude_equipe_spad.html:125
+#: templates/completude_roster_national_detail.html:139
+msgid "En attente"
+msgstr ""
+
+#: templates/admin_users.html:41
+msgid "Bloqué"
+msgstr ""
+
+#: templates/admin_users.html:49
+msgid "Autoriser"
+msgstr ""
+
+#: templates/admin_users.html:55
+#, python-format
+msgid "Bloquer le compte « %(name)s » ?"
+msgstr ""
+
+#: templates/admin_users.html:57
+msgid "Bloquer"
+msgstr ""
+
+#: templates/admin_users.html:64
+msgid "Aucun compte Data inscrit pour l'instant."
+msgstr ""
+
+#: templates/admin_users.html:74
+msgid ""
+"Un compte en attente ne peut pas se connecter tant qu'il n'est pas "
+"autorisé. Bloquer un compte déjà connecté ne ferme pas sa session en "
+"cours mais l'empêchera de se reconnecter."
+msgstr ""
+
+#: templates/ai_assistant.html:2
+msgid "Assistant IA d'Analyse"
+msgstr ""
+
+#: templates/ai_assistant.html:3
+msgid "Assistant IA d'Analyse (SPAD Copilot)"
+msgstr ""
+
+#: templates/ai_assistant.html:24
+msgid "obs. ×"
+msgstr ""
+
+#: templates/ai_assistant.html:24
+msgid "vars"
+msgstr ""
+
+#: templates/ai_assistant.html:28
+msgid "Aucune donnée chargée (mode conseil général)"
+msgstr ""
+
+#: templates/ai_assistant.html:33
+msgid ""
+"Expertise épidémiologique et biostatistique — Posez vos questions, "
+"explorez les corrélations et générez des synthèses automatiques."
+msgstr ""
+
+#: templates/ai_assistant.html:40
+msgid ""
+"Clé API Anthropic non configurée sur le serveur — contactez un "
+"administrateur"
+msgstr ""
+
+#: templates/ai_assistant.html:41 templates/kobo_connect.html:225
+msgid "Clé API"
+msgstr ""
+
+#: templates/ai_assistant.html:41
+msgid "Non configurée"
+msgstr ""
+
+#: templates/ai_assistant.html:44
+msgid "Nouvelle conversation"
+msgstr ""
+
+#: templates/ai_assistant.html:45
+msgid "Effacer chat"
+msgstr ""
+
+#: templates/ai_assistant.html:57
+msgid "Analyses en 1 clic"
+msgstr ""
+
+#: templates/ai_assistant.html:63
+msgid "Synthèse exécutive"
+msgstr ""
+
+#: templates/ai_assistant.html:64
+msgid "Résumé global du jeu de données"
+msgstr ""
+
+#: templates/ai_assistant.html:71
+msgid "Corrélations clés"
+msgstr ""
+
+#: templates/ai_assistant.html:72
+msgid "Associations & liaisons significatives"
+msgstr ""
+
+#: templates/ai_assistant.html:79
+msgid "Diagnostic qualité"
+msgstr ""
+
+#: templates/ai_assistant.html:80
+msgid "Données manquantes, valeurs atypiques"
+msgstr ""
+
+#: templates/ai_assistant.html:87
+msgid "Recommandations"
+msgstr ""
+
+#: templates/ai_assistant.html:88
+msgid "Plans d'actions santé publique / OMS"
+msgstr ""
+
+#: templates/ai_assistant.html:95
+msgid "Avancement complétude"
+msgstr ""
+
+#: templates/ai_assistant.html:96
+msgid "Priorités terrain & analyse des cibles"
+msgstr ""
+
+#: templates/ai_assistant.html:103
+msgid "Exemples de questions :"
+msgstr ""
+
+#: templates/ai_assistant.html:105
+msgid "« Quels facteurs influencent le non-respect des protocoles ? »"
+msgstr ""
+
+#: templates/ai_assistant.html:106
+msgid "« Compare les taux de complétude entre les différents districts »"
+msgstr ""
+
+#: templates/ai_assistant.html:107
+msgid "« Rédige un paragraphe de conclusion pour le rapport final »"
+msgstr ""
+
+#: templates/ai_assistant.html:129
+msgid ""
+"Bonjour ! Je suis votre assistant d'analyse statistique et "
+"épidémiologique pour"
+msgstr ""
+
+#: templates/ai_assistant.html:130
+msgid "Je suis connecté en direct avec les données actives de votre session :"
+msgstr ""
+
+#: templates/ai_assistant.html:133
+msgid "Jeu de données chargé :"
+msgstr ""
+
+#: templates/ai_assistant.html:133
+msgid "observations et"
+msgstr ""
+
+#: templates/ai_assistant.html:133
+msgid "variables répertoriées."
+msgstr ""
+
+#: templates/ai_assistant.html:135
+msgid ""
+"Aucun fichier Excel n'est chargé pour l'instant. Vous pouvez importer un "
+"fichier depuis la section Formulaires ou me poser des questions "
+"méthodologiques générales."
+msgstr ""
+
+#: templates/ai_assistant.html:138
+msgid ""
+"Posez-moi une question dans la zone ci-dessous ou cliquez sur une analyse"
+" rapide à gauche !"
+msgstr ""
+
+#: templates/ai_assistant.html:148
+msgid "SPAD AI Copilot analyse les données et rédige la réponse…"
+msgstr ""
+
+#: templates/ai_assistant.html:154
+msgid ""
+"Posez une question sur vos données, demandez une interprétation "
+"statistique ou un tableau..."
+msgstr ""
+
+#: templates/ai_assistant.html:156
+msgid "Envoyer"
+msgstr ""
+
+#: templates/analyse_donnees.html:2 templates/analyse_donnees.html:3
+#: templates/crosstabs.html:343
+msgid "Analyse de données"
+msgstr ""
+
+#: templates/analyse_donnees.html:14
+msgid "Données chargées"
+msgstr ""
+
+#: templates/analyse_donnees.html:15 templates/map_view.html:367
+#: templates/multi_survey.html:490
+msgid "observations"
+msgstr ""
+
+#: templates/analyse_donnees.html:15 templates/multi_survey.html:230
+#: templates/multi_survey.html:492
+msgid "variables"
+msgstr ""
+
+#: templates/analyse_donnees.html:16
+msgid "catégorielles"
+msgstr ""
+
+#: templates/analyse_donnees.html:16
+msgid "continues"
+msgstr ""
+
+#: templates/analyse_donnees.html:20 templates/analyse_donnees.html:82
+#: templates/base.html:130 templates/data_preview.html:2
+#: templates/data_preview.html:3 templates/index.html:37
+#: templates/index.html:141
+msgid "Aperçu des données"
+msgstr ""
+
+#: templates/analyse_donnees.html:27
+msgid "Libellés des modalités"
+msgstr ""
+
+#: templates/analyse_donnees.html:29
+msgid ""
+"question(s) à choix lue(s) dans le formulaire : les analyses affichent « "
+"Sage-femme », « Infirmier »… au lieu des noms internes."
+msgstr ""
+
+#: templates/analyse_donnees.html:31
+msgid ""
+"Sans formulaire joint, les modalités s'affichent sous leur nom interne "
+"mis en forme (« sage_femme » → « Sage femme »). Joignez l'"
+msgstr ""
+
+#: templates/analyse_donnees.html:31
+msgid ""
+" pour lire les vrais libellés (celui de PHAKS Studio, ou « Télécharger "
+"XLS » dans KoboToolbox)."
+msgstr ""
+
+#: templates/analyse_donnees.html:35
+msgid "Remplacer"
+msgstr ""
+
+#: templates/analyse_donnees.html:35 templates/multi_survey.html:318
+#: templates/raw_data.html:95
+msgid "Joindre l'XLSForm"
+msgstr ""
+
+#: templates/analyse_donnees.html:39
+msgid "Retirer les libellés"
+msgstr ""
+
+#: templates/analyse_donnees.html:46
+msgid "Lignes et variables ajoutées"
+msgstr ""
+
+#: templates/analyse_donnees.html:48
+msgid "ligne(s) écartée(s) de l'analyse depuis la"
+msgstr ""
+
+#: templates/analyse_donnees.html:49
+msgid "validation des données"
+msgstr ""
+
+#: templates/analyse_donnees.html:50
+msgid "Aucune ligne écartée : toutes les soumissions sont analysées."
+msgstr ""
+
+#: templates/analyse_donnees.html:58 templates/data_prepare.html:185
+msgid "Variables créées"
+msgstr ""
+
+#: templates/analyse_donnees.html:58
+msgid "gérer"
+msgstr ""
+
+#: templates/analyse_donnees.html:62
+msgid "Variables calculées (issues d'une classification) :"
+msgstr ""
+
+#: templates/analyse_donnees.html:67
+msgid "Supprimer cette variable"
+msgstr ""
+
+#: templates/analyse_donnees.html:75
+msgid "Analyses disponibles"
+msgstr ""
+
+#: templates/analyse_donnees.html:83
+msgid "Tableau dynamique, filtrage des variables et inspection détaillée"
+msgstr ""
+
+#: templates/analyse_donnees.html:84
+msgid "Consulter"
+msgstr ""
+
+#: templates/analyse_donnees.html:92 templates/base.html:133
+#: templates/data_prepare.html:2 templates/data_prepare.html:3
+msgid "Préparer les données"
+msgstr ""
+
+#: templates/analyse_donnees.html:93
+msgid ""
+"Regrouper des modalités, créer des classes d'âge, calculer une variable, "
+"filtrer les lignes"
+msgstr ""
+
+#: templates/analyse_donnees.html:94
+msgid "Préparer"
+msgstr ""
+
+#: templates/analyse_donnees.html:102 templates/base.html:141
+#: templates/raw_data.html:2 templates/raw_data.html:3 templates/report.html:70
+msgid "Diagnostic des données"
+msgstr ""
+
+#: templates/analyse_donnees.html:103
+msgid ""
+"Score de qualité, vrais manquants, doublons, anomalies, associations et "
+"analyses à lancer ensuite"
+msgstr ""
+
+#: templates/analyse_donnees.html:104 templates/analyse_donnees.html:124
+#: templates/analyse_donnees.html:134 templates/analyse_donnees.html:144
+#: templates/analyse_donnees.html:154 templates/analyse_donnees.html:174
+#: templates/raw_data.html:80
+msgid "Ouvrir"
+msgstr ""
+
+#: templates/analyse_donnees.html:112 templates/base.html:137
+#: templates/validation.html:2 templates/validation.html:3
+msgid "Validation des données"
+msgstr ""
+
+#: templates/analyse_donnees.html:113
+msgid ""
+"Doublons, heures incohérentes, seuils PHAKTS, valeurs extrêmes et règles "
+"propres à l'enquête"
+msgstr ""
+
+#: templates/analyse_donnees.html:114
+msgid "Contrôler"
+msgstr ""
+
+#: templates/analyse_donnees.html:122 templates/base.html:144
+#: templates/descriptive.html:2 templates/descriptive.html:3
+#: templates/descriptive.html:425 templates/raw_data.html:26
+#: templates/report.html:66
+msgid "Statistiques descriptives"
+msgstr ""
+
+#: templates/analyse_donnees.html:123
+msgid "Tris à plat, fréquences, moyennes, médianes, écarts-types"
+msgstr ""
+
+#: templates/analyse_donnees.html:132
+msgid "Analyse croisée dynamique"
+msgstr ""
+
+#: templates/analyse_donnees.html:133
+msgid "Khi-deux, V de Cramér, profils lignes/colonnes"
+msgstr ""
+
+#: templates/analyse_donnees.html:142 templates/base.html:150
+#: templates/multivariate.html:2 templates/multivariate.html:3
+msgid "Analyses multivariées"
+msgstr ""
+
+#: templates/analyse_donnees.html:143
+msgid "Classification K-means"
+msgstr ""
+
+#: templates/analyse_donnees.html:152 templates/base.html:153
+#: templates/map.html:2 templates/map.html:3 templates/map.html:198
+#: templates/map_view.html:2 templates/map_view.html:3
+#: templates/map_view.html:765
+msgid "Carte géographique"
+msgstr ""
+
+#: templates/analyse_donnees.html:153
+msgid "Localisation des observations (si coordonnées GPS présentes)"
+msgstr ""
+
+#: templates/analyse_donnees.html:162 templates/base.html:157
+#: templates/multi_survey.html:2
+msgid "Analyse multi-enquête"
+msgstr ""
+
+#: templates/analyse_donnees.html:163
+msgid "Comparaison inter-enquêtes avec alignement sémantique PHAKTS"
+msgstr ""
+
+#: templates/analyse_donnees.html:164
+msgid "Comparer"
+msgstr ""
+
+#: templates/analyse_donnees.html:172 templates/base.html:160
+#: templates/gdb.html:4 templates/map_view.html:271
+#: templates/multi_survey.html:118
+msgid "Base centrale (GDB)"
+msgstr ""
+
+#: templates/analyse_donnees.html:173
+msgid ""
+"Verser l'enquête sous son Factum, croiser et suivre les variables d'une "
+"enquête à l'autre"
+msgstr ""
+
+#: templates/analyse_donnees.html:182 templates/index.html:156
+#: templates/report.html:13
+msgid "Générer un rapport"
+msgstr ""
+
+#: templates/analyse_donnees.html:183
+msgid "Rapport automatique complet avec graphiques — PDF, Word ou Excel"
+msgstr ""
+
+#: templates/analyse_donnees.html:184
+msgid "Générer"
+msgstr ""
+
+#: templates/analyse_donnees.html:191
+msgid ""
+"Pour changer de source de données, importez un autre fichier ou "
+"choisissez un autre formulaire ci-dessous."
+msgstr ""
+
+#: templates/analyse_donnees.html:199
+msgid "Charger une autre source"
+msgstr ""
+
+#: templates/analyse_donnees.html:199
+msgid "Choisissez la source de vos données"
+msgstr ""
+
+#: templates/analyse_donnees.html:200
+msgid ""
+"depuis KoboToolbox en direct, ou un fichier XLSX déjà sur votre "
+"ordinateur."
+msgstr ""
+
+#: templates/analyse_donnees.html:209
+msgid "Depuis KoboToolbox"
+msgstr ""
+
+#: templates/analyse_donnees.html:211
+msgid ""
+"Connectez-vous à votre compte KoboToolbox et choisissez un formulaire — "
+"les soumissions sont chargées directement, sans export manuel."
+msgstr ""
+
+#: templates/analyse_donnees.html:215
+msgid "Choisir un formulaire"
+msgstr ""
+
+#: templates/analyse_donnees.html:219
+msgid "Se connecter à KoboToolbox"
+msgstr ""
+
+#: templates/analyse_donnees.html:230
+msgid "Fichier local (XLSX)"
+msgstr ""
+
+#: templates/analyse_donnees.html:232
+msgid ""
+"Importez un fichier Excel déjà présent sur cet ordinateur (export Kobo, "
+"ODK, ou tout autre tableur de données d'enquête)."
+msgstr ""
+
+#: templates/analyse_donnees.html:235
+msgid "Importer un fichier"
+msgstr ""
+
+#: templates/analyse_donnees.html:244
+msgid ""
+"Pour analyser la complétude de collecte de plusieurs formulaires (par "
+"région/district/ enquêteur/superviseur), voir"
+msgstr ""
+
+#: templates/analyse_donnees.html:244 templates/base.html:42
+#: templates/base.html:84 templates/completude.html:2
+#: templates/completude.html:3 templates/completude.html:13
+#: templates/completude_equipe_spad.html:13 templates/index.html:126
+#: templates/invite_dashboard.html:50 templates/invite_dashboard.html:54
+#: templates/suivi.html:35
+msgid "Complétude nationale"
+msgstr ""
+
+#: templates/analyse_donnees.html:245
+msgid "ou"
+msgstr ""
+
+#: templates/analyse_donnees.html:245
+msgid "Autres enquêtes (projets)"
+msgstr ""
+
 #: templates/base.html:18
 msgid "ORGANISATION MONDIALE DE LA SANTÉ"
 msgstr ""
@@ -57,7 +981,8 @@ msgstr ""
 msgid "Système de Production et d'Analyse des Données"
 msgstr ""
 
-#: templates/base.html:35 templates/base.html:60 templates/index.html:2
+#: templates/base.html:35 templates/base.html:60
+#: templates/collecte_dashboard.html:9 templates/index.html:2
 #: templates/index.html:3 templates/invite_dashboard.html:2
 #: templates/invite_dashboard.html:3
 msgid "Tableau de bord"
@@ -67,14 +992,11 @@ msgstr ""
 msgid "Accès Invité"
 msgstr ""
 
-#: templates/base.html:39 templates/base.html:75 templates/index.html:118
+#: templates/base.html:39 templates/base.html:75
+#: templates/collecte_dashboard.html:2 templates/collecte_dashboard.html:3
+#: templates/collecte_dashboard.html:9 templates/index.html:118
 #: templates/invite_dashboard.html:39
 msgid "Suivi d'un formulaire"
-msgstr ""
-
-#: templates/base.html:42 templates/base.html:84 templates/index.html:126
-#: templates/invite_dashboard.html:50 templates/invite_dashboard.html:54
-msgid "Complétude nationale"
 msgstr ""
 
 #: templates/base.html:45 templates/invite_dashboard.html:58
@@ -96,6 +1018,7 @@ msgid "Session"
 msgstr ""
 
 #: templates/base.html:56 templates/base.html:210
+#: templates/kobo_connect.html:183
 msgid "Se déconnecter"
 msgstr ""
 
@@ -115,7 +1038,11 @@ msgstr ""
 msgid "SUIVI DE COLLECTE DE DONNÉES"
 msgstr ""
 
-#: templates/base.html:78 templates/index.html:33 templates/index.html:122
+#: templates/base.html:78 templates/completude.html:38
+#: templates/completude.html:90 templates/completude.html:95
+#: templates/completude_equipe_spad.html:38 templates/index.html:33
+#: templates/index.html:122 templates/suivi.html:2 templates/suivi.html:3
+#: templates/suivi.html:13
 msgid "Suivi multi-formulaires"
 msgstr ""
 
@@ -123,7 +1050,8 @@ msgstr ""
 msgid "Afficher/masquer les sous-rubriques"
 msgstr ""
 
-#: templates/base.html:95
+#: templates/base.html:95 templates/completude_equipe_spad.html:2
+#: templates/completude_equipe_spad.html:3
 msgid "Complétude de l'équipe SPAD"
 msgstr ""
 
@@ -135,11 +1063,11 @@ msgstr ""
 msgid "Complétude par district"
 msgstr ""
 
-#: templates/base.html:110
+#: templates/base.html:110 templates/completude_anomalies.html:3
 msgid "Anomalies et signalements"
 msgstr ""
 
-#: templates/base.html:113
+#: templates/base.html:113 templates/completude_graphiques.html:3
 msgid "Graphiques et analyses"
 msgstr ""
 
@@ -155,44 +1083,9 @@ msgstr ""
 msgid "Hub Analyse de données"
 msgstr ""
 
-#: templates/base.html:130 templates/index.html:37 templates/index.html:141
-msgid "Aperçu des données"
-msgstr ""
-
-#: templates/base.html:133
-msgid "Préparer les données"
-msgstr ""
-
-#: templates/base.html:137
-msgid "Validation des données"
-msgstr ""
-
-#: templates/base.html:141
-msgid "Diagnostic des données"
-msgstr ""
-
-#: templates/base.html:144
-msgid "Statistiques descriptives"
-msgstr ""
-
-#: templates/base.html:147
+#: templates/base.html:147 templates/crosstabs.html:2
+#: templates/crosstabs.html:3
 msgid "Analyse Croisée Dynamique"
-msgstr ""
-
-#: templates/base.html:150
-msgid "Analyses multivariées"
-msgstr ""
-
-#: templates/base.html:153
-msgid "Carte géographique"
-msgstr ""
-
-#: templates/base.html:157
-msgid "Analyse multi-enquête"
-msgstr ""
-
-#: templates/base.html:160
-msgid "Base centrale (GDB)"
 msgstr ""
 
 #: templates/base.html:170
@@ -205,7 +1098,7 @@ msgstr ""
 msgid "Export"
 msgstr ""
 
-#: templates/base.html:178
+#: templates/base.html:178 templates/report.html:3
 msgid "Rapport PDF"
 msgstr ""
 
@@ -227,18 +1120,6 @@ msgstr ""
 
 #: templates/base.html:195
 msgid "Administration"
-msgstr ""
-
-#: templates/base.html:197
-msgid "Comptes Data"
-msgstr ""
-
-#: templates/base.html:200
-msgid "Journal d'activité"
-msgstr ""
-
-#: templates/base.html:203
-msgid "Registre des formulaires"
 msgstr ""
 
 #: templates/base.html:228
@@ -263,6 +1144,2474 @@ msgstr ""
 
 #: templates/base.html:262
 msgid "Connecter KoboToolbox"
+msgstr ""
+
+#: templates/collecte_alertes.html:2 templates/collecte_alertes.html:3
+msgid "Alertes de collecte"
+msgstr ""
+
+#: templates/collecte_alertes.html:9
+msgid "Alertes de suivi"
+msgstr ""
+
+#: templates/collecte_alertes.html:10
+msgid "Détection des retards, anomalies et problèmes de qualité."
+msgstr ""
+
+#: templates/collecte_alertes.html:14 templates/collecte_equipes.html:14
+#: templates/collecte_geographique.html:14 templates/collecte_qualite.html:18
+#: templates/collecte_sync.html:15 templates/completude_anomalies.html:15
+#: templates/completude_district_detail.html:18
+#: templates/completude_enqueteur_detail.html:17
+#: templates/completude_etablissement_detail.html:17
+#: templates/completude_graphiques.html:25
+#: templates/completude_region_detail.html:17
+#: templates/completude_roster_detail.html:20
+#: templates/completude_roster_national_detail.html:19
+#: templates/completude_superviseur_detail.html:18
+#: templates/completude_table.html:16 templates/gdb.html:19
+#: templates/gdb_variable.html:16
+msgid "Retour"
+msgstr ""
+
+#: templates/collecte_alertes.html:20
+msgid "Priorités d’action"
+msgstr ""
+
+#: templates/collecte_alertes.html:21
+msgid "À traiter"
+msgstr ""
+
+#: templates/collecte_alertes.html:24
+msgid ""
+"Les alertes ci-dessous sont générées automatiquement à partir du rythme "
+"actuel de collecte et de l’état de synchronisation."
+msgstr ""
+
+#: templates/collecte_alertes.html:30 templates/collecte_dashboard.html:267
+#: templates/collecte_geographique.html:27
+msgid "Zone"
+msgstr ""
+
+#: templates/collecte_alertes.html:31 templates/data_preview.html:519
+#: templates/projet_dictionnaire.html:37 templates/raw_data.html:184
+msgid "Type"
+msgstr ""
+
+#: templates/collecte_alertes.html:32
+msgid "Niveau"
+msgstr ""
+
+#: templates/collecte_alertes.html:33 templates/collecte_sync.html:111
+#: templates/raw_data.html:189
+msgid "Date"
+msgstr ""
+
+#: templates/collecte_dashboard.html:18
+msgid ""
+"Vue partagée en lecture seule — dernier formulaire synchronisé par "
+"l'équipe Data"
+msgstr ""
+
+#: templates/collecte_dashboard.html:22
+msgid ""
+"Vue synthétique du suivi des soumissions, des alertes et de la qualité "
+"des données."
+msgstr ""
+
+#: templates/collecte_dashboard.html:28
+msgid "Rafraîchir depuis Kobo"
+msgstr ""
+
+#: templates/collecte_dashboard.html:32
+msgid "Synchroniser Kobo"
+msgstr ""
+
+#: templates/collecte_dashboard.html:35 templates/collecte_dashboard.html:95
+msgid "Alertes actives"
+msgstr ""
+
+#: templates/collecte_dashboard.html:38 templates/collecte_geographique.html:2
+#: templates/collecte_geographique.html:3
+msgid "Suivi géographique"
+msgstr ""
+
+#: templates/collecte_dashboard.html:41 templates/collecte_equipes.html:2
+#: templates/collecte_equipes.html:3
+msgid "Suivi équipes"
+msgstr ""
+
+#: templates/collecte_dashboard.html:44 templates/collecte_dashboard.html:191
+#: templates/collecte_qualite.html:2 templates/collecte_qualite.html:3
+#: templates/collecte_qualite.html:9
+msgid "Qualité des données"
+msgstr ""
+
+#: templates/collecte_dashboard.html:56
+msgid "Soumissions reçues"
+msgstr ""
+
+#: templates/collecte_dashboard.html:69
+msgid "Cible à atteindre"
+msgstr ""
+
+#: templates/collecte_dashboard.html:82
+msgid "Taux de complétude"
+msgstr ""
+
+#: templates/collecte_dashboard.html:111
+msgid "Évolution des soumissions"
+msgstr ""
+
+#: templates/collecte_dashboard.html:112
+msgid "Suivi sur les 7 derniers jours"
+msgstr ""
+
+#: templates/collecte_dashboard.html:114
+msgid "À jour"
+msgstr ""
+
+#: templates/collecte_dashboard.html:120
+msgid "J"
+msgstr ""
+
+#: templates/collecte_dashboard.html:130
+msgid "État de la synchronisation"
+msgstr ""
+
+#: templates/collecte_dashboard.html:133
+msgid "Vue partagée"
+msgstr ""
+
+#: templates/collecte_dashboard.html:135 templates/collecte_sync.html:25
+#: templates/kobo_connect.html:174
+msgid "Connecté"
+msgstr ""
+
+#: templates/collecte_dashboard.html:135 templates/collecte_sync.html:25
+msgid "Non connecté"
+msgstr ""
+
+#: templates/collecte_dashboard.html:139
+msgid "Dernière synchronisation"
+msgstr ""
+
+#: templates/collecte_dashboard.html:141
+msgid "Dernier état :"
+msgstr ""
+
+#: templates/collecte_dashboard.html:141
+msgid "réussi"
+msgstr ""
+
+#: templates/collecte_dashboard.html:141
+msgid "à vérifier"
+msgstr ""
+
+#: templates/collecte_dashboard.html:144
+msgid "Progression vs cible"
+msgstr ""
+
+#: templates/collecte_dashboard.html:161
+msgid "Rythme journalier"
+msgstr ""
+
+#: templates/collecte_dashboard.html:162
+msgid "Pilotage"
+msgstr ""
+
+#: templates/collecte_dashboard.html:167
+msgid "Soumissions/jour"
+msgstr ""
+
+#: templates/collecte_dashboard.html:173
+msgid "Cible journalière"
+msgstr ""
+
+#: templates/collecte_dashboard.html:184
+msgid "Activités récentes"
+msgstr ""
+
+#: templates/collecte_dashboard.html:187
+msgid "Import Kobo"
+msgstr ""
+
+#: templates/collecte_dashboard.html:192
+msgid "2 variables à vérifier"
+msgstr ""
+
+#: templates/collecte_dashboard.html:195
+msgid "Suivi terrain"
+msgstr ""
+
+#: templates/collecte_dashboard.html:196
+msgid "3 équipes à relancer"
+msgstr ""
+
+#: templates/collecte_dashboard.html:208
+msgid "Tableaux stratifiés"
+msgstr ""
+
+#: templates/collecte_dashboard.html:211
+#, python-format
+msgid ""
+"Répartition réelle par « %(col)s » — cible répartie également entre les "
+"%(n)s unités présentes dans les données (pas une règle officielle par "
+"établissement, voir Complétude nationale pour ça)."
+msgstr ""
+
+#: templates/collecte_dashboard.html:213
+msgid "Vue synthétique par stratification pour piloter les zones en difficulté."
+msgstr ""
+
+#: templates/collecte_dashboard.html:218
+msgid "Détail géographique"
+msgstr ""
+
+#: templates/collecte_dashboard.html:225
+msgid "Strate"
+msgstr ""
+
+#: templates/collecte_dashboard.html:226 templates/collecte_dashboard.html:268
+#: templates/collecte_geographique.html:28
+#: templates/completude_equipe_spad.html:114
+#: templates/completude_roster_detail.html:96
+#: templates/completude_roster_national_detail.html:119
+msgid "Reçu"
+msgstr ""
+
+#: templates/collecte_dashboard.html:227 templates/collecte_dashboard.html:269
+#: templates/collecte_geographique.html:29
+#: templates/completude_anomalies.html:38
+msgid "Cible"
+msgstr ""
+
+#: templates/collecte_dashboard.html:228 templates/collecte_dashboard.html:270
+#: templates/collecte_geographique.html:30
+msgid "Taux"
+msgstr ""
+
+#: templates/collecte_dashboard.html:243
+msgid ""
+"Aucune colonne géographique (district, région, établissement…) détectée "
+"dans le formulaire chargé."
+msgstr ""
+
+#: templates/collecte_dashboard.html:245 templates/collecte_dashboard.html:337
+#, python-format
+msgid ""
+"Aucune soumission avec une valeur renseignée dans « %(col)s » pour "
+"l'instant."
+msgstr ""
+
+#: templates/collecte_dashboard.html:254
+msgid "Interprétation simple"
+msgstr ""
+
+#: templates/collecte_dashboard.html:255
+msgid "Risque"
+msgstr ""
+
+#: templates/collecte_dashboard.html:262
+msgid "Zones en retard"
+msgstr ""
+
+#: templates/collecte_dashboard.html:267
+#, python-format
+msgid "Zone (%(col)s)"
+msgstr ""
+
+#: templates/collecte_dashboard.html:287
+msgid ""
+"Aucune colonne géographique détectée — chargez d'abord un formulaire dans"
+" « Formulaire importé de l'ordinateur » ou « Mes formulaires "
+"(KoboToolbox) »."
+msgstr ""
+
+#: templates/collecte_dashboard.html:289
+msgid "Aucune donnée géographique exploitable pour l’instant."
+msgstr ""
+
+#: templates/collecte_dashboard.html:304
+msgid "Collectes par enquêteur / équipe"
+msgstr ""
+
+#: templates/collecte_dashboard.html:307
+#, python-format
+msgid "Nombre de soumissions par valeur détectée dans « %(col)s »."
+msgstr ""
+
+#: templates/collecte_dashboard.html:309
+msgid ""
+"Répartition des soumissions par enquêteur ou équipe de collecte, si ce "
+"formulaire comporte un champ dédié."
+msgstr ""
+
+#: templates/collecte_dashboard.html:314
+msgid "Détail équipes"
+msgstr ""
+
+#: templates/collecte_dashboard.html:321
+msgid "Enquêteur / Équipe"
+msgstr ""
+
+#: templates/collecte_dashboard.html:322
+msgid "Collectes"
+msgstr ""
+
+#: templates/collecte_dashboard.html:335
+msgid "Aucun champ \"Enquêteur\" ou \"Équipe\" détecté dans ce formulaire."
+msgstr ""
+
+#: templates/collecte_equipes.html:9
+msgid "Suivi des équipes terrain"
+msgstr ""
+
+#: templates/collecte_equipes.html:10
+msgid "Visualisation du rythme de collecte par enquêteur ou superviseur."
+msgstr ""
+
+#: templates/collecte_equipes.html:20
+msgid "Performance des équipes"
+msgstr ""
+
+#: templates/collecte_equipes.html:21
+msgid "Temps réel"
+msgstr ""
+
+#: templates/collecte_equipes.html:27
+msgid "Équipe"
+msgstr ""
+
+#: templates/collecte_equipes.html:28 templates/collecte_sync.html:113
+#: templates/kobo_connect.html:254 templates/raw_data.html:55
+#: templates/suivi.html:91
+msgid "Soumissions"
+msgstr ""
+
+#: templates/collecte_equipes.html:29
+msgid "Dernière activité"
+msgstr ""
+
+#: templates/collecte_geographique.html:9
+msgid "Suivi par niveau géographique"
+msgstr ""
+
+#: templates/collecte_geographique.html:10
+msgid "Analyse de la collecte à l’échelle régionale, district et établissement."
+msgstr ""
+
+#: templates/collecte_geographique.html:20
+msgid "Répartition par zone"
+msgstr ""
+
+#: templates/collecte_geographique.html:21
+msgid "Supervision"
+msgstr ""
+
+#: templates/collecte_qualite.html:10
+msgid "Contrôle des manquants, des doublons et des anomalies de logique."
+msgstr ""
+
+#: templates/collecte_qualite.html:14
+msgid "Validation détaillée"
+msgstr ""
+
+#: templates/collecte_qualite.html:25
+msgid "Indicateurs de qualité"
+msgstr ""
+
+#: templates/collecte_qualite.html:26
+msgid "Contrôle continu"
+msgstr ""
+
+#: templates/collecte_qualite.html:32 templates/projet_dictionnaire.html:36
+#: templates/raw_data.html:114 templates/raw_data.html:184
+#: templates/validation.html:212
+msgid "Variable"
+msgstr ""
+
+#: templates/collecte_qualite.html:33 templates/descriptive.html:293
+#: templates/raw_data.html:184
+msgid "Manquants"
+msgstr ""
+
+#: templates/collecte_qualite.html:34
+msgid "Valeurs aberrantes"
+msgstr ""
+
+#: templates/collecte_sync.html:2 templates/collecte_sync.html:3
+msgid "Synchronisation Kobo"
+msgstr ""
+
+#: templates/collecte_sync.html:9
+msgid "Synchronisation automatisée"
+msgstr ""
+
+#: templates/collecte_sync.html:10
+msgid ""
+"Connexion à KoboToolbox, import des nouvelles soumissions et suivi de "
+"l’historique."
+msgstr ""
+
+#: templates/collecte_sync.html:23
+msgid "État de la connexion"
+msgstr ""
+
+#: templates/collecte_sync.html:28
+msgid "Instance"
+msgstr ""
+
+#: templates/collecte_sync.html:30
+msgid "Dernier statut"
+msgstr ""
+
+#: templates/collecte_sync.html:31 templates/collecte_sync.html:53
+#, python-format
+msgid "%(n)s soumissions"
+msgstr ""
+
+#: templates/collecte_sync.html:34
+msgid "Déconnecter"
+msgstr ""
+
+#: templates/collecte_sync.html:36
+msgid "Se connecter à Kobo"
+msgstr ""
+
+#: templates/collecte_sync.html:46
+msgid "Import automatique"
+msgstr ""
+
+#: templates/collecte_sync.html:50
+msgid "Formulaire suivi"
+msgstr ""
+
+#: templates/collecte_sync.html:55
+msgid "Aucun formulaire disponible"
+msgstr ""
+
+#: templates/collecte_sync.html:60
+msgid "Cible prévue"
+msgstr ""
+
+#: templates/collecte_sync.html:61
+#, python-format
+msgid "Détectée automatiquement si reconnu, sinon %(target)s"
+msgstr ""
+
+#: templates/collecte_sync.html:62
+msgid ""
+"Laissez vide pour utiliser la cible nationale réelle si ce formulaire est"
+" reconnu (comme dans Suivi multi-formulaires) — ne remplissez que pour un"
+" formulaire hors registre ou une cible différente."
+msgstr ""
+
+#: templates/collecte_sync.html:66
+msgid "Lancer la synchronisation"
+msgstr ""
+
+#: templates/collecte_sync.html:70
+msgid "État de l’automatisation"
+msgstr ""
+
+#: templates/collecte_sync.html:73
+msgid "Automatisation active"
+msgstr ""
+
+#: templates/collecte_sync.html:73
+#, python-format
+msgid "%(n)s soumissions visibles"
+msgstr ""
+
+#: templates/collecte_sync.html:73
+msgid "nouvelles données en attente"
+msgstr ""
+
+#: templates/collecte_sync.html:73
+msgid "aucune mise à jour en attente"
+msgstr ""
+
+#: templates/collecte_sync.html:75
+msgid "Aucune automatisation active pour le moment."
+msgstr ""
+
+#: templates/collecte_sync.html:82
+msgid "Fréquence (secondes)"
+msgstr ""
+
+#: templates/collecte_sync.html:86
+msgid "Activer l’automatisation"
+msgstr ""
+
+#: templates/collecte_sync.html:98
+msgid "Historique des synchronisations"
+msgstr ""
+
+#: templates/collecte_sync.html:100
+msgid "Vider tout l’historique de synchronisation de cette page ?"
+msgstr ""
+
+#: templates/collecte_sync.html:102
+msgid "Vider l'historique"
+msgstr ""
+
+#: templates/collecte_sync.html:112 templates/completude_anomalies.html:37
+#: templates/completude_anomalies.html:80 templates/index.html:95
+#: templates/projet_detail.html:49 templates/suivi.html:90
+msgid "Formulaire"
+msgstr ""
+
+#: templates/collecte_sync.html:126
+msgid "Aucune synchronisation enregistrée pour le moment."
+msgstr ""
+
+#: templates/completude.html:16 templates/completude_equipe_spad.html:16
+#: templates/multi_survey.html:980
+msgid "Équipe SPAD"
+msgstr ""
+
+#: templates/completude.html:19 templates/completude_equipe_spad.html:19
+#: templates/suivi.html:16
+msgid "Régions"
+msgstr ""
+
+#: templates/completude.html:22 templates/completude_equipe_spad.html:22
+#: templates/suivi.html:19
+msgid "Districts"
+msgstr ""
+
+#: templates/completude.html:25 templates/completude_equipe_spad.html:25
+#: templates/suivi.html:22
+msgid "Superviseurs"
+msgstr ""
+
+#: templates/completude.html:28 templates/completude_equipe_spad.html:28
+#: templates/suivi.html:25
+msgid "Enquêteurs"
+msgstr ""
+
+#: templates/completude.html:31 templates/completude_anomalies.html:2
+#: templates/completude_equipe_spad.html:31 templates/suivi.html:28
+msgid "Anomalies"
+msgstr ""
+
+#: templates/completude.html:34 templates/completude_equipe_spad.html:34
+msgid "Graphiques (10j)"
+msgstr ""
+
+#: templates/completude.html:46
+msgid "Vue de complétude nationale."
+msgstr ""
+
+#: templates/completude.html:47
+msgid "Associez chaque formulaire SPAD actif (voir"
+msgstr ""
+
+#: templates/completude.html:47
+msgid "registre des formulaires"
+msgstr ""
+
+#: templates/completude.html:48
+msgid ""
+"si vous êtes administrateur) à son formulaire KoboToolbox réel suivi dans"
+" Suivi multi-formulaires, puis calculez les taux de complétude par "
+"rapport au référentiel (120 établissements, 12 districts)."
+msgstr ""
+
+#: templates/completude.html:56
+msgid ""
+"Correspondance incorrecte — le calcul est bloqué tant que ce n'est pas "
+"corrigé :"
+msgstr ""
+
+#: templates/completude.html:67
+msgid ""
+"Vérifiez ces correspondances — le nom du formulaire sélectionné est "
+"inhabituel pour ce code :"
+msgstr ""
+
+#: templates/completude.html:79
+msgid "Correspondance formulaire SPAD ↔ formulaire KoboToolbox"
+msgstr ""
+
+#: templates/completude.html:81 templates/completude_anomalies.html:10
+#: templates/completude_district_detail.html:12
+#: templates/completude_enqueteur_detail.html:12
+#: templates/completude_equipe_spad.html:46
+#: templates/completude_etablissement_detail.html:11
+#: templates/completude_graphiques.html:10
+#: templates/completude_region_detail.html:12
+#: templates/completude_roster_detail.html:15
+#: templates/completude_roster_national_detail.html:14
+#: templates/completude_superviseur_detail.html:12
+#: templates/completude_table.html:11 templates/projet_detail.html:12
+#: templates/projets.html:50
+msgid "Calculé le"
+msgstr ""
+
+#: templates/completude.html:89
+msgid "Aucun formulaire suivi pour l'instant — ajoutez-en d'abord depuis"
+msgstr ""
+
+#: templates/completude.html:90
+msgid "ils deviendront alors sélectionnables ici."
+msgstr ""
+
+#: templates/completude.html:94
+msgid ""
+"formulaire(s) suivi(s), mais aucun n'a encore de type SPAD assigné — "
+"attribuez-en un depuis"
+msgstr ""
+
+#: templates/completude.html:95
+msgid ""
+"(détection automatique, suggestion IA, ou choix manuel) : la "
+"correspondance ici se remplira automatiquement."
+msgstr ""
+
+#: templates/completude.html:111
+msgid "— Non associé —"
+msgstr ""
+
+#: templates/completude.html:114 templates/completude_enqueteur_detail.html:51
+#: templates/completude_superviseur_detail.html:56
+#: templates/projet_detail.html:55 templates/projets.html:99
+msgid "soum."
+msgstr ""
+
+#: templates/completude.html:123
+msgid "Enregistrer la correspondance"
+msgstr ""
+
+#: templates/completude.html:126 templates/projet_detail.html:70
+msgid "Calculer la complétude"
+msgstr ""
+
+#: templates/completude.html:139
+msgid "Formulaires roster (cible nationale)"
+msgstr ""
+
+#: templates/completude.html:179
+msgid "Voir par district"
+msgstr ""
+
+#: templates/completude.html:183 templates/completude.html:236
+msgid "Calcul non disponible — cliquez « Calculer la complétude »."
+msgstr ""
+
+#: templates/completude.html:194
+msgid "Formulaires roster national (liste nominative)"
+msgstr ""
+
+#: templates/completude.html:205
+msgid "nominatif"
+msgstr ""
+
+#: templates/completude.html:232
+msgid "Voir par entité"
+msgstr ""
+
+#: templates/completude.html:246
+msgid "Complétude par formulaire"
+msgstr ""
+
+#: templates/completude.html:249
+msgid "Télécharger le rapport (Word)"
+msgstr ""
+
+#: templates/completude.html:254
+msgid ""
+"Aucun formulaire suivi n'a de type SPAD assigné pour l'instant — voir la "
+"correspondance ci-dessus."
+msgstr ""
+
+#: templates/completude.html:263
+msgid ""
+"Formulaire ajouté au registre après le dernier calcul — cliquez « "
+"Calculer la complétude » pour l'inclure."
+msgstr ""
+
+#: templates/completude.html:293
+#, python-format
+msgid ""
+"Proportion de districts ayant individuellement atteint ou dépassé 100 %% "
+"pour ce formulaire"
+msgstr ""
+
+#: templates/completude.html:293
+msgid ""
+"par opposition au taux ci-dessus, qui est une moyenne nationale pouvant "
+"masquer des écarts entre districts."
+msgstr ""
+
+#: templates/completude.html:294
+msgid "Cible réelle atteinte"
+msgstr ""
+
+#: templates/completude_anomalies.html:24
+#, python-format
+msgid "Établissements/districts à 0 %%"
+msgstr ""
+
+#: templates/completude_anomalies.html:26
+msgid ""
+"Aucune soumission reçue pour un formulaire mappé alors qu'une cible est "
+"attendue."
+msgstr ""
+
+#: templates/completude_anomalies.html:30
+#: templates/completude_anomalies.html:73
+msgid "Aucune anomalie de ce type — ou aucun formulaire mappé pour l'instant."
+msgstr ""
+
+#: templates/completude_anomalies.html:36
+#: templates/completude_anomalies.html:79
+msgid "Établissement / district"
+msgstr ""
+
+#: templates/completude_anomalies.html:64
+msgid "Excès — soumissions au-delà de la cible"
+msgstr ""
+
+#: templates/completude_anomalies.html:67
+#, python-format
+msgid ""
+"Au moins 200 %% de la cible atteinte — signe possible de doublons, à "
+"vérifier sur KoboToolbox."
+msgstr ""
+
+#: templates/completude_anomalies.html:68
+msgid ""
+"F07 (grille RDM) est exclu : sa cible est un plancher, la dépasser est "
+"normal."
+msgstr ""
+
+#: templates/completude_anomalies.html:81
+msgid "Reçu / cible"
+msgstr ""
+
+#: templates/completude_anomalies.html:82
+msgid "Ratio"
+msgstr ""
+
+#: templates/completude_district_detail.html:11
+#: templates/completude_superviseur_detail.html:11
+msgid "établissement(s)"
+msgstr ""
+
+#: templates/completude_district_detail.html:11
+msgid "enquêteur(s)"
+msgstr ""
+
+#: templates/completude_district_detail.html:21
+msgid "Tous les districts"
+msgstr ""
+
+#: templates/completude_district_detail.html:26
+msgid "Complétude du district"
+msgstr ""
+
+#: templates/completude_district_detail.html:30
+#: templates/completude_etablissement_detail.html:56
+msgid "Superviseur du district"
+msgstr ""
+
+#: templates/completude_district_detail.html:49
+msgid "Enquêteurs du district"
+msgstr ""
+
+#: templates/completude_district_detail.html:86
+msgid "Établissements du district"
+msgstr ""
+
+#: templates/completude_district_detail.html:123
+#: templates/completude_enqueteur_detail.html:58
+#: templates/completude_region_detail.html:58
+#: templates/completude_superviseur_detail.html:63 templates/raw_data.html:114
+msgid "Détail"
+msgstr ""
+
+#: templates/completude_district_detail.html:134
+msgid "Anomalies dans ce district"
+msgstr ""
+
+#: templates/completude_enqueteur_detail.html:11
+msgid "établissement(s) enquêté(s)"
+msgstr ""
+
+#: templates/completude_enqueteur_detail.html:21
+msgid "Formulaires renseignés (agrégé sur ses établissements)"
+msgstr ""
+
+#: templates/completude_enqueteur_detail.html:24
+msgid "Établissements enquêtés — détail par formulaire"
+msgstr ""
+
+#: templates/completude_enqueteur_detail.html:69
+msgid "Anomalies sur ses établissements"
+msgstr ""
+
+#: templates/completude_equipe_spad.html:45
+msgid ""
+"Équipe de coordination (UGP) et programmes de santé représentés — suivi "
+"nominatif, sans dimension géographique."
+msgstr ""
+
+#: templates/completude_equipe_spad.html:54
+msgid "Aucun formulaire « roster national » dans le registre"
+msgstr ""
+
+#: templates/completude_equipe_spad.html:55
+msgid ""
+"Ajoutez-en un (grain « roster_national ») depuis le registre des "
+"formulaires si vous êtes administrateur."
+msgstr ""
+
+#: templates/completude_equipe_spad.html:80
+msgid ""
+"Calcul non disponible — cliquez « Calculer la complétude » depuis "
+"Complétude nationale."
+msgstr ""
+
+#: templates/completude_equipe_spad.html:101
+#: templates/completude_roster_national_detail.html:91
+msgid "Entité"
+msgstr ""
+
+#: templates/completude_equipe_spad.html:102
+#: templates/completude_roster_national_detail.html:92
+msgid "Reçus"
+msgstr ""
+
+#: templates/completude_equipe_spad.html:136
+msgid "Détail complet"
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:19
+msgid "Vue nationale"
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:23
+msgid "Complétude de l'établissement"
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:28
+msgid "Enquêteur assigné"
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:47
+msgid "Scores agrégés sur les 2 établissements suivis par cet enquêteur."
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:50
+msgid "Aucun enquêteur identifié pour cet établissement."
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:72
+msgid "Aucun superviseur identifié pour ce district."
+msgstr ""
+
+#: templates/completude_etablissement_detail.html:79
+msgid "Anomalies sur cet établissement"
+msgstr ""
+
+#: templates/completude_graphiques.html:2
+msgid "Graphiques"
+msgstr ""
+
+#: templates/completude_graphiques.html:14
+msgid "Rapport Word"
+msgstr ""
+
+#: templates/completude_graphiques.html:17
+msgid "Export CSV"
+msgstr ""
+
+#: templates/completude_graphiques.html:20
+msgid "Export XLSX"
+msgstr ""
+
+#: templates/completude_graphiques.html:35
+msgid "Taux de complétude par district"
+msgstr ""
+
+#: templates/completude_graphiques.html:52
+msgid "Répartition des statuts"
+msgstr ""
+
+#: templates/completude_graphiques.html:64
+msgid "Tendance (10 derniers jours)"
+msgstr ""
+
+#: templates/completude_graphiques.html:70
+msgid "jour(s) d'historique — en cours de constitution."
+msgstr ""
+
+#: templates/completude_graphiques.html:72
+msgid ""
+"Un point est enregistré à chaque calcul de complétude (un par jour). La "
+"courbe apparaîtra dès que 2 jours distincts seront disponibles."
+msgstr ""
+
+#: templates/completude_region_detail.html:4
+msgid "Région"
+msgstr ""
+
+#: templates/completude_region_detail.html:11
+msgid "district(s)"
+msgstr ""
+
+#: templates/completude_region_detail.html:21
+msgid "Complétude de la région"
+msgstr ""
+
+#: templates/completude_region_detail.html:24
+msgid "Districts de la région"
+msgstr ""
+
+#: templates/completude_region_detail.html:69
+msgid "Anomalies dans cette région"
+msgstr ""
+
+#: templates/completude_roster_detail.html:2
+msgid "Tableau régional"
+msgstr ""
+
+#: templates/completude_roster_detail.html:5
+msgid "roster — vue régionale"
+msgstr ""
+
+#: templates/completude_roster_detail.html:14
+msgid "rôle(s) suivi(s) sur ce formulaire"
+msgstr ""
+
+#: templates/completude_roster_detail.html:25
+msgid "Complétude nationale par rôle"
+msgstr ""
+
+#: templates/completude_roster_detail.html:63
+msgid "Niveau déconcentré — par région sanitaire"
+msgstr ""
+
+#: templates/completude_roster_detail.html:64
+msgid "reçus par rôle et par district"
+msgstr ""
+
+#: templates/completude_roster_detail.html:73
+msgid "Région / district"
+msgstr ""
+
+#: templates/completude_roster_detail.html:77
+msgid "Complétude"
+msgstr ""
+
+#: templates/completude_roster_detail.html:78
+msgid "Dernière soumission"
+msgstr ""
+
+#: templates/completude_roster_detail.html:93
+msgid "Attendu"
+msgstr ""
+
+#: templates/completude_roster_detail.html:127
+msgid "Rythme des soumissions"
+msgstr ""
+
+#: templates/completude_roster_detail.html:128
+msgid "nombre de questionnaires reçus par jour, tous rôles confondus"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:2
+msgid "Détail nominatif"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:5
+msgid "roster national — liste nominative"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:28
+#: templates/completude_roster_national_detail.html:148
+msgid "Total national"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:60
+msgid "Paramètres du formulaire"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:62
+#: templates/gdb_variable.html:33
+msgid "Code"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:66
+msgid "Rôle ciblé"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:72
+msgid "Entités attendues"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:73
+msgid "entité(s),"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:73
+msgid "personnes au total"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:82
+msgid "Détail par entité"
+msgstr ""
+
+#: templates/completude_roster_national_detail.html:93
+msgid "Progression"
+msgstr ""
+
+#: templates/completude_superviseur_detail.html:21
+msgid "Tous les superviseurs"
+msgstr ""
+
+#: templates/completude_superviseur_detail.html:26
+msgid "Formulaires renseignés (volet RDM)"
+msgstr ""
+
+#: templates/completude_superviseur_detail.html:29
+msgid "Établissements du district — détail"
+msgstr ""
+
+#: templates/completude_superviseur_detail.html:74
+msgid "Anomalies dans son district"
+msgstr ""
+
+#: templates/completude_table.html:77
+msgid ""
+"« — » : formulaire non associé lors du calcul (voir la vue nationale). "
+"Survolez un pourcentage pour voir le détail reçu / cible."
+msgstr ""
+
+#: templates/crosstabs.html:14
+msgid "Tableau croisé dynamique"
+msgstr ""
+
+#: templates/crosstabs.html:14
+msgid "façon Excel."
+msgstr ""
+
+#: templates/crosstabs.html:15
+msgid ""
+"Choisissez des variables en Lignes et en Colonnes, une Valeur et "
+"l'Agrégation (somme, moyenne, comptage…). Pour deux variables, le test "
+"d'association est calculé et lu pour vous ; une 3"
+msgstr ""
+
+#: templates/crosstabs.html:15
+msgid ""
+" variable de stratification vérifie que l'association ne vient pas d'un "
+"facteur de confusion."
+msgstr ""
+
+#: templates/crosstabs.html:27
+msgid "Champs du pivot"
+msgstr ""
+
+#: templates/crosstabs.html:29 templates/crosstabs.html:153
+msgid "Calculer"
+msgstr ""
+
+#: templates/crosstabs.html:37
+msgid "Filtres"
+msgstr ""
+
+#: templates/crosstabs.html:68
+msgid "Lignes (≥ 1)"
+msgstr ""
+
+#: templates/crosstabs.html:73
+msgid "Ctrl/Cmd-clic pour choisir plusieurs niveaux."
+msgstr ""
+
+#: templates/crosstabs.html:79
+msgid "Colonnes (optionnel)"
+msgstr ""
+
+#: templates/crosstabs.html:89
+msgid "Stratifier par (optionnel)"
+msgstr ""
+
+#: templates/crosstabs.html:92 templates/data_preview.html:224
+msgid "Aucune"
+msgstr ""
+
+#: templates/crosstabs.html:95
+msgid ""
+"Pour 1 ligne × 1 colonne en comptage : le croisement est refait dans "
+"chaque strate."
+msgstr ""
+
+#: templates/crosstabs.html:101
+msgid "Valeur"
+msgstr ""
+
+#: templates/crosstabs.html:104
+msgid "Comptage des observations"
+msgstr ""
+
+#: templates/crosstabs.html:112
+msgid "Agrégation"
+msgstr ""
+
+#: templates/crosstabs.html:115
+msgid "Nombre"
+msgstr ""
+
+#: templates/crosstabs.html:116
+msgid "Somme"
+msgstr ""
+
+#: templates/crosstabs.html:117 templates/descriptive.html:397
+#: templates/gdb_variable.html:40 templates/gdb_variable.html:90
+msgid "Moyenne"
+msgstr ""
+
+#: templates/crosstabs.html:118 templates/descriptive.html:403
+msgid "Médiane"
+msgstr ""
+
+#: templates/crosstabs.html:119
+msgid "Minimum"
+msgstr ""
+
+#: templates/crosstabs.html:120
+msgid "Maximum"
+msgstr ""
+
+#: templates/crosstabs.html:121 templates/descriptive.html:409
+msgid "Écart-type"
+msgstr ""
+
+#: templates/crosstabs.html:122
+msgid "Modalités uniques"
+msgstr ""
+
+#: templates/crosstabs.html:129
+msgid "Pourcentages"
+msgstr ""
+
+#: templates/crosstabs.html:132 templates/descriptive.html:45
+#: templates/descriptive.html:72 templates/descriptive.html:104
+msgid "Aucun"
+msgstr ""
+
+#: templates/crosstabs.html:133
+#, python-format
+msgid "%% lignes"
+msgstr ""
+
+#: templates/crosstabs.html:134
+#, python-format
+msgid "%% colonnes"
+msgstr ""
+
+#: templates/crosstabs.html:135
+#, python-format
+msgid "%% total"
+msgstr ""
+
+#: templates/crosstabs.html:137
+msgid "Pour un nombre ou une somme."
+msgstr ""
+
+#: templates/crosstabs.html:141
+msgid "Calculer le pivot"
+msgstr ""
+
+#: templates/crosstabs.html:152
+msgid "Construisez votre tableau croisé dynamique"
+msgstr ""
+
+#: templates/crosstabs.html:153
+msgid "Choisissez au moins une variable en"
+msgstr ""
+
+#: templates/crosstabs.html:153 templates/report.html:194
+msgid "Ligne"
+msgstr ""
+
+#: templates/crosstabs.html:153
+msgid "puis cliquez sur"
+msgstr ""
+
+#: templates/crosstabs.html:158 templates/multivariate.html:140
+msgid "Exporter en Excel"
+msgstr ""
+
+#: templates/crosstabs.html:168
+msgid "χ² de Pearson"
+msgstr ""
+
+#: templates/crosstabs.html:172
+msgid "p-value (ddl="
+msgstr ""
+
+#: templates/crosstabs.html:176 templates/multivariate.html:218
+msgid "V de Cramér"
+msgstr ""
+
+#: templates/crosstabs.html:180 templates/descriptive.html:279
+#: templates/index.html:60 templates/multivariate.html:219
+#: templates/multivariate.html:245
+msgid "Observations"
+msgstr ""
+
+#: templates/crosstabs.html:185
+msgid "Liaison"
+msgstr ""
+
+#: templates/crosstabs.html:189
+msgid "Fisher exact p ="
+msgstr ""
+
+#: templates/crosstabs.html:190
+msgid "odds ratio"
+msgstr ""
+
+#: templates/crosstabs.html:199
+msgid "Agrégation :"
+msgstr ""
+
+#: templates/crosstabs.html:200 templates/multi_survey.html:722
+msgid "sur"
+msgstr ""
+
+#: templates/crosstabs.html:201
+msgid "observation(s)"
+msgstr ""
+
+#: templates/crosstabs.html:225
+msgid "Résidus ajustés"
+msgstr ""
+
+#: templates/crosstabs.html:242
+msgid ""
+"Écart de chaque case à l'indépendance, en écarts-types (résidu "
+"standardisé ajusté). Au-delà de ±1,96, la case s'écarte nettement de ce "
+"que le hasard donnerait :"
+msgstr ""
+
+#: templates/crosstabs.html:243
+msgid "sur-représentée"
+msgstr ""
+
+#: templates/crosstabs.html:244
+msgid "sous-représentée"
+msgstr ""
+
+#: templates/crosstabs.html:278
+msgid "Strates de «"
+msgstr ""
+
+#: templates/crosstabs.html:283
+msgid "Odds ratio brut :"
+msgstr ""
+
+#: templates/crosstabs.html:283
+msgid "commun de Mantel-Haenszel :"
+msgstr ""
+
+#: templates/crosstabs.html:285
+#, python-format
+msgid ""
+"Les deux diffèrent de plus de 20 %% : la variable de stratification est "
+"probablement un facteur de confusion."
+msgstr ""
+
+#: templates/crosstabs.html:293
+msgid "χ² p ="
+msgstr ""
+
+#: templates/crosstabs.html:293
+msgid "V ="
+msgstr ""
+
+#: templates/crosstabs.html:316
+msgid "Question à choix multiples × variable"
+msgstr ""
+
+#: templates/crosstabs.html:323
+msgid "Question à choix multiples"
+msgstr ""
+
+#: templates/crosstabs.html:327 templates/crosstabs.html:349
+msgid "choix"
+msgstr ""
+
+#: templates/crosstabs.html:332
+msgid "Croisée avec"
+msgstr ""
+
+#: templates/crosstabs.html:338
+msgid "Croiser"
+msgstr ""
+
+#: templates/crosstabs.html:340
+msgid ""
+"Pour chaque choix : la part des répondants de chaque catégorie qui le "
+"citent, et un test d'association corrigé des tests multiples entre choix."
+msgstr ""
+
+#: templates/crosstabs.html:342
+msgid ""
+"Aucune question à choix multiples détectée dans ces données (colonnes 0/1"
+" « Question/Choix », ou réponses « a b c » dans une même colonne). "
+"Joignez l'XLSForm depuis"
+msgstr ""
+
+#: templates/crosstabs.html:343
+msgid "pour qu'elles soient reconnues avec leurs libellés."
+msgstr ""
+
+#: templates/crosstabs.html:349 templates/multi_survey.html:230
+msgid "répondants"
+msgstr ""
+
+#: templates/crosstabs.html:349
+msgid "différence(s) nette(s)"
+msgstr ""
+
+#: templates/crosstabs.html:350
+msgid "Excel"
+msgstr ""
+
+#: templates/crosstabs.html:354
+#, python-format
+msgid "%% des répondants de chaque catégorie citant le choix"
+msgstr ""
+
+#: templates/crosstabs.html:359
+msgid "Tests par choix (q : corrigé des tests multiples, Benjamini-Hochberg)"
+msgstr ""
+
+#: templates/data_prepare.html:21
+msgid ""
+"Créez ici de nouvelles variables à partir de celles du jeu — regrouper "
+"des modalités, découper un âge en classes, calculer un indice, marquer "
+"les personnes qui répondent à une condition — puis filtrez les lignes à "
+"analyser. Une variable créée apparaît dans"
+msgstr ""
+
+#: templates/data_prepare.html:22 templates/raw_data.html:23
+msgid "toutes"
+msgstr ""
+
+#: templates/data_prepare.html:22
+msgid ""
+"les analyses (statistiques, croisements, analyses multivariées, rapports)"
+" et se"
+msgstr ""
+
+#: templates/data_prepare.html:23
+msgid "recalcule"
+msgstr ""
+
+#: templates/data_prepare.html:24
+msgid ""
+"quand de nouvelles soumissions arrivent. Le fichier d'origine n'est "
+"jamais modifié."
+msgstr ""
+
+#: templates/data_prepare.html:30
+msgid "Créer une variable"
+msgstr ""
+
+#: templates/data_prepare.html:33
+msgid "Regrouper des modalités"
+msgstr ""
+
+#: templates/data_prepare.html:34
+msgid "Classes (âge…)"
+msgstr ""
+
+#: templates/data_prepare.html:35
+msgid "Calcul"
+msgstr ""
+
+#: templates/data_prepare.html:36
+msgid "Oui / non selon une condition"
+msgstr ""
+
+#: templates/data_prepare.html:37
+msgid "Partie d'une date"
+msgstr ""
+
+#: templates/data_prepare.html:44
+msgid "Variable à regrouper"
+msgstr ""
+
+#: templates/data_prepare.html:46 templates/data_prepare.html:72
+#: templates/data_prepare.html:142
+msgid "choisir"
+msgstr ""
+
+#: templates/data_prepare.html:49 templates/data_prepare.html:75
+#: templates/data_prepare.html:98 templates/data_prepare.html:118
+#: templates/data_prepare.html:147
+msgid "Nom de la nouvelle variable"
+msgstr ""
+
+#: templates/data_prepare.html:50
+msgid "Ex. Profession regroupée"
+msgstr ""
+
+#: templates/data_prepare.html:53
+msgid ""
+"Donnez à chaque modalité le nom du groupe où elle va. Pour fusionner, "
+"cochez plusieurs modalités et appliquez un nom commun."
+msgstr ""
+
+#: templates/data_prepare.html:55
+msgid "Nom commun aux modalités cochées"
+msgstr ""
+
+#: templates/data_prepare.html:56
+msgid "Appliquer aux cochées"
+msgstr ""
+
+#: templates/data_prepare.html:59
+msgid "Modalités non listées (nouvelles réponses)"
+msgstr ""
+
+#: templates/data_prepare.html:60
+msgid "Laisser vide pour les garder telles quelles"
+msgstr ""
+
+#: templates/data_prepare.html:63 templates/data_prepare.html:91
+#: templates/data_prepare.html:111 templates/data_prepare.html:133
+#: templates/data_prepare.html:152
+msgid "Voir le résultat"
+msgstr ""
+
+#: templates/data_prepare.html:63 templates/data_prepare.html:91
+#: templates/data_prepare.html:111 templates/data_prepare.html:133
+#: templates/data_prepare.html:152
+msgid "Créer la variable"
+msgstr ""
+
+#: templates/data_prepare.html:70
+msgid "Variable numérique"
+msgstr ""
+
+#: templates/data_prepare.html:76
+msgid "Ex. Classe d'âge"
+msgstr ""
+
+#: templates/data_prepare.html:78
+msgid "Choisissez une variable pour voir son minimum, sa médiane et son maximum."
+msgstr ""
+
+#: templates/data_prepare.html:80
+msgid "Bornes choisies"
+msgstr ""
+
+#: templates/data_prepare.html:81
+msgid "Effectifs égaux (quantiles)"
+msgstr ""
+
+#: templates/data_prepare.html:83
+msgid "Bornes (séparées par des espaces)"
+msgstr ""
+
+#: templates/data_prepare.html:85
+msgid ""
+"« 18 25 35 » donne : moins de 18 · 18–24 · 25–34 · 35 et plus. Chaque "
+"borne ouvre la classe suivante."
+msgstr ""
+
+#: templates/data_prepare.html:86 templates/multivariate.html:94
+msgid "Nombre de classes"
+msgstr ""
+
+#: templates/data_prepare.html:88
+msgid "moitiés"
+msgstr ""
+
+#: templates/data_prepare.html:88
+msgid "tiers"
+msgstr ""
+
+#: templates/data_prepare.html:88
+msgid "quartiles"
+msgstr ""
+
+#: templates/data_prepare.html:88
+msgid "quintiles"
+msgstr ""
+
+#: templates/data_prepare.html:88
+msgid "déciles"
+msgstr ""
+
+#: templates/data_prepare.html:99
+msgid "Ex. IMC"
+msgstr ""
+
+#: templates/data_prepare.html:100
+msgid "Décimales"
+msgstr ""
+
+#: templates/data_prepare.html:103
+msgid "Expression"
+msgstr ""
+
+#: templates/data_prepare.html:106 templates/data_prepare.html:128
+#: templates/data_prepare.html:168
+msgid "Insérer une variable…"
+msgstr ""
+
+#: templates/data_prepare.html:108
+msgid ""
+"Opérations : + − * div mod ( ) · fonctions : if(), int(), number(), "
+"coalesce(), string-length()"
+msgstr ""
+
+#: templates/data_prepare.html:119
+msgid "Ex. Adulte fumeur"
+msgstr ""
+
+#: templates/data_prepare.html:120
+msgid "Si la condition est vraie"
+msgstr ""
+
+#: templates/data_prepare.html:121
+msgid "Oui"
+msgstr ""
+
+#: templates/data_prepare.html:122
+msgid "Sinon"
+msgstr ""
+
+#: templates/data_prepare.html:123
+msgid "Non"
+msgstr ""
+
+#: templates/data_prepare.html:125 templates/data_prepare.html:165
+#: templates/validation.html:218
+msgid "Condition"
+msgstr ""
+
+#: templates/data_prepare.html:130
+#, python-brace-format
+msgid ""
+"Comparaisons = != < <= > >= · and, or, not() · selected(${choix}, "
+"'valeur') pour un choix multiple. Les valeurs sont celles du fichier (ex."
+" 'sage_femme')."
+msgstr ""
+
+#: templates/data_prepare.html:140
+msgid "Variable date"
+msgstr ""
+
+#: templates/data_prepare.html:145
+msgid "Partie"
+msgstr ""
+
+#: templates/data_prepare.html:148
+msgid "Ex. Mois de collecte"
+msgstr ""
+
+#: templates/data_prepare.html:150
+msgid ""
+"Aucune variable de type date dans ce jeu. Un type peut se corriger dans "
+"le dictionnaire de l'aperçu des données."
+msgstr ""
+
+#: templates/data_prepare.html:159
+msgid "Filtrer les lignes à analyser"
+msgstr ""
+
+#: templates/data_prepare.html:161
+msgid ""
+"Ne gardez que les soumissions qui vérifient une condition (par exemple "
+"les seuls établissements publics, les adultes…). Les autres sont écartées"
+" de toutes les analyses ; le fichier n'est pas modifié et « Rétablir » "
+"remet tout."
+msgstr ""
+
+#: templates/data_prepare.html:162
+#, python-format
+msgid "%(n)s ligne(s) sont déjà écartées"
+msgstr ""
+
+#: templates/data_prepare.html:162
+#, python-format
+msgid "sur %(n)s."
+msgstr ""
+
+#: templates/data_prepare.html:170
+msgid "Ne garder que ces lignes"
+msgstr ""
+
+#: templates/data_prepare.html:170
+msgid "Écarter ces lignes"
+msgstr ""
+
+#: templates/data_prepare.html:174
+msgid "Combien de lignes ?"
+msgstr ""
+
+#: templates/data_prepare.html:175
+msgid "Écarter ces lignes de toutes les analyses ? Le fichier n'est pas modifié."
+msgstr ""
+
+#: templates/data_prepare.html:175
+msgid "Appliquer le filtre"
+msgstr ""
+
+#: templates/data_prepare.html:176
+#, python-format
+msgid "Rétablir les %(n)s ligne(s)"
+msgstr ""
+
+#: templates/data_prepare.html:187
+msgid "Aucune variable créée pour l'instant."
+msgstr ""
+
+#: templates/data_prepare.html:195
+#, python-format
+msgid "Supprimer la variable « %(name)s » ?"
+msgstr ""
+
+#: templates/data_prepare.html:196 templates/projets.html:39
+#: templates/validation.html:197
+msgid "Supprimer"
+msgstr ""
+
+#: templates/data_prepare.html:199
+msgid "Calcul impossible :"
+msgstr ""
+
+#: templates/data_prepare.html:203
+msgid "moyenne"
+msgstr ""
+
+#: templates/data_prepare.html:203 templates/gdb_variable.html:40
+#: templates/gdb_variable.html:90
+msgid "médiane"
+msgstr ""
+
+#: templates/data_prepare.html:207
+msgid "sans valeur"
+msgstr ""
+
+#: templates/data_preview.html:15
+msgid "Source : KoboToolbox"
+msgstr ""
+
+#: templates/data_preview.html:26
+msgid "Rafraîchir"
+msgstr ""
+
+#: templates/data_preview.html:31
+msgid "Changer de formulaire"
+msgstr ""
+
+#: templates/data_preview.html:42
+msgid "Actualisation automatique"
+msgstr ""
+
+#: templates/data_preview.html:46
+msgid "Toutes les 2 min"
+msgstr ""
+
+#: templates/data_preview.html:47
+msgid "Toutes les 5 min"
+msgstr ""
+
+#: templates/data_preview.html:48
+msgid "Toutes les 10 min"
+msgstr ""
+
+#: templates/data_preview.html:49
+msgid "Toutes les 30 min"
+msgstr ""
+
+#: templates/data_preview.html:52
+msgid ""
+"Désactivée — les données ne se mettent à jour qu'au clic sur « Rafraîchir"
+" »."
+msgstr ""
+
+#: templates/data_preview.html:56
+msgid "Appliquer les nouvelles données"
+msgstr ""
+
+#: templates/data_preview.html:142 templates/report.html:218
+msgid "Ménages"
+msgstr ""
+
+#: templates/data_preview.html:143 templates/gdb.html:86
+#: templates/index.html:67 templates/multi_survey.html:273
+#: templates/raw_data.html:56 templates/raw_data.html:136
+#: templates/raw_data.html:152 templates/report.html:222
+msgid "Variables"
+msgstr ""
+
+#: templates/data_preview.html:144 templates/descriptive.html:68
+#: templates/index.html:74 templates/raw_data.html:176
+#: templates/report.html:226
+msgid "Catégorielles"
+msgstr ""
+
+#: templates/data_preview.html:145
+msgid "Binaires 0/1"
+msgstr ""
+
+#: templates/data_preview.html:146
+msgid "Manquantes"
+msgstr ""
+
+#: templates/data_preview.html:153
+msgid "Enfants 0–23 mois"
+msgstr ""
+
+#: templates/data_preview.html:201
+msgid "Lignes —"
+msgstr ""
+
+#: templates/data_preview.html:201
+msgid "Feuille principale"
+msgstr ""
+
+#: templates/data_preview.html:202
+#, python-format
+msgid "%(n)s lignes"
+msgstr ""
+
+#: templates/data_preview.html:203
+msgid "Lignes écartées des analyses (barrées dans la table)"
+msgstr ""
+
+#: templates/data_preview.html:203
+#, python-format
+msgid "%(n)s écartée(s)"
+msgstr ""
+
+#: templates/data_preview.html:205
+#, python-format
+msgid "Télécharger les %(n)s observations au format XLSX"
+msgstr ""
+
+#: templates/data_preview.html:205
+msgid "Données XLSX"
+msgstr ""
+
+#: templates/data_preview.html:206
+#, python-format
+msgid "Télécharger les %(n)s observations au format CSV"
+msgstr ""
+
+#: templates/data_preview.html:206
+msgid "Données CSV"
+msgstr ""
+
+#: templates/data_preview.html:207
+msgid "Fichier SPSS avec libellés des variables et des modalités"
+msgstr ""
+
+#: templates/data_preview.html:208
+msgid "Fichier Stata avec libellés des variables et des modalités"
+msgstr ""
+
+#: templates/data_preview.html:214
+msgid "Chercher dans toutes les colonnes…"
+msgstr ""
+
+#: templates/data_preview.html:217 templates/multivariate.html:227
+msgid "Colonnes"
+msgstr ""
+
+#: templates/data_preview.html:220
+msgid "Chercher une colonne…"
+msgstr ""
+
+#: templates/data_preview.html:222
+msgid "Par défaut"
+msgstr ""
+
+#: templates/data_preview.html:223
+msgid "Toutes"
+msgstr ""
+
+#: templates/data_preview.html:230
+msgid "Lignes relevées par la validation des données"
+msgstr ""
+
+#: templates/data_preview.html:231
+msgid "Toutes les lignes"
+msgstr ""
+
+#: templates/data_preview.html:232
+msgid "Lignes signalées (erreurs et à vérifier)"
+msgstr ""
+
+#: templates/data_preview.html:233
+msgid "Lignes en erreur"
+msgstr ""
+
+#: templates/data_preview.html:237
+msgid "Ligne n°"
+msgstr ""
+
+#: templates/data_preview.html:238
+#, python-format
+msgid "%(n)s max"
+msgstr ""
+
+#: templates/data_preview.html:241
+msgid "La vue filtrée et triée, colonnes choisies"
+msgstr ""
+
+#: templates/data_preview.html:241
+msgid "Cette vue (CSV)"
+msgstr ""
+
+#: templates/data_preview.html:243
+msgid ""
+"Cliquez sur un en-tête pour trier, sur une ligne pour ouvrir la fiche de "
+"la soumission. Les lignes rouges ou jaunes sont celles que relève la "
+"validation."
+msgstr ""
+
+#: templates/data_preview.html:255
+msgid "Fiche d'une soumission"
+msgstr ""
+
+#: templates/data_preview.html:257
+msgid "Soumission"
+msgstr ""
+
+#: templates/data_preview.html:260
+msgid "Ligne signalée précédente"
+msgstr ""
+
+#: templates/data_preview.html:261
+msgid "Ligne précédente"
+msgstr ""
+
+#: templates/data_preview.html:262
+msgid "Ligne suivante"
+msgstr ""
+
+#: templates/data_preview.html:263
+msgid "Ligne signalée suivante"
+msgstr ""
+
+#: templates/data_preview.html:264
+msgid "Fermer"
+msgstr ""
+
+#: templates/data_preview.html:268
+msgid "Afficher les questions sans réponse"
+msgstr ""
+
+#: templates/data_preview.html:455
+#, python-format
+msgid "Questions à choix multiples détectées (%(n)s groupes)"
+msgstr ""
+
+#: templates/data_preview.html:463
+msgid "Question"
+msgstr ""
+
+#: templates/data_preview.html:463
+msgid "Nombre de modalités"
+msgstr ""
+
+#: templates/data_preview.html:470 templates/descriptive.html:201
+#: templates/descriptive.html:261
+#, python-format
+msgid "%(n)s modalités"
+msgstr ""
+
+#: templates/data_preview.html:473 templates/descriptive.html:121
+#: templates/descriptive.html:151
+msgid "Analyser"
+msgstr ""
+
+#: templates/data_preview.html:489
+msgid "Dictionnaire des variables"
+msgstr ""
+
+#: templates/data_preview.html:490
+#, python-format
+msgid ""
+"%(n)s variables · le libellé et le type se corrigent ici et sont "
+"conservés avec le jeu de données"
+msgstr ""
+
+#: templates/data_preview.html:492
+msgid ""
+"Questionnaire reconstruit (libellés, modalités, règles du formulaire, "
+"effectifs)"
+msgstr ""
+
+#: templates/data_preview.html:492
+msgid "Questionnaire XLSX"
+msgstr ""
+
+#: templates/data_preview.html:493
+msgid "Questionnaire reconstruit au format CSV"
+msgstr ""
+
+#: templates/data_preview.html:493
+msgid "Questionnaire CSV"
+msgstr ""
+
+#: templates/data_preview.html:499
+msgid "Chercher une variable…"
+msgstr ""
+
+#: templates/data_preview.html:502 templates/raw_data.html:175
+msgid "Tous les types"
+msgstr ""
+
+#: templates/data_preview.html:505
+msgid "Types corrigés seulement"
+msgstr ""
+
+#: templates/data_preview.html:507
+msgid ""
+"Joignez l'XLSForm (hub d'analyse) pour obtenir les libellés des "
+"questions, des choix et les règles du formulaire."
+msgstr ""
+
+#: templates/data_preview.html:517
+msgid "Variable (code)"
+msgstr ""
+
+#: templates/data_preview.html:518
+msgid "Question / Libellé"
+msgstr ""
+
+#: templates/data_preview.html:520
+msgid "Modalités attendues"
+msgstr ""
+
+#: templates/data_preview.html:521
+msgid "Règles du formulaire"
+msgstr ""
+
+#: templates/data_preview.html:522 templates/multi_survey.html:272
+msgid "Obs."
+msgstr ""
+
+#: templates/data_preview.html:523
+#, python-format
+msgid "%% manq."
+msgstr ""
+
+#: templates/data_preview.html:533
+msgid ""
+"Cliquez pour modifier — Entrée pour valider, Échap pour revenir au "
+"libellé d'origine"
+msgstr ""
+
+#: templates/data_preview.html:535
+msgid "Origine du libellé"
+msgstr ""
+
+#: templates/data_preview.html:539
+msgid "détecté"
+msgstr ""
+
+#: templates/data_preview.html:541
+msgid "Type choisi, différent du type détecté"
+msgstr ""
+
+#: templates/data_preview.html:541
+msgid "corrigé"
+msgstr ""
+
+#: templates/data_preview.html:546
+msgid "obligatoire"
+msgstr ""
+
+#: templates/data_preview.html:547
+msgid "saut"
+msgstr ""
+
+#: templates/data_preview.html:548
+msgid "contrainte"
+msgstr ""
+
+#: templates/data_preview.html:612
+msgid "Aperçu —"
+msgstr ""
+
+#: templates/data_preview.html:612
+msgid "Groupe enfant"
+msgstr ""
+
+#: templates/data_preview.html:613
+msgid "Tableau répété"
+msgstr ""
+
+#: templates/data_preview.html:615
+#, python-format
+msgid "%(n)s enfants · %(c)s variables"
+msgstr ""
+
+#: templates/descriptive.html:14
+msgid "Sélection des variables"
+msgstr ""
+
+#: templates/descriptive.html:20 templates/multivariate.html:51
+msgid "Rechercher une variable…"
+msgstr ""
+
+#: templates/descriptive.html:25
+msgid "Décomposer par"
+msgstr ""
+
+#: templates/descriptive.html:28
+msgid "Aucune (ensemble)"
+msgstr ""
+
+#: templates/descriptive.html:33
+msgid ""
+"Chaque variable est aussi décrite séparément pour chaque groupe "
+"(district, profession…)."
+msgstr ""
+
+#: templates/descriptive.html:41 templates/descriptive.html:196
+msgid "Choix multiples"
+msgstr ""
+
+#: templates/descriptive.html:44 templates/descriptive.html:71
+#: templates/descriptive.html:103
+msgid "Tout"
+msgstr ""
+
+#: templates/descriptive.html:80 templates/kobo_connect.html:225
+msgid "section"
+msgstr ""
+
+#: templates/descriptive.html:100 templates/index.html:81
+#: templates/raw_data.html:176
+msgid "Continues"
+msgstr ""
+
+#: templates/descriptive.html:136
+msgid "Aperçu des premières variables : ce formulaire en compte"
+msgstr ""
+
+#: templates/descriptive.html:137
+msgid "catégorielles et"
+msgstr ""
+
+#: templates/descriptive.html:137
+msgid "questions à choix multiples."
+msgstr ""
+
+#: templates/descriptive.html:138
+msgid "Choisissez les vôtres dans le panneau, ou analysez-les toutes."
+msgstr ""
+
+#: templates/descriptive.html:139
+msgid "Tout analyser"
+msgstr ""
+
+#: templates/descriptive.html:148
+msgid "Aucune analyse sélectionnée"
+msgstr ""
+
+#: templates/descriptive.html:150
+msgid "Cochez les variables souhaitées dans le panneau de gauche et cliquez sur"
+msgstr ""
+
+#: templates/descriptive.html:151
+msgid ""
+"Chaque variable produira un tableau de fréquences, des indicateurs "
+"statistiques et des graphiques interactifs."
+msgstr ""
+
+#: templates/descriptive.html:162
+#, python-format
+msgid "%(n)s choix multiple(s)"
+msgstr ""
+
+#: templates/descriptive.html:167
+#, python-format
+msgid "%(n)s catégorielle(s)"
+msgstr ""
+
+#: templates/descriptive.html:172
+#, python-format
+msgid "%(n)s continue(s)"
+msgstr ""
+
+#: templates/descriptive.html:179
+#, python-format
+msgid "Sommaire (%(n)s analyses)"
+msgstr ""
+
+#: templates/descriptive.html:203
+#, python-format
+msgid "Top : %(val)s (%(pct)s%%)"
+msgstr ""
+
+#: templates/descriptive.html:214 templates/descriptive.html:285
+msgid "Modalités"
+msgstr ""
+
+#: templates/descriptive.html:220
+msgid "Taux max"
+msgstr ""
+
+#: templates/descriptive.html:226
+msgid "Taux moyen"
+msgstr ""
+
+#: templates/descriptive.html:233
+#, python-format
+msgid "Tableau — avec IC à 95%%"
+msgstr ""
+
+#: templates/descriptive.html:256 templates/raw_data.html:189
+msgid "Catégorielle"
+msgstr ""
+
+#: templates/descriptive.html:260
+#, python-format
+msgid "N valides = %(n)s"
+msgstr ""
+
+#: templates/descriptive.html:264 templates/descriptive.html:370
+#, python-format
+msgid "%(pct)s%% manq."
+msgstr ""
+
+#: templates/descriptive.html:268
+#, python-format
+msgid "Mode : %(val)s (%(pct)s%%)"
+msgstr ""
+
+#: templates/descriptive.html:298
+msgid ""
+"Indice de Herfindahl — proche de 1 = très concentré, proche de 1/k = "
+"uniforme"
+msgstr ""
+
+#: templates/descriptive.html:300
+msgid "IHH ⓘ"
+msgstr ""
+
+#: templates/descriptive.html:307
+#, python-format
+msgid "Tableau — avec IC à 95%% Wilson"
+msgstr ""
+
+#: templates/descriptive.html:316
+msgid "Barres + cumulé"
+msgstr ""
+
+#: templates/descriptive.html:341 templates/descriptive.html:459
+#, python-format
+msgid "Selon « %(g)s »"
+msgstr ""
+
+#: templates/descriptive.html:342 templates/descriptive.html:460
+#, python-format
+msgid "%(n)s groupe(s)"
+msgstr ""
+
+#: templates/descriptive.html:342 templates/descriptive.html:460
+#, python-format
+msgid "%(shown)s plus nombreux sur %(total)s"
+msgstr ""
+
+#: templates/descriptive.html:364 templates/raw_data.html:189
+msgid "Continue"
+msgstr ""
+
+#: templates/descriptive.html:374
+#, python-format
+msgid "%(n)s aberrante(s)"
+msgstr ""
+
+#: templates/descriptive.html:380
+#, python-format
+msgid "Normale (p=%(p)s)"
+msgstr ""
+
+#: templates/descriptive.html:384
+#, python-format
+msgid "Non normale (p=%(p)s)"
+msgstr ""
+
+#: templates/descriptive.html:414
+#, python-format
+msgid "CV > 30%% = forte dispersion"
+msgstr ""
+
+#: templates/descriptive.html:418
+msgid "CV ⓘ"
+msgstr ""
+
+#: templates/descriptive.html:434
+msgid "Histogramme + KDE"
+msgstr ""
+
+#: templates/descriptive.html:440
+msgid "Violin + Boxplot"
+msgstr ""
+
+#: templates/gdb.html:3 templates/gdb_variable.html:2
+#: templates/gdb_variable.html:3 templates/map_view.html:316
+msgid "Base centrale"
+msgstr ""
+
+#: templates/gdb.html:16
+msgid ""
+"Les données de chaque enquête versée sont conservées ici, identifiées par"
+" leur Factum et alignées sur les codes PHAKTS : on peut voir quelles "
+"variables existent déjà, les suivre d'une collecte à l'autre et remonter "
+"à l'enquête d'où vient chaque valeur."
+msgstr ""
+
+#: templates/gdb.html:26
+msgid "Verser l'enquête chargée"
+msgstr ""
+
+#: templates/gdb.html:29
+msgid ""
+"répondant(s). Verser à nouveau la même enquête (même Factum) remplace ses"
+" données."
+msgstr ""
+
+#: templates/gdb.html:32 templates/projet_detail.html:22
+msgid "Factum de l'étude"
+msgstr ""
+
+#: templates/gdb.html:34
+msgid "Titre (facultatif)"
+msgstr ""
+
+#: templates/gdb.html:36
+msgid "Verser dans la base centrale"
+msgstr ""
+
+#: templates/gdb.html:39
+msgid ""
+"Chargez d'abord une enquête (formulaire KoboToolbox ou fichier Excel) "
+"pour la verser."
+msgstr ""
+
+#: templates/gdb.html:40
+msgid "Charger des données"
+msgstr ""
+
+#: templates/gdb.html:48
+msgid "Ces données existent-elles déjà ?"
+msgstr ""
+
+#: templates/gdb.html:49
+msgid ""
+"Avant de lancer une collecte : cherchez une variable par son radical ou "
+"son code PHAKTS."
+msgstr ""
+
+#: templates/gdb.html:51
+msgid "ex. Age, Tabac, Allaitement"
+msgstr ""
+
+#: templates/gdb.html:52
+msgid "Chercher"
+msgstr ""
+
+#: templates/gdb.html:60
+msgid "valeur(s) dans"
+msgstr ""
+
+#: templates/gdb.html:60
+msgid "enquête(s)"
+msgstr ""
+
+#: templates/gdb.html:71
+msgid "Aucune variable «"
+msgstr ""
+
+#: templates/gdb.html:71
+msgid "» dans la base centrale : cette donnée n'a pas encore été collectée."
+msgstr ""
+
+#: templates/gdb.html:79
+msgid "Enquêtes versées"
+msgstr ""
+
+#: templates/gdb.html:85 templates/gdb_variable.html:24
+msgid "Étude"
+msgstr ""
+
+#: templates/gdb.html:85 templates/gdb_variable.html:24
+msgid "Date de réf."
+msgstr ""
+
+#: templates/gdb.html:85
+msgid "Domaine"
+msgstr ""
+
+#: templates/gdb.html:85
+msgid "Répondants"
+msgstr ""
+
+#: templates/gdb.html:86 templates/gdb_variable.html:34
+#: templates/multi_survey.html:276
+msgid "Source"
+msgstr ""
+
+#: templates/gdb.html:86
+msgid "Versée le"
+msgstr ""
+
+#: templates/gdb.html:95 templates/multi_survey.html:296
+msgid "collecte"
+msgstr ""
+
+#: templates/gdb.html:103
+msgid "Retirer cette enquête de la base centrale ? Ses données y seront effacées."
+msgstr ""
+
+#: templates/gdb.html:105
+msgid "Retirer de la base centrale"
+msgstr ""
+
+#: templates/gdb.html:116
+msgid "La base centrale est vide : versez une première enquête."
+msgstr ""
+
+#: templates/gdb.html:121
+msgid "Vue CUBE — variables × enquêtes"
+msgstr ""
+
+#: templates/gdb.html:123
+msgid "Variables communes seulement"
+msgstr ""
+
+#: templates/gdb.html:123 templates/gdb.html:127
+msgid "Toutes les variables"
+msgstr ""
+
+#: templates/gdb.html:127
+msgid "Variables présentes dans au moins deux enquêtes"
+msgstr ""
+
+#: templates/gdb.html:127
+msgid ""
+"enquêtes de la plus ancienne à la plus récente ; chaque case donne le "
+"nombre de valeurs. Cliquez sur une variable pour la suivre d'une enquête "
+"à l'autre — et, si une variable de lieu existe dans la base, la ventiler "
+"par lieu (3"
+msgstr ""
+
+#: templates/gdb.html:127
+msgid " axe du CUBE : géographie × variable × enquête)."
+msgstr ""
+
+#: templates/gdb.html:135
+msgid "Variable (code PHAKTS)"
+msgstr ""
+
+#: templates/gdb.html:155
+msgid "300 premières variables affichées sur"
+msgstr ""
+
+#: templates/gdb.html:155
+msgid "— utilisez la recherche."
+msgstr ""
+
+#: templates/gdb.html:157
+msgid "Aucune variable commune à plusieurs enquêtes pour l'instant."
+msgstr ""
+
+#: templates/gdb_variable.html:8
+msgid "La variable"
+msgstr ""
+
+#: templates/gdb_variable.html:8
+msgid "dans"
+msgstr ""
+
+#: templates/gdb_variable.html:8
+msgid ""
+"enquête(s), de la plus ancienne à la plus récente (date de référence du "
+"Factum)."
+msgstr ""
+
+#: templates/gdb_variable.html:12
+msgid "Chaque valeur avec son Factum, son répondant et son code d'origine"
+msgstr ""
+
+#: templates/gdb_variable.html:13
+msgid "Valeurs (.csv)"
+msgstr ""
+
+#: templates/gdb_variable.html:24 templates/gdb_variable.html:82
+msgid "Valeurs"
+msgstr ""
+
+#: templates/gdb_variable.html:24 templates/gdb_variable.html:82
+#: templates/raw_data.html:184
+msgid "Résumé"
+msgstr ""
+
+#: templates/gdb_variable.html:52 templates/gdb_variable.html:101
+msgid "autre(s) valeur(s)"
+msgstr ""
+
+#: templates/gdb_variable.html:65
+msgid "Répartition spatiale"
+msgstr ""
+
+#: templates/gdb_variable.html:67
+msgid ""
+"axe du CUBE (géographie × variable), en plus du tableau ci-dessus "
+"(variable × enquête) : ventile"
+msgstr ""
+
+#: templates/gdb_variable.html:68
+msgid "par une variable de lieu, tous répondants confondus."
+msgstr ""
+
+#: templates/gdb_variable.html:72
+msgid "Choisir une variable de lieu…"
+msgstr ""
+
+#: templates/gdb_variable.html:74 templates/map_view.html:282
+#: templates/map_view.html:309
+msgid "valeur(s)"
+msgstr ""
+
+#: templates/gdb_variable.html:82
+msgid "Lieu"
+msgstr ""
+
+#: templates/gdb_variable.html:110
+msgid "Aucun répondant n'a à la fois une valeur pour «"
+msgstr ""
+
+#: templates/gdb_variable.html:110
+msgid "» et pour «"
+msgstr ""
+
+#: templates/gdb_variable.html:110
+msgid "»."
+msgstr ""
+
+#: templates/gdb_variable.html:114
+msgid ""
+"Variables de lieu détectées par mot-clé sur leur nom (district, région, "
+"commune…) — à vérifier, pas une certitude."
 msgstr ""
 
 #: templates/index.html:15
@@ -291,36 +3640,12 @@ msgstr ""
 msgid "Analyses"
 msgstr ""
 
-#: templates/index.html:60
-msgid "Observations"
-msgstr ""
-
-#: templates/index.html:67
-msgid "Variables"
-msgstr ""
-
-#: templates/index.html:74
-msgid "Catégorielles"
-msgstr ""
-
-#: templates/index.html:81
-msgid "Continues"
-msgstr ""
-
-#: templates/index.html:95
-msgid "Formulaire"
-msgstr ""
-
 #: templates/index.html:114 templates/invite_dashboard.html:35
 msgid "Suivre une collecte en temps réel"
 msgstr ""
 
 #: templates/index.html:145
 msgid "Hub d'Analyse"
-msgstr ""
-
-#: templates/index.html:156
-msgid "Générer un rapport"
 msgstr ""
 
 #: templates/index.html:193
@@ -347,7 +3672,7 @@ msgid ""
 "compte KoboToolbox pour charger vos données en temps réel."
 msgstr ""
 
-#: templates/index.html:214
+#: templates/index.html:214 templates/upload.html:12
 msgid "Importer un fichier Excel"
 msgstr ""
 
@@ -363,6 +3688,148 @@ msgstr ""
 msgid ""
 "Suivez la complétude de la collecte et l'avancement des formulaires SPAD "
 "en temps réel."
+msgstr ""
+
+#: templates/kobo_connect.html:2
+msgid "KoboToolbox"
+msgstr ""
+
+#: templates/kobo_connect.html:147
+msgid "Connexion KoboToolbox"
+msgstr ""
+
+#: templates/kobo_connect.html:148
+msgid ""
+"Liez SPAD Analyzer à votre instance KoboToolbox pour charger vos données "
+"directement."
+msgstr ""
+
+#: templates/kobo_connect.html:180 templates/multi_survey.html:171
+msgid "Actualiser la liste des formulaires"
+msgstr ""
+
+#: templates/kobo_connect.html:188
+msgid "Entrez votre Token API"
+msgstr ""
+
+#: templates/kobo_connect.html:194
+msgid "Instance KoboToolbox"
+msgstr ""
+
+#: templates/kobo_connect.html:197
+msgid "— Détection automatique —"
+msgstr ""
+
+#: templates/kobo_connect.html:198
+msgid "Publique mondiale"
+msgstr ""
+
+#: templates/kobo_connect.html:199
+msgid "Europe RGPD"
+msgstr ""
+
+#: templates/kobo_connect.html:200
+msgid "ONU/WHO"
+msgstr ""
+
+#: templates/kobo_connect.html:201
+msgid "Autre URL (saisir manuellement)"
+msgstr ""
+
+#: templates/kobo_connect.html:210
+msgid "Token API KoboToolbox"
+msgstr ""
+
+#: templates/kobo_connect.html:213
+msgid "Collez votre token ici…"
+msgstr ""
+
+#: templates/kobo_connect.html:217
+msgid "Valider et se connecter"
+msgstr ""
+
+#: templates/kobo_connect.html:222
+msgid "Où trouver votre token ?"
+msgstr ""
+
+#: templates/kobo_connect.html:223
+msgid "Connectez-vous sur votre KoboToolbox"
+msgstr ""
+
+#: templates/kobo_connect.html:224
+msgid "Profil (coin supérieur droit)"
+msgstr ""
+
+#: templates/kobo_connect.html:224
+msgid "Paramètres du compte"
+msgstr ""
+
+#: templates/kobo_connect.html:225
+msgid "Sécurité"
+msgstr ""
+
+#: templates/kobo_connect.html:227
+msgid "Quelle instance choisir ?"
+msgstr ""
+
+#: templates/kobo_connect.html:228
+msgid "L'URL que vous utilisez pour accéder à KoboToolbox détermine l'instance."
+msgstr ""
+
+#: templates/kobo_connect.html:229
+msgid "Ex : si vous vous connectez sur"
+msgstr ""
+
+#: templates/kobo_connect.html:229
+msgid "sélectionnez Europe."
+msgstr ""
+
+#: templates/kobo_connect.html:241
+msgid "Mes formulaires"
+msgstr ""
+
+#: templates/kobo_connect.html:245 templates/raw_data.html:173
+msgid "Rechercher…"
+msgstr ""
+
+#: templates/kobo_connect.html:253
+msgid "Nom du formulaire"
+msgstr ""
+
+#: templates/kobo_connect.html:255
+msgid "Modifié"
+msgstr ""
+
+#: templates/kobo_connect.html:266
+msgid "Déployé"
+msgstr ""
+
+#: templates/kobo_connect.html:268
+msgid "Brouillon"
+msgstr ""
+
+#: templates/kobo_connect.html:284
+msgid "Charger"
+msgstr ""
+
+#: templates/kobo_connect.html:308
+msgid "Charger ce formulaire dans SPAD Analyzer"
+msgstr ""
+
+#: templates/kobo_connect.html:315
+msgid "Aucun formulaire déployé trouvé sur ce compte KoboToolbox."
+msgstr ""
+
+#: templates/kobo_connect.html:323
+msgid "Cliquez pour voir vos formulaires disponibles."
+msgstr ""
+
+#: templates/kobo_connect.html:325
+msgid "Voir mes formulaires"
+msgstr ""
+
+#: templates/kobo_connect.html:333
+msgid "Connectez-vous avec votre token API pour voir vos formulaires."
 msgstr ""
 
 #: templates/login.html:6
@@ -399,10 +3866,6 @@ msgstr ""
 msgid "Import, analyses, exports, connexion KoboToolbox"
 msgstr ""
 
-#: templates/login.html:136 templates/register.html:71
-msgid "Identifiant"
-msgstr ""
-
 #: templates/login.html:140 templates/register.html:79
 msgid "Mot de passe"
 msgstr ""
@@ -425,6 +3888,1871 @@ msgstr ""
 
 #: templates/login.html:159
 msgid "Mot de passe Invité"
+msgstr ""
+
+#: templates/map.html:11
+msgid ""
+"Aucune colonne de coordonnées GPS détectée dans les données. Vérifiez que"
+" vos données contiennent des colonnes"
+msgstr ""
+
+#: templates/map.html:11 templates/multi_survey.html:966
+msgid "et"
+msgstr ""
+
+#: templates/map.html:22
+msgid "Paramètres de la carte"
+msgstr ""
+
+#: templates/map.html:30
+msgid "Paire GPS"
+msgstr ""
+
+#: templates/map.html:46
+msgid "Variable de couleur"
+msgstr ""
+
+#: templates/map.html:48
+msgid "— Aucune (points uniformes) —"
+msgstr ""
+
+#: templates/map.html:56
+msgid "Colorie les points selon une variable catégorielle."
+msgstr ""
+
+#: templates/map.html:60
+msgid "Info-bulle — colonnes affichées"
+msgstr ""
+
+#: templates/map.html:65
+msgid "Détectées automatiquement :"
+msgstr ""
+
+#: templates/map.html:69
+msgid "aucune"
+msgstr ""
+
+#: templates/map.html:75
+msgid "Actualiser la carte"
+msgstr ""
+
+#: templates/map.html:86
+msgid "Statistiques"
+msgstr ""
+
+#: templates/map.html:109
+msgid "Répartition"
+msgstr ""
+
+#: templates/map.html:133
+msgid "Points GPS"
+msgstr ""
+
+#: templates/map.html:140
+msgid "Lat. centrale"
+msgstr ""
+
+#: templates/map.html:147
+msgid "Lon. centrale"
+msgstr ""
+
+#: templates/map.html:154
+msgid "Paires GPS"
+msgstr ""
+
+#: templates/map.html:163
+msgid "Points"
+msgstr ""
+
+#: templates/map.html:168
+msgid "Densité (heatmap)"
+msgstr ""
+
+#: templates/map.html:201
+msgid "paire(s) GPS détectée(s). Cliquez sur"
+msgstr ""
+
+#: templates/map.html:202 templates/map.html:208
+msgid "Générer la carte"
+msgstr ""
+
+#: templates/map.html:202
+msgid "pour visualiser les points."
+msgstr ""
+
+#: templates/map_view.html:268
+msgid "Enquête chargée"
+msgstr ""
+
+#: templates/map_view.html:279
+msgid "Variable GPS (colonne combinée)"
+msgstr ""
+
+#: templates/map_view.html:289
+msgid "… ou latitude"
+msgstr ""
+
+#: templates/map_view.html:296
+msgid "longitude"
+msgstr ""
+
+#: templates/map_view.html:305
+msgid "Grouper / colorer par"
+msgstr ""
+
+#: templates/map_view.html:307
+msgid "par enquête"
+msgstr ""
+
+#: templates/map_view.html:316
+msgid "Points GPS de toutes les enquêtes versées dans la"
+msgstr ""
+
+#: templates/map_view.html:317
+msgid "avec leur enquête d'origine — jamais un point sans savoir d'où il vient."
+msgstr ""
+
+#: templates/map_view.html:332
+msgid "Points localisés"
+msgstr ""
+
+#: templates/map_view.html:337
+msgid "Sans coordonnées"
+msgstr ""
+
+#: templates/map_view.html:346
+msgid "Source GPS"
+msgstr ""
+
+#: templates/map_view.html:352 templates/multi_survey.html:387
+msgid "Réinitialiser"
+msgstr ""
+
+#: templates/map_view.html:355
+msgid "Exporter PNG"
+msgstr ""
+
+#: templates/map_view.html:366
+msgid "Filtres & Légende"
+msgstr ""
+
+#: templates/map_view.html:373
+msgid "Recherche"
+msgstr ""
+
+#: templates/map_view.html:375
+msgid ", enquêteur…"
+msgstr ""
+
+#: templates/map_view.html:382 templates/map_view.html:394
+msgid " sanitaire"
+msgstr ""
+
+#: templates/map_view.html:384 templates/map_view.html:396
+#: templates/map_view.html:470
+msgid "Tout afficher"
+msgstr ""
+
+#: templates/map_view.html:419
+msgid "Durée enquête manquante"
+msgstr ""
+
+#: templates/map_view.html:422
+msgid "Non capturée par ce formulaire."
+msgstr ""
+
+#: templates/map_view.html:423
+msgid "Pour l'activer dans KoboToolbox, ajoutez dans votre XLSForm :"
+msgstr ""
+
+#: templates/map_view.html:425 templates/map_view.html:426
+msgid "nom"
+msgstr ""
+
+#: templates/map_view.html:428
+msgid "SPAD calculera automatiquement la durée à la prochaine collecte."
+msgstr ""
+
+#: templates/map_view.html:434
+msgid "Durée calculée automatiquement"
+msgstr ""
+
+#: templates/map_view.html:437
+msgid "Calculée depuis"
+msgstr ""
+
+#: templates/map_view.html:445
+msgid "Champs détectés"
+msgstr ""
+
+#: templates/map_view.html:464
+msgid "Regroupement"
+msgstr ""
+
+#: templates/map_view.html:467
+msgid "Vue satellite"
+msgstr ""
+
+#: templates/map_view.html:480
+msgid "point(s) visibles"
+msgstr ""
+
+#: templates/map_view.html:769
+msgid "Aucune coordonnée GPS détectée"
+msgstr ""
+
+#: templates/map_view.html:771
+msgid ""
+"Pour afficher la carte, votre fichier doit contenir une colonne de "
+"coordonnées GPS."
+msgstr ""
+
+#: templates/map_view.html:772
+msgid "SPAD Analyzer reconnaît automatiquement les formats suivants :"
+msgstr ""
+
+#: templates/map_view.html:779
+msgid "Format KoboToolbox"
+msgstr ""
+
+#: templates/map_view.html:785
+msgid "\"5.18 -4.60 29.0 4.4\" (lat lon alt prec)"
+msgstr ""
+
+#: templates/map_view.html:792
+msgid "Format standard"
+msgstr ""
+
+#: templates/map_view.html:797
+msgid "Colonnes numériques séparées"
+msgstr ""
+
+#: templates/map_view.html:805
+msgid "Diagnostic GPS"
+msgstr ""
+
+#: templates/map_view.html:808
+msgid "Colonne combinée détectée :"
+msgstr ""
+
+#: templates/map_view.html:810
+msgid "Lignes sans GPS :"
+msgstr ""
+
+#: templates/map_view.html:811
+msgid "Cellules au format non reconnu :"
+msgstr ""
+
+#: templates/map_view.html:812
+msgid "Coordonnées hors limites :"
+msgstr ""
+
+#: templates/map_view.html:816
+msgid "Voir toutes les colonnes du fichier"
+msgstr ""
+
+#: templates/map_view.html:829
+msgid "Variables disponibles dans ce dataset :"
+msgstr ""
+
+#: templates/multi_survey.html:3
+msgid "Analyse multi-enquête (DPF / PHAKTS)"
+msgstr ""
+
+#: templates/multi_survey.html:21
+msgid "(écart significatif)"
+msgstr ""
+
+#: templates/multi_survey.html:21
+msgid "(non significatif après correction)"
+msgstr ""
+
+#: templates/multi_survey.html:21
+msgid "(pas d'écart significatif)"
+msgstr ""
+
+#: templates/multi_survey.html:31
+msgid "Synthèse de la comparaison"
+msgstr ""
+
+#: templates/multi_survey.html:42
+msgid "Évolution entre enquêtes consécutives"
+msgstr ""
+
+#: templates/multi_survey.html:43
+#, python-format
+msgid "ordre chronologique du Factum · intervalle de confiance à 95 %%"
+msgstr ""
+
+#: templates/multi_survey.html:48
+msgid "De → vers"
+msgstr ""
+
+#: templates/multi_survey.html:48
+msgid "Modalité"
+msgstr ""
+
+#: templates/multi_survey.html:48
+msgid "Avant"
+msgstr ""
+
+#: templates/multi_survey.html:48
+msgid "Après"
+msgstr ""
+
+#: templates/multi_survey.html:49
+msgid "Écart"
+msgstr ""
+
+#: templates/multi_survey.html:49
+#, python-format
+msgid "IC 95 %%"
+msgstr ""
+
+#: templates/multi_survey.html:69
+msgid ""
+"▲ ▼ : l'intervalle de confiance exclut 0 (écart net entre les deux "
+"enquêtes). Un écart dont l'intervalle contient 0 peut n'être dû qu'au "
+"hasard de l'échantillonnage."
+msgstr ""
+
+#: templates/multi_survey.html:78
+msgid "Comparez plusieurs enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:78
+msgid "alignées grâce à la codification"
+msgstr ""
+
+#: templates/multi_survey.html:79
+msgid "Importez des fichiers Excel ou connectez-vous à"
+msgstr ""
+
+#: templates/multi_survey.html:80
+msgid "pour charger vos formulaires directement."
+msgstr ""
+
+#: templates/multi_survey.html:91
+msgid "1. Importer les fichiers d'enquête — et lancer une analyse multivariée"
+msgstr ""
+
+#: templates/multi_survey.html:101
+msgid "Fichier Excel (.xlsx)"
+msgstr ""
+
+#: templates/multi_survey.html:109
+msgid "non connecté"
+msgstr ""
+
+#: templates/multi_survey.html:111
+msgid "connecté"
+msgstr ""
+
+#: templates/multi_survey.html:131
+msgid "Sélectionnez un ou plusieurs fichiers (Excel ou CSV)"
+msgstr ""
+
+#: templates/multi_survey.html:135
+msgid "Excel ou"
+msgstr ""
+
+#: templates/multi_survey.html:135
+msgid ""
+"export KoboToolbox : séparateur et codage détectés, lignes d'en-tête en "
+"trop retirées)."
+msgstr ""
+
+#: templates/multi_survey.html:136
+msgid "Idéalement codifiés PHAKTS (colonnes"
+msgstr ""
+
+#: templates/multi_survey.html:136
+msgid ")."
+msgstr ""
+
+#: templates/multi_survey.html:136
+msgid "Pour lire les vraies modalités"
+msgstr ""
+
+#: templates/multi_survey.html:137
+msgid ""
+"d'un export « valeurs XML », joignez ensuite l'XLSForm de l'enquête dans "
+"la pile."
+msgstr ""
+
+#: templates/multi_survey.html:142 templates/multi_survey.html:238
+msgid "Ajouter à la pile"
+msgstr ""
+
+#: templates/multi_survey.html:154
+msgid "Vous n'êtes pas encore connecté à KoboToolbox."
+msgstr ""
+
+#: templates/multi_survey.html:156 templates/projets.html:108
+msgid "Se connecter maintenant →"
+msgstr ""
+
+#: templates/multi_survey.html:164
+msgid "Connecté à KoboToolbox"
+msgstr ""
+
+#: templates/multi_survey.html:182
+msgid "Formulaires disponibles"
+msgstr ""
+
+#: templates/multi_survey.html:183
+msgid "formulaire(s)"
+msgstr ""
+
+#: templates/multi_survey.html:189
+msgid "— Choisissez un formulaire —"
+msgstr ""
+
+#: templates/multi_survey.html:193 templates/projet_detail.html:119
+msgid "soumissions"
+msgstr ""
+
+#: templates/multi_survey.html:194
+msgid "(non déployé)"
+msgstr ""
+
+#: templates/multi_survey.html:202
+msgid "Importer ce formulaire"
+msgstr ""
+
+#: templates/multi_survey.html:209
+msgid "Cliquez sur"
+msgstr ""
+
+#: templates/multi_survey.html:209
+msgid "Actualiser la liste"
+msgstr ""
+
+#: templates/multi_survey.html:209
+msgid "pour voir vos formulaires KoboToolbox."
+msgstr ""
+
+#: templates/multi_survey.html:221
+msgid ""
+"Choisissez des enquêtes déjà versées, par leur Factum : leurs données "
+"sont rouvertes telles\n"
+"              qu'elles ont été versées, sans recharger les fichiers."
+msgstr ""
+
+#: templates/multi_survey.html:231
+msgid "déjà dans la pile"
+msgstr ""
+
+#: templates/multi_survey.html:232
+msgid "Modalités affichées avec leur vrai nom"
+msgstr ""
+
+#: templates/multi_survey.html:232
+msgid "libellés"
+msgstr ""
+
+#: templates/multi_survey.html:243
+msgid "Aucune enquête n'a encore été versée dans la base centrale."
+msgstr ""
+
+#: templates/multi_survey.html:244
+msgid "Ouvrir la base centrale →"
+msgstr ""
+
+#: templates/multi_survey.html:256
+msgid "enquête(s) dans la pile"
+msgstr ""
+
+#: templates/multi_survey.html:261
+msgid "Effacer toutes les enquêtes ?"
+msgstr ""
+
+#: templates/multi_survey.html:262
+msgid "Tout effacer"
+msgstr ""
+
+#: templates/multi_survey.html:270
+msgid ""
+"Ordre chronologique (date de référence du Factum) : c'est celui des "
+"comparaisons et des écarts"
+msgstr ""
+
+#: templates/multi_survey.html:270
+msgid "Ordre"
+msgstr ""
+
+#: templates/multi_survey.html:271
+msgid "Fichier / Formulaire — Factum"
+msgstr ""
+
+#: templates/multi_survey.html:275
+msgid "Part des lignes sans anomalie (contrôles de « Validation des données »)"
+msgstr ""
+
+#: templates/multi_survey.html:275
+msgid "Qualité"
+msgstr ""
+
+#: templates/multi_survey.html:291
+msgid "Factum de l'étude (date de référence = ordre)"
+msgstr ""
+
+#: templates/multi_survey.html:292 templates/projet_detail.html:28
+msgid "Enregistrer le Factum"
+msgstr ""
+
+#: templates/multi_survey.html:299
+msgid "Factum invalide"
+msgstr ""
+
+#: templates/multi_survey.html:301
+msgid "Sans Factum — classée après les autres"
+msgstr ""
+
+#: templates/multi_survey.html:309
+msgid "Modalités lisibles"
+msgstr ""
+
+#: templates/multi_survey.html:310
+msgid "liste(s) de choix)"
+msgstr ""
+
+#: templates/multi_survey.html:313
+msgid ""
+"Libellés inconnus : noms internes mis en forme (« Faible poids naissance "
+"»)"
+msgstr ""
+
+#: templates/multi_survey.html:317
+msgid ""
+"XLSForm de l'enquête, c'est-à-dire le fichier du FORMULAIRE (feuilles "
+"survey et choices) : celui de PHAKTS Studio ou « Télécharger XLS » dans "
+"KoboToolbox — pas l'export des données"
+msgstr ""
+
+#: templates/multi_survey.html:318
+msgid "Remplacer par un XLSForm"
+msgstr ""
+
+#: templates/multi_survey.html:329
+msgid "codées"
+msgstr ""
+
+#: templates/multi_survey.html:331
+msgid "non codé"
+msgstr ""
+
+#: templates/multi_survey.html:337
+msgid "Ouvrir le détail des contrôles de cette enquête"
+msgstr ""
+
+#: templates/multi_survey.html:340
+msgid "ligne(s) signalée(s)"
+msgstr ""
+
+#: templates/multi_survey.html:357
+msgid "Retirer cette enquête ?"
+msgstr ""
+
+#: templates/multi_survey.html:357
+msgid "Retirer"
+msgstr ""
+
+#: templates/multi_survey.html:375
+msgid "Analyse multivariée des données importées"
+msgstr ""
+
+#: templates/multi_survey.html:377
+msgid "ACP · ACM · AFC · Classification K-Means"
+msgstr ""
+
+#: templates/multi_survey.html:382 templates/multi_survey.html:498
+msgid "Télécharger XLSX"
+msgstr ""
+
+#: templates/multi_survey.html:402 templates/multivariate.html:21
+msgid "Méthode d'analyse"
+msgstr ""
+
+#: templates/multi_survey.html:405
+msgid "ACP — Composantes Principales"
+msgstr ""
+
+#: templates/multi_survey.html:406
+msgid "ACM — Correspondances Multiples"
+msgstr ""
+
+#: templates/multi_survey.html:407
+msgid "AFC — Correspondances (2 var.)"
+msgstr ""
+
+#: templates/multi_survey.html:408
+msgid "K-Means — Classification"
+msgstr ""
+
+#: templates/multi_survey.html:415 templates/multivariate.html:55
+msgid "Variables numériques"
+msgstr ""
+
+#: templates/multi_survey.html:416 templates/multi_survey.html:433
+#: templates/multi_survey.html:802
+msgid "Ctrl/Cmd pour plusieurs"
+msgstr ""
+
+#: templates/multi_survey.html:432 templates/multivariate.html:66
+#: templates/report.html:137
+msgid "Variables catégorielles"
+msgstr ""
+
+#: templates/multi_survey.html:448 templates/multivariate.html:77
+msgid "Variable ligne (AFC)"
+msgstr ""
+
+#: templates/multi_survey.html:450 templates/multi_survey.html:457
+msgid "— choisir —"
+msgstr ""
+
+#: templates/multi_survey.html:455 templates/multivariate.html:81
+msgid "Variable colonne (AFC)"
+msgstr ""
+
+#: templates/multi_survey.html:466 templates/multivariate.html:89
+msgid "Nombre d'axes"
+msgstr ""
+
+#: templates/multi_survey.html:471
+msgid "Nombre de classes (k)"
+msgstr ""
+
+#: templates/multi_survey.html:479 templates/multi_survey.html:572
+#: templates/multivariate.html:114
+msgid "Lancer"
+msgstr ""
+
+#: templates/multi_survey.html:495
+msgid "Silhouette"
+msgstr ""
+
+#: templates/multi_survey.html:506 templates/multivariate.html:230
+msgid "Valeurs propres"
+msgstr ""
+
+#: templates/multi_survey.html:510
+msgid "Saturations (loadings)"
+msgstr ""
+
+#: templates/multi_survey.html:523
+msgid "Axes factoriels (ACM)"
+msgstr ""
+
+#: templates/multi_survey.html:535 templates/multivariate.html:234
+msgid "Tableau de contingence"
+msgstr ""
+
+#: templates/multi_survey.html:539
+msgid "Valeurs propres (AFC)"
+msgstr ""
+
+#: templates/multi_survey.html:549 templates/multivariate.html:308
+msgid "Effectifs par classe"
+msgstr ""
+
+#: templates/multi_survey.html:553 templates/multivariate.html:315
+msgid "Moyennes par classe"
+msgstr ""
+
+#: templates/multi_survey.html:567
+msgid "Aucune variable exploitable détectée dans les enquêtes chargées."
+msgstr ""
+
+#: templates/multi_survey.html:572
+msgid "Choisissez une méthode et des variables, puis cliquez sur"
+msgstr ""
+
+#: templates/multi_survey.html:586
+msgid "2. Qualité des enquêtes et cohérence entre elles"
+msgstr ""
+
+#: templates/multi_survey.html:591
+msgid "avant de comparer"
+msgstr ""
+
+#: templates/multi_survey.html:591
+msgid ""
+"une comparaison n'est fiable que si chaque enquête est propre\n"
+"        (doublons, heures, seuils PHAKTS, valeurs extrêmes, règles de "
+"l'équipe) et si les enquêtes se comparent\n"
+"        réellement (mêmes unités, mêmes modalités, pas de soumissions "
+"communes). Rien n'est modifié."
+msgstr ""
+
+#: templates/multi_survey.html:600
+msgid "Enquête"
+msgstr ""
+
+#: templates/multi_survey.html:600 templates/multivariate.html:226
+#: templates/validation.html:84
+msgid "Lignes"
+msgstr ""
+
+#: templates/multi_survey.html:600 templates/validation.html:84
+msgid "Signalées"
+msgstr ""
+
+#: templates/multi_survey.html:601
+msgid "Sans anomalie"
+msgstr ""
+
+#: templates/multi_survey.html:601
+msgid "Erreurs"
+msgstr ""
+
+#: templates/multi_survey.html:612
+msgid "Détail et règles"
+msgstr ""
+
+#: templates/multi_survey.html:620
+msgid "Cohérence entre enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:625 templates/validation.html:24
+msgid "Erreur"
+msgstr ""
+
+#: templates/multi_survey.html:625 templates/validation.html:24
+msgid "Info"
+msgstr ""
+
+#: templates/multi_survey.html:636
+msgid "Aucune incohérence détectée entre ces"
+msgstr ""
+
+#: templates/multi_survey.html:636
+msgid "enquêtes."
+msgstr ""
+
+#: templates/multi_survey.html:639
+msgid "Ajoutez une deuxième enquête pour contrôler la cohérence entre enquêtes."
+msgstr ""
+
+#: templates/multi_survey.html:648
+msgid "3. Couverture des variables (alignement DPF / PHAKTS)"
+msgstr ""
+
+#: templates/multi_survey.html:652
+msgid "Alignement :"
+msgstr ""
+
+#: templates/multi_survey.html:654
+msgid "PHAKTS (code complet)"
+msgstr ""
+
+#: templates/multi_survey.html:655
+msgid "Nom exact"
+msgstr ""
+
+#: templates/multi_survey.html:656
+msgid "Union (libre)"
+msgstr ""
+
+#: templates/multi_survey.html:664
+msgid "variable(s) commune(s) à toutes les enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:672
+msgid "Top 80 variables par couverture (1 = présente, 0 = absente)."
+msgstr ""
+
+#: templates/multi_survey.html:674
+msgid "Importez au moins une enquête pour voir la matrice de couverture."
+msgstr ""
+
+#: templates/multi_survey.html:685
+msgid "4. Comparer des variables entre enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:695
+msgid "Analyse automatique"
+msgstr ""
+
+#: templates/multi_survey.html:705
+msgid "Interopérabilité PHAKTS"
+msgstr ""
+
+#: templates/multi_survey.html:705
+msgid ""
+"les indicateurs communs à au moins 2 enquêtes\n"
+"          sont détectés automatiquement depuis le type porté par le nom "
+"de chaque variable (xType),\n"
+"          avec le traitement statistique et le test de comparaison "
+"adaptés. Aucune sélection manuelle\n"
+"          n'est nécessaire ; désactivez le commutateur ci-dessus pour "
+"revenir au choix variable par\n"
+"          variable."
+msgstr ""
+
+#: templates/multi_survey.html:710
+msgid "Tests multiples"
+msgstr ""
+
+#: templates/multi_survey.html:710
+#, python-format
+msgid ""
+"avec de nombreux indicateurs testés à 5 %%, certains paraissent « "
+"significatifs »\n"
+"          par pur hasard. Les p-values sont donc corrigées (Benjamini-"
+"Hochberg) :"
+msgstr ""
+
+#: templates/multi_survey.html:711
+msgid ""
+"est la proportion attendue de\n"
+"          fausses découvertes parmi les indicateurs signalés ; on juge "
+"sur q, pas sur p."
+msgstr ""
+
+#: templates/multi_survey.html:718 templates/multi_survey.html:743
+#: templates/multi_survey.html:832
+msgid "enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:719
+msgid "indicateur(s) commun(s) détecté(s)"
+msgstr ""
+
+#: templates/multi_survey.html:721
+msgid "écart(s) significatif(s) après correction"
+msgstr ""
+
+#: templates/multi_survey.html:722
+msgid "testé(s)"
+msgstr ""
+
+#: templates/multi_survey.html:722
+msgid "avant correction"
+msgstr ""
+
+#: templates/multi_survey.html:723
+msgid "Ordre :"
+msgstr ""
+
+#: templates/multi_survey.html:739 templates/multi_survey.html:851
+msgid "continue"
+msgstr ""
+
+#: templates/multi_survey.html:741 templates/multi_survey.html:853
+msgid "catégorielle"
+msgstr ""
+
+#: templates/multi_survey.html:745 templates/multi_survey.html:856
+msgid "erreur"
+msgstr ""
+
+#: templates/multi_survey.html:761 templates/multi_survey.html:880
+msgid "Effectifs"
+msgstr ""
+
+#: templates/multi_survey.html:765 templates/multi_survey.html:884
+#, python-format
+msgid "%% colonne"
+msgstr ""
+
+#: templates/multi_survey.html:775 templates/multi_survey.html:894
+msgid "Résumé statistique"
+msgstr ""
+
+#: templates/multi_survey.html:790
+msgid ""
+"Aucun indicateur codifié PHAKTS commun à au moins 2 enquêtes n'a été "
+"détecté (mode\n"
+"        d'alignement « PHAKTS (code complet) » requis — voir section 3 "
+"ci-dessus)."
+msgstr ""
+
+#: templates/multi_survey.html:801
+msgid "Variables à ajouter au panier"
+msgstr ""
+
+#: templates/multi_survey.html:807
+msgid "(déjà ajoutée)"
+msgstr ""
+
+#: templates/multi_survey.html:811
+msgid "★ = variable présente dans toutes les enquêtes"
+msgstr ""
+
+#: templates/multi_survey.html:815
+msgid "Ajouter au panier"
+msgstr ""
+
+#: templates/multi_survey.html:821
+msgid "Vider le panier ?"
+msgstr ""
+
+#: templates/multi_survey.html:822
+msgid "Vider le panier"
+msgstr ""
+
+#: templates/multi_survey.html:833
+msgid "obs. fusionnées"
+msgstr ""
+
+#: templates/multi_survey.html:834
+msgid "variables alignées"
+msgstr ""
+
+#: templates/multi_survey.html:835
+msgid "comparaison(s)"
+msgstr ""
+
+#: templates/multi_survey.html:871
+msgid "Retirer du panier"
+msgstr ""
+
+#: templates/multi_survey.html:909
+msgid "Importez au moins 2 enquêtes."
+msgstr ""
+
+#: templates/multi_survey.html:917
+msgid "Ces"
+msgstr ""
+
+#: templates/multi_survey.html:917
+msgid "comparaison(s) seront incluses dans le"
+msgstr ""
+
+#: templates/multi_survey.html:918
+msgid "rapport PDF/Word"
+msgstr ""
+
+#: templates/multi_survey.html:918
+msgid "si vous cochez « Multi-enquête » dans la page Rapport."
+msgstr ""
+
+#: templates/multi_survey.html:931
+msgid "5. Exporter le jeu de données fusionné"
+msgstr ""
+
+#: templates/multi_survey.html:935
+msgid ""
+"Toutes les enquêtes empilées, colonnes alignées sur le code PHAKTS, avec "
+"pour chaque ligne l'"
+msgstr ""
+
+#: templates/multi_survey.html:935
+msgid "enquête d'origine"
+msgstr ""
+
+#: templates/multi_survey.html:936
+msgid "et son"
+msgstr ""
+
+#: templates/multi_survey.html:936
+msgid "pour poursuivre l'analyse dans Excel, SPSS ou Stata."
+msgstr ""
+
+#: templates/multi_survey.html:937
+msgid "Alignement actuel : «"
+msgstr ""
+
+#: templates/multi_survey.html:937
+msgid "voir section 3)."
+msgstr ""
+
+#: templates/multi_survey.html:941
+msgid "Feuilles : Données fusionnées, Enquêtes (ordre, Factum), Couverture"
+msgstr ""
+
+#: templates/multi_survey.html:945 templates/multi_survey.html:949
+msgid "Libellés de variables et modalités catégorielles recodées"
+msgstr ""
+
+#: templates/multi_survey.html:960
+msgid "6. Générer le rapport d'analyse"
+msgstr ""
+
+#: templates/multi_survey.html:964
+msgid "Un document prêt à partager :"
+msgstr ""
+
+#: templates/multi_survey.html:964
+msgid "enquêtes comparées"
+msgstr ""
+
+#: templates/multi_survey.html:964
+msgid "(dans l'ordre du temps, avec leur qualité),"
+msgstr ""
+
+#: templates/multi_survey.html:965
+msgid "contrôles de cohérence"
+msgstr ""
+
+#: templates/multi_survey.html:965
+msgid "synthèse"
+msgstr ""
+
+#: templates/multi_survey.html:965
+msgid ""
+"et récapitulatif, puis le détail de chaque comparaison —\n"
+"        tableaux, graphique, évolution entre enquêtes,"
+msgstr ""
+
+#: templates/multi_survey.html:966
+msgid "lecture automatique"
+msgstr ""
+
+#: templates/multi_survey.html:966
+msgid "votre commentaire"
+msgstr ""
+
+#: templates/multi_survey.html:967
+msgid "des écarts les plus nets aux indicateurs stables, et les notes de méthode."
+msgstr ""
+
+#: templates/multi_survey.html:968 templates/multi_survey.html:969
+msgid "Il reprend les"
+msgstr ""
+
+#: templates/multi_survey.html:968
+msgid "indicateur(s) communs détectés (section 4)."
+msgstr ""
+
+#: templates/multi_survey.html:969
+msgid "variable(s) du panier (section 4)."
+msgstr ""
+
+#: templates/multi_survey.html:974
+msgid "Titre"
+msgstr ""
+
+#: templates/multi_survey.html:976
+msgid "Rapport d'analyse multi-enquête"
+msgstr ""
+
+#: templates/multi_survey.html:979 templates/report.html:28
+msgid "Auteur"
+msgstr ""
+
+#: templates/multi_survey.html:991
+msgid ""
+"La génération prend quelques secondes (les graphiques sont tracés en "
+"image)."
+msgstr ""
+
+#: templates/multi_survey.html:994
+msgid "Rien à rapporter pour l'instant :"
+msgstr ""
+
+#: templates/multi_survey.html:994
+msgid "aucun indicateur commun n'a été détecté entre ces enquêtes."
+msgstr ""
+
+#: templates/multi_survey.html:995
+msgid ""
+"ajoutez des variables au panier ou activez l'analyse automatique (section"
+" 4)."
+msgstr ""
+
+#: templates/multivariate.html:14
+msgid "Paramètres"
+msgstr ""
+
+#: templates/multivariate.html:24
+msgid "ACP — Composantes principales (variables numériques)"
+msgstr ""
+
+#: templates/multivariate.html:25
+msgid "ACM — Correspondances multiples (variables catégorielles)"
+msgstr ""
+
+#: templates/multivariate.html:26
+msgid "AFC — Correspondances (2 variables catégorielles)"
+msgstr ""
+
+#: templates/multivariate.html:27
+msgid "Classification en classes"
+msgstr ""
+
+#: templates/multivariate.html:39
+msgid "Algorithme"
+msgstr ""
+
+#: templates/multivariate.html:42
+msgid "Classification hiérarchique (Ward) + dendrogramme"
+msgstr ""
+
+#: templates/multivariate.html:44
+msgid "Variables à classer"
+msgstr ""
+
+#: templates/multivariate.html:46
+msgid "Numériques (centrées-réduites)"
+msgstr ""
+
+#: templates/multivariate.html:47
+msgid "Catégorielles (sur les axes de l'ACM)"
+msgstr ""
+
+#: templates/multivariate.html:62
+msgid "Aucune variable numérique dans ces données."
+msgstr ""
+
+#: templates/multivariate.html:91
+msgid "La lecture indique le nombre d'axes à retenir."
+msgstr ""
+
+#: templates/multivariate.html:96
+msgid "Automatique (silhouette maximale)"
+msgstr ""
+
+#: templates/multivariate.html:97
+#, python-format
+msgid "%(k)s classes"
+msgstr ""
+
+#: templates/multivariate.html:102 templates/projet_detail.html:106
+msgid "Lancer l'analyse"
+msgstr ""
+
+#: templates/multivariate.html:114
+msgid "Choisissez une méthode, sélectionnez vos variables et cliquez sur"
+msgstr ""
+
+#: templates/multivariate.html:117
+msgid "Variables numériques, réduction de dimensions"
+msgstr ""
+
+#: templates/multivariate.html:118
+msgid "Variables catégorielles, nuage de modalités"
+msgstr ""
+
+#: templates/multivariate.html:119
+msgid "Deux variables catégorielles, plan de correspondance"
+msgstr ""
+
+#: templates/multivariate.html:120
+msgid "K-Means ou hiérarchique : des classes décrites et enregistrables"
+msgstr ""
+
+#: templates/multivariate.html:138
+#, python-format
+msgid "%(n)s observations · %(v)s variables"
+msgstr ""
+
+#: templates/multivariate.html:153
+msgid "Valeurs propres et variance expliquée"
+msgstr ""
+
+#: templates/multivariate.html:156
+msgid "Axes à retenir :"
+msgstr ""
+
+#: templates/multivariate.html:156
+#, python-format
+msgid "(Kaiser : λ > 1 → %(k)s ; 80%% de variance → %(e)s)."
+msgstr ""
+
+#: templates/multivariate.html:168
+msgid "Variables : corrélation avec chaque axe, contribution et qualité"
+msgstr ""
+
+#: templates/multivariate.html:171
+msgid ""
+"Corrélation : lien de la variable avec l'axe (de −1 à 1). Contribution : "
+"part de l'axe portée par la variable. Qualité : part de la variable "
+"représentée par les axes retenus (cos²)."
+msgstr ""
+
+#: templates/multivariate.html:176
+msgid "Individus les plus contributifs à F1 (souvent des valeurs à vérifier)"
+msgstr ""
+
+#: templates/multivariate.html:186
+msgid "Valeurs propres — inertie brute et taux de Benzécri"
+msgstr ""
+
+#: templates/multivariate.html:189
+#, python-format
+msgid ""
+"L'inertie brute d'une ACM sous-estime toujours l'information des premiers"
+" axes ; le taux de Benzécri (axes de valeur propre > 1/%(n)s) est la "
+"mesure à citer."
+msgstr ""
+
+#: templates/multivariate.html:199
+msgid "Contribution des variables aux axes"
+msgstr ""
+
+#: templates/multivariate.html:205
+msgid "Modalités les plus contributives (coordonnées, contribution, cos²)"
+msgstr ""
+
+#: templates/multivariate.html:216
+#, python-format
+msgid "χ² (ddl = %(d)s)"
+msgstr ""
+
+#: templates/multivariate.html:244
+msgid "Classes"
+msgstr ""
+
+#: templates/multivariate.html:244
+msgid "auto"
+msgstr ""
+
+#: templates/multivariate.html:255
+msgid "Enregistrer les classes comme variable"
+msgstr ""
+
+#: templates/multivariate.html:257
+msgid "Nom de la variable"
+msgstr ""
+
+#: templates/multivariate.html:258
+msgid "Enregistrer"
+msgstr ""
+
+#: templates/multivariate.html:259
+msgid "La variable apparaît dans les tris à plat, les croisements et les exports."
+msgstr ""
+
+#: templates/multivariate.html:262
+msgid "Variables déjà enregistrées :"
+msgstr ""
+
+#: templates/multivariate.html:263
+msgid "les gérer"
+msgstr ""
+
+#: templates/multivariate.html:277
+msgid "Description des classes"
+msgstr ""
+
+#: templates/multivariate.html:288
+#, python-format
+msgid "%(pc)s%% de la classe contre %(pt)s%% en tout"
+msgstr ""
+
+#: templates/multivariate.html:289
+msgid "plus élevé"
+msgstr ""
+
+#: templates/multivariate.html:289
+msgid "plus bas"
+msgstr ""
+
+#: templates/multivariate.html:289
+#, python-format
+msgid "que la moyenne (v = %(v)s)"
+msgstr ""
+
+#: templates/multivariate.html:293
+msgid "Proche de la moyenne, sans trait marquant."
+msgstr ""
+
+#: templates/multivariate.html:298
+msgid ""
+"Valeur-test v : écart d'une classe à l'ensemble, en écarts-types ; au-"
+"delà de 2 en valeur absolue, l'écart est net."
+msgstr ""
+
+#: templates/multivariate.html:322
+msgid "Valeurs-tests"
+msgstr ""
+
+#: templates/projet_detail.html:11
+msgid "unité(s) dans le référentiel"
+msgstr ""
+
+#: templates/projet_detail.html:15
+msgid "Tous les projets"
+msgstr ""
+
+#: templates/projet_detail.html:25
+msgid ""
+"Identifiant universel de l'étude : il rattache les données du formulaire "
+"lié à ce projet dans la base centrale et dans les exports SPSS/Stata."
+msgstr ""
+
+#: templates/projet_detail.html:36
+msgid "Formulaire KoboToolbox suivi"
+msgstr ""
+
+#: templates/projet_detail.html:41
+msgid "Connectez-vous à KoboToolbox pour lier un formulaire."
+msgstr ""
+
+#: templates/projet_detail.html:42
+msgid "Se connecter →"
+msgstr ""
+
+#: templates/projet_detail.html:45 templates/suivi.html:84
+msgid "Aucun formulaire disponible sur ce compte KoboToolbox."
+msgstr ""
+
+#: templates/projet_detail.html:52
+msgid "— Non lié —"
+msgstr ""
+
+#: templates/projet_detail.html:63
+msgid "Enregistrer le lien"
+msgstr ""
+
+#: templates/projet_detail.html:81
+msgid "Analyse épidémiologique"
+msgstr ""
+
+#: templates/projet_detail.html:86
+msgid "Attachez le XLSForm (feuilles"
+msgstr ""
+
+#: templates/projet_detail.html:86
+msgid ""
+") de ce questionnaire pour générer un dictionnaire de variables (type, "
+"traitement statistique recommandé) — fonctionne pour n'importe quel "
+"formulaire, codifié PHAKTS ou non."
+msgstr ""
+
+#: templates/projet_detail.html:95
+msgid "Charger le XLSForm"
+msgstr ""
+
+#: templates/projet_detail.html:102
+msgid "Voir / modifier le dictionnaire"
+msgstr ""
+
+#: templates/projet_detail.html:111
+msgid "Télécharger le rapport"
+msgstr ""
+
+#: templates/projet_detail.html:118
+msgid "Dernière analyse :"
+msgstr ""
+
+#: templates/projet_detail.html:120
+msgid "variable(s) du dictionnaire non trouvée(s) dans les données"
+msgstr ""
+
+#: templates/projet_detail.html:122
+msgid "alerte(s) de complétion"
+msgstr ""
+
+#: templates/projet_detail.html:139
+msgid ""
+"Révisez le dictionnaire puis cliquez sur « Lancer l'analyse » (nécessite "
+"un formulaire KoboToolbox associé, voir ci-dessus)."
+msgstr ""
+
+#: templates/projet_detail.html:149
+msgid "Complétude par groupe"
+msgstr ""
+
+#: templates/projet_detail.html:156 templates/projet_detail.html:189
+#: templates/validation.html:84
+msgid "Groupe"
+msgstr ""
+
+#: templates/projet_detail.html:156 templates/projet_detail.html:190
+msgid "Reçu / Cible"
+msgstr ""
+
+#: templates/projet_detail.html:180
+msgid "Complétude par unité"
+msgstr ""
+
+#: templates/projet_detail.html:188
+msgid "Unité"
+msgstr ""
+
+#: templates/projet_detail.html:217
+msgid "Cliquez sur « Calculer la complétude » ci-dessus pour voir les résultats."
+msgstr ""
+
+#: templates/projet_dictionnaire.html:2
+msgid "Dictionnaire"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:3
+msgid "Dictionnaire de variables"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:11
+msgid "Dictionnaire auto-généré à partir du XLSForm — révisez avant l'analyse."
+msgstr ""
+
+#: templates/projet_dictionnaire.html:12
+msgid "Le"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:12
+msgid "rôle"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:12
+msgid "et le"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:12
+msgid "traitement statistique"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:12
+msgid ""
+"sont pré-remplis (détection des suffixes PHAKTS si présents, sinon grille"
+" générique par type XLSForm). Le"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:13
+msgid "domaine"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:13
+msgid "l'inclusion dans un"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:13
+msgid "score composite"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:13
+msgid "et les"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:14
+msgid "valeurs favorables"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:14
+msgid ""
+"sont à votre charge — aucune détection automatique du sens des questions "
+"n'est tentée : donnez le même nom de domaine (ex. « Connaissances ») à "
+"toutes les variables qui doivent se combiner dans le même score."
+msgstr ""
+
+#: templates/projet_dictionnaire.html:19
+msgid "variable(s)"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:21
+msgid "Retour au projet"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:38
+msgid "Rôle"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:39
+msgid "Domaine (score)"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:40
+msgid "Inclure"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:41
+msgid "Sens"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:42
+msgid "Valeurs favorables"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:43
+msgid "Traitement statistique recommandé"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:62
+msgid "Indicateur"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:63
+msgid "Stratification"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:64
+msgid "Exclu"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:70
+msgid "ex. Connaissances"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:79
+msgid "Positif"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:80
+msgid "Négatif"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:85
+msgid "ex. oui"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:86
+msgid "Valeurs séparées par des virgules (codes choices, pas les libellés)"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:87
+msgid "liste :"
+msgstr ""
+
+#: templates/projet_dictionnaire.html:100
+msgid "Enregistrer le dictionnaire"
+msgstr ""
+
+#: templates/projets.html:3 templates/projets.html:4
+msgid "Projets d'enquête"
+msgstr ""
+
+#: templates/projets.html:12
+msgid "Suivez la complétude de n'importe quelle autre enquête KoboToolbox ou ODK"
+msgstr ""
+
+#: templates/projets.html:13
+msgid ""
+"pas seulement les 7 formulaires SPAD. Fournissez votre propre liste "
+"d'unités (établissement, école, village…) avec leur cible, et "
+"l'application applique exactement la même logique (reçu / cible / taux / "
+"statut) que pour SPAD."
+msgstr ""
+
+#: templates/projets.html:19
+msgid "Projets"
+msgstr ""
+
+#: templates/projets.html:26
+msgid "Aucun projet pour l'instant"
+msgstr ""
+
+#: templates/projets.html:27
+msgid "Créez-en un ci-dessous à partir d'un fichier de référence."
+msgstr ""
+
+#: templates/projets.html:38
+msgid "Supprimer ce projet et son référentiel ?"
+msgstr ""
+
+#: templates/projets.html:45
+msgid "unité(s)"
+msgstr ""
+
+#: templates/projets.html:46
+msgid "non lié à un formulaire"
+msgstr ""
+
+#: templates/projets.html:61
+msgid "Créer un projet"
+msgstr ""
+
+#: templates/projets.html:67
+msgid "Nom du projet"
+msgstr ""
+
+#: templates/projets.html:68
+msgid "ex. Enquête nutrition Katiola 2026"
+msgstr ""
+
+#: templates/projets.html:72
+msgid "Champ d'identification de l'unité"
+msgstr ""
+
+#: templates/projets.html:73
+msgid ""
+"Le nom exact du champ Kobo/ODK (ex. select_one) qui contient le code de "
+"l'unité dans les soumissions."
+msgstr ""
+
+#: templates/projets.html:79
+msgid "Factum de l'étude (facultatif, modifiable ensuite)"
+msgstr ""
+
+#: templates/projets.html:84
+msgid "Fichier de référence (.xlsx)"
+msgstr ""
+
+#: templates/projets.html:87
+msgid "Colonnes minimales :"
+msgstr ""
+
+#: templates/projets.html:87
+msgid "(doit correspondre exactement aux valeurs soumises),"
+msgstr ""
+
+#: templates/projets.html:88
+msgid "Optionnel :"
+msgstr ""
+
+#: templates/projets.html:88
+msgid "(libellé affiché),"
+msgstr ""
+
+#: templates/projets.html:88
+msgid "(zone/district d'agrégation)."
+msgstr ""
+
+#: templates/projets.html:94
+msgid "Formulaire KoboToolbox à suivre (optionnel ici, modifiable ensuite)"
+msgstr ""
+
+#: templates/projets.html:97
+msgid "— Choisir plus tard —"
+msgstr ""
+
+#: templates/projets.html:107
+msgid ""
+"Pas connecté à KoboToolbox — vous pourrez lier un formulaire après la "
+"création du projet."
+msgstr ""
+
+#: templates/projets.html:115
+msgid "Créer le projet"
+msgstr ""
+
+#: templates/raw_data.html:23
+msgid "Ces données sont-elles en état d'être analysées ? Le diagnostic porte sur"
+msgstr ""
+
+#: templates/raw_data.html:23
+msgid "les soumissions collectées"
+msgstr ""
+
+#: templates/raw_data.html:24
+msgid "y compris les"
+msgstr ""
+
+#: templates/raw_data.html:24
+msgid "ligne(s) écartée(s) des analyses"
+msgstr ""
+
+#: templates/raw_data.html:25
+msgid ""
+"Le détail variable par variable (fréquences, intervalles de confiance, "
+"décomposition par groupe) est dans"
+msgstr ""
+
+#: templates/raw_data.html:39
+msgid "De quoi le score est fait"
+msgstr ""
+
+#: templates/raw_data.html:43
+msgid "poids"
+msgstr ""
+
+#: templates/raw_data.html:48
+msgid "La validité (lignes sans défaut de collecte) n'a pas pu être calculée."
+msgstr ""
+
+#: templates/raw_data.html:56
+msgid "cat."
+msgstr ""
+
+#: templates/raw_data.html:56
+msgid "cont."
+msgstr ""
+
+#: templates/raw_data.html:56
+msgid "bin."
+msgstr ""
+
+#: templates/raw_data.html:58
+msgid "Manquants réels"
+msgstr ""
+
+#: templates/raw_data.html:58
+msgid "Parmi les questions applicables à la personne interrogée"
+msgstr ""
+
+#: templates/raw_data.html:59
+#, python-format
+msgid "%(pct)s en brut"
+msgstr ""
+
+#: templates/raw_data.html:60
+msgid "Soumissions en double"
+msgstr ""
+
+#: templates/raw_data.html:66
+msgid "Par où continuer"
+msgstr ""
+
+#: templates/raw_data.html:78
+msgid "Lancer cette analyse"
+msgstr ""
+
+#: templates/raw_data.html:92
+msgid "Réponses manquantes : réelles ou prévues par le formulaire"
+msgstr ""
+
+#: templates/raw_data.html:94
+msgid "Sauts de logique du formulaire pris en compte."
+msgstr ""
+
+#: templates/raw_data.html:94
+msgid ""
+"Sans XLSForm joint, seuls les champs « Autre, précisez » sont présumés "
+"vides par construction."
+msgstr ""
+
+#: templates/raw_data.html:96
+#, python-format
+msgid ""
+"%(n)s saut(s) de logique illisible(s) : variables comptées comme "
+"applicables."
+msgstr ""
+
+#: templates/raw_data.html:100
+msgid "Aucune réponse manquante parmi les personnes concernées."
+msgstr ""
+
+#: templates/raw_data.html:101
+msgid "Carte des données manquantes"
+msgstr ""
+
+#: templates/raw_data.html:108
+#, python-format
+msgid "Anomalies de structure (%(n)s)"
+msgstr ""
+
+#: templates/raw_data.html:109
+msgid "Contrôles ligne par ligne → Validation"
+msgstr ""
+
+#: templates/raw_data.html:114 templates/validation.html:131
+msgid "Gravité"
+msgstr ""
+
+#: templates/raw_data.html:114
+msgid "Anomalie"
+msgstr ""
+
+#: templates/raw_data.html:123
+msgid "Aucune anomalie de structure détectée."
+msgstr ""
+
+#: templates/raw_data.html:128
+msgid "Quelles variables vont ensemble ?"
+msgstr ""
+
+#: templates/raw_data.html:134
+#, python-format
+msgid "Couples les plus liés (%(nv)s variables, %(np)s couples"
+msgstr ""
+
+#: templates/raw_data.html:134
+msgid "échantillon de 5 000 lignes"
+msgstr ""
+
+#: templates/raw_data.html:138
+msgid ""
+"L'une des deux variables découle de l'autre (district dans région, par "
+"exemple)"
+msgstr ""
+
+#: templates/raw_data.html:138
+msgid "redondantes"
+msgstr ""
+
+#: templates/raw_data.html:141
+msgid ""
+"V de Cramér corrigé du biais : 0 = aucun lien, 1 = lien total. q : "
+"probabilité corrigée des tests multiples (Benjamini-Hochberg) ; en vert, "
+"le lien est établi."
+msgstr ""
+
+#: templates/raw_data.html:144
+msgid ""
+"Pas assez de variables catégorielles renseignées pour mesurer des "
+"associations."
+msgstr ""
+
+#: templates/raw_data.html:148
+msgid ""
+"Variables continues — corrélations de Spearman (robustes aux valeurs "
+"extrêmes)"
+msgstr ""
+
+#: templates/raw_data.html:156
+msgid ""
+"Moins de deux variables continues : pas de corrélation à calculer (les "
+"variables codées en nombres mais qui sont des catégories ne comptent pas "
+";"
+msgstr ""
+
+#: templates/raw_data.html:156
+msgid "corriger un type"
+msgstr ""
+
+#: templates/raw_data.html:156
+msgid "si besoin)."
+msgstr ""
+
+#: templates/raw_data.html:164
+msgid "Aucune variable continue à représenter."
+msgstr ""
+
+#: templates/raw_data.html:171
+#, python-format
+msgid "Profil des variables (%(n)s)"
+msgstr ""
+
+#: templates/raw_data.html:176 templates/report.html:230
+msgid "Binaires"
+msgstr ""
+
+#: templates/raw_data.html:177
+msgid "Dates"
+msgstr ""
+
+#: templates/raw_data.html:177
+msgid "Identifiants"
+msgstr ""
+
+#: templates/raw_data.html:177
+msgid "Textes libres"
+msgstr ""
+
+#: templates/raw_data.html:179
+msgid "Alertes seulement"
+msgstr ""
+
+#: templates/raw_data.html:184
+msgid "Valides"
+msgstr ""
+
+#: templates/raw_data.html:184
+msgid "Alertes"
+msgstr ""
+
+#: templates/raw_data.html:189
+msgid "Binaire"
+msgstr ""
+
+#: templates/raw_data.html:189
+msgid "Texte libre"
+msgstr ""
+
+#: templates/raw_data.html:192
+msgid "vide parce que la question ne s'applique pas à tous"
+msgstr ""
+
+#: templates/raw_data.html:199
+msgid "vide par construction"
+msgstr ""
+
+#: templates/raw_data.html:205
+msgid ""
+"Manquants : part des personnes à qui la question s'appliquait et qui "
+"n'ont pas répondu ; entre parenthèses (ⓘ), variables vides par "
+"construction."
+msgstr ""
+
+#: templates/raw_data.html:206
+msgid "Correction d'un type ou d'un libellé :"
+msgstr ""
+
+#: templates/raw_data.html:206
+msgid "Aperçu des données → Dictionnaire"
 msgstr ""
 
 #: templates/register.html:6
@@ -483,5 +5811,656 @@ msgstr ""
 
 #: templates/register.html:91
 msgid "J'ai déjà un compte"
+msgstr ""
+
+#: templates/report.html:2
+msgid "Rapport PDF/Word"
+msgstr ""
+
+#: templates/report.html:20
+msgid "Informations du rapport"
+msgstr ""
+
+#: templates/report.html:23
+msgid "Titre du rapport"
+msgstr ""
+
+#: templates/report.html:25
+msgid "Rapport — Raisons de non-vaccination"
+msgstr ""
+
+#: templates/report.html:29
+msgid "Analyste"
+msgstr ""
+
+#: templates/report.html:34
+msgid "Format du rapport"
+msgstr ""
+
+#: templates/report.html:61
+msgid "Sections à inclure"
+msgstr ""
+
+#: templates/report.html:64 templates/report.html:106
+msgid "Questions à choix multiples"
+msgstr ""
+
+#: templates/report.html:65
+msgid "Raisons de refus, effets secondaires, etc."
+msgstr ""
+
+#: templates/report.html:67
+msgid "Tris à plat, fréquences, moyennes"
+msgstr ""
+
+#: templates/report.html:68
+msgid "Tableaux croisés"
+msgstr ""
+
+#: templates/report.html:69
+msgid "χ², V de Cramér, profils lignes/colonnes"
+msgstr ""
+
+#: templates/report.html:71
+msgid ""
+"Score de qualité, profil, continues, catégorielles, binaires, manquants "
+"réels, corrélations, vue d'ensemble"
+msgstr ""
+
+#: templates/report.html:72
+msgid "Multi-enquête"
+msgstr ""
+
+#: templates/report.html:73
+msgid "Comparaisons sauvegardées dans le panier (DPF / PHAKTS)"
+msgstr ""
+
+#: templates/report.html:88
+msgid ""
+"Analyse complète (qualité, anomalies, distributions). Augmente le temps "
+"et la taille du rapport."
+msgstr ""
+
+#: templates/report.html:91
+msgid "peut augmenter temps/taille"
+msgstr ""
+
+#: templates/report.html:111 templates/report.html:142
+#: templates/report.html:167
+msgid "Tout sélectionner"
+msgstr ""
+
+#: templates/report.html:162
+msgid "Variables continues"
+msgstr ""
+
+#: templates/report.html:189
+msgid "Tableau croisé du rapport"
+msgstr ""
+
+#: templates/report.html:190
+msgid "les variables retenues dans l'onglet « Tableaux croisés »"
+msgstr ""
+
+#: templates/report.html:202
+msgid "Colonne"
+msgstr ""
+
+#: templates/report.html:238
+msgid "Info :"
+msgstr ""
+
+#: templates/report.html:238
+msgid ""
+"L'inclusion du Diagnostic des données peut augmenter le temps et la "
+"taille du rapport (images et diagnostics). Décochez si vous souhaitez un "
+"rapport plus léger."
+msgstr ""
+
+#: templates/report.html:244
+msgid "Générer et télécharger le PDF"
+msgstr ""
+
+#: templates/suivi.html:31
+msgid "Graphiques & analyses"
+msgstr ""
+
+#: templates/suivi.html:43
+msgid "Suivez plusieurs formulaires KoboToolbox en même temps."
+msgstr ""
+
+#: templates/suivi.html:44
+msgid ""
+"Chaque formulaire suivi est sondé automatiquement en arrière-plan (toutes"
+" les 2 minutes) — donnez-lui une cible pour voir sa progression, ou "
+"laissez vide pour un simple compteur."
+msgstr ""
+
+#: templates/suivi.html:52
+msgid "Vérifiez ces associations — le type sélectionné semble incohérent :"
+msgstr ""
+
+#: templates/suivi.html:62
+msgid "Formulaires suivis"
+msgstr ""
+
+#: templates/suivi.html:70
+msgid "Aucun formulaire suivi pour l'instant"
+msgstr ""
+
+#: templates/suivi.html:71
+msgid "Ajoutez-en un depuis la liste ci-dessous."
+msgstr ""
+
+#: templates/suivi.html:78
+msgid "Ajouter un formulaire au suivi"
+msgstr ""
+
+#: templates/suivi.html:92
+msgid "Type (détection auto.)"
+msgstr ""
+
+#: templates/suivi.html:93
+msgid "Cible manuelle"
+msgstr ""
+
+#: templates/suivi.html:102
+msgid "non déployé"
+msgstr ""
+
+#: templates/suivi.html:115
+msgid "Ctrl/Cmd+clic pour plusieurs rôles (formulaire à rôles multiples)"
+msgstr ""
+
+#: templates/suivi.html:117
+msgid "détecté depuis le nom"
+msgstr ""
+
+#: templates/suivi.html:122
+msgid "détectée automatiquement"
+msgstr ""
+
+#: templates/suivi.html:122
+msgid "ex. 1800"
+msgstr ""
+
+#: templates/suivi.html:129
+msgid "Suivi"
+msgstr ""
+
+#: templates/suivi.html:132
+msgid "Mettre à jour"
+msgstr ""
+
+#: templates/suivi.html:138
+msgid "Suggérer le type et la cible avec l'IA"
+msgstr ""
+
+#: templates/suivi.html:141
+msgid ""
+"Analyser la structure complète du formulaire (IA) — détecte si plusieurs "
+"rôles le remplissent, jamais de cible proposée"
+msgstr ""
+
+#: templates/suivi.html:146
+msgid "Suivre"
+msgstr ""
+
+#: templates/suivi.html:148
+msgid "Supprimer définitivement ce formulaire sur KoboToolbox"
+msgstr ""
+
+#: templates/upload.html:2 templates/upload.html:3
+msgid "Importer les données"
+msgstr ""
+
+#: templates/upload.html:21
+msgid "Glissez-déposez votre fichier ici"
+msgstr ""
+
+#: templates/upload.html:22
+msgid "ou cliquez pour sélectionner"
+msgstr ""
+
+#: templates/upload.html:24
+msgid "Parcourir…"
+msgstr ""
+
+#: templates/upload.html:26
+msgid "Formats acceptés : .xlsx, .xls"
+msgstr ""
+
+#: templates/upload.html:26
+msgid "Taille max : 50 Mo"
+msgstr ""
+
+#: templates/upload.html:33
+msgid "Changer de fichier"
+msgstr ""
+
+#: templates/upload.html:40
+msgid "Options d'import"
+msgstr ""
+
+#: templates/upload.html:43
+msgid "Feuille Excel"
+msgstr ""
+
+#: templates/upload.html:45
+msgid "Première feuille (par défaut)"
+msgstr ""
+
+#: templates/upload.html:49
+msgid "Encodage"
+msgstr ""
+
+#: templates/upload.html:62
+msgid "Charger les données"
+msgstr ""
+
+#: templates/upload.html:72
+msgid "Format attendu"
+msgstr ""
+
+#: templates/upload.html:74
+msgid "La"
+msgstr ""
+
+#: templates/upload.html:74
+msgid "première ligne"
+msgstr ""
+
+#: templates/upload.html:74
+msgid "doit contenir les noms de variables"
+msgstr ""
+
+#: templates/upload.html:75
+msgid "Chaque ligne correspond à une"
+msgstr ""
+
+#: templates/upload.html:75
+msgid "observation"
+msgstr ""
+
+#: templates/upload.html:75
+msgid "(individu enquêté)"
+msgstr ""
+
+#: templates/upload.html:76
+msgid "Les variables catégorielles doivent contenir des"
+msgstr ""
+
+#: templates/upload.html:76
+msgid "chaînes de caractères"
+msgstr ""
+
+#: templates/upload.html:76
+msgid "ou des codes"
+msgstr ""
+
+#: templates/upload.html:77
+msgid "Les valeurs manquantes peuvent être laissées"
+msgstr ""
+
+#: templates/upload.html:77
+msgid "vides"
+msgstr ""
+
+#: templates/validation.html:28
+msgid "Enquête contrôlée :"
+msgstr ""
+
+#: templates/validation.html:34
+msgid ""
+"Contrôles du SPAD (« Règles de validation des données de collecte ») "
+"appliqués à"
+msgstr ""
+
+#: templates/validation.html:35
+msgid "jeu de données chargé"
+msgstr ""
+
+#: templates/validation.html:35
+msgid ""
+"doublons, cohérence des heures, seuils PHAKTS, réponses contraires au "
+"formulaire, valeurs extrêmes, et règles propres à cette enquête ou à son "
+"étude. Rien n'est corrigé ni supprimé : les lignes signalées sont à "
+"vérifier avec les équipes de terrain. Les numéros de ligne sont ceux du "
+"jeu de données (1 = première soumission)."
+msgstr ""
+
+#: templates/validation.html:39
+msgid "Lignes contrôlées"
+msgstr ""
+
+#: templates/validation.html:40
+msgid "Doublons, heures, seuils, règles, formulaire : défauts de collecte"
+msgstr ""
+
+#: templates/validation.html:41
+msgid "Lignes signalées"
+msgstr ""
+
+#: templates/validation.html:42
+msgid "Lignes sans anomalie"
+msgstr ""
+
+#: templates/validation.html:43
+msgid "Contrôles en erreur"
+msgstr ""
+
+#: templates/validation.html:44
+msgid "Points à vérifier"
+msgstr ""
+
+#: templates/validation.html:45
+msgid ""
+"Valeurs statistiquement extrêmes : à regarder, mais pas comptées comme "
+"des défauts de collecte"
+msgstr ""
+
+#: templates/validation.html:46
+msgid "Lignes à valeurs atypiques"
+msgstr ""
+
+#: templates/validation.html:53
+msgid "Formulaire pris en compte"
+msgstr ""
+
+#: templates/validation.html:53
+msgid "questions"
+msgstr ""
+
+#: templates/validation.html:54
+msgid ""
+"les réponses hors liste, les questions obligatoires vides, les sauts de "
+"logique contournés et les contraintes non respectées sont contrôlés."
+msgstr ""
+
+#: templates/validation.html:56
+msgid "Contrôler les réponses d'après le formulaire"
+msgstr ""
+
+#: templates/validation.html:57
+msgid ""
+"joignez l'XLSForm pour retrouver les réponses hors liste, les questions "
+"obligatoires vides, les sauts de logique contournés et les contraintes "
+"non respectées."
+msgstr ""
+
+#: templates/validation.html:61
+msgid "Joindre"
+msgstr ""
+
+#: templates/validation.html:63
+msgid ""
+"(les données chargées pour analyse acceptent un XLSForm ; un formulaire "
+"Kobo suivi le lit directement)"
+msgstr ""
+
+#: templates/validation.html:72
+msgid "Signalements par"
+msgstr ""
+
+#: templates/validation.html:75
+msgid "Regrouper par"
+msgstr ""
+
+#: templates/validation.html:85
+msgid "En erreur"
+msgstr ""
+
+#: templates/validation.html:85
+msgid "Durée médiane (min)"
+msgstr ""
+
+#: templates/validation.html:92
+msgid "À regarder"
+msgstr ""
+
+#: templates/validation.html:98
+msgid "Moyenne :"
+msgstr ""
+
+#: templates/validation.html:98
+#, python-format
+msgid ""
+"%% de lignes signalées. « À regarder » : au moins 3 lignes signalées et "
+"plus du double de la moyenne — un enquêteur ou un site à rappeler, plutôt"
+" qu'une série de fautes isolées."
+msgstr ""
+
+#: templates/validation.html:105
+msgid "Résultats des contrôles"
+msgstr ""
+
+#: templates/validation.html:108
+msgid ""
+"Écarter de l'analyse toutes les lignes en erreur ? Le fichier n'est pas "
+"modifié."
+msgstr ""
+
+#: templates/validation.html:110
+msgid "Écarter de l'analyse les lignes en erreur"
+msgstr ""
+
+#: templates/validation.html:115
+msgid "Rétablir les"
+msgstr ""
+
+#: templates/validation.html:115
+msgid "ligne(s) écartée(s)"
+msgstr ""
+
+#: templates/validation.html:120
+msgid "Exporter les lignes à vérifier (.xlsx)"
+msgstr ""
+
+#: templates/validation.html:131
+msgid "Catégorie"
+msgstr ""
+
+#: templates/validation.html:131
+msgid "Contrôle"
+msgstr ""
+
+#: templates/validation.html:131
+msgid "Lignes concernées"
+msgstr ""
+
+#: templates/validation.html:147
+msgid "Ouvrir la fiche de la soumission n°"
+msgstr ""
+
+#: templates/validation.html:156
+msgid "Écarter ces lignes de l'analyse"
+msgstr ""
+
+#: templates/validation.html:168
+msgid "Aucune anomalie détectée sur les"
+msgstr ""
+
+#: templates/validation.html:168
+msgid "lignes contrôlées."
+msgstr ""
+
+#: templates/validation.html:172
+msgid "Règles propres à cette enquête"
+msgstr ""
+
+#: templates/validation.html:174
+msgid ""
+"Exemples : « Date de notification ≥ Date d'apparition », « Âge au premier"
+" rapport ≤ Âge », « Nombre de cas ≥ 0 », ou une"
+msgstr ""
+
+#: templates/validation.html:175
+msgid "clé d'unicité"
+msgstr ""
+
+#: templates/validation.html:175
+msgid "(un établissement et un numéro d'ordre ne figurent qu'une fois)."
+msgstr ""
+
+#: templates/validation.html:176
+msgid "Une règle peut valoir pour"
+msgstr ""
+
+#: templates/validation.html:176 templates/validation.html:193
+msgid "toute l'étude"
+msgstr ""
+
+#: templates/validation.html:176
+msgid ": elle s'applique alors aussi aux autres vagues (même Factum d'étude)."
+msgstr ""
+
+#: templates/validation.html:177
+msgid ""
+"Avec un Factum valide, une règle peut valoir pour toute l'étude et se "
+"retrouver à chaque vague."
+msgstr ""
+
+#: templates/validation.html:184
+msgid "Règle"
+msgstr ""
+
+#: templates/validation.html:184
+msgid "Portée"
+msgstr ""
+
+#: templates/validation.html:184
+msgid "Ajoutée par"
+msgstr ""
+
+#: templates/validation.html:189
+msgid "clé d'unicité :"
+msgstr ""
+
+#: templates/validation.html:193
+msgid "cette enquête"
+msgstr ""
+
+#: templates/validation.html:196
+msgid "Supprimer cette règle ?"
+msgstr ""
+
+#: templates/validation.html:209
+msgid "Comparer deux variables, ou une variable à une valeur"
+msgstr ""
+
+#: templates/validation.html:224
+msgid "Comparée à"
+msgstr ""
+
+#: templates/validation.html:226
+msgid "une autre variable"
+msgstr ""
+
+#: templates/validation.html:227
+msgid "une valeur"
+msgstr ""
+
+#: templates/validation.html:231
+msgid "Variable ou valeur"
+msgstr ""
+
+#: templates/validation.html:235
+msgid "ex. 0, 2026-01-01, oui"
+msgstr ""
+
+#: templates/validation.html:238 templates/validation.html:262
+msgid "Libellé (facultatif)"
+msgstr ""
+
+#: templates/validation.html:239
+msgid "ex. Notification après apparition"
+msgstr ""
+
+#: templates/validation.html:247
+msgid "Valable pour toute l'étude (toutes les vagues)"
+msgstr ""
+
+#: templates/validation.html:253
+msgid "Clé d'unicité : ces variables réunies ne doivent apparaître qu'une fois"
+msgstr ""
+
+#: templates/validation.html:256
+msgid "Variables de la clé (Ctrl/Cmd-clic pour en choisir plusieurs)"
+msgstr ""
+
+#: templates/validation.html:263
+msgid "ex. Un prestataire par établissement"
+msgstr ""
+
+#: templates/validation.html:266
+msgid "Valable pour toute l'étude"
+msgstr ""
+
+#: templates/validation.html:269
+msgid "Ajouter"
+msgstr ""
+
+#: templates/xlsform_preview.html:2
+msgid "XLSForm importé"
+msgstr ""
+
+#: templates/xlsform_preview.html:3
+msgid "XLSForm importé depuis PHAKTS"
+msgstr ""
+
+#: templates/xlsform_preview.html:12
+msgid "Aucun XLSForm importé pour l'instant"
+msgstr ""
+
+#: templates/xlsform_preview.html:14
+msgid "Depuis l'onglet"
+msgstr ""
+
+#: templates/xlsform_preview.html:14
+msgid "Conception PHAKTS"
+msgstr ""
+
+#: templates/xlsform_preview.html:14
+msgid "générez votre XLSForm puis cliquez sur"
+msgstr ""
+
+#: templates/xlsform_preview.html:15
+msgid "« Envoyer vers SPAD »"
+msgstr ""
+
+#: templates/xlsform_preview.html:15
+msgid "Le formulaire s'affichera ici pour prévisualisation."
+msgstr ""
+
+#: templates/xlsform_preview.html:18
+msgid "Importer un fichier de réponses (Excel)"
+msgstr ""
+
+#: templates/xlsform_preview.html:30
+msgid "Questionnaire"
+msgstr ""
+
+#: templates/xlsform_preview.html:32
+msgid "question"
+msgstr ""
+
+#: templates/xlsform_preview.html:33
+msgid "modalité"
+msgstr ""
+
+#: templates/xlsform_preview.html:39
+msgid "Déployer dans KoboToolbox"
+msgstr ""
+
+#: templates/xlsform_preview.html:43
+msgid "Connecter KoboToolbox d'abord"
+msgstr ""
+
+#: templates/xlsform_preview.html:47
+msgid "Charger les réponses"
+msgstr ""
+
+#: templates/xlsform_preview.html:114 templates/xlsform_preview.html:139
+msgid "Feuille"
 msgstr ""
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}XLSForm importé — SPAD Analyzer{% endblock %}
-{% block page_title %}XLSForm importé depuis PHAKTS{% endblock %}
+{% block title %}{{ _('XLSForm importé') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('XLSForm importé depuis PHAKTS') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -9,13 +9,13 @@
     <div class="card shadow-sm border-0">
       <div class="card-body p-5 text-center">
         <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-        <h4 class="mb-2">Aucun XLSForm importé pour l'instant</h4>
+        <h4 class="mb-2">{{ _("Aucun XLSForm importé pour l'instant") }}</h4>
         <p class="text-muted mb-4">
-          Depuis l'onglet <strong>Conception PHAKTS</strong>, générez votre XLSForm puis cliquez sur
-          <em>« Envoyer vers SPAD »</em>. Le formulaire s'affichera ici pour prévisualisation.
+          {{ _('Depuis l\'onglet') }} <strong>{{ _('Conception PHAKTS') }}</strong>, {{ _('générez votre XLSForm puis cliquez sur') }}
+          <em>{{ _('« Envoyer vers SPAD »') }}</em>. {{ _("Le formulaire s'affichera ici pour prévisualisation.") }}
         </p>
         <a href="{{ url_for('upload') }}" class="btn btn-outline-primary">
-          <i class="bi bi-upload me-1"></i> Importer un fichier de réponses (Excel)
+          <i class="bi bi-upload me-1"></i> {{ _('Importer un fichier de réponses (Excel)') }}
         </a>
       </div>
     </div>
@@ -27,24 +27,24 @@
           <i class="bi bi-file-earmark-spreadsheet-fill text-success display-5 me-2"></i>
         </div>
         <div class="flex-grow-1">
-          <h5 class="mb-1">{{ form_title or 'Questionnaire' }}</h5>
+          <h5 class="mb-1">{{ form_title or _('Questionnaire') }}</h5>
           <div class="text-muted small">
-            <span class="badge bg-light text-dark border me-1">{{ survey|length }} question{% if survey|length > 1 %}s{% endif %}</span>
-            <span class="badge bg-light text-dark border">{{ choices|length }} modalité{% if choices|length > 1 %}s{% endif %}</span>
+            <span class="badge bg-light text-dark border me-1">{{ survey|length }} {{ _('question') }}{% if survey|length > 1 %}s{% endif %}</span>
+            <span class="badge bg-light text-dark border">{{ choices|length }} {{ _('modalité') }}{% if choices|length > 1 %}s{% endif %}</span>
           </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
           {% if session.get('kobo_token') %}
           <button id="deployBtn" type="button" class="btn btn-primary btn-sm" onclick="deployXlsform()">
-            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Déployer dans KoboToolbox
+            <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ _('Déployer dans KoboToolbox') }}
           </button>
           {% else %}
           <a href="{{ url_for('kobo_connect') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-link-45deg me-1"></i> Connecter KoboToolbox d'abord
+            <i class="bi bi-link-45deg me-1"></i> {{ _("Connecter KoboToolbox d'abord") }}
           </a>
           {% endif %}
           <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-upload me-1"></i> Charger les réponses
+            <i class="bi bi-upload me-1"></i> {{ _('Charger les réponses') }}
           </a>
         </div>
       </div>
@@ -111,7 +111,7 @@
 
     <div class="card shadow-sm border-0 mb-4">
       <div class="card-header bg-white py-2">
-        <strong><i class="bi bi-list-ul me-2 text-primary"></i> Feuille <code>survey</code></strong>
+        <strong><i class="bi bi-list-ul me-2 text-primary"></i> {{ _('Feuille') }} <code>survey</code></strong>
       </div>
       <div class="card-body p-0" style="max-height:480px;overflow:auto">
         <table class="table table-sm table-hover mb-0">
@@ -136,7 +136,7 @@
     {% if choices %}
     <div class="card shadow-sm border-0">
       <div class="card-header bg-white py-2">
-        <strong><i class="bi bi-list-check me-2 text-success"></i> Feuille <code>choices</code></strong>
+        <strong><i class="bi bi-list-check me-2 text-success"></i> {{ _('Feuille') }} <code>choices</code></strong>
       </div>
       <div class="card-body p-0" style="max-height:360px;overflow:auto">
         <table class="table table-sm table-hover mb-0">

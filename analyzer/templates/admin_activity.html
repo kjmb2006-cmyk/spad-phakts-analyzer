@@ -1,23 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Journal d'activité — SPAD Analyzer{% endblock %}
-{% block page_title %}Journal d'activité{% endblock %}
+{% block title %}{{ _("Journal d'activité") }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _("Journal d'activité") }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {{ events|length }} événement{{ 's' if events|length > 1 else '' }} le{{ 's' if events|length > 1 else '' }} plus récent{{ 's' if events|length > 1 else '' }} — comptes Data uniquement
+      {{ ngettext('%(num)s événement le plus récent — comptes Data uniquement', '%(num)s événements les plus récents — comptes Data uniquement', events|length) }}
     </span>
     <div class="d-flex gap-2">
       <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-people me-1"></i>Comptes Data
+        <i class="bi bi-people me-1"></i>{{ _('Comptes Data') }}
       </a>
       {% if events %}
       <form method="POST" action="{{ url_for('admin_activity_reset') }}" class="d-inline"
-            onsubmit="return confirm('Effacer tout le journal d\'activité ? Cette action est irréversible.')">
+            onsubmit='return confirm("{{ _("Effacer tout le journal d'activité ? Cette action est irréversible.") }}")'>
         <button type="submit" class="btn btn-outline-danger btn-sm">
-          <i class="bi bi-trash3 me-1"></i>Réinitialisation
+          <i class="bi bi-trash3 me-1"></i>{{ _('Réinitialisation') }}
         </button>
       </form>
       {% endif %}
@@ -30,10 +30,10 @@
         <table class="table table-sm align-middle mb-0">
           <thead style="position:sticky;top:0;background:#fff">
             <tr>
-              <th style="min-width:140px">Horodatage</th>
-              <th style="min-width:140px">Utilisateur</th>
-              <th style="min-width:80px">Méthode</th>
-              <th>Chemin</th>
+              <th style="min-width:140px">{{ _('Horodatage') }}</th>
+              <th style="min-width:140px">{{ _('Utilisateur') }}</th>
+              <th style="min-width:80px">{{ _('Méthode') }}</th>
+              <th>{{ _('Chemin') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -48,7 +48,7 @@
               <td class="small"><code>{{ e.path }}</code></td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="text-center text-muted small py-4">Aucune activité enregistrée pour l'instant.</td></tr>
+            <tr><td colspan="4" class="text-center text-muted small py-4">{{ _("Aucune activité enregistrée pour l'instant.") }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -58,8 +58,7 @@
 
   <p class="text-muted small mt-3">
     <i class="bi bi-info-circle me-1"></i>
-    Chaque requête effectuée par un compte Data est journalisée (connexions, navigation, actions). Les
-    500 événements les plus récents sont affichés ici ; l'historique complet reste sur le serveur.
+    {{ _("Chaque requête effectuée par un compte Data est journalisée (connexions, navigation, actions). Les 500 événements les plus récents sont affichés ici ; l'historique complet reste sur le serveur.") }}
   </p>
 
 </div>

@@ -8,25 +8,24 @@
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {{ p.n_unites }} unité(s) dans le référentiel · Créé le {{ p.created_at }}
-      {% if p.computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ p.computed_at }}{% endif %}
+      {{ p.n_unites }} {{ _('unité(s) dans le référentiel') }} · {{ _('Créé le') }} {{ p.created_at }}
+      {% if p.computed_at %} · <i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ p.computed_at }}{% endif %}
     </span>
     <a href="{{ url_for('projets_liste') }}" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Tous les projets
+      <i class="bi bi-arrow-left me-1"></i>{{ _('Tous les projets') }}
     </a>
   </div>
 
   <!-- ═══ Factum de l'étude ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-fingerprint me-2 text-primary"></i>Factum de l'étude</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-fingerprint me-2 text-primary"></i>{{ _("Factum de l'étude") }}</h6>
     </div>
     <div class="card-body">
-      <p class="small text-muted mb-2">Identifiant universel de l'étude : il rattache les données du formulaire lié à ce projet
-        dans la base centrale et dans les exports SPSS/Stata.</p>
+      <p class="small text-muted mb-2">{{ _("Identifiant universel de l'étude : il rattache les données du formulaire lié à ce projet dans la base centrale et dans les exports SPSS/Stata.") }}</p>
       <form method="POST" action="{{ url_for('projets_factum', projet_id=p.id) }}">
         {{ factum_field('factum', p.factum) }}
-        <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save me-1"></i>Enregistrer le Factum</button>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save me-1"></i>{{ _('Enregistrer le Factum') }}</button>
       </form>
     </div>
   </div>
@@ -34,26 +33,26 @@
   <!-- ═══ Lien KoboToolbox ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>Formulaire KoboToolbox suivi</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-link-45deg me-2 text-primary"></i>{{ _('Formulaire KoboToolbox suivi') }}</h6>
     </div>
     <div class="card-body">
       {% if not kobo_connected %}
       <div class="alert alert-warning small mb-0">
-        Connectez-vous à KoboToolbox pour lier un formulaire.
-        <a href="{{ url_for('kobo_connect') }}">Se connecter →</a>
+        {{ _('Connectez-vous à KoboToolbox pour lier un formulaire.') }}
+        <a href="{{ url_for('kobo_connect') }}">{{ _('Se connecter →') }}</a>
       </div>
       {% elif not assets %}
-      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      <p class="text-muted small mb-0">{{ _('Aucun formulaire disponible sur ce compte KoboToolbox.') }}</p>
       {% else %}
       <form method="POST" action="{{ url_for('projets_lier', projet_id=p.id) }}" class="row g-2 align-items-end">
         <div class="col-md-8">
-          <label class="form-label small fw-semibold">Formulaire</label>
+          <label class="form-label small fw-semibold">{{ _('Formulaire') }}</label>
           <select name="kobo_uid" id="koboUidSelect" class="form-select form-select-sm"
                   onchange="var o=this.options[this.selectedIndex];document.getElementById('koboNameField').value=o.dataset.name||''">
-            <option value="">— Non lié —</option>
+            <option value="">{{ _('— Non lié —') }}</option>
             {% for a in assets %}
             <option value="{{ a.uid }}" data-name="{{ a.name }}" {% if p.kobo_uid == a.uid %}selected{% endif %}>
-              {{ a.name }} ({{ a.submission_count }} soum.)
+              {{ a.name }} ({{ a.submission_count }} {{ _('soum.') }})
             </option>
             {% endfor %}
           </select>
@@ -61,14 +60,14 @@
         </div>
         <div class="col-md-4 d-grid">
           <button type="submit" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-save me-1"></i>Enregistrer le lien
+            <i class="bi bi-save me-1"></i>{{ _('Enregistrer le lien') }}
           </button>
         </div>
       </form>
       {% if p.kobo_uid %}
       <form method="POST" action="{{ url_for('projets_calculer', projet_id=p.id) }}" class="mt-3">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="bi bi-calculator me-1"></i>Calculer la complétude
+          <i class="bi bi-calculator me-1"></i>{{ _('Calculer la complétude') }}
         </button>
       </form>
       {% endif %}
@@ -79,14 +78,12 @@
   <!-- ═══ Analyse épidémiologique (XLSForm → dictionnaire → rapport) ═══ -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard2-data me-2 text-primary"></i>Analyse épidémiologique</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard2-data me-2 text-primary"></i>{{ _('Analyse épidémiologique') }}</h6>
     </div>
     <div class="card-body">
       {% if not p.get('has_xlsform') %}
       <p class="text-muted small">
-        Attachez le XLSForm (feuilles <code>survey</code>/<code>choices</code>) de ce questionnaire pour
-        générer un dictionnaire de variables (type, traitement statistique recommandé) — fonctionne pour
-        n'importe quel formulaire, codifié PHAKTS ou non.
+        {{ _("Attachez le XLSForm (feuilles") }} <code>survey</code>/<code>choices</code>{{ _(") de ce questionnaire pour générer un dictionnaire de variables (type, traitement statistique recommandé) — fonctionne pour n'importe quel formulaire, codifié PHAKTS ou non.") }}
       </p>
       <form method="POST" action="{{ url_for('projets_xlsform', projet_id=p.id) }}"
             enctype="multipart/form-data" class="row g-2 align-items-end">
@@ -95,35 +92,34 @@
         </div>
         <div class="col-md-4 d-grid">
           <button type="submit" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-upload me-1"></i>Charger le XLSForm
+            <i class="bi bi-upload me-1"></i>{{ _('Charger le XLSForm') }}
           </button>
         </div>
       </form>
       {% else %}
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <a href="{{ url_for('projets_dictionnaire', projet_id=p.id) }}" class="btn btn-outline-primary btn-sm">
-          <i class="bi bi-table me-1"></i>Voir / modifier le dictionnaire
+          <i class="bi bi-table me-1"></i>{{ _('Voir / modifier le dictionnaire') }}
         </a>
         <form method="POST" action="{{ url_for('projets_analyser', projet_id=p.id) }}">
           <button type="submit" class="btn btn-primary btn-sm" {% if not p.kobo_uid %}disabled{% endif %}>
-            <i class="bi bi-graph-up-arrow me-1"></i>Lancer l'analyse
+            <i class="bi bi-graph-up-arrow me-1"></i>{{ _("Lancer l'analyse") }}
           </button>
         </form>
         {% if rapport_disponible %}
         <a href="{{ url_for('projets_rapport_docx', projet_id=p.id) }}" class="btn btn-success btn-sm">
-          <i class="bi bi-file-earmark-word me-1"></i>Télécharger le rapport
+          <i class="bi bi-file-earmark-word me-1"></i>{{ _('Télécharger le rapport') }}
         </a>
         {% endif %}
       </div>
 
       {% if analyse_resume %}
       <div class="small text-muted mb-2">
-        <i class="bi bi-clock-history me-1"></i>Dernière analyse : {{ p.analyse_computed_at }} ·
-        {{ analyse_resume.n_soumissions }} soumissions
-        {% if analyse_resume.n_non_trouvees %} · {{ analyse_resume.n_non_trouvees }} variable(s) du
-        dictionnaire non trouvée(s) dans les données{% endif %}
+        <i class="bi bi-clock-history me-1"></i>{{ _('Dernière analyse :') }} {{ p.analyse_computed_at }} ·
+        {{ analyse_resume.n_soumissions }} {{ _('soumissions') }}
+        {% if analyse_resume.n_non_trouvees %} · {{ analyse_resume.n_non_trouvees }} {{ _('variable(s) du dictionnaire non trouvée(s) dans les données') }}{% endif %}
         {% if analyse_resume.n_anomalies_completion %} · <span class="text-danger">{{ analyse_resume.n_anomalies_completion }}
-        alerte(s) de complétion</span>{% endif %}
+        {{ _('alerte(s) de complétion') }}</span>{% endif %}
       </div>
       {% if analyse_resume.scores %}
       <div class="row g-2">
@@ -140,8 +136,7 @@
       {% endif %}
       {% elif p.get('has_xlsform') %}
       <p class="text-muted small mb-0">
-        Révisez le dictionnaire puis cliquez sur « Lancer l'analyse » (nécessite un formulaire
-        KoboToolbox associé, voir ci-dessus).
+        {{ _("Révisez le dictionnaire puis cliquez sur « Lancer l'analyse » (nécessite un formulaire KoboToolbox associé, voir ci-dessus).") }}
       </p>
       {% endif %}
       {% endif %}
@@ -151,14 +146,14 @@
   {% if groupes %}
   <!-- ═══ Par groupe ═══ -->
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <span class="section-label"><i class="bi bi-diagram-3 me-1"></i>Complétude par groupe</span>
+    <span class="section-label"><i class="bi bi-diagram-3 me-1"></i>{{ _('Complétude par groupe') }}</span>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
-            <tr><th>Groupe</th><th class="text-center">Reçu / Cible</th><th class="text-center">Statut</th></tr>
+            <tr><th>{{ _('Groupe') }}</th><th class="text-center">{{ _('Reçu / Cible') }}</th><th class="text-center">{{ _('Statut') }}</th></tr>
           </thead>
           <tbody>
             {% for g in groupes %}
@@ -182,7 +177,7 @@
   {% if unites %}
   <!-- ═══ Par unité ═══ -->
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <span class="section-label"><i class="bi bi-list-ol me-1"></i>Complétude par unité ({{ unites|length }})</span>
+    <span class="section-label"><i class="bi bi-list-ol me-1"></i>{{ _('Complétude par unité') }} ({{ unites|length }})</span>
   </div>
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -190,10 +185,10 @@
         <table class="table table-sm align-middle mb-0">
           <thead style="position:sticky;top:0">
             <tr>
-              <th>Unité</th>
-              {% if groupes %}<th>Groupe</th>{% endif %}
-              <th class="text-center">Reçu / Cible</th>
-              <th class="text-center">Statut</th>
+              <th>{{ _('Unité') }}</th>
+              {% if groupes %}<th>{{ _('Groupe') }}</th>{% endif %}
+              <th class="text-center">{{ _('Reçu / Cible') }}</th>
+              <th class="text-center">{{ _('Statut') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -219,7 +214,7 @@
   <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
       <i class="bi bi-calculator display-3 mb-3 d-block opacity-25"></i>
-      <p class="mb-0">Cliquez sur « Calculer la complétude » ci-dessus pour voir les résultats.</p>
+      <p class="mb-0">{{ _('Cliquez sur « Calculer la complétude » ci-dessus pour voir les résultats.') }}</p>
     </div>
   </div>
   {% endif %}

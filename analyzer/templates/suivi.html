@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Suivi multi-formulaires — SPAD Analyzer{% endblock %}
-{% block page_title %}Suivi multi-formulaires{% endblock %}
+{% block title %}{{ _('Suivi multi-formulaires') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Suivi multi-formulaires') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -10,29 +10,29 @@
     <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
       <div class="d-flex flex-wrap gap-1 align-items-center">
         <a href="{{ url_for('suivi') }}" class="btn btn-sm btn-primary fw-semibold">
-          <i class="bi bi-broadcast me-1"></i>Suivi multi-formulaires
+          <i class="bi bi-broadcast me-1"></i>{{ _('Suivi multi-formulaires') }}
         </a>
         <a href="{{ url_for('completude_regions') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-map me-1"></i>Régions
+          <i class="bi bi-map me-1"></i>{{ _('Régions') }}
         </a>
         <a href="{{ url_for('completude_districts') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-pin-map me-1"></i>Districts
+          <i class="bi bi-pin-map me-1"></i>{{ _('Districts') }}
         </a>
         <a href="{{ url_for('completude_superviseurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-badge me-1"></i>Superviseurs
+          <i class="bi bi-person-badge me-1"></i>{{ _('Superviseurs') }}
         </a>
         <a href="{{ url_for('completude_enqueteurs') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-person-walking me-1"></i>Enquêteurs
+          <i class="bi bi-person-walking me-1"></i>{{ _('Enquêteurs') }}
         </a>
         <a href="{{ url_for('completude_anomalies') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-exclamation-triangle me-1"></i>Anomalies
+          <i class="bi bi-exclamation-triangle me-1"></i>{{ _('Anomalies') }}
         </a>
         <a href="{{ url_for('completude_graphiques') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-graph-up me-1"></i>Graphiques & analyses
+          <i class="bi bi-graph-up me-1"></i>{{ _('Graphiques & analyses') }}
         </a>
       </div>
       <a href="{{ url_for('completude') }}" class="btn btn-sm btn-outline-primary fw-semibold">
-        <i class="bi bi-clipboard2-pulse me-1"></i>Complétude nationale
+        <i class="bi bi-clipboard2-pulse me-1"></i>{{ _('Complétude nationale') }}
       </a>
     </div>
   </div>
@@ -40,9 +40,8 @@
   <div class="alert alert-primary border-0 d-flex align-items-center gap-3 mb-3">
     <i class="bi bi-broadcast fs-3"></i>
     <div>
-      <strong>Suivez plusieurs formulaires KoboToolbox en même temps.</strong>
-      Chaque formulaire suivi est sondé automatiquement en arrière-plan (toutes les 2 minutes) —
-      donnez-lui une cible pour voir sa progression, ou laissez vide pour un simple compteur.
+      <strong>{{ _('Suivez plusieurs formulaires KoboToolbox en même temps.') }}</strong>
+      {{ _('Chaque formulaire suivi est sondé automatiquement en arrière-plan (toutes les 2 minutes) — donnez-lui une cible pour voir sa progression, ou laissez vide pour un simple compteur.') }}
     </div>
   </div>
 
@@ -50,7 +49,7 @@
   <div class="alert alert-warning border-0 d-flex align-items-start gap-3 mb-3">
     <i class="bi bi-exclamation-triangle-fill fs-3"></i>
     <div>
-      <strong>Vérifiez ces associations — le type sélectionné semble incohérent :</strong>
+      <strong>{{ _('Vérifiez ces associations — le type sélectionné semble incohérent :') }}</strong>
       <ul class="mb-0 mt-1">
         {% for a in suivi_avertissements %}<li>{{ a }}</li>{% endfor %}
       </ul>
@@ -60,7 +59,7 @@
 
   <!-- ═══ Formulaires suivis ═══ -->
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <span class="section-label"><i class="bi bi-grid-1x2 me-1"></i>Formulaires suivis</span>
+    <span class="section-label"><i class="bi bi-grid-1x2 me-1"></i>{{ _('Formulaires suivis') }}</span>
     <span id="trackedCount" class="text-muted small"></span>
   </div>
 
@@ -68,30 +67,30 @@
   <div id="trackedEmpty" class="card border-0 shadow-sm d-none">
     <div class="card-body text-center py-5 text-muted">
       <i class="bi bi-broadcast-pin display-3 mb-3 d-block opacity-25"></i>
-      <h5 class="fw-semibold mb-2">Aucun formulaire suivi pour l'instant</h5>
-      <p class="small mb-0">Ajoutez-en un depuis la liste ci-dessous.</p>
+      <h5 class="fw-semibold mb-2">{{ _("Aucun formulaire suivi pour l'instant") }}</h5>
+      <p class="small mb-0">{{ _('Ajoutez-en un depuis la liste ci-dessous.') }}</p>
     </div>
   </div>
 
   <!-- ═══ Ajouter un formulaire ═══ -->
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom py-3">
-      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Ajouter un formulaire au suivi</h6>
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>{{ _('Ajouter un formulaire au suivi') }}</h6>
     </div>
     <div class="card-body">
       {% if assets_error %}
       <div class="alert alert-danger small mb-0">{{ assets_error }}</div>
       {% elif not assets %}
-      <p class="text-muted small mb-0">Aucun formulaire disponible sur ce compte KoboToolbox.</p>
+      <p class="text-muted small mb-0">{{ _('Aucun formulaire disponible sur ce compte KoboToolbox.') }}</p>
       {% else %}
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th>Formulaire</th>
-              <th class="text-center" style="width:120px">Soumissions</th>
-              <th style="width:190px">Type (détection auto.)</th>
-              <th class="text-center" style="width:140px">Cible manuelle</th>
+              <th>{{ _('Formulaire') }}</th>
+              <th class="text-center" style="width:120px">{{ _('Soumissions') }}</th>
+              <th style="width:190px">{{ _('Type (détection auto.)') }}</th>
+              <th class="text-center" style="width:140px">{{ _('Cible manuelle') }}</th>
               <th class="text-center" style="width:120px"></th>
             </tr>
           </thead>
@@ -100,7 +99,7 @@
             <tr data-uid="{{ a.uid }}" data-name="{{ a.name }}">
               <td class="small fw-semibold">
                 {{ a.name }}
-                {% if not a.deployed %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1">non déployé</span>{% endif %}
+                {% if not a.deployed %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1">{{ _('non déployé') }}</span>{% endif %}
               </td>
               <td class="text-center small">{{ a.submission_count }}</td>
               {% set guess = guessed_types.get(a.uid) %}
@@ -113,40 +112,40 @@
                   {% endfor %}
                 </select>
                 <div class="text-muted" style="font-size:.66rem">
-                  <i class="bi bi-info-circle me-1"></i>Ctrl/Cmd+clic pour plusieurs rôles (formulaire à rôles multiples)
+                  <i class="bi bi-info-circle me-1"></i>{{ _('Ctrl/Cmd+clic pour plusieurs rôles (formulaire à rôles multiples)') }}
                 </div>
-                {% if guess and not mapped %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>détecté depuis le nom</div>{% endif %}
+                {% if guess and not mapped %}<div class="text-muted" style="font-size:.68rem"><i class="bi bi-magic me-1"></i>{{ _('détecté depuis le nom') }}</div>{% endif %}
                 <div class="ai-rationale text-muted" style="font-size:.68rem"></div>
               </td>
               <td class="text-center">
                 <input type="number" min="1" class="form-control form-control-sm target-input"
-                       placeholder="{{ 'détectée automatiquement' if preselected else 'ex. 1800' }}"
+                       placeholder="{{ _('détectée automatiquement') if preselected else _('ex. 1800') }}"
                        {% if preselected %}disabled{% endif %}>
               </td>
               <td class="text-center">
                 {% if a.uid in tracked_uids %}
                 <div class="d-flex flex-column align-items-center gap-1">
                   <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px">
-                    <i class="bi bi-check-lg me-1"></i>Suivi
+                    <i class="bi bi-check-lg me-1"></i>{{ _('Suivi') }}
                   </span>
                   <button type="button" class="btn btn-sm btn-outline-secondary btn-retype" style="font-size:.68rem;padding:1px 8px">
-                    <i class="bi bi-arrow-repeat me-1"></i>Mettre à jour
+                    <i class="bi bi-arrow-repeat me-1"></i>{{ _('Mettre à jour') }}
                   </button>
                 </div>
                 {% else %}
                 <div class="d-flex gap-1 justify-content-center">
                   {% if ai_available %}
-                  <button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l'IA">
+                  <button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="{{ _("Suggérer le type et la cible avec l'IA") }}">
                     <i class="bi bi-stars"></i>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée">
+                  <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="{{ _('Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée') }}">
                     <i class="bi bi-diagram-3"></i>
                   </button>
                   {% endif %}
                   <button type="button" class="btn btn-sm btn-outline-primary btn-track-add">
-                    <i class="bi bi-plus-lg me-1"></i>Suivre
+                    <i class="bi bi-plus-lg me-1"></i>{{ _('Suivre') }}
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="Supprimer définitivement ce formulaire sur KoboToolbox">
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="{{ _('Supprimer définitivement ce formulaire sur KoboToolbox') }}">
                     <i class="bi bi-trash3"></i>
                   </button>
                 </div>

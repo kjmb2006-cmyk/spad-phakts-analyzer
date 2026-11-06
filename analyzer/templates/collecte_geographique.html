@@ -1,34 +1,34 @@
 {% extends "base.html" %}
-{% block title %}Suivi géographique — SPAD Analyzer{% endblock %}
-{% block page_title %}Suivi géographique{% endblock %}
+{% block title %}{{ _('Suivi géographique') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Suivi géographique') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h3 class="fw-bold mb-1">Suivi par niveau géographique</h3>
-      <p class="text-muted mb-0">Analyse de la collecte à l’échelle régionale, district et établissement.</p>
+      <h3 class="fw-bold mb-1">{{ _('Suivi par niveau géographique') }}</h3>
+      <p class="text-muted mb-0">{{ _('Analyse de la collecte à l’échelle régionale, district et établissement.') }}</p>
     </div>
     <a href="{{ url_for('collecte_dashboard') }}"
        onclick="smartBack('{{ url_for('collecte_dashboard') }}'); return false;"
-       class="btn btn-outline-secondary btn-sm">Retour</a>
+       class="btn btn-outline-secondary btn-sm">{{ _('Retour') }}</a>
   </div>
 
   <div class="card border-0 shadow-sm">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold mb-0">Répartition par zone</h5>
-        <span class="badge bg-info-subtle text-info">Supervision</span>
+        <h5 class="fw-bold mb-0">{{ _('Répartition par zone') }}</h5>
+        <span class="badge bg-info-subtle text-info">{{ _('Supervision') }}</span>
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle">
           <thead>
             <tr>
-              <th>Zone</th>
-              <th>Reçu</th>
-              <th>Cible</th>
-              <th>Taux</th>
-              <th>Statut</th>
+              <th>{{ _('Zone') }}</th>
+              <th>{{ _('Reçu') }}</th>
+              <th>{{ _('Cible') }}</th>
+              <th>{{ _('Taux') }}</th>
+              <th>{{ _('Statut') }}</th>
             </tr>
           </thead>
           <tbody>

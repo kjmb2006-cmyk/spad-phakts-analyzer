@@ -7,37 +7,37 @@
            placeholder="PGT14_OS2_RC2_2__CIV_MS__1C1_Sujet__20250900__ES" autocomplete="off"
            data-factum-input {% if required %}required{% endif %}>
     <button class="btn btn-outline-secondary" type="button" data-factum-toggle>
-      <i class="bi bi-sliders me-1"></i>Composer
+      <i class="bi bi-sliders me-1"></i>{{ _('Composer') }}
     </button>
   </div>
   <div class="small mt-1" data-factum-status></div>
   <div class="border rounded p-2 mt-2 d-none" data-factum-builder>
     <div class="row g-2">
-      <div class="col-md-6"><label class="form-label small mb-0">Entête (programme, objectif, résultat)</label>
+      <div class="col-md-6"><label class="form-label small mb-0">{{ _('Entête (programme, objectif, résultat)') }}</label>
         <input class="form-control form-control-sm" data-part="entete" placeholder="PGT14_OS2_RC2_2"></div>
-      <div class="col-md-6"><label class="form-label small mb-0">Juridiction (pays, institution)</label>
+      <div class="col-md-6"><label class="form-label small mb-0">{{ _('Juridiction (pays, institution)') }}</label>
         <input class="form-control form-control-sm" data-part="juridiction" placeholder="CIV_MS"></div>
-      <div class="col-6 col-md-3"><label class="form-label small mb-0">Collecte n°</label>
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">{{ _('Collecte n°') }}</label>
         <input type="number" min="1" value="1" class="form-control form-control-sm" data-part="n"></div>
-      <div class="col-6 col-md-3"><label class="form-label small mb-0">Sur (collectes prévues)</label>
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">{{ _('Sur (collectes prévues)') }}</label>
         <input type="number" min="1" value="1" class="form-control form-control-sm" data-part="m"></div>
-      <div class="col-md-6"><label class="form-label small mb-0">Date de référence (AAAA-MM ou AAAA-MM-JJ)</label>
+      <div class="col-md-6"><label class="form-label small mb-0">{{ _('Date de référence (AAAA-MM ou AAAA-MM-JJ)') }}</label>
         <input class="form-control form-control-sm" data-part="date" placeholder="2025-09"></div>
-      <div class="col-md-8"><label class="form-label small mb-0">Sujet de l'étude</label>
-        <input class="form-control form-control-sm" data-part="sujet" placeholder="Etude CAP Personnel Santé PEC Tabac"></div>
-      <div class="col-md-4"><label class="form-label small mb-0">Domaine de définition</label>
+      <div class="col-md-8"><label class="form-label small mb-0">{{ _("Sujet de l'étude") }}</label>
+        <input class="form-control form-control-sm" data-part="sujet" placeholder="{{ _('Etude CAP Personnel Santé PEC Tabac') }}"></div>
+      <div class="col-md-4"><label class="form-label small mb-0">{{ _('Domaine de définition') }}</label>
         <input class="form-control form-control-sm" data-part="domaine" list="factumDomaines" placeholder="ES"></div>
     </div>
     <button type="button" class="btn btn-sm btn-primary mt-2" data-factum-compose>
-      <i class="bi bi-check2 me-1"></i>Utiliser ce Factum
+      <i class="bi bi-check2 me-1"></i>{{ _('Utiliser ce Factum') }}
     </button>
   </div>
 </div>
 <datalist id="factumDomaines">
-  <option value="ES">Établissement de santé</option>
-  <option value="ESP">Établissement scolaire / public</option>
-  <option value="Menage">Ménage</option>
-  <option value="Communaute">Communauté</option>
+  <option value="ES">{{ _('Établissement de santé') }}</option>
+  <option value="ESP">{{ _('Établissement scolaire / public') }}</option>
+  <option value="Menage">{{ _('Ménage') }}</option>
+  <option value="Communaute">{{ _('Communauté') }}</option>
 </datalist>
 <script>
 (function () {

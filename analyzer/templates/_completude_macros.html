@@ -10,13 +10,13 @@
         <span class="text-muted small">/ {{ r.cible if r.cible is not none else '—' }}</span>
       </div>
       <span class="status-pill status-pill--{{ 'cible' if r.statut == 'cible' else ('exces' if r.statut == 'exces' else ('en-cours' if r.statut == 'en_cours' else ('verifier' if r.statut == 'verifier' else ('critique' if r.statut == 'critique' else 'zero')))) }}">
-        {% if r.statut == 'inconnu' %}Non calculé
+        {% if r.statut == 'inconnu' %}{{ _('Non calculé') }}
         {% elif r.statut == 'zero' %}0 %
-        {% elif r.statut == 'critique' %}Critique · {{ r.taux }} %
-        {% elif r.statut == 'en_cours' %}En cours{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
-        {% elif r.statut == 'cible' %}Cible atteinte{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
-        {% elif r.statut == 'exces' %}Dépassement · {{ r.taux }} %
-        {% elif r.statut == 'verifier' %}À vérifier · {{ r.taux }} %
+        {% elif r.statut == 'critique' %}{{ _('Critique') }} · {{ r.taux }} %
+        {% elif r.statut == 'en_cours' %}{{ _('En cours') }}{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+        {% elif r.statut == 'cible' %}{{ _('Cible atteinte') }}{% if r.taux is not none %} · {{ r.taux }} %{% endif %}
+        {% elif r.statut == 'exces' %}{{ _('Dépassement') }} · {{ r.taux }} %
+        {% elif r.statut == 'verifier' %}{{ _('À vérifier') }} · {{ r.taux }} %
         {% else %}{{ r.statut }}
         {% endif %}
       </span>
@@ -32,12 +32,12 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white border-bottom py-2">
         <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
-          <i class="bi bi-exclamation-circle-fill me-2 text-secondary"></i>À 0 % ({{ zeros|length }})
+          <i class="bi bi-exclamation-circle-fill me-2 text-secondary"></i>{{ _('À 0 %%') }} ({{ zeros|length }})
         </h6>
       </div>
       <div class="card-body p-0">
         {% if not zeros %}
-        <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type ici.</p>
+        <p class="text-muted small p-3 mb-0">{{ _('Aucune anomalie de ce type ici.') }}</p>
         {% else %}
         <div class="table-responsive" style="max-height:280px;overflow-y:auto">
           <table class="table table-sm align-middle mb-0">
@@ -48,7 +48,7 @@
                 <td class="small text-center">
                   <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ a.formulaire }}</span>
                 </td>
-                <td class="text-center small text-muted">cible {{ a.cible }}</td>
+                <td class="text-center small text-muted">{{ _('cible') }} {{ a.cible }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -62,12 +62,12 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white border-bottom py-2">
         <h6 class="mb-0 fw-semibold" style="font-size:.85rem">
-          <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>Excès — doublons potentiels ({{ excess|length }})
+          <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>{{ _('Excès — doublons potentiels') }} ({{ excess|length }})
         </h6>
       </div>
       <div class="card-body p-0">
         {% if not excess %}
-        <p class="text-muted small p-3 mb-0">Aucune anomalie de ce type ici.</p>
+        <p class="text-muted small p-3 mb-0">{{ _('Aucune anomalie de ce type ici.') }}</p>
         {% else %}
         <div class="table-responsive" style="max-height:280px;overflow-y:auto">
           <table class="table table-sm align-middle mb-0">

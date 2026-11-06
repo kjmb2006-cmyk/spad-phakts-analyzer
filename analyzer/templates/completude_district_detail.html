@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 {% import "_completude_macros.html" as m %}
 {% block title %}{{ district.nom }} — SPAD Analyzer{% endblock %}
-{% block page_title %}District — {{ district.nom }}{% endblock %}
+{% block page_title %}{{ _('District') }} — {{ district.nom }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <span class="text-muted small">
-      {{ etablissements|length }} établissement(s) · {{ enqueteurs|length }} enquêteur(s)
-      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>Calculé le {{ computed_at }}{% endif %}
+      {{ etablissements|length }} {{ _('établissement(s)') }} · {{ enqueteurs|length }} {{ _('enquêteur(s)') }}
+      {% if computed_at %} · <i class="bi bi-clock-history me-1"></i>{{ _('Calculé le') }} {{ computed_at }}{% endif %}
     </span>
     <div class="d-flex gap-2">
       <a href="{{ url_for('completude_region_detail', region_code=district.region_code) }}"
          onclick="smartBack('{{ url_for('completude_region_detail', region_code=district.region_code) }}'); return false;"
          class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Retour
+        <i class="bi bi-arrow-left me-1"></i>{{ _('Retour') }}
       </a>
       <a href="{{ url_for('completude_districts') }}" class="btn btn-outline-primary btn-sm">
-        Tous les districts
+        {{ _('Tous les districts') }}
       </a>
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>Complétude du district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-bar-chart-line me-1"></i>{{ _('Complétude du district') }}</span>
   {{ m.forms_cards(district.forms, form_codes, form_labels) }}
 
   {% if superviseur %}
-  <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>Superviseur du district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-person-badge me-1"></i>{{ _('Superviseur du district') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
       <h6 class="fw-semibold mb-3">{{ superviseur[1].nom }}</h6>
@@ -46,14 +46,14 @@
   </div>
   {% endif %}
 
-  <span class="section-label d-block mb-2"><i class="bi bi-people me-1"></i>Enquêteurs du district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-people me-1"></i>{{ _('Enquêteurs du district') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th style="min-width:180px">Enquêteur</th>
+              <th style="min-width:180px">{{ _('Enquêteur') }}</th>
               {% for code in enqueteur_form_codes %}
               <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
               {% endfor %}
@@ -83,15 +83,15 @@
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>Établissements du district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-hospital me-1"></i>{{ _('Établissements du district') }}</span>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="table-responsive" style="max-height:520px;overflow-y:auto">
         <table class="table table-sm align-middle mb-0">
           <thead style="position:sticky;top:0;background:#fff">
             <tr>
-              <th style="min-width:220px">Établissement</th>
-              <th>Enquêteur</th>
+              <th style="min-width:220px">{{ _('Établissement') }}</th>
+              <th>{{ _('Enquêteur') }}</th>
               {% set etab_form_codes = etablissement_form_codes %}
               {% for code in etab_form_codes %}
               <th class="text-center" title="{{ code }} — {{ form_labels[code] }}">{{ code }}</th>
@@ -120,7 +120,7 @@
               {% endfor %}
               <td class="text-end">
                 <a href="{{ url_for('completude_etablissement_detail', etablissement_code=code) }}" class="btn btn-sm btn-link py-0">
-                  Détail <i class="bi bi-arrow-right"></i>
+                  {{ _('Détail') }} <i class="bi bi-arrow-right"></i>
                 </a>
               </td>
             </tr>
@@ -131,7 +131,7 @@
     </div>
   </div>
 
-  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Anomalies dans ce district</span>
+  <span class="section-label d-block mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ _('Anomalies dans ce district') }}</span>
   {{ m.anomalies_section(anomalies_zero, anomalies_excess) }}
 
 </div>

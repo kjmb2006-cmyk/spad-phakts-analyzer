@@ -1,38 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Qualité des données — SPAD Analyzer{% endblock %}
-{% block page_title %}Qualité des données{% endblock %}
+{% block title %}{{ _('Qualité des données') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Qualité des données') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h3 class="fw-bold mb-1">Qualité des données</h3>
-      <p class="text-muted mb-0">Contrôle des manquants, des doublons et des anomalies de logique.</p>
+      <h3 class="fw-bold mb-1">{{ _('Qualité des données') }}</h3>
+      <p class="text-muted mb-0">{{ _('Contrôle des manquants, des doublons et des anomalies de logique.') }}</p>
     </div>
     <div class="d-flex gap-2">
       <a href="{{ url_for('validation_donnees') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-shield-check me-1"></i>Validation détaillée
+        <i class="bi bi-shield-check me-1"></i>{{ _('Validation détaillée') }}
       </a>
       <a href="{{ url_for('collecte_dashboard') }}"
          onclick="smartBack('{{ url_for('collecte_dashboard') }}'); return false;"
-         class="btn btn-outline-secondary btn-sm">Retour</a>
+         class="btn btn-outline-secondary btn-sm">{{ _('Retour') }}</a>
     </div>
   </div>
 
   <div class="card border-0 shadow-sm">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold mb-0">Indicateurs de qualité</h5>
-        <span class="badge bg-success-subtle text-success">Contrôle continu</span>
+        <h5 class="fw-bold mb-0">{{ _('Indicateurs de qualité') }}</h5>
+        <span class="badge bg-success-subtle text-success">{{ _('Contrôle continu') }}</span>
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle">
           <thead>
             <tr>
-              <th>Variable</th>
-              <th>Manquants</th>
-              <th>Valeurs aberrantes</th>
-              <th>Statut</th>
+              <th>{{ _('Variable') }}</th>
+              <th>{{ _('Manquants') }}</th>
+              <th>{{ _('Valeurs aberrantes') }}</th>
+              <th>{{ _('Statut') }}</th>
             </tr>
           </thead>
           <tbody>

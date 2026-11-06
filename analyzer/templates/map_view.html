@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Carte géographique — SPAD Analyzer{% endblock %}
-{% block page_title %}Carte géographique{% endblock %}
+{% block title %}{{ _('Carte géographique') }} — SPAD Analyzer{% endblock %}
+{% block page_title %}{{ _('Carte géographique') }}{% endblock %}
 
 {% block content %}
 
@@ -265,10 +265,10 @@
   <div class="card-body py-2">
     <div class="d-flex gap-2 source-toggle mb-2">
       <a href="{{ url_for('map_view') }}" class="{{ 'active' if source != 'gdb' else '' }}">
-        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Enquête chargée
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ _('Enquête chargée') }}
       </a>
       <a href="{{ url_for('map_view', source='gdb') }}" class="{{ 'active' if source == 'gdb' else '' }}">
-        <i class="bi bi-database me-1"></i>Base centrale (GDB)
+        <i class="bi bi-database me-1"></i>{{ _('Base centrale (GDB)') }}
       </a>
     </div>
     {% if source == 'gdb' %}
@@ -276,24 +276,24 @@
       <input type="hidden" name="source" value="gdb">
       {% if gdb_candidats.combines %}
       <div class="col-auto">
-        <label class="form-label small mb-1 text-muted">Variable GPS (colonne combinée)</label>
+        <label class="form-label small mb-1 text-muted">{{ _('Variable GPS (colonne combinée)') }}</label>
         <select name="gps" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:14rem">
           {% for r, n in gdb_candidats.combines %}
-          <option value="{{ r }}" {{ 'selected' if r == gdb_gps_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+          <option value="{{ r }}" {{ 'selected' if r == gdb_gps_radical }}>{{ r }} ({{ n }} {{ _('valeur(s)') }})</option>
           {% endfor %}
         </select>
       </div>
       {% endif %}
       {% if gdb_candidats.lats and gdb_candidats.lons %}
       <div class="col-auto">
-        <label class="form-label small mb-1 text-muted">… ou latitude</label>
+        <label class="form-label small mb-1 text-muted">{{ _('… ou latitude') }}</label>
         <select name="lat" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">—</option>
           {% for r, n in gdb_candidats.lats %}<option value="{{ r }}" {{ 'selected' if r == gdb_lat_radical }}>{{ r }}</option>{% endfor %}
         </select>
       </div>
       <div class="col-auto">
-        <label class="form-label small mb-1 text-muted">longitude</label>
+        <label class="form-label small mb-1 text-muted">{{ _('longitude') }}</label>
         <select name="lon" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">—</option>
           {% for r, n in gdb_candidats.lons %}<option value="{{ r }}" {{ 'selected' if r == gdb_lon_radical }}>{{ r }}</option>{% endfor %}
@@ -302,19 +302,19 @@
       {% endif %}
       {% if gdb_lieux %}
       <div class="col-auto">
-        <label class="form-label small mb-1 text-muted">Grouper / colorer par</label>
+        <label class="form-label small mb-1 text-muted">{{ _('Grouper / colorer par') }}</label>
         <select name="lieu" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:12rem">
-          <option value="">— par enquête —</option>
+          <option value="">— {{ _('par enquête') }} —</option>
           {% for r, n in gdb_lieux %}
-          <option value="{{ r }}" {{ 'selected' if r == gdb_lieu_radical }}>{{ r }} ({{ n }} valeur(s))</option>
+          <option value="{{ r }}" {{ 'selected' if r == gdb_lieu_radical }}>{{ r }} ({{ n }} {{ _('valeur(s)') }})</option>
           {% endfor %}
         </select>
       </div>
       {% endif %}
     </form>
     <p class="small text-muted mb-0 mt-2">
-      Points GPS de toutes les enquêtes versées dans la <a href="{{ url_for('gdb_index') }}">Base centrale</a>,
-      avec leur enquête d'origine — jamais un point sans savoir d'où il vient.
+      {{ _('Points GPS de toutes les enquêtes versées dans la') }} <a href="{{ url_for('gdb_index') }}">{{ _('Base centrale') }}</a>,
+      {{ _("avec leur enquête d'origine — jamais un point sans savoir d'où il vient.") }}
     </p>
     {% endif %}
   </div>
@@ -329,12 +329,12 @@
 <div class="d-flex gap-3 mb-3 flex-wrap">
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #1A5276;min-width:130px">
     <div style="font-size:1.5rem;font-weight:800;color:#1A5276;line-height:1">{{ total_pts }}</div>
-    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Points localisés</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">{{ _('Points localisés') }}</div>
   </div>
   {% if no_gps_cnt %}
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #E67E22;min-width:130px">
     <div style="font-size:1.5rem;font-weight:800;color:#E67E22;line-height:1">{{ no_gps_cnt }}</div>
-    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Sans coordonnées</div>
+    <div style="font-size:.7rem;color:#85929E;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">{{ _('Sans coordonnées') }}</div>
   </div>
   {% endif %}
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #17A589;min-width:130px">
@@ -343,16 +343,16 @@
   </div>
   {% if ctx_labels.get('aire') %}
   <div style="background:#fff;border-radius:10px;padding:12px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #8E44AD;min-width:130px">
-    <div style="font-size:.78rem;font-weight:700;color:#4A5568;margin-bottom:2px">Source GPS</div>
+    <div style="font-size:.78rem;font-weight:700;color:#4A5568;margin-bottom:2px">{{ _('Source GPS') }}</div>
     <div style="font-size:.72rem;color:#85929E;font-family:monospace">{{ gps_col }}</div>
   </div>
   {% endif %}
   <div class="ms-auto d-flex align-items-center gap-2">
     <button onclick="resetFilters()" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem">
-      <i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser
+      <i class="bi bi-arrow-counterclockwise me-1"></i>{{ _('Réinitialiser') }}
     </button>
     <button onclick="exportMap()" class="btn btn-sm" style="background:#1A5276;color:#fff;border-radius:8px;font-size:.78rem">
-      <i class="bi bi-download me-1"></i>Exporter PNG
+      <i class="bi bi-download me-1"></i>{{ _('Exporter PNG') }}
     </button>
   </div>
 </div>
@@ -363,25 +363,25 @@
   <!-- ── Panneau latéral ─────────────────────────────────────────── -->
   <div class="map-panel">
     <div class="map-panel-header">
-      <h6><i class="bi bi-funnel-fill me-1"></i>Filtres & Légende</h6>
-      <small>{{ total_pts }} observations · {{ region_counts|length }} {{ group_label|lower }}(s)</small>
+      <h6><i class="bi bi-funnel-fill me-1"></i>{{ _('Filtres & Légende') }}</h6>
+      <small>{{ total_pts }} {{ _('observations') }} · {{ region_counts|length }} {{ group_label|lower }}(s)</small>
     </div>
     <div class="map-panel-body">
 
       <!-- Recherche rapide -->
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-search"></i>Recherche</div>
+        <div class="filter-label"><i class="bi bi-search"></i>{{ _('Recherche') }}</div>
         <input type="text" id="searchFilter" class="filter-input"
-               placeholder="{{ group_label }}, {{ district_label|lower }}{{ ', enquêteur…' if source != 'gdb' else '…' }}"
+               placeholder="{{ group_label }}, {{ district_label|lower }}{{ _(', enquêteur…') if source != 'gdb' else '…' }}"
                oninput="applyFilters()">
       </div>
 
       <!-- Filtre région -->
       {% if region_counts|length > 1 %}
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-geo-alt"></i>{{ group_label }}{{ ' sanitaire' if source != 'gdb' else '' }}</div>
+        <div class="filter-label"><i class="bi bi-geo-alt"></i>{{ group_label }}{{ _(' sanitaire') if source != 'gdb' else '' }}</div>
         <select id="regionFilter" class="filter-input" onchange="applyFilters()">
-          <option value="">— Tout afficher —</option>
+          <option value="">— {{ _('Tout afficher') }} —</option>
           {% for reg, cnt in region_counts.items()|sort %}
           <option value="{{ reg }}">{{ reg }} ({{ cnt }})</option>
           {% endfor %}
@@ -391,9 +391,9 @@
 
       <!-- Filtre district -->
       <div class="filter-section">
-        <div class="filter-label"><i class="bi bi-building"></i>{{ district_label }}{{ ' sanitaire' if source != 'gdb' else '' }}</div>
+        <div class="filter-label"><i class="bi bi-building"></i>{{ district_label }}{{ _(' sanitaire') if source != 'gdb' else '' }}</div>
         <select id="districtFilter" class="filter-input" onchange="applyFilters()">
-          <option value="">— Tout afficher —</option>
+          <option value="">— {{ _('Tout afficher') }} —</option>
         </select>
       </div>
 
@@ -416,25 +416,25 @@
       {% if source != 'gdb' and duration_mode == 'none' %}
       <div class="filter-section">
         <div class="filter-label" style="color:#E67E22">
-          <i class="bi bi-exclamation-triangle"></i>Durée enquête manquante
+          <i class="bi bi-exclamation-triangle"></i>{{ _('Durée enquête manquante') }}
         </div>
         <div style="font-size:.72rem;background:#FEF9E7;border:1px solid #F0C040;border-radius:7px;padding:9px 11px;color:#6D4C00;line-height:1.55">
-          <strong>Non capturée par ce formulaire.</strong><br>
-          Pour l'activer dans KoboToolbox, ajoutez dans votre XLSForm :
+          <strong>{{ _('Non capturée par ce formulaire.') }}</strong><br>
+          {{ _("Pour l'activer dans KoboToolbox, ajoutez dans votre XLSForm :") }}
           <div style="margin-top:6px;font-family:monospace;background:#fff;border-radius:5px;padding:5px 8px;font-size:.68rem;color:#1A5276">
-            type&nbsp;&nbsp;: <b>start</b>&nbsp;→ nom : <b>start</b><br>
-            type&nbsp;&nbsp;: <b>end</b>&nbsp;&nbsp;&nbsp;→ nom : <b>end</b>
+            type&nbsp;&nbsp;: <b>start</b>&nbsp;→ {{ _('nom') }} : <b>start</b><br>
+            type&nbsp;&nbsp;: <b>end</b>&nbsp;&nbsp;&nbsp;→ {{ _('nom') }} : <b>end</b>
           </div>
-          <div style="margin-top:5px">SPAD calculera automatiquement la durée à la prochaine collecte.</div>
+          <div style="margin-top:5px">{{ _('SPAD calculera automatiquement la durée à la prochaine collecte.') }}</div>
         </div>
       </div>
       {% elif duration_mode == 'computed' %}
       <div class="filter-section">
         <div class="filter-label" style="color:#17A589">
-          <i class="bi bi-stopwatch"></i>Durée calculée automatiquement
+          <i class="bi bi-stopwatch"></i>{{ _('Durée calculée automatiquement') }}
         </div>
         <div style="font-size:.72rem;background:#EAF5F1;border:1px solid #17A589;border-radius:7px;padding:8px 11px;color:#0D5C3A">
-          Calculée depuis <code>{{ ctx_labels.get('durée enquête','start → end') }}</code>
+          {{ _('Calculée depuis') }} <code>{{ ctx_labels.get('durée enquête','start → end') }}</code>
         </div>
       </div>
       {% endif %}
@@ -442,7 +442,7 @@
       <!-- Colonnes détectées -->
       {% if ctx_labels %}
       <div class="filter-section mt-2">
-        <div class="filter-label"><i class="bi bi-table"></i>Champs détectés</div>
+        <div class="filter-label"><i class="bi bi-table"></i>{{ _('Champs détectés') }}</div>
         {% for key, col in ctx_labels.items() %}
         <div style="font-size:.72rem;padding:3px 6px;margin-bottom:3px;background:#F0F4F8;border-radius:5px;display:flex;justify-content:space-between">
           <span style="color:#85929E;text-transform:capitalize">{{ key }}</span>
@@ -461,13 +461,13 @@
 
     <!-- Outils carte -->
     <div class="map-toolbar">
-      <button class="map-btn active" id="btnCluster" onclick="toggleCluster(this)" title="Regroupement">
+      <button class="map-btn active" id="btnCluster" onclick="toggleCluster(this)" title="{{ _('Regroupement') }}">
         <i class="bi bi-circle-fill" style="font-size:.65rem"></i>
       </button>
-      <button class="map-btn" id="btnSatellite" onclick="toggleLayer(this)" title="Vue satellite">
+      <button class="map-btn" id="btnSatellite" onclick="toggleLayer(this)" title="{{ _('Vue satellite') }}">
         <i class="bi bi-globe"></i>
       </button>
-      <button class="map-btn" onclick="fitAll()" title="Tout afficher">
+      <button class="map-btn" onclick="fitAll()" title="{{ _('Tout afficher') }}">
         <i class="bi bi-fullscreen"></i>
       </button>
     </div>
@@ -477,7 +477,7 @@
       <i class="bi bi-broadcast-pin me-1" style="color:#17A589"></i>
       GPS : <strong>{{ gps_col }}</strong>
       &nbsp;·&nbsp;
-      <span id="visibleCount">{{ total_pts }}</span> point(s) visibles
+      <span id="visibleCount">{{ total_pts }}</span> {{ _('point(s) visibles') }}
     </div>
   </div>
 
@@ -762,39 +762,39 @@ function exportMap() {
 ══════════════════════════════════════════════════════════════════ -->
 <div style="background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden">
   <div style="background:linear-gradient(135deg,#1A5276,#2E4A8A);padding:20px 28px;color:#fff">
-    <h6 style="margin:0;font-weight:700"><i class="bi bi-map me-2"></i>Carte géographique</h6>
+    <h6 style="margin:0;font-weight:700"><i class="bi bi-map me-2"></i>{{ _('Carte géographique') }}</h6>
   </div>
   <div class="no-map-state">
     <div style="font-size:3.5rem;margin-bottom:16px">🗺️</div>
-    <h5 style="color:#1A5276;font-weight:700;margin-bottom:8px">Aucune coordonnée GPS détectée</h5>
+    <h5 style="color:#1A5276;font-weight:700;margin-bottom:8px">{{ _('Aucune coordonnée GPS détectée') }}</h5>
     <p style="color:#85929E;max-width:500px;margin:0 auto 24px;line-height:1.7">
-      Pour afficher la carte, votre fichier doit contenir une colonne de coordonnées GPS.<br>
-      SPAD Analyzer reconnaît automatiquement les formats suivants :
+      {{ _('Pour afficher la carte, votre fichier doit contenir une colonne de coordonnées GPS.') }}<br>
+      {{ _('SPAD Analyzer reconnaît automatiquement les formats suivants :') }}
     </p>
 
     <div class="row g-3 justify-content-center" style="max-width:600px;margin:0 auto">
       <div class="col-sm-6">
         <div style="background:#F0F4F8;border-radius:10px;padding:14px 16px;text-align:left">
           <div style="font-weight:700;color:#1A5276;margin-bottom:6px;font-size:.85rem">
-            <i class="bi bi-phone me-1"></i>Format KoboToolbox
+            <i class="bi bi-phone me-1"></i>{{ _('Format KoboToolbox') }}
           </div>
           <code style="font-size:.78rem;color:#E67E22">start_gps</code>,
           <code style="font-size:.78rem;color:#E67E22">_geolocation</code>,
           <code style="font-size:.78rem;color:#E67E22">end_gps</code><br>
           <span style="font-size:.72rem;color:#85929E;margin-top:4px;display:block">
-            "5.18 -4.60 29.0 4.4" (lat lon alt prec)
+            {{ _('"5.18 -4.60 29.0 4.4" (lat lon alt prec)') }}
           </span>
         </div>
       </div>
       <div class="col-sm-6">
         <div style="background:#F0F4F8;border-radius:10px;padding:14px 16px;text-align:left">
           <div style="font-weight:700;color:#1A5276;margin-bottom:6px;font-size:.85rem">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Format standard
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ _('Format standard') }}
           </div>
           <code style="font-size:.78rem;color:#E67E22">latitude</code>,
           <code style="font-size:.78rem;color:#E67E22">longitude</code><br>
           <span style="font-size:.72rem;color:#85929E;margin-top:4px;display:block">
-            Colonnes numériques séparées
+            {{ _('Colonnes numériques séparées') }}
           </span>
         </div>
       </div>
@@ -802,18 +802,18 @@ function exportMap() {
 
     {% if diagnostic %}
     <div class="mt-4 p-3 rounded" style="background:#FDEDEC;border:1.5px solid #E74C3C;max-width:680px;font-size:.85rem;text-align:left;margin:0 auto">
-      <strong style="color:#922B21">🔎 Diagnostic GPS</strong>
+      <strong style="color:#922B21">🔎 {{ _('Diagnostic GPS') }}</strong>
       <div class="mt-2" style="line-height:1.6">{{ diagnostic.reason }}</div>
       <div class="mt-2 small" style="color:#566573">
-        {% if diagnostic.gps_col %}<div>• Colonne combinée détectée : <code>{{ diagnostic.gps_col }}</code></div>{% endif %}
+        {% if diagnostic.gps_col %}<div>• {{ _('Colonne combinée détectée :') }} <code>{{ diagnostic.gps_col }}</code></div>{% endif %}
         {% if diagnostic.lat_col or diagnostic.lon_col %}<div>• lat → <code>{{ diagnostic.lat_col or '—' }}</code> · lon → <code>{{ diagnostic.lon_col or '—' }}</code></div>{% endif %}
-        <div>• Lignes sans GPS : <strong>{{ diagnostic.no_gps_cnt }}</strong> / {{ diagnostic.total_rows }}</div>
-        {% if diagnostic.parse_fail_cnt %}<div>• Cellules au format non reconnu : <strong>{{ diagnostic.parse_fail_cnt }}</strong></div>{% endif %}
-        {% if diagnostic.out_of_range_cnt %}<div>• Coordonnées hors limites : <strong>{{ diagnostic.out_of_range_cnt }}</strong></div>{% endif %}
+        <div>• {{ _('Lignes sans GPS :') }} <strong>{{ diagnostic.no_gps_cnt }}</strong> / {{ diagnostic.total_rows }}</div>
+        {% if diagnostic.parse_fail_cnt %}<div>• {{ _('Cellules au format non reconnu :') }} <strong>{{ diagnostic.parse_fail_cnt }}</strong></div>{% endif %}
+        {% if diagnostic.out_of_range_cnt %}<div>• {{ _('Coordonnées hors limites :') }} <strong>{{ diagnostic.out_of_range_cnt }}</strong></div>{% endif %}
       </div>
       {% if diagnostic.sample_cols %}
       <details class="mt-3">
-        <summary style="cursor:pointer;color:#922B21;font-weight:600">▶ Voir toutes les colonnes du fichier ({{ diagnostic.sample_cols|length }})</summary>
+        <summary style="cursor:pointer;color:#922B21;font-weight:600">▶ {{ _('Voir toutes les colonnes du fichier') }} ({{ diagnostic.sample_cols|length }})</summary>
         <div class="mt-2 d-flex flex-wrap gap-1">
           {% for c in diagnostic.sample_cols %}
           <span style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;font-size:.72rem;font-family:monospace">{{ c }}</span>
@@ -826,7 +826,7 @@ function exportMap() {
 
     {% if meta %}
     <div class="mt-4 p-3 rounded" style="background:#FEF9E7;border:1.5px solid #F0C040;max-width:500px;font-size:.82rem;text-align:left">
-      <strong>📋 Variables disponibles dans ce dataset :</strong>
+      <strong>📋 {{ _('Variables disponibles dans ce dataset :') }}</strong>
       <div class="mt-2 d-flex flex-wrap gap-1">
         {% for col in meta.get('columns', [])[:30] %}
         <span style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;font-size:.72rem;font-family:monospace">{{ col }}</span>
