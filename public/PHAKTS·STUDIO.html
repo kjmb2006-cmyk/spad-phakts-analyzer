@@ -37,7 +37,7 @@
   // applyTranslations() ne s'exécutent.
   try {
     var __l = localStorage.getItem('phakts_lang');
-    if (__l && ['fr','en','es','pt'].indexOf(__l) >= 0) {
+    if (__l && ['fr','en'].indexOf(__l) >= 0) {
       document.documentElement.setAttribute('lang', __l);
     }
   } catch (_) {}
@@ -843,8 +843,6 @@
     <div class="lang-switcher" id="langSwitcher" role="group" aria-label="Langue / Language">
       <button data-lang-set="fr" title="Français" onclick="PHAKTS_I18N.setLang('fr')">FR</button>
       <button data-lang-set="en" title="English" onclick="PHAKTS_I18N.setLang('en')">EN</button>
-      <button data-lang-set="es" title="Español" onclick="PHAKTS_I18N.setLang('es')">ES</button>
-      <button data-lang-set="pt" title="Português" onclick="PHAKTS_I18N.setLang('pt')">PT</button>
     </div>
     <div class="theme-switcher" id="themeSwitcher" role="group" aria-label="Apparence">
       <button data-theme-set="light" title="Apparence claire" onclick="setTheme('light')">☀️ Clair</button>
@@ -1223,25 +1221,25 @@
         <table class="grammar-table">
           <thead><tr><th style="width:28%">Code</th><th style="width:30%" data-i18n="grammar_th_type">Type</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
-            <tr><td class="gc">__1</td><td class="gd">Entier générique</td><td class="gm">Score__1, Nb_Contacts__1</td></tr>
-            <tr><td class="gc">__1Y!Y</td><td class="gd">Entier en Années</td><td class="gm">Age__1Y!0&lt;N&lt;120</td></tr>
-            <tr><td class="gc">__1M!M</td><td class="gd">Entier en Mois</td><td class="gm">Grossesse__1M!0&lt;N&lt;24</td></tr>
-            <tr><td class="gc">__1W!W</td><td class="gd">Entier en Semaines</td><td class="gm">Age_Gestationnel__1W!0&lt;N&lt;42</td></tr>
-            <tr><td class="gc">__1D</td><td class="gd">Entier en Jours</td><td class="gm">Duree_Hospitalisation__1D</td></tr>
-            <tr><td class="gc">__1H</td><td class="gd">Entier en Heures</td><td class="gm">Duree_Care__1H</td></tr>
-            <tr><td class="gc">__1U</td><td class="gd">Entier en Minutes</td><td class="gm">Monitoring_Time__1U</td></tr>
-            <tr><td class="gc">__2</td><td class="gd">Réel pur</td><td class="gm">BMI__2, BP_Systolic__2!50&lt;R&lt;250</td></tr>
-            <tr><td class="gc">__2K</td><td class="gd">Réel en Kg</td><td class="gm">Poids__2K!0&lt;R&lt;300</td></tr>
-            <tr><td class="gc">__2T</td><td class="gd">Réel en °C</td><td class="gm">Temperature__2T!35&lt;R&lt;42</td></tr>
-            <tr><td class="gc">__2L</td><td class="gd">Réel en mètres</td><td class="gm">Taille__2L!0&lt;R&lt;3</td></tr>
-            <tr><td class="gc">__2S</td><td class="gd">Réel en secondes</td><td class="gm">Reflex_Time__2S</td></tr>
-            <tr><td class="gc">__1Q</td><td class="gd">Entier en Trimestres (Q=Quarter) <em>Règle 20</em></td><td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td></tr>
-            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)">Réel en % · Proportion <em>Règle 11 ext.</em></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
-            <tr><td class="gc">__2V</td><td class="gd">Réel en Volume (mL/L) <em>Règle 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
-            <tr><td class="gc">__2F</td><td class="gd">Réel · Monnaie/Montant (XOF…) <em>Règle 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
-            <tr><td class="gc">__2I</td><td class="gd">Réel · Indice/Score composite (z-score, DEA) <em>Règle 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
-            <tr><td class="gc">__G!start…</td><td class="gd">Variable générée automatiquement par Kobo (aucune saisie) · <code>!start</code> <code>!end</code> <code>!today</code> <code>!deviceid</code> <code>!username</code> <code>!phonenumber</code> <code>!audit</code> — remplace <code>__E</code></td><td class="gm">Entretien__Debut__G!start</td></tr>
-            <tr><td class="gc">__G!DMS</td><td class="gd">Géolocalisation geopoint (variable générée par Kobo) · <code>!DMS</code> ou <code>!DD</code> <em>Règle 19</em></td><td class="gm">Etablissement__Coordonnees__G!DMS</td></tr>
+            <tr><td class="gc">__1</td><td class="gd" data-i18n="grammar_b1">Entier générique</td><td class="gm">Score__1, Nb_Contacts__1</td></tr>
+            <tr><td class="gc">__1Y!Y</td><td class="gd" data-i18n="grammar_b2">Entier en Années</td><td class="gm">Age__1Y!0&lt;N&lt;120</td></tr>
+            <tr><td class="gc">__1M!M</td><td class="gd" data-i18n="grammar_b3">Entier en Mois</td><td class="gm">Grossesse__1M!0&lt;N&lt;24</td></tr>
+            <tr><td class="gc">__1W!W</td><td class="gd" data-i18n="grammar_b4">Entier en Semaines</td><td class="gm">Age_Gestationnel__1W!0&lt;N&lt;42</td></tr>
+            <tr><td class="gc">__1D</td><td class="gd" data-i18n="grammar_b5">Entier en Jours</td><td class="gm">Duree_Hospitalisation__1D</td></tr>
+            <tr><td class="gc">__1H</td><td class="gd" data-i18n="grammar_b6">Entier en Heures</td><td class="gm">Duree_Care__1H</td></tr>
+            <tr><td class="gc">__1U</td><td class="gd" data-i18n="grammar_b7">Entier en Minutes</td><td class="gm">Monitoring_Time__1U</td></tr>
+            <tr><td class="gc">__2</td><td class="gd" data-i18n="grammar_b8">Réel pur</td><td class="gm">BMI__2, BP_Systolic__2!50&lt;R&lt;250</td></tr>
+            <tr><td class="gc">__2K</td><td class="gd" data-i18n="grammar_b9">Réel en Kg</td><td class="gm">Poids__2K!0&lt;R&lt;300</td></tr>
+            <tr><td class="gc">__2T</td><td class="gd" data-i18n="grammar_b10">Réel en °C</td><td class="gm">Temperature__2T!35&lt;R&lt;42</td></tr>
+            <tr><td class="gc">__2L</td><td class="gd" data-i18n="grammar_b11">Réel en mètres</td><td class="gm">Taille__2L!0&lt;R&lt;3</td></tr>
+            <tr><td class="gc">__2S</td><td class="gd" data-i18n="grammar_b12">Réel en secondes</td><td class="gm">Reflex_Time__2S</td></tr>
+            <tr><td class="gc">__1Q</td><td class="gd"><span data-i18n="grammar_b13">Entier en Trimestres (Q=Quarter)</span> <em><span data-i18n="grammar_word_rule">Règle</span> 20</em></td><td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td></tr>
+            <tr><td class="gc" style="border-top:1px solid var(--border);padding-top:8px">__2P</td><td class="gd" style="border-top:1px solid var(--border)"><span data-i18n="grammar_b14">Réel en % · Proportion</span> <em><span data-i18n="grammar_word_rule">Règle</span> 11 ext.</em></td><td class="gm" style="border-top:1px solid var(--border)">Couverture_Vaccinale__2P!0&lt;R&lt;100</td></tr>
+            <tr><td class="gc">__2V</td><td class="gd"><span data-i18n="grammar_b15">Réel en Volume (mL/L)</span> <em><span data-i18n="grammar_word_rule">Règle</span> 11 ext.</em></td><td class="gm">Dose_Vaccin__2V!0&lt;R&lt;10</td></tr>
+            <tr><td class="gc">__2F</td><td class="gd"><span data-i18n="grammar_b16">Réel · Monnaie/Montant (XOF…)</span> <em><span data-i18n="grammar_word_rule">Règle</span> 11 ext.</em></td><td class="gm">Cout_Consultation__2F!0&lt;R&lt;100000</td></tr>
+            <tr><td class="gc">__2I</td><td class="gd"><span data-i18n="grammar_b17">Réel · Indice/Score composite (z-score, DEA)</span> <em><span data-i18n="grammar_word_rule">Règle</span> 11 ext.</em></td><td class="gm">Score_Nutrition__2I</td></tr>
+            <tr><td class="gc">__G!start…</td><td class="gd"><span data-i18n="grammar_b18a">Variable générée automatiquement par Kobo (aucune saisie) ·</span> <code>!start</code> <code>!end</code> <code>!today</code> <code>!deviceid</code> <code>!username</code> <code>!phonenumber</code> <code>!audit</code> <span data-i18n="grammar_b18b">— remplace</span> <code>__E</code></td><td class="gm">Entretien__Debut__G!start</td></tr>
+            <tr><td class="gc">__G!DMS</td><td class="gd"><span data-i18n="grammar_b19a">Géolocalisation geopoint (variable générée par Kobo) ·</span> <code>!DMS</code> <span data-i18n="grammar_word_or">ou</span> <code>!DD</code> <em><span data-i18n="grammar_word_rule">Règle</span> 19</em></td><td class="gm">Etablissement__Coordonnees__G!DMS</td></tr>
           </tbody>
         </table>
       </div>
@@ -1252,13 +1250,13 @@
         <table class="grammar-table">
           <thead><tr><th style="width:28%" data-i18n="grammar_th_symbol">Symbole</th><th data-i18n="grammar_th_role">Rôle</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
-            <tr><td class="gc">Snake_Case</td><td class="gd">Radicaux abstraits / génériques</td><td class="gm">Collecte_Routine, Statut_Matrimonial</td></tr>
-            <tr><td class="gc">__</td><td class="gd">Double underscore — sépare les parties</td><td class="gm">Radical__Déterminant__Affix</td></tr>
-            <tr><td class="gc">!</td><td class="gd">Introduit la contrainte</td><td class="gm">Age__1Y!0&lt;N&lt;120</td></tr>
-            <tr><td class="gc">, (virgule)</td><td class="gd">Choix <strong>exclusifs</strong> (select_one)</td><td class="gm">Sport__X![Football<strong>,</strong>Natation]</td></tr>
-            <tr><td class="gc">| (pipe)</td><td class="gd">Choix <strong>cumulables</strong> (select_multiple)</td><td class="gm">Sport__X![Football<strong>|</strong>Course<strong>|</strong>Natation]</td></tr>
-            <tr><td class="gc">Liste_=[…]</td><td class="gd">Vocabulaire contrôlé réutilisable</td><td class="gm">Religion_=[Chrétienne,Musulmane,Autre,0]</td></tr>
-            <tr><td class="gc">0</td><td class="gd">Négation / option Autre / Aucun</td><td class="gm">0 placé en fin de liste</td></tr>
+            <tr><td class="gc">Snake_Case</td><td class="gd" data-i18n="grammar_c1">Radicaux abstraits / génériques</td><td class="gm">Collecte_Routine, Statut_Matrimonial</td></tr>
+            <tr><td class="gc">__</td><td class="gd" data-i18n="grammar_c2">Double underscore — sépare les parties</td><td class="gm">Radical__Déterminant__Affix</td></tr>
+            <tr><td class="gc">!</td><td class="gd" data-i18n="grammar_c3">Introduit la contrainte</td><td class="gm">Age__1Y!0&lt;N&lt;120</td></tr>
+            <tr><td class="gc">, (virgule)</td><td class="gd"><span data-i18n="grammar_c4">Choix</span> <strong data-i18n="grammar_word_exclusive">exclusifs</strong> (select_one)</td><td class="gm">Sport__X![Football<strong>,</strong>Natation]</td></tr>
+            <tr><td class="gc">| (pipe)</td><td class="gd"><span data-i18n="grammar_c4">Choix</span> <strong data-i18n="grammar_word_cumulative">cumulables</strong> (select_multiple)</td><td class="gm">Sport__X![Football<strong>|</strong>Course<strong>|</strong>Natation]</td></tr>
+            <tr><td class="gc">Liste_=[…]</td><td class="gd" data-i18n="grammar_c5">Vocabulaire contrôlé réutilisable</td><td class="gm">Religion_=[Chrétienne,Musulmane,Autre,0]</td></tr>
+            <tr><td class="gc">0</td><td class="gd" data-i18n="grammar_c6">Négation / option Autre / Aucun</td><td class="gm">0 placé en fin de liste</td></tr>
           </tbody>
         </table>
       </div>
@@ -1275,9 +1273,9 @@
           <button class="btn-icon btn-edit" onclick="addDpfListe()" data-i18n-title="grammar_add_list_title" title="Ajouter une liste">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
-          Vocabulaire contrôlé injecté dans la grammaire (codification en ligne, Agent IA et mode hors-ligne) : une liste qui correspond au sens de la question est réutilisée au lieu d'en inventer une. Partagé entre tous les postes via le serveur.
-          <strong>« 📁 Importer le DPF »</strong> lit la feuille <em>DPF_lists_Abreviations</em> d'un nouveau Dictionnaire et remplace les listes DPF (les listes Studio et locales sans équivalent sont conservées).
-          Source : <span style="color:#22c55e">DPF</span> = Dictionnaire officiel · <span style="color:#38bdf8">Studio</span> = liste de Studio sans équivalent DPF · <span style="color:#fbbf24">local</span> = ajoutée ou modifiée ici.
+          <span data-i18n="grammar_d_intro1">Vocabulaire contrôlé injecté dans la grammaire (codification en ligne, Agent IA et mode hors-ligne) : une liste qui correspond au sens de la question est réutilisée au lieu d'en inventer une. Partagé entre tous les postes via le serveur.</span>
+          <strong data-i18n="grammar_d_intro2">« 📁 Importer le DPF »</strong> <span data-i18n="grammar_d_intro3">lit la feuille</span> <em>DPF_lists_Abreviations</em> <span data-i18n="grammar_d_intro4">d'un nouveau Dictionnaire et remplace les listes DPF (les listes Studio et locales sans équivalent sont conservées).</span>
+          <span data-i18n="grammar_source_word">Source</span> : <span style="color:#22c55e">DPF</span> = <span data-i18n="grammar_d_src_dpf">Dictionnaire officiel</span> · <span style="color:#38bdf8">Studio</span> = <span data-i18n="grammar_d_src_studio">liste de Studio sans équivalent DPF</span> · <span style="color:#fbbf24">local</span> = <span data-i18n="grammar_d_src_local">ajoutée ou modifiée ici.</span>
         </p>
         <table class="grammar-table">
           <thead><tr><th style="width:30%" data-i18n="grammar_th_id">Identifiant</th><th data-i18n="grammar_th_values">Valeurs</th><th style="width:10%;text-align:center" data-i18n="th_actions">Actions</th></tr></thead>
@@ -1370,11 +1368,11 @@
         <table class="grammar-table">
           <thead><tr><th style="width:6%">N°</th><th data-i18n="grammar_th_step">Étape</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
-            <tr><td class="gc">1</td><td class="gd">Partir de la question terrain</td><td class="gm">« Êtes-vous enceinte ? »</td></tr>
-            <tr><td class="gc">2</td><td class="gd">Identifier le sens métier (radical abstrait)</td><td class="gm">Grossesse</td></tr>
-            <tr><td class="gc">3</td><td class="gd">Choisir le type de réponse</td><td class="gm">__B (booléen)</td></tr>
-            <tr><td class="gc">4</td><td class="gd">Ajouter période / unité utile</td><td class="gm">__1M (mois), __1Y (années)</td></tr>
-            <tr><td class="gc">5</td><td class="gd">Poser la contrainte de qualité</td><td class="gm">!boolean, !0&lt;N&lt;24</td></tr>
+            <tr><td class="gc">1</td><td class="gd" data-i18n="grammar_g1">Partir de la question terrain</td><td class="gm">« Êtes-vous enceinte ? »</td></tr>
+            <tr><td class="gc">2</td><td class="gd" data-i18n="grammar_g2">Identifier le sens métier (radical abstrait)</td><td class="gm">Grossesse</td></tr>
+            <tr><td class="gc">3</td><td class="gd" data-i18n="grammar_g3">Choisir le type de réponse</td><td class="gm">__B (<span data-i18n="type_boolean_full">booléen</span>)</td></tr>
+            <tr><td class="gc">4</td><td class="gd" data-i18n="grammar_g4">Ajouter période / unité utile</td><td class="gm">__1M (<span data-i18n="unit_months">mois</span>), __1Y (<span data-i18n="unit_years">années</span>)</td></tr>
+            <tr><td class="gc">5</td><td class="gd" data-i18n="grammar_g5">Poser la contrainte de qualité</td><td class="gm">!boolean, !0&lt;N&lt;24</td></tr>
           </tbody>
         </table>
       </div>
@@ -1385,20 +1383,20 @@
         <table class="grammar-table">
           <thead><tr><th style="width:35%" data-i18n="grammar_th_syntax">Syntaxe</th><th style="width:35%" data-i18n="grammar_th_meaning">Signification</th><th data-i18n="grammar_th_example">Exemple</th></tr></thead>
           <tbody>
-            <tr><td class="gc">Lexia__B = Oui -&gt; @Cible</td><td class="gd">Si réponse = valeur → afficher cible</td><td class="gm">Grossesse__B = Oui -&gt; @Age_Grossesse__1W</td></tr>
-            <tr><td class="gc">Lexia__X != Val -&gt; @Cible</td><td class="gd">Si réponse ≠ valeur → afficher cible</td><td class="gm">Fumer_Type__X != Cigarette -&gt; @Autre_Produit__Z</td></tr>
-            <tr><td class="gc">Lexia__B -&gt; @Cible</td><td class="gd">Si booléen = Oui (implicite)</td><td class="gm">Fumer__B -&gt; @Fumer_Type__X</td></tr>
-            <tr><td class="gc">!Lexia__B -&gt; @Cible</td><td class="gd">Si booléen = Non (négation)</td><td class="gm">!Allaitement__B -&gt; @Fin</td></tr>
+            <tr><td class="gc">Lexia__B = Oui -&gt; @Cible</td><td class="gd" data-i18n="grammar_h1">Si réponse = valeur → afficher cible</td><td class="gm">Grossesse__B = Oui -&gt; @Age_Grossesse__1W</td></tr>
+            <tr><td class="gc">Lexia__X != Val -&gt; @Cible</td><td class="gd" data-i18n="grammar_h2">Si réponse ≠ valeur → afficher cible</td><td class="gm">Fumer_Type__X != Cigarette -&gt; @Autre_Produit__Z</td></tr>
+            <tr><td class="gc">Lexia__B -&gt; @Cible</td><td class="gd" data-i18n="grammar_h3">Si booléen = Oui (implicite)</td><td class="gm">Fumer__B -&gt; @Fumer_Type__X</td></tr>
+            <tr><td class="gc">!Lexia__B -&gt; @Cible</td><td class="gd" data-i18n="grammar_h4">Si booléen = Non (négation)</td><td class="gm">!Allaitement__B -&gt; @Fin</td></tr>
           </tbody>
         </table>
         <table class="grammar-table" style="margin-top:8px">
           <thead><tr><th style="width:28%" data-i18n="grammar_th_symbol">Symbole</th><th data-i18n="grammar_th_role">Rôle</th></tr></thead>
           <tbody>
-            <tr><td class="gc">-&gt;</td><td class="gd">Opérateur de flux : « alors afficher »</td></tr>
-            <tr><td class="gc">@</td><td class="gd">Ancre vers la question cible</td></tr>
-            <tr><td class="gc">!</td><td class="gd">Négation booléenne (Non)</td></tr>
-            <tr><td class="gc"> ; </td><td class="gd">Séparateur de règles multiples</td></tr>
-            <tr><td class="gc">pf_skip</td><td class="gd">Champ optionnel — vide si pas de branchement</td></tr>
+            <tr><td class="gc">-&gt;</td><td class="gd" data-i18n="grammar_h5">Opérateur de flux : « alors afficher »</td></tr>
+            <tr><td class="gc">@</td><td class="gd" data-i18n="grammar_h6">Ancre vers la question cible</td></tr>
+            <tr><td class="gc">!</td><td class="gd" data-i18n="grammar_h7">Négation booléenne (Non)</td></tr>
+            <tr><td class="gc"> ; </td><td class="gd" data-i18n="grammar_h8">Séparateur de règles multiples</td></tr>
+            <tr><td class="gc">pf_skip</td><td class="gd" data-i18n="grammar_h9">Champ optionnel — vide si pas de branchement</td></tr>
           </tbody>
         </table>
       </div>
@@ -1412,62 +1410,62 @@
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">n&lt;=TYPE&lt;=n</td>
-              <td class="gd">Borne inclusive (crochet fermé [0,31])</td>
+              <td class="gd" data-i18n="grammar_k1">Borne inclusive (crochet fermé [0,31])</td>
               <td class="gm">0&lt;=N&lt;=31</td>
             </tr>
             <tr>
               <td class="gc">14 ext.</td>
               <td class="gc">date&lt;A&lt;date</td>
-              <td class="gd">Plage calendaire sur xType A (Date)</td>
+              <td class="gd" data-i18n="grammar_k2">Plage calendaire sur xType A (Date)</td>
               <td class="gm">2000/01/01&lt;A&lt;2026/12/31</td>
             </tr>
             <tr>
               <td class="gc">1.3</td>
-              <td class="gc">translittération</td>
-              <td class="gd">Aucun caractère accentué dans un radical codifié — translittérer systématiquement</td>
+              <td class="gc" data-i18n="grammar_word_translit">translittération</td>
+              <td class="gd" data-i18n="grammar_k3">Aucun caractère accentué dans un radical codifié — translittérer systématiquement</td>
               <td class="gm">Coordonnées→Coordonnees, Détermine→Determine, Région→Region</td>
             </tr>
             <tr>
               <td class="gc">15</td>
               <td class="gc">&lt;AAAA&gt;__Expression</td>
-              <td class="gd">Préfixe temporel absolu (série chronologique)</td>
+              <td class="gd" data-i18n="grammar_k4">Préfixe temporel absolu (série chronologique)</td>
               <td class="gm">2025__AS__Population__1!0&lt;N&lt;1000000</td>
             </tr>
             <tr>
               <td class="gc">16</td>
               <td class="gc">Admin_Radical_</td>
-              <td class="gd">Référentiel administratif externe (Dictionnaire Genesis / pulldata XLSForm)</td>
+              <td class="gd" data-i18n="grammar_k5">Référentiel administratif externe (Dictionnaire Genesis / pulldata XLSForm)</td>
               <td class="gm">Admin_District_Sanitaire_, Admin_Region_Sanitaire_</td>
             </tr>
             <tr>
               <td class="gc">17</td>
               <td class="gc">Lexia = val -&gt; @Lexia</td>
-              <td class="gd">Skip Logic — afficher cible si source = valeur</td>
+              <td class="gd" data-i18n="grammar_k6">Skip Logic — afficher cible si source = valeur</td>
               <td class="gm">PCIME_Offert__B = Oui -&gt; @PCIME_Activites__B</td>
             </tr>
             <tr>
               <td class="gc">18</td>
               <td class="gc">_Rad__1Mot__2Mot__M2!liste&gt;T1|T2</td>
-              <td class="gd">Champ composite répété (matrice 2 colonnes) — XLSForm begin_repeat</td>
+              <td class="gd" data-i18n="grammar_k7">Champ composite répété (matrice 2 colonnes) — XLSForm begin_repeat</td>
               <td class="gm">_Service__PCIME__1Activite__2Cout__M2!PCIME_Activite_&gt;Expression|Number</td>
             </tr>
             <tr>
               <td class="gc">19</td>
               <td class="gc">Expr__G!DMS</td>
-              <td class="gd">Géolocalisation geopoint (<code>!DMS</code> = degrés-min-sec / <code>!DD</code> = degrés décimaux)</td>
+              <td class="gd"><span data-i18n="grammar_k8a">Géolocalisation geopoint (</span><code>!DMS</code><span data-i18n="grammar_k8b"> = degrés-min-sec /</span> <code>!DD</code><span data-i18n="grammar_k8c"> = degrés décimaux)</span></td>
               <td class="gm">Etablissement__Coordonnees__G!DMS</td>
             </tr>
             <tr>
               <td class="gc">20</td>
               <td class="gc">__1Q</td>
-              <td class="gd">Période Trimestre (Q = Quarter)</td>
+              <td class="gd" data-i18n="grammar_k9">Période Trimestre (Q = Quarter)</td>
               <td class="gm">2025__CPN1__1Q!0&lt;N&lt;5</td>
             </tr>
           </tbody>
         </table>
         <p style="font-size:10.5px;color:var(--text3);margin-top:10px;line-height:1.5">
-          Source : <em>PHAKTS_v2025.10.22-ext2_Consolide_VF.docx</em> &amp; <em>PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx</em>
-          · Statut : <strong>Confirmé</strong> (règles 1.3, 14–17, 20) · <strong>Formalisé</strong> (règles 16, 18, 19)
+          <span data-i18n="grammar_source_word">Source</span> : <em>PHAKTS_v2025.10.22-ext2_Consolide_VF.docx</em> &amp; <em>PHAKTS_Dictionnaire_v2025.10.22-ext2.xlsx</em>
+          · <span data-i18n="grammar_status_word">Statut</span> : <strong data-i18n="grammar_status_confirmed">Confirmé</strong> (règles 1.3, 14–17, 20) · <strong data-i18n="grammar_status_formalized">Formalisé</strong> (règles 16, 18, 19)
         </p>
       </div>
 
@@ -1491,9 +1489,9 @@
           <button class="btn-icon btn-edit" onclick="addAdminRef()" data-i18n-title="grammar_add_entry_title" title="Ajouter une entrée">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
-          Référentiel administratif partagé (Règle 16 — « Dictionnaire Genesis ») : régions, districts, établissements, superviseurs et enquêteurs — pour résoudre les listes <code>Admin_*</code> par référentiel externe (pulldata / select_one_external) plutôt que par des valeurs inventées en dur.
-          <strong>« 📁 Importer / Remplacer »</strong> attend le même format que <em>Admin_SPAD.xlsx</em> (colonnes list_name, name, label::Français (fr), code_id, region_code, district_code, enqueteur_code) et remplace tout le référentiel existant.
-          <strong>« ＋ »</strong> ajoute une seule entrée sans rien effacer.
+          <span data-i18n="grammar_l_intro1">Référentiel administratif partagé (Règle 16 — « Dictionnaire Genesis ») : régions, districts, établissements, superviseurs et enquêteurs — pour résoudre les listes</span> <code>Admin_*</code> <span data-i18n="grammar_l_intro2">par référentiel externe (pulldata / select_one_external) plutôt que par des valeurs inventées en dur.</span>
+          <strong data-i18n="grammar_l_intro3">« 📁 Importer / Remplacer »</strong> <span data-i18n="grammar_l_intro4">attend le même format que</span> <em>Admin_SPAD.xlsx</em> <span data-i18n="grammar_l_intro5">(colonnes list_name, name, label::Français (fr), code_id, region_code, district_code, enqueteur_code) et remplace tout le référentiel existant.</span>
+          <strong data-i18n="grammar_l_intro6">« ＋ »</strong> <span data-i18n="grammar_l_intro7">ajoute une seule entrée sans rien effacer.</span>
         </p>
         <div style="overflow-x:auto">
         <table class="grammar-table">
@@ -1516,10 +1514,10 @@
           <button class="btn-icon btn-edit" style="margin-left:8px;vertical-align:middle" onclick="addDpfRule()" data-i18n-title="grammar_add_rule_title" title="Ajouter un type ou une règle personnalisée">＋</button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
-          Ajoutez ici vos <strong>types PHAKTS personnalisés</strong>, des règles spécifiques
+          <span data-i18n="grammar_j_intro1">Ajoutez ici vos</span> <strong data-i18n="grammar_j_intro2">types PHAKTS personnalisés</strong><span data-i18n="grammar_j_intro3">, des règles spécifiques
           à votre domaine ou des contraintes supplémentaires. Ces extensions sont partagées entre
-          tous les postes via le serveur, injectées dans la grammaire (codification en ligne,
-          <strong>Agent IA</strong> et mode hors-ligne) et exportées avec le DPF.
+          tous les postes via le serveur, injectées dans la grammaire (codification en ligne,</span>
+          <strong data-i18n="agent_title_short">Agent IA</strong> <span data-i18n="grammar_j_intro4">et mode hors-ligne) et exportées avec le DPF.</span>
         </p>
         <table class="grammar-table">
           <thead><tr>
@@ -1554,15 +1552,15 @@
           <button class="btn-reset" onclick="clearLearnedDPF()" style="padding:5px 10px;font-size:10.5px" data-i18n-title="grammar_clear_learned_title" title="Supprimer toutes les codifications apprises">✕ <span data-i18n="grammar_clear">Vider</span></button>
         </h3>
         <p style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
-          Cette section est mise à jour automatiquement par l'<strong>Agent IA</strong> à chaque
+          <span data-i18n="grammar_i_intro1">Cette section est mise à jour automatiquement par l'</span><strong data-i18n="agent_title_short">Agent IA</strong><span data-i18n="grammar_i_intro2"> à chaque
           fois qu'il apprend une nouvelle codification PHAKTS (lorsque l'option
           « Sauvegarder automatiquement dans le DPF » est cochée dans l'onglet Agent).
-          Vous pouvez aussi les ajouter manuellement depuis l'onglet <em>Résultats</em>
-          via le bouton <em>Mémoriser</em>.
-          <strong>Circuit du Comité DPF</strong> : chaque codification entre « proposée » ; le Comité la
-          <strong>valide</strong> (elle devient une référence pour l'IA) ou la <strong>rejette</strong> avec un motif
+          Vous pouvez aussi les ajouter manuellement depuis l'onglet</span> <em data-i18n="tab_resultats">Résultats</em>
+          <span data-i18n="grammar_i_intro3">via le bouton</span> <em data-i18n="results_learn">Mémoriser</em>.
+          <strong data-i18n="grammar_i_intro4">Circuit du Comité DPF</strong> <span data-i18n="grammar_i_intro5">: chaque codification entre « proposée » ; le Comité la</span>
+          <strong data-i18n="grammar_word_validates">valide</strong> <span data-i18n="grammar_i_intro6">(elle devient une référence pour l'IA) ou la</span> <strong data-i18n="grammar_word_rejects">rejette</strong> <span data-i18n="grammar_i_intro7">avec un motif
           (elle n'est plus jamais proposée en exemple). Le code court (Transcode) est calculé selon la règle des
-          3 lettres ; cliquez dessus pour en imposer un autre (ex. BZV).
+          3 lettres ; cliquez dessus pour en imposer un autre (ex. BZV).</span>
         </p>
         <div style="overflow-x:auto">
         <table class="grammar-table">
@@ -1755,7 +1753,7 @@
       ondrop="event.preventDefault();this.style.borderColor='var(--border2)';corrHandleFile(event.dataTransfer.files[0])">
       <div style="font-size:30px;margin-bottom:8px">🛠</div>
       <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:4px" data-i18n="corr_dropzone_title">Glisser-déposer le questionnaire à vérifier</div>
-      <div style="font-size:12px;color:var(--text2)">XLSForm KoboToolbox (feuilles <strong>survey</strong> / <strong>choices</strong>), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic) <strong>liste de libellés à codifier</strong> (une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou <strong>fichier de données</strong> (export Kobo : noms ou libellés en première ligne) — <strong>.xlsx</strong></div>
+      <div style="font-size:12px;color:var(--text2)"><span data-i18n="corr_dropzone_help_1">XLSForm KoboToolbox (feuilles</span> <strong>survey</strong> / <strong>choices</strong><span data-i18n="corr_dropzone_help_2">), questionnaire codifié (Libellé · PF/Question · PF/Modalités · Skip Logic)</span> <strong data-i18n="corr_dropzone_help_3">liste de libellés à codifier</strong> <span data-i18n="corr_dropzone_help_4">(une colonne « Libellé » ou « Question », avec ou sans « Modalités »), ou</span> <strong data-i18n="corr_dropzone_help_5">fichier de données</strong> <span data-i18n="corr_dropzone_help_6">(export Kobo : noms ou libellés en première ligne) —</span> <strong>.xlsx</strong></div>
       <input type="file" id="corrFileInput" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="corrHandleFile(this.files[0]); this.value=''">
     </div>
 
@@ -4153,7 +4151,8 @@ function renderDpfRules() {
   const tbody = document.getElementById('dpfRulesBody');
   if (!tbody) return;
   if (dpfCustomRules.length === 0) {
-    tbody.innerHTML = '<tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">Aucune extension pour le moment — cliquez ＋ pour en ajouter.</td></tr>';
+    const t = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
+    tbody.innerHTML = '<tr id="dpfRulesEmpty"><td colspan="4" style="text-align:center;color:var(--text3);font-style:italic;padding:18px">' + t('grammar_no_extensions', null, 'Aucune extension pour le moment — cliquez ＋ pour en ajouter.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = dpfCustomRules.map((r, i) => {

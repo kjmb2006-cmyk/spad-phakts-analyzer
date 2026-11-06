@@ -51,6 +51,19 @@
     REGLE17: 'Grammaire PHAKTS — Règle 17 (Skip Logic)',
   };
 
+  // Traduction d'affichage des messages/actions du moteur — no-op (renvoie le
+  // français) hors navigateur (Node : tests, scripts) puisque window n'existe
+  // pas là-bas ; dans PHAKTS·STUDIO.html, passe par PHAKTS_I18N.t() si chargé.
+  // Le FOND (3e argument) doit toujours rester le texte français d'origine,
+  // identique à ce que produisait l'expression avant sa conversion ici — les
+  // tests (tests/phakts-audit.test.js) vérifient ce texte littéralement.
+  function _t(key, params, fallback) {
+    if (typeof window !== 'undefined' && window.PHAKTS_I18N && window.PHAKTS_I18N.t) {
+      return window.PHAKTS_I18N.t(key, params, fallback);
+    }
+    return fallback;
+  }
+
   // ── Coquilles avérées du DPF (v. 29/10/2026) ──────────────────────────────
   // Le DPF contient des fautes ; elles ne doivent ni être traitées comme la
   // norme ni être proposées en correction. Clé = graphie fautive sans accent,
@@ -417,8 +430,8 @@
       const lines = w.pf_question.trim().split(/\s*[\r\n]+\s*/).filter(Boolean);
       emit({
         rule: 'code.multiligne', category: CAT.NOM, severity: SEV.MAJEURE,
-        message: 'La cellule du code contient ' + lines.length + ' lignes : ' + lines.slice(0, 3).map(l => '« ' + l.slice(0, 50) + ' »').join(' / '),
-        action: 'Garder UN seul code PHAKTS par question (supprimer les autres lignes ou la note)', auto: false,
+        message: _t('audit_msg_code_multiligne', { n: lines.length }, 'La cellule du code contient ' + lines.length + ' lignes : ' + lines.slice(0, 3).map(l => '« ' + l.slice(0, 50) + ' »').join(' / ')),
+        action: _t('audit_action_code_multiligne', null, 'Garder UN seul code PHAKTS par question (supprimer les autres lignes ou la note)'), auto: false,
       });
     }
     if (multiLine) {
@@ -433,9 +446,13 @@
       const alsoMod = Object.keys(also).length ? also : null;
       emit({
         rule: 'code.vide', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: xls && xls.data ? 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS' : 'Libellé non codifié : aucun code PHAKTS pour cette question',
-        action: (xls && xls.data ? 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)' : 'Coder la question (Radical__Déterminant__Affixe!contrainte)')
-          + (alsoMod && alsoMod.pf_modalites ? ' — modalités proposées : ' + alsoMod.pf_modalites.slice(0, 90) : ''),
+        message: xls && xls.data
+          ? _t('audit_msg_code_vide_entete', null, 'L\'en-tête de la colonne est le libellé de la question, pas son code PHAKTS')
+          : _t('audit_msg_code_vide', null, 'Libellé non codifié : aucun code PHAKTS pour cette question'),
+        action: (xls && xls.data
+          ? _t('audit_action_code_vide_entete', null, 'Remplacer l\'en-tête par le code PHAKTS (Radical__Déterminant__Affixe)')
+          : _t('audit_action_code_vide', null, 'Coder la question (Radical__Déterminant__Affixe!contrainte)'))
+          + (alsoMod && alsoMod.pf_modalites ? ' ' + _t('audit_action_code_vide_modalites_suffix', { m: alsoMod.pf_modalites.slice(0, 90) }, '— modalités proposées : ' + alsoMod.pf_modalites.slice(0, 90)) : ''),
         suggestion: derive(), fix: () => derive() || null, also: alsoMod,
       });
     }
@@ -454,7 +471,8 @@
         if (fixed !== q) {
           emit({
             rule: 'code.espaces', category: CAT.NOM, severity: SEV.MINEURE,
-            message: 'Espace(s) dans le code ou autour du code', action: 'Remplacer les espaces internes par « _ », retirer ceux des extrémités',
+            message: _t('audit_msg_code_espaces', null, 'Espace(s) dans le code ou autour du code'),
+            action: _t('audit_action_code_espaces', null, 'Remplacer les espaces internes par « _ », retirer ceux des extrémités'),
             auto: true, fix: cur => { const t = cur.trim(); const p = splitQ(t); return joinQ(p.code.replace(/\s+/g, '_'), p.constraint.trim()); },
           });
         }
@@ -467,26 +485,28 @@
         if (m && affixStatus(m[1].split('__').pop()) !== 'bad') {
           emit({
             rule: 'code.bang_manquant', category: CAT.TYPO, severity: SEV.MAJEURE,
-            message: 'Le « ! » est oublié entre l\'affixe et la contrainte (« ' + m[1].split('__').pop() + m[2] + ' »)',
-            action: 'Écrire …__' + m[1].split('__').pop() + '!' + m[2], auto: true,
+            message: _t('audit_msg_code_bang_manquant', { affix: m[1].split('__').pop(), rest: m[2] },
+              'Le « ! » est oublié entre l\'affixe et la contrainte (« ' + m[1].split('__').pop() + m[2] + ' »)'),
+            action: _t('audit_action_code_bang_manquant', { affix: m[1].split('__').pop(), rest: m[2] },
+              'Écrire …__' + m[1].split('__').pop() + '!' + m[2]), auto: true,
             fix: q => { const p = splitQ(q); const mm = !p.constraint && p.code.match(BANG); return mm ? mm[1] + '!' + mm[2] : null; },
           });
         }
       }
-      stepCode('code.accents', CAT.NOM, SEV.MINEURE, 'Caractères accentués interdits dans le code',
-        'Translittérer (Né → Ne, Qualité → Qualite)', c => strip(c),
+      stepCode('code.accents', CAT.NOM, SEV.MINEURE, _t('audit_msg_code_accents', null, 'Caractères accentués interdits dans le code'),
+        _t('audit_action_code_accents', null, 'Translittérer (Né → Ne, Qualité → Qualite)'), c => strip(c),
         { detail: (a, b) => lexieDiff(a, b) });
-      stepCode('code.caracteres', CAT.NOM, SEV.MINEURE, 'Caractère(s) interdit(s) dans le code (seuls A-Z, 0-9 et « _ » sont admis)',
-        'Remplacer par « _ »', c => c.replace(/[^A-Za-z0-9_\sÀ-ɏ]/g, '_'));
-      stepCode('code.underscores', CAT.NOM, SEV.MINEURE, 'Soulignés mal placés (début, fin ou trois « _ » d\'affilée)',
-        'Garder « _ » entre les mots et « __ » entre les parties', c => c.replace(/_{3,}/g, '__').replace(/^_+|_+$/g, ''));
+      stepCode('code.caracteres', CAT.NOM, SEV.MINEURE, _t('audit_msg_code_caracteres', null, 'Caractère(s) interdit(s) dans le code (seuls A-Z, 0-9 et « _ » sont admis)'),
+        _t('audit_action_code_caracteres', null, 'Remplacer par « _ »'), c => c.replace(/[^A-Za-z0-9_\sÀ-ɏ]/g, '_'));
+      stepCode('code.underscores', CAT.NOM, SEV.MINEURE, _t('audit_msg_code_underscores', null, 'Soulignés mal placés (début, fin ou trois « _ » d\'affilée)'),
+        _t('audit_action_code_underscores', null, 'Garder « _ » entre les mots et « __ » entre les parties'), c => c.replace(/_{3,}/g, '__').replace(/^_+|_+$/g, ''));
       // XLSForm : pour un nom sans affixe, la casse fait partie de la proposition de code complète
       if (!(xls && !looksCoded(codeOf(w.pf_question)))) {
-        stepCode('code.casse', CAT.NOM, SEV.MINEURE, 'Mots du code commençant par une minuscule',
-          'Chaque mot commence par une majuscule (Niveau_Instruction)', fixCase, { detail: (a, b) => lexieDiff(a, b) });
+        stepCode('code.casse', CAT.NOM, SEV.MINEURE, _t('audit_msg_code_casse', null, 'Mots du code commençant par une minuscule'),
+          _t('audit_action_code_casse', null, 'Chaque mot commence par une majuscule (Niveau_Instruction)'), fixCase, { detail: (a, b) => lexieDiff(a, b) });
       }
-      stepCode('code.camelcase', CAT.NOM, SEV.MINEURE, 'Mots collés sans « _ » (CamelCase)',
-        'Séparer les mots par « _ » (FievreJaune → Fievre_Jaune)', fixCamel, { detail: (a, b) => lexieDiff(a, b) });
+      stepCode('code.camelcase', CAT.NOM, SEV.MINEURE, _t('audit_msg_code_camelcase', null, 'Mots collés sans « _ » (CamelCase)'),
+        _t('audit_action_code_camelcase', null, 'Séparer les mots par « _ » (FievreJaune → Fievre_Jaune)'), fixCamel, { detail: (a, b) => lexieDiff(a, b) });
 
       // coquilles connues du DPF recopiées dans le code
       {
@@ -495,8 +515,9 @@
         if (hits.length) {
           emit({
             rule: 'code.coquille_dpf', category: CAT.TYPO, severity: SEV.MAJEURE,
-            message: 'Graphie fautive recopiée du DPF : ' + hits.map(t => '« ' + t + ' »').join(', '),
-            action: 'Corriger l\'orthographe (le DPF contient cette faute et sera corrigé lui aussi)', source: SRC.DPF_VARIABLES, auto: true,
+            message: _t('audit_msg_code_coquille_dpf', { words: hits.map(t => '« ' + t + ' »').join(', ') },
+              'Graphie fautive recopiée du DPF : ' + hits.map(t => '« ' + t + ' »').join(', ')),
+            action: _t('audit_action_code_coquille_dpf', null, 'Corriger l\'orthographe (le DPF contient cette faute et sera corrigé lui aussi)'), source: SRC.DPF_VARIABLES, auto: true,
             fix: q => { const p = splitQ(q); return joinQ(p.code.split('_').map(t => DPF_LEXIE_TYPOS[plain(t).replace(/ /g, '')] || t).join('_'), p.constraint); },
           });
         }
@@ -512,8 +533,9 @@
         if (rx.test(code) && code.replace(rx, '').length >= 3) {
           emit({
             rule: 'code.interrogatif', category: CAT.SEM, severity: SEV.MAJEURE,
-            message: 'Le radical recopie la phrase de la question (« ' + code.match(rx)[0].replace(/_$/, '') + ' »)',
-            action: 'Un radical décrit le concept, sans mot interrogatif ni verbe', auto: false,
+            message: _t('audit_msg_code_interrogatif', { word: code.match(rx)[0].replace(/_$/, '') },
+              'Le radical recopie la phrase de la question (« ' + code.match(rx)[0].replace(/_$/, '') + ' »)'),
+            action: _t('audit_action_code_interrogatif', null, 'Un radical décrit le concept, sans mot interrogatif ni verbe'), auto: false,
             fix: q => { const p = splitQ(q); return joinQ(p.code.replace(rx, ''), p.constraint); },
           });
         }
@@ -571,8 +593,9 @@
       const list = [...fixes.entries()];
       emit({
         rule: 'code.typo_libelle', category: CAT.TYPO, severity: SEV.MAJEURE,
-        message: 'Faute de frappe probable : ' + list.map(([a, b]) => '« ' + a + ' » (le libellé écrit « ' + b.toLowerCase() + ' »)').join(' ; '),
-        action: 'Corriger l\'orthographe du mot dans le radical', auto: false,
+        message: _t('audit_msg_code_typo_libelle', { words: list.map(([a, b]) => '« ' + a + ' » (le libellé écrit « ' + b.toLowerCase() + ' »)').join(' ; ') },
+          'Faute de frappe probable : ' + list.map(([a, b]) => '« ' + a + ' » (le libellé écrit « ' + b.toLowerCase() + ' »)').join(' ; ')),
+        action: _t('audit_action_code_typo_libelle', null, 'Corriger l\'orthographe du mot dans le radical'), auto: false,
         fix: q => { const p = splitQ(q); return joinQ(p.code.split('_').map(t => fixes.get(t) || t).join('_'), p.constraint); },
       });
     }
@@ -587,7 +610,8 @@
         if (last === 'X' && segs[segs.length - 2] === 'G') {
           emit({
             rule: 'affixe.gps_ancien', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: 'Ancienne écriture du GPS (__G__X)', action: 'Écrire …__G!DMS ou …__G!DD (Règle 19)', auto: true,
+            message: _t('audit_msg_affixe_gps_ancien', null, 'Ancienne écriture du GPS (__G__X)'),
+            action: _t('audit_action_affixe_gps_ancien', null, 'Écrire …__G!DMS ou …__G!DD (Règle 19)'), auto: true,
             fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__X$/, ''), p.constraint); },
           });
         }
@@ -598,8 +622,11 @@
         const target = hint && hint[0] === '1' ? hint : '1';
         emit({
           rule: 'affixe.unite_N', category: CAT.TYPE, severity: SEV.MINEURE,
-          message: 'Unité « N » : absente de la grammaire v2025.10.22 (le DPF l\'utilise 8 fois)' + (target !== '1' ? ' ; le libellé mentionne explicitement l\'unité ' + target[1] : ''),
-          action: target !== '1' ? 'Écrire __' + target + ' (unité du libellé)' : 'Écrire __1 (entier sans unité)',
+          message: _t('audit_msg_affixe_unite_n', { unit: target !== '1' ? target[1] : '' },
+            'Unité « N » : absente de la grammaire v2025.10.22 (le DPF l\'utilise 8 fois)' + (target !== '1' ? ' ; le libellé mentionne explicitement l\'unité ' + target[1] : '')),
+          action: target !== '1'
+            ? _t('audit_action_affixe_unite_n_hint', { target }, 'Écrire __' + target + ' (unité du libellé)')
+            : _t('audit_action_affixe_unite_n_plain', null, 'Écrire __1 (entier sans unité)'),
           source: SRC.DECISION, auto: true,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__1N$/, '__' + target), p.constraint); },
         });
@@ -608,7 +635,8 @@
       if (hasAffixPos && last !== last.toUpperCase() && affixStatus(last.toUpperCase()) !== 'bad') {
         emit({
           rule: 'affixe.casse', category: CAT.TYPO, severity: SEV.MINEURE,
-          message: 'Affixe « ' + last + ' » en minuscules', action: 'Écrire l\'affixe en majuscules (« ' + last.toUpperCase() + ' »)', auto: true,
+          message: _t('audit_msg_affixe_casse', { affix: last }, 'Affixe « ' + last + ' » en minuscules'),
+          action: _t('audit_action_affixe_casse', { affix: last.toUpperCase() }, 'Écrire l\'affixe en majuscules (« ' + last.toUpperCase() + ' »)'), auto: true,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[^_]+$/, '__' + last.toUpperCase()), p.constraint); },
         });
         return;
@@ -618,8 +646,10 @@
         const target = hint && hint[0] === last[0] ? hint : last[0];
         emit({
           rule: 'affixe.unite_inconnue', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Unité « ' + last[1] + ' » inconnue de la grammaire (' + last + ')',
-          action: hint && hint[0] === last[0] ? 'Le libellé indique l\'unité ' + hint[1] + ' → __' + hint : 'Retirer l\'unité (__' + last[0] + ') ou choisir parmi Y M W D H U Q (entiers) et K T L S P V F I (réels)' + (hint ? ' — le libellé évoque plutôt __' + hint : ''),
+          message: _t('audit_msg_affixe_unite_inconnue', { letter: last[1], affix: last }, 'Unité « ' + last[1] + ' » inconnue de la grammaire (' + last + ')'),
+          action: hint && hint[0] === last[0]
+            ? _t('audit_action_affixe_unite_inconnue_hint', { letter: hint[1], hint }, 'Le libellé indique l\'unité ' + hint[1] + ' → __' + hint)
+            : _t('audit_action_affixe_unite_inconnue_generic', { letter: last[0], hint: hint || '' }, 'Retirer l\'unité (__' + last[0] + ') ou choisir parmi Y M W D H U Q (entiers) et K T L S P V F I (réels)' + (hint ? ' — le libellé évoque plutôt __' + hint : '')),
           auto: false,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[12][A-Za-z]$/, '__' + target), p.constraint); },
         });
@@ -629,7 +659,8 @@
       if (trailing && trailing[1].length >= 2) {
         emit({
           rule: 'affixe.separateur', category: CAT.NOM, severity: SEV.MAJEURE,
-          message: 'Affixe « ' + trailing[2] + ' » séparé par un seul « _ »', action: 'Écrire « __ » avant l\'affixe (' + trailing[1] + '__' + trailing[2] + ')', auto: true,
+          message: _t('audit_msg_affixe_separateur', { affix: trailing[2] }, 'Affixe « ' + trailing[2] + ' » séparé par un seul « _ »'),
+          action: _t('audit_action_affixe_separateur', { stem: trailing[1], affix: trailing[2] }, 'Écrire « __ » avant l\'affixe (' + trailing[1] + '__' + trailing[2] + ')'), auto: true,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/^(.*[A-Za-z0-9])_([A-Za-z0-9]+)$/, '$1__$2'), p.constraint); },
         });
         return;
@@ -637,8 +668,8 @@
       const sugg = derive();
       emit({
         rule: 'affixe.absent', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: 'Code sans affixe de type (B, C, A, X, Z, 1, 2, G, P, SRC) : « ' + code + ' » n\'est pas un code PHAKTS',
-        action: 'Coder selon Radical__Déterminant__Affixe!contrainte' + (sugg ? ' — proposition issue du libellé : ' + sugg : ''),
+        message: _t('audit_msg_affixe_absent', { code }, 'Code sans affixe de type (B, C, A, X, Z, 1, 2, G, P, SRC) : « ' + code + ' » n\'est pas un code PHAKTS'),
+        action: _t('audit_action_affixe_absent', { sugg: sugg || '' }, 'Coder selon Radical__Déterminant__Affixe!contrainte' + (sugg ? ' — proposition issue du libellé : ' + sugg : '')),
         suggestion: sugg, auto: Boolean(xls && sugg && (!xls.data || xls.affix)), fix: () => sugg || null,
         also: null,
       });
@@ -654,19 +685,22 @@
       if (k === '') {
         emit({
           rule: 'contrainte.' + word + '_absente', category: CAT.TYPE, severity: SEV.MINEURE,
-          message: kindLabel + ' sans « !' + word + ' »', action: 'Écrire …!' + word, auto: true,
+          message: _t('audit_msg_contrainte_absente', { kind: kindLabel, word }, kindLabel + ' sans « !' + word + ' »'),
+          action: _t('audit_action_contrainte_ecrire', { word }, 'Écrire …!' + word), auto: true,
           fix: q => withConstraint(q, word),
         });
       } else if (lev(strip(k).toLowerCase(), word, 2) <= 2) {
         emit({
           rule: 'contrainte.typo', category: CAT.TYPO, severity: SEV.CRITIQUE,
-          message: 'Faute de frappe dans la contrainte « !' + k + ' »', action: 'Écrire « !' + word + ' »', auto: true,
+          message: _t('audit_msg_contrainte_typo', { k }, 'Faute de frappe dans la contrainte « !' + k + ' »'),
+          action: _t('audit_action_contrainte_ecrire_bang', { word }, 'Écrire « !' + word + ' »'), auto: true,
           fix: q => withConstraint(q, word),
         });
       } else {
         emit({
           rule: 'contrainte.inattendue', category: CAT.TYPE, severity: SEV.MINEURE,
-          message: 'Contrainte « !' + k + ' » inattendue pour ' + kindLabel.toLowerCase(), action: 'Écrire « !' + word + ' »', auto: false,
+          message: _t('audit_msg_contrainte_inattendue', { k, kind: kindLabel.toLowerCase() }, 'Contrainte « !' + k + ' » inattendue pour ' + kindLabel.toLowerCase()),
+          action: _t('audit_action_contrainte_ecrire_bang', { word }, 'Écrire « !' + word + ' »'), auto: false,
           fix: q => withConstraint(q, word),
         });
       }
@@ -680,15 +714,15 @@
       const lc = parseListDef(w.pf_modalites);
 
       if (kind === 'boolean') {
-        closedConstraint('boolean', 'Booléen (__B)');
+        closedConstraint('boolean', _t('audit_kind_boolean', null, 'Booléen (__B)'));
       } else if (kind === 'trilean') {
-        closedConstraint('trilean', 'Triléen (__C)');
+        closedConstraint('trilean', _t('audit_kind_trilean', null, 'Triléen (__C)'));
       } else if (kind === 'image') {
         if (k !== 'photo') {
           if (k === '' || lev(strip(k).toLowerCase(), 'photo', 1) <= 1) {
             emit({
               rule: 'contrainte.photo', category: CAT.TYPE, severity: SEV.MINEURE,
-              message: 'Photo (__P) sans « !photo »', action: 'Écrire …__P!photo', auto: true, fix: q => withConstraint(q, 'photo'),
+              message: _t('audit_msg_contrainte_photo', null, 'Photo (__P) sans « !photo »'), action: _t('audit_action_contrainte_photo', null, 'Écrire …__P!photo'), auto: true, fix: q => withConstraint(q, 'photo'),
             });
           }
         }
@@ -698,14 +732,14 @@
           if (k !== 'YYYY/MM/DD') {
             emit({
               rule: 'contrainte.date', category: CAT.TYPE, severity: SEV.MINEURE,
-              message: k ? 'Format de date « !' + k + ' » non conforme' : 'Date (__A) sans format', action: 'Écrire …__A!YYYY/MM/DD (ISO 8601)',
+              message: k ? _t('audit_msg_contrainte_date_format', { k }, 'Format de date « !' + k + ' » non conforme') : _t('audit_msg_contrainte_date_absente', null, 'Date (__A) sans format'), action: _t('audit_action_contrainte_date', null, 'Écrire …__A!YYYY/MM/DD (ISO 8601)'),
               auto: true, fix: q => withConstraint(q, 'YYYY/MM/DD'),
             });
           }
         } else if (!rangeRx.test(k)) {
           emit({
             rule: 'contrainte.date_inattendue', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: 'Contrainte de date « !' + k + ' » illisible', action: 'Écrire !YYYY/MM/DD ou une plage 2000/01/01<A<2026/12/31', auto: false,
+            message: _t('audit_msg_contrainte_date_illisible', { k }, 'Contrainte de date « !' + k + ' » illisible'), action: _t('audit_action_contrainte_date_illisible', null, 'Écrire !YYYY/MM/DD ou une plage 2000/01/01<A<2026/12/31'), auto: false,
             fix: q => withConstraint(q, 'YYYY/MM/DD'),
           });
         }
@@ -718,15 +752,15 @@
       } else if (kind === 'generated') {
         emit({
           rule: 'generee.sans_precision', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Variable générée __G sans précision : Kobo ne peut pas savoir laquelle produire',
-          action: 'Préciser la contrainte : !DMS ou !DD (GPS), !start, !end, !today, !deviceid, !username, !phonenumber, !audit', auto: false,
+          message: _t('audit_msg_generee_sans_precision', null, 'Variable générée __G sans précision : Kobo ne peut pas savoir laquelle produire'),
+          action: _t('audit_action_generee_sans_precision', null, 'Préciser la contrainte : !DMS ou !DD (GPS), !start, !end, !today, !deviceid, !username, !phonenumber, !audit'), auto: false,
         });
       }
       if (ci.affix === 'E') {
         emit({
           rule: 'affixe.E_supprime', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Affixe __E supprimé de la grammaire',
-          action: 'Variable produite par Kobo → __G!<variable> ; identifiant saisi par l\'enquêteur → __Z!1*Expression', auto: false,
+          message: _t('audit_msg_affixe_e_supprime', null, 'Affixe __E supprimé de la grammaire'),
+          action: _t('audit_action_affixe_e_supprime', null, 'Variable produite par Kobo → __G!<variable> ; identifiant saisi par l\'enquêteur → __Z!1*Expression'), auto: false,
         });
       }
     }
@@ -741,8 +775,10 @@
       if (k === '') {
         emit({
           rule: 'contrainte.choix_vide', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Choix (__' + (affixOf(code) || 'X') + ') sans multiplicité ni liste',
-          action: ldId ? 'Écrire …!' + wantMult() + ldId + ' (liste lue dans les modalités)' : 'Écrire …!1*1Liste_ (choix unique) ou …!1*Liste_ (choix multiple)',
+          message: _t('audit_msg_choix_vide', { affix: affixOf(code) || 'X' }, 'Choix (__' + (affixOf(code) || 'X') + ') sans multiplicité ni liste'),
+          action: ldId
+            ? _t('audit_action_choix_vide_liste', { mult: wantMult(), id: ldId }, 'Écrire …!' + wantMult() + ldId + ' (liste lue dans les modalités)')
+            : _t('audit_action_choix_vide_generic', null, 'Écrire …!1*1Liste_ (choix unique) ou …!1*Liste_ (choix multiple)'),
           auto: false, fix: ldId ? q => withConstraint(q, wantMult() + ldId) : null,
         });
         return;
@@ -750,8 +786,8 @@
       if (idOnly) {
         emit({
           rule: 'contrainte.multiplicite_absente', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Liste « ' + idOnly + ' » sans multiplicité N*M',
-          action: 'Ajouter 1*1 (choix unique) ou 1* (choix multiple) devant le nom de la liste', auto: false,
+          message: _t('audit_msg_multiplicite_absente', { id: idOnly }, 'Liste « ' + idOnly + ' » sans multiplicité N*M'),
+          action: _t('audit_action_multiplicite_absente', null, 'Ajouter 1*1 (choix unique) ou 1* (choix multiple) devant le nom de la liste'), auto: false,
           fix: wantMult() ? q => withConstraint(q, wantMult() + idOnly) : null,
         });
         return;
@@ -759,7 +795,7 @@
       if (!mm) {
         emit({
           rule: 'contrainte.choix_illisible', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Contrainte de choix « !' + k + ' » illisible', action: 'Écrire !N*M<Liste_> (ex. 1*1Sexe_, 1*Maladie_)', auto: false,
+          message: _t('audit_msg_choix_illisible', { k }, 'Contrainte de choix « !' + k + ' » illisible'), action: _t('audit_action_choix_illisible', null, 'Écrire !N*M<Liste_> (ex. 1*1Sexe_, 1*Maladie_)'), auto: false,
           fix: ldId ? q => withConstraint(q, wantMult() + ldId) : null,
         });
         return;
@@ -769,21 +805,24 @@
       if (min !== null && max !== null && min > max) {
         emit({
           rule: 'contrainte.multiplicite_incoherente', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Multiplicité incohérente (!' + min + '*' + max + ') : au moins ' + min + ' mais au plus ' + max + ' choix',
-          action: 'Corriger N*M : le minimum N ne peut pas dépasser le maximum M', auto: false,
+          message: _t('audit_msg_multiplicite_incoherente', { min, max }, 'Multiplicité incohérente (!' + min + '*' + max + ') : au moins ' + min + ' mais au plus ' + max + ' choix'),
+          action: _t('audit_action_multiplicite_incoherente', null, 'Corriger N*M : le minimum N ne peut pas dépasser le maximum M'), auto: false,
         });
       }
       const id = mm[3] || '';
       if (!id) {
         emit({
           rule: 'contrainte.liste_absente', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Multiplicité « ' + mm[1] + '*' + mm[2] + ' » sans nom de liste', action: ldId ? 'Écrire …!' + mm[1] + '*' + mm[2] + ldId + ' (liste lue dans les modalités)' : 'Ajouter le nom de la liste (Liste_) après N*M',
+          message: _t('audit_msg_liste_absente', { min: mm[1], max: mm[2] }, 'Multiplicité « ' + mm[1] + '*' + mm[2] + ' » sans nom de liste'),
+          action: ldId
+            ? _t('audit_action_liste_absente_liste', { min: mm[1], max: mm[2], id: ldId }, 'Écrire …!' + mm[1] + '*' + mm[2] + ldId + ' (liste lue dans les modalités)')
+            : _t('audit_action_liste_absente_generic', null, 'Ajouter le nom de la liste (Liste_) après N*M'),
           auto: Boolean(ldId), fix: ldId ? q => withConstraint(q, mm[1] + '*' + mm[2] + ldId) : null,
         });
       } else if (!/_$/.test(id) && !/^Admin_/i.test(id)) {
         emit({
           rule: 'contrainte.liste_format', category: CAT.NOM, severity: SEV.MINEURE,
-          message: 'Nom de liste « ' + id + ' » sans « _ » final', action: 'Un identifiant de liste se termine par « _ » (' + id + '_)', auto: true,
+          message: _t('audit_msg_liste_format', { id }, 'Nom de liste « ' + id + ' » sans « _ » final'), action: _t('audit_action_liste_format', { id }, 'Un identifiant de liste se termine par « _ » (' + id + '_)'), auto: true,
           fix: q => withConstraint(q, mm[1] + '*' + mm[2] + id + '_'),
         });
       }
@@ -795,8 +834,8 @@
       if (listLike || (lc && lc.id && /_$/.test(canonListId(lc.id)) && lc.values.length >= 2)) {
         emit({
           rule: 'type.texte_liste', category: CAT.TYPE, severity: SEV.CRITIQUE,
-          message: 'Affixe Z (texte libre) mais la question définit une liste de choix' + (listLike ? ' (« !' + k + ' »)' : ''),
-          action: 'Un choix dans une liste se code __X (ou __SRC)', auto: true,
+          message: _t('audit_msg_texte_liste', { k: listLike ? k : '' }, 'Affixe Z (texte libre) mais la question définit une liste de choix' + (listLike ? ' (« !' + k + ' »)' : '')),
+          action: _t('audit_action_texte_liste', null, 'Un choix dans une liste se code __X (ou __SRC)'), auto: true,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__Z$/, '__X'), p.constraint); },
         });
         return;
@@ -804,7 +843,7 @@
       if (k === '') {
         emit({
           rule: 'contrainte.texte_vide', category: CAT.TYPE, severity: SEV.MINEURE,
-          message: 'Texte libre (__Z) sans contrainte', action: 'Écrire …__Z!1*Expression', auto: true,
+          message: _t('audit_msg_texte_vide', null, 'Texte libre (__Z) sans contrainte'), action: _t('audit_action_texte_vide', null, 'Écrire …__Z!1*Expression'), auto: true,
           fix: q => withConstraint(q, '1*Expression'),
         });
       } else if (!textRx.test(k)) {
@@ -812,14 +851,14 @@
         const target = lev(strip(near).toLowerCase(), 'expression', 2) <= 2 ? 'Expression' : (lev(strip(near).toLowerCase(), 'tel', 1) <= 1 ? 'Tel' : '');
         emit({
           rule: 'contrainte.texte_inattendue', category: target ? CAT.TYPO : CAT.TYPE, severity: SEV.MINEURE,
-          message: 'Contrainte « !' + k + ' » inattendue pour un texte libre', action: 'Écrire …__Z!1*' + (target || 'Expression'),
+          message: _t('audit_msg_texte_inattendue', { k }, 'Contrainte « !' + k + ' » inattendue pour un texte libre'), action: _t('audit_action_texte_inattendue', { target: target || 'Expression' }, 'Écrire …__Z!1*' + (target || 'Expression')),
           auto: Boolean(target), fix: q => withConstraint(q, '1*' + (target || 'Expression')),
         });
       }
       if (kind !== 'phone' && /\bTel$/.test(k) === false && PHONE_RX.test(plain(libelle))) {
         emit({
           rule: 'type.telephone', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Numéro de téléphone codé en texte libre', action: 'Coder __Z!1*Tel (texte validé par regex) — jamais Expression ni __1', auto: false,
+          message: _t('audit_msg_telephone_texte', null, 'Numéro de téléphone codé en texte libre'), action: _t('audit_action_telephone_texte', null, 'Coder __Z!1*Tel (texte validé par regex) — jamais Expression ni __1'), auto: false,
           fix: q => withConstraint(q, '1*Tel'),
         });
       }
@@ -830,7 +869,7 @@
       if (kind === 'integer' && PHONE_RX.test(plain(libelle))) {
         emit({
           rule: 'type.telephone', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Numéro de téléphone codé en entier', action: 'Coder __Z!1*Tel (un numéro commence souvent par 0 ou +, c\'est un texte)', auto: false,
+          message: _t('audit_msg_telephone_entier', null, 'Numéro de téléphone codé en entier'), action: _t('audit_action_telephone_entier', null, 'Coder __Z!1*Tel (un numéro commence souvent par 0 ou +, c\'est un texte)'), auto: false,
           fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[12][A-Z]?$/, '__Z'), '1*Tel'); },
         });
       }
@@ -838,7 +877,7 @@
         if (kind === 'decimal') {
           emit({
             rule: 'contrainte.plage_reel', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: 'Réel (__2) sans plage de valeurs', action: 'Un réel porte toujours une plage : ex. !0<R<100', auto: false,
+            message: _t('audit_msg_plage_reel', null, 'Réel (__2) sans plage de valeurs'), action: _t('audit_action_plage_reel', null, 'Un réel porte toujours une plage : ex. !0<R<100'), auto: false,
           });
         }
         return;
@@ -850,15 +889,16 @@
         if (range[3] !== letterWanted && range[3] !== unitLetter) {
           emit({
             rule: 'contrainte.plage_lettre', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: 'Plage écrite avec « ' + range[3] + ' » : ' + (kind === 'integer' ? 'un entier s\'écrit N' : 'un réel s\'écrit R'),
-            action: 'Écrire ' + range[1] + range[2] + letterWanted + range[4] + range[5], auto: true,
+            message: _t('audit_msg_plage_lettre', { letter: range[3], kindWord: kind === 'integer' ? _t('audit_word_entier_ecrit_n', null, 'un entier s\'écrit N') : _t('audit_word_reel_ecrit_r', null, 'un réel s\'écrit R') },
+              'Plage écrite avec « ' + range[3] + ' » : ' + (kind === 'integer' ? 'un entier s\'écrit N' : 'un réel s\'écrit R')),
+            action: _t('audit_action_plage_lettre', { lo: range[1], op1: range[2], letter: letterWanted, op2: range[4], hi: range[5] }, 'Écrire ' + range[1] + range[2] + letterWanted + range[4] + range[5]), auto: true,
             fix: q => withConstraint(q, k.replace(/([A-Za-z])(?=\s*<)/, letterWanted)),
           });
         }
         if (lo >= hi) {
           emit({
             rule: 'contrainte.plage_bornes', category: CAT.TYPE, severity: SEV.MAJEURE,
-            message: 'Bornes de plage incohérentes (' + range[1] + ' ≥ ' + range[5] + ')', action: 'La borne basse doit être inférieure à la borne haute', auto: false,
+            message: _t('audit_msg_plage_bornes', { lo: range[1], hi: range[5] }, 'Bornes de plage incohérentes (' + range[1] + ' ≥ ' + range[5] + ')'), action: _t('audit_action_plage_bornes', null, 'La borne basse doit être inférieure à la borne haute'), auto: false,
           });
         }
         return;
@@ -868,12 +908,12 @@
         if (k !== 'N' && !timeUnits.includes(k)) {
           emit({
             rule: 'contrainte.raccourci_inconnu', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: '« !' + k + ' » n\'est pas un raccourci d\'unité (Y, M, W, D, H) ni une plage', action: 'Retirer la lettre ou écrire une plage (!0<N<120)', auto: false,
+            message: _t('audit_msg_raccourci_inconnu', { k }, '« !' + k + ' » n\'est pas un raccourci d\'unité (Y, M, W, D, H) ni une plage'), action: _t('audit_action_raccourci_inconnu', null, 'Retirer la lettre ou écrire une plage (!0<N<120)'), auto: false,
           });
         } else if (timeUnits.includes(k) && unit && timeUnits.includes(unit) && k !== unit) {
           emit({
             rule: 'contrainte.raccourci_incoherent', category: CAT.TYPE, severity: SEV.MINEURE,
-            message: 'Raccourci « !' + k + ' » incohérent avec l\'unité de l\'affixe (' + unit + ')', action: 'Écrire !' + unit + ' ou changer l\'unité de l\'affixe',
+            message: _t('audit_msg_raccourci_incoherent', { k, unit }, 'Raccourci « !' + k + ' » incohérent avec l\'unité de l\'affixe (' + unit + ')'), action: _t('audit_action_raccourci_incoherent', { unit }, 'Écrire !' + unit + ' ou changer l\'unité de l\'affixe'),
             auto: false, fix: q => withConstraint(q, unit),
           });
         }
@@ -881,8 +921,10 @@
       }
       emit({
         rule: 'contrainte.plage_illisible', category: CAT.TYPE, severity: SEV.MAJEURE,
-        message: 'Contrainte « !' + k + ' » illisible pour un ' + (kind === 'integer' ? 'entier' : 'réel'),
-        action: 'Écrire une plage (!0<' + letterWanted + '<120)' + (kind === 'integer' ? ' ou le raccourci d\'unité (!Y, !M…)' : ''), auto: false,
+        message: _t('audit_msg_plage_illisible', { k, kindWord: kind === 'integer' ? _t('audit_word_entier', null, 'entier') : _t('audit_word_reel', null, 'réel') },
+          'Contrainte « !' + k + ' » illisible pour un ' + (kind === 'integer' ? 'entier' : 'réel')),
+        action: _t('audit_action_plage_illisible', { letter: letterWanted, extra: kind === 'integer' ? _t('audit_word_ou_raccourci', null, ' ou le raccourci d\'unité (!Y, !M…)') : '' },
+          'Écrire une plage (!0<' + letterWanted + '<120)' + (kind === 'integer' ? ' ou le raccourci d\'unité (!Y, !M…)' : '')), auto: false,
       });
     }
 
@@ -904,15 +946,17 @@
         if (m === '' || /^boolean$/i.test(m) || (isYesNo && m !== 'Oui | Non')) {
           emit({
             rule: 'modalites.booleen', category: CAT.MODA, severity: SEV.MINEURE,
-            message: 'Modalités d\'un booléen : « ' + (m || 'vide') + ' »', action: 'Écrire « Oui | Non »', auto: true, field: 'pf_modalites',
+            message: _t('audit_msg_modalites_booleen', { m: m || _t('audit_word_vide', null, 'vide') }, 'Modalités d\'un booléen : « ' + (m || 'vide') + ' »'), action: _t('audit_action_modalites_booleen', null, 'Écrire « Oui | Non »'), auto: true, field: 'pf_modalites',
             fix: () => 'Oui | Non',
           });
         } else if (!isYesNo) {
           const tri = keys.length === 3 && keys.includes('oui') && keys.includes('non');
           emit({
             rule: 'type.booleen_liste', category: CAT.TYPE, severity: SEV.CRITIQUE,
-            message: tri ? 'Booléen (__B) mais les modalités ont trois états (' + CORE.splitListValues(m).join(' | ') + ')' : 'Booléen (__B) mais les modalités ne sont pas Oui/Non (« ' + m.slice(0, 80) + ' »)',
-            action: tri ? 'Trois états Oui / Non / autre = triléen : __C!trilean' : 'Un choix parmi une liste se code __X', auto: false,
+            message: tri
+              ? _t('audit_msg_booleen_trois_etats', { vals: CORE.splitListValues(m).join(' | ') }, 'Booléen (__B) mais les modalités ont trois états (' + CORE.splitListValues(m).join(' | ') + ')')
+              : _t('audit_msg_booleen_non_oui_non', { m: m.slice(0, 80) }, 'Booléen (__B) mais les modalités ne sont pas Oui/Non (« ' + m.slice(0, 80) + ' »)'),
+            action: tri ? _t('audit_action_booleen_trois_etats', null, 'Trois états Oui / Non / autre = triléen : __C!trilean') : _t('audit_action_booleen_liste', null, 'Un choix parmi une liste se code __X'), auto: false,
             fix: tri ? q => { const p = splitQ(q); return joinQ(p.code.replace(/__B$/, '__C'), 'trilean'); } : null,
           });
         }
@@ -934,14 +978,15 @@
         if (rebuilt && rebuilt !== w.pf_modalites && parseListDef(rebuilt)) {
           emit({
             rule: 'modalites.liste_absente', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-            message: 'Modalités sans forme « Liste_=[…] » : ' + (w.pf_modalites ? '« ' + w.pf_modalites.slice(0, 70) + ' »' : 'vides'),
-            action: 'Écrire ' + rebuilt, auto: true, fix: () => rebuilt,
+            message: _t('audit_msg_modalites_liste_absente', { m: w.pf_modalites ? w.pf_modalites.slice(0, 70) : '' },
+              'Modalités sans forme « Liste_=[…] » : ' + (w.pf_modalites ? '« ' + w.pf_modalites.slice(0, 70) + ' »' : 'vides')),
+            action: _t('audit_action_modalites_liste_absente', { rebuilt }, 'Écrire ' + rebuilt), auto: true, fix: () => rebuilt,
           });
           ld = parseListDef(w.pf_modalites);
         } else {
           emit({
             rule: 'modalites.liste_illisible', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-            message: 'Aucune liste de modalités lisible pour ce choix', action: 'Écrire Liste_=[valeur1|valeur2|…] (| choix multiple, « , » choix unique)', auto: false,
+            message: _t('audit_msg_modalites_liste_illisible', null, 'Aucune liste de modalités lisible pour ce choix'), action: _t('audit_action_modalites_liste_illisible', null, 'Écrire Liste_=[valeur1|valeur2|…] (| choix multiple, « , » choix unique)'), auto: false,
           });
           return;
         }
@@ -952,8 +997,8 @@
       if (cId && codeKey(cId) !== codeKey(canonListId(ld.id))) {
         emit({
           rule: 'liste.identifiant_discordant', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-          message: 'La contrainte cite la liste « ' + cId + ' » mais les modalités définissent « ' + ld.id + ' »',
-          action: 'Utiliser le même identifiant : ' + canonListId(cId), auto: true,
+          message: _t('audit_msg_liste_identifiant_discordant', { cid: cId, id: ld.id }, 'La contrainte cite la liste « ' + cId + ' » mais les modalités définissent « ' + ld.id + ' »'),
+          action: _t('audit_action_liste_identifiant_discordant', { id: canonListId(cId) }, 'Utiliser le même identifiant : ' + canonListId(cId)), auto: true,
           fix: cur => { const p = parseListDef(cur); return p ? buildListDef(p, canonListId(cId), p.values) : null; },
         });
       }
@@ -962,14 +1007,14 @@
       {
         const cur = parseListDef(w.pf_modalites) || ld;
         const structural = [];
-        if (!cur.bracketsOk) structural.push('crochets [ ] manquants ou d\'un autre type');
-        if (cur.junk) structural.push('caractères parasites après la liste');
-        if (canonListId(cur.id) !== cur.id) structural.push('identifiant « ' + cur.id + ' » non conforme (Snake_Case terminé par « _ »)');
-        if (cur.values.some(v => v === '')) structural.push('modalité(s) vide(s)');
+        if (!cur.bracketsOk) structural.push(_t('audit_word_crochets_manquants', null, 'crochets [ ] manquants ou d\'un autre type'));
+        if (cur.junk) structural.push(_t('audit_word_caracteres_parasites', null, 'caractères parasites après la liste'));
+        if (canonListId(cur.id) !== cur.id) structural.push(_t('audit_word_identifiant_non_conforme', { id: cur.id }, 'identifiant « ' + cur.id + ' » non conforme (Snake_Case terminé par « _ »)'));
+        if (cur.values.some(v => v === '')) structural.push(_t('audit_word_modalites_vides', null, 'modalité(s) vide(s)'));
         if (structural.length) {
           emit({
             rule: 'modalites.forme', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
-            message: 'Forme de la liste : ' + structural.join(', '), action: 'Écrire Identifiant_=[valeur1|valeur2|…]', auto: true,
+            message: _t('audit_msg_modalites_forme', { detail: structural.join(', ') }, 'Forme de la liste : ' + structural.join(', ')), action: _t('audit_action_modalites_forme', null, 'Écrire Identifiant_=[valeur1|valeur2|…]'), auto: true,
             fix: c => { const p = parseListDef(c); return p ? buildListDef(p, canonListId(p.id), p.values.filter(v => v !== '')) : null; },
           });
         }
@@ -982,8 +1027,9 @@
         if (changed.length) {
           emit({
             rule: 'modalites.valeurs_format', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
-            message: 'Modalité(s) avec accent, espace ou ponctuation : ' + changed.slice(0, 4).map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(' ; ') + (changed.length > 4 ? ' (+' + (changed.length - 4) + ')' : ''),
-            action: 'Écrire chaque modalité en Snake_Case sans accent (Fièvre hémorragique → Fievre_hemorragique)', auto: true,
+            message: _t('audit_msg_modalites_valeurs_format', { changes: changed.slice(0, 4).map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(' ; '), more: changed.length > 4 ? changed.length - 4 : 0 },
+              'Modalité(s) avec accent, espace ou ponctuation : ' + changed.slice(0, 4).map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(' ; ') + (changed.length > 4 ? ' (+' + (changed.length - 4) + ')' : '')),
+            action: _t('audit_action_modalites_valeurs_format', null, 'Écrire chaque modalité en Snake_Case sans accent (Fièvre hémorragique → Fievre_hemorragique)'), auto: true,
             detail: changed.map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(' ; '),
             fix: c => { const p = parseListDef(c); return p ? buildListDef(p, canonListId(p.id), p.values.map(canonValue).filter(Boolean)) : null; },
           });
@@ -1001,8 +1047,8 @@
       if (adminTarget && opts.length >= 5) {
         emit({
           rule: 'liste.admin', category: CAT.LISTE, severity: SEV.MAJEURE, field: 'pf_modalites', source: SRC.REGLE16,
-          message: 'Unité administrative codée en liste inline (' + opts.length + ' valeurs) : « ' + canonListId(idNow) + ' »',
-          action: 'Utiliser le référentiel externe ' + adminTarget + ' (jamais de liste en dur pour région, district, établissement)', auto: false,
+          message: _t('audit_msg_liste_admin_inline', { n: opts.length, id: canonListId(idNow) }, 'Unité administrative codée en liste inline (' + opts.length + ' valeurs) : « ' + canonListId(idNow) + ' »'),
+          action: _t('audit_action_liste_admin_inline', { target: adminTarget }, 'Utiliser le référentiel externe ' + adminTarget + ' (jamais de liste en dur pour région, district, établissement)'), auto: false,
           fix: () => '',
           also: { pf_question: withConstraint(w.pf_question, (kNow.match(/^\d*\*\d*/) || ['1*1'])[0] + adminTarget) },
         });
@@ -1012,7 +1058,7 @@
       if (cur3.mixed) {
         emit({
           rule: 'modalites.separateurs_mixtes', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-          message: 'Modalités séparées à la fois par « | » et « , »', action: 'Choisir un seul séparateur : « , » (choix unique) ou « | » (choix multiple)', auto: false,
+          message: _t('audit_msg_separateurs_mixtes', null, 'Modalités séparées à la fois par « | » et « , »'), action: _t('audit_action_separateurs_mixtes', null, 'Choisir un seul séparateur : « , » (choix unique) ou « | » (choix multiple)'), auto: false,
         });
       }
 
@@ -1024,7 +1070,7 @@
         if (dups.length) {
           emit({
             rule: 'modalites.doublons', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-            message: 'Modalité(s) en double : ' + [...new Set(dups)].map(v => '« ' + v + ' »').join(', '), action: 'Garder chaque modalité une seule fois', auto: true,
+            message: _t('audit_msg_modalites_doublons', { vals: [...new Set(dups)].map(v => '« ' + v + ' »').join(', ') }, 'Modalité(s) en double : ' + [...new Set(dups)].map(v => '« ' + v + ' »').join(', ')), action: _t('audit_action_modalites_doublons', null, 'Garder chaque modalité une seule fois'), auto: true,
             fix: c => {
               const p = parseListDef(c); if (!p) return null;
               const s2 = new Set();
@@ -1036,7 +1082,7 @@
       if (opts.length < 2) {
         emit({
           rule: 'modalites.une_seule', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-          message: 'Liste à ' + (opts.length ? 'une seule modalité' : 'aucune modalité'), action: 'Un choix propose au moins deux modalités', auto: false,
+          message: opts.length ? _t('audit_msg_modalites_une_seule', null, 'Liste à une seule modalité') : _t('audit_msg_modalites_aucune', null, 'Liste à aucune modalité'), action: _t('audit_action_modalites_une_seule', null, 'Un choix propose au moins deux modalités'), auto: false,
         });
       }
 
@@ -1051,28 +1097,28 @@
           if (multipleHint(libelle)) {
             emit({
               rule: 'contrainte.multiplicite_libelle', category: CAT.TYPE, severity: SEV.MINEURE,
-              message: 'Le libellé annonce plusieurs réponses mais la contrainte dit « 1*1 » (choix unique) alors que les modalités sont cumulables (« | »)',
-              action: 'Écrire !1* (au moins un choix) — modalités inchangées', source: SRC.DECISION, auto: true,
+              message: _t('audit_msg_multiplicite_libelle', null, 'Le libellé annonce plusieurs réponses mais la contrainte dit « 1*1 » (choix unique) alors que les modalités sont cumulables (« | »)'),
+              action: _t('audit_action_multiplicite_libelle', null, 'Écrire !1* (au moins un choix) — modalités inchangées'), source: SRC.DECISION, auto: true,
               fix: q => withConstraint(q, kNow.replace(/^\d*\*\d*/, '1*')),
             });
           } else {
             emit({
               rule: 'modalites.separateur', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
-              message: 'Choix unique (1*1) mais modalités séparées par « | » (cumulables)',
-              action: 'Séparer par « , » pour un choix unique (ou écrire !1* pour un choix multiple)', source: SRC.DECISION, auto: true, fix: rebuild(','),
+              message: _t('audit_msg_separateur_unique_pipe', null, 'Choix unique (1*1) mais modalités séparées par « | » (cumulables)'),
+              action: _t('audit_action_separateur_unique_pipe', null, 'Séparer par « , » pour un choix unique (ou écrire !1* pour un choix multiple)'), source: SRC.DECISION, auto: true, fix: rebuild(','),
             });
           }
         } else if (!single && comma) {
           emit({
             rule: 'modalites.separateur', category: CAT.MODA, severity: SEV.MINEURE, field: 'pf_modalites',
-            message: 'Choix multiple (!' + mNow[1] + '*' + mNow[2] + ') mais modalités séparées par « , » (exclusives)',
-            action: 'Séparer par « | » pour un choix multiple (ou écrire !1*1 pour un choix unique)', source: SRC.DECISION, auto: true, fix: rebuild('|'),
+            message: _t('audit_msg_separateur_multiple_comma', { min: mNow[1], max: mNow[2] }, 'Choix multiple (!' + mNow[1] + '*' + mNow[2] + ') mais modalités séparées par « , » (exclusives)'),
+            action: _t('audit_action_separateur_multiple_comma', null, 'Séparer par « | » pour un choix multiple (ou écrire !1*1 pour un choix unique)'), source: SRC.DECISION, auto: true, fix: rebuild('|'),
           });
         }
         if (mNow[1] !== '' && parseInt(mNow[1], 10) >= 2 && opts.length && opts.length < parseInt(mNow[1], 10)) {
           emit({
             rule: 'contrainte.min_modalites', category: CAT.TYPE, severity: SEV.MAJEURE,
-            message: 'Au moins ' + mNow[1] + ' choix demandés mais seulement ' + opts.length + ' modalité(s)', action: 'Réduire la multiplicité ou compléter la liste', auto: false,
+            message: _t('audit_msg_min_modalites', { min: mNow[1], n: opts.length }, 'Au moins ' + mNow[1] + ' choix demandés mais seulement ' + opts.length + ' modalité(s)'), action: _t('audit_action_min_modalites', null, 'Réduire la multiplicité ou compléter la liste'), auto: false,
           });
         }
       }
@@ -1081,7 +1127,7 @@
       if (/^(Quel(le)?s?|Combien|Pourquoi|Comment)_/i.test(idNow)) {
         emit({
           rule: 'liste.identifiant_interrogatif', category: CAT.LISTE, severity: SEV.MAJEURE, field: 'pf_modalites',
-          message: 'Identifiant de liste copié de la phrase (« ' + idNow + ' »)', action: 'Donner un nom court et réutilisable (Distance_, Niveau_, Frequence_)', auto: false,
+          message: _t('audit_msg_identifiant_interrogatif', { id: idNow }, 'Identifiant de liste copié de la phrase (« ' + idNow + ' »)'), action: _t('audit_action_identifiant_interrogatif', null, 'Donner un nom court et réutilisable (Distance_, Niveau_, Frequence_)'), auto: false,
         });
       }
 
@@ -1123,15 +1169,16 @@
         if (only || (entry.ouverte && missing.length && !extra.length && !mapped.length)) {
           const subset = !extra.length && !mapped.length;
           const parts = [];
-          if (mapped.length) parts.push('synonymes : ' + mapped.map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(', '));
-          if (extra.length) parts.push('hors DPF : ' + extra.map(v => '« ' + v + ' »').join(', '));
-          if (missing.length) parts.push('du DPF absentes : ' + missing.map(v => '« ' + v + ' »').join(', '));
+          if (mapped.length) parts.push(_t('audit_word_synonymes', { vals: mapped.map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(', ') }, 'synonymes : ' + mapped.map(([a, b]) => '« ' + a + ' » → « ' + b + ' »').join(', ')));
+          if (extra.length) parts.push(_t('audit_word_hors_dpf', { vals: extra.map(v => '« ' + v + ' »').join(', ') }, 'hors DPF : ' + extra.map(v => '« ' + v + ' »').join(', ')));
+          if (missing.length) parts.push(_t('audit_word_du_dpf_absentes', { vals: missing.map(v => '« ' + v + ' »').join(', ') }, 'du DPF absentes : ' + missing.map(v => '« ' + v + ' »').join(', ')));
           const target = dv.slice();
           const proposed = entry.ouverte ? target.concat(extra) : target;
           emit({
             rule: 'liste.dpf_valeurs', category: CAT.LISTE, severity: subset ? SEV.MINEURE : SEV.MAJEURE, field: 'pf_modalites', source: SRC.DPF_LISTES,
-            message: 'Liste « ' + canonListId(id) + ' » différente de celle du DPF — ' + parts.join(' ; '),
-            action: 'Reprendre les valeurs du DPF (' + dv.join(', ') + '), ou renommer la liste si la question n\'a pas le même sens (ex. ' + canonListId(id).replace(/_$/, '') + '_Enfant_)',
+            message: _t('audit_msg_liste_dpf_valeurs', { id: canonListId(id), detail: parts.join(' ; ') }, 'Liste « ' + canonListId(id) + ' » différente de celle du DPF — ' + parts.join(' ; ')),
+            action: _t('audit_action_liste_dpf_valeurs', { vals: dv.join(', '), ex: canonListId(id).replace(/_$/, '') + '_Enfant_' },
+              'Reprendre les valeurs du DPF (' + dv.join(', ') + '), ou renommer la liste si la question n\'a pas le même sens (ex. ' + canonListId(id).replace(/_$/, '') + '_Enfant_)'),
             auto: false,
             fix: cur => { const p = parseListDef(cur); return p ? buildListDef(p, p.id, proposed) : null; },
           });
@@ -1144,7 +1191,7 @@
         if (twin) {
           emit({
             rule: 'liste.dpf_jumeau', category: CAT.LISTE, severity: SEV.MINEURE, field: 'pf_modalites', source: SRC.DPF_LISTES,
-            message: 'Mêmes modalités que la liste du DPF « ' + twin.identifiant + ' »', action: 'Réutiliser l\'identifiant ' + twin.identifiant + ' (vocabulaire contrôlé)',
+            message: _t('audit_msg_liste_dpf_jumeau', { id: twin.identifiant }, 'Mêmes modalités que la liste du DPF « ' + twin.identifiant + ' »'), action: _t('audit_action_liste_dpf_jumeau', { id: twin.identifiant }, 'Réutiliser l\'identifiant ' + twin.identifiant + ' (vocabulaire contrôlé)'),
             auto: false,
             fix: cur => { const p = parseListDef(cur); return p ? buildListDef(p, twin.identifiant, p.values) : null; },
             also: { pf_question: withConstraint(w.pf_question, kNow.replace(/[A-Za-z][A-Za-z0-9_]*$/, twin.identifiant)) },
@@ -1160,11 +1207,16 @@
       if (!have || affixStatus(have) === 'bad') return;
       const klass = a => (a === 'SRC' ? 'X' : (/^[12]/.test(a) ? a[0] : a));
       if (klass(have) === klass(xls.affix)) return;
-      const label = { B: 'Oui/Non', C: 'Oui/Non/autre', X: 'liste de choix', Z: 'texte', A: 'date', 1: 'entier', 2: 'réel', G: 'variable générée', P: 'photo' };
+      const label = {
+        B: _t('audit_type_label_B', null, 'Oui/Non'), C: _t('audit_type_label_C', null, 'Oui/Non/autre'), X: _t('audit_type_label_X', null, 'liste de choix'),
+        Z: _t('audit_type_label_Z', null, 'texte'), A: _t('audit_type_label_A', null, 'date'), 1: _t('audit_type_label_1', null, 'entier'), 2: _t('audit_type_label_2', null, 'réel'),
+        G: _t('audit_type_label_G', null, 'variable générée'), P: _t('audit_type_label_P', null, 'photo'),
+      };
       emit({
         rule: 'type.xlsform_affixe', category: CAT.TYPE, severity: SEV.CRITIQUE,
-        message: (xls.data ? 'Les valeurs de la colonne sont ' + xls.type : 'Le champ est de type « ' + xls.type + ' »') + ' (' + (label[klass(xls.affix)] || xls.affix) + ') mais le nom se termine par __' + have + ' (' + (label[klass(have)] || have) + ')',
-        action: 'Écrire __' + xls.affix + (xls.data ? ' (les valeurs de la colonne font foi)' : ' (le type du champ fait foi)'), auto: true,
+        message: _t('audit_msg_xlsform_affixe', { xlsPart: xls.data ? 'col:' + xls.type : 'field:' + xls.type, affixLabel: label[klass(xls.affix)] || xls.affix, have, haveLabel: label[klass(have)] || have },
+          (xls.data ? 'Les valeurs de la colonne sont ' + xls.type : 'Le champ est de type « ' + xls.type + ' »') + ' (' + (label[klass(xls.affix)] || xls.affix) + ') mais le nom se termine par __' + have + ' (' + (label[klass(have)] || have) + ')'),
+        action: _t('audit_action_xlsform_affixe', { affix: xls.affix, dataBased: Boolean(xls.data) }, 'Écrire __' + xls.affix + (xls.data ? ' (les valeurs de la colonne font foi)' : ' (le type du champ fait foi)')), auto: true,
         fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[^_]+$/, '__' + xls.affix), p.constraint); },
       });
     }
@@ -1177,7 +1229,10 @@
       if (opts.length < 2) {
         emit({
           rule: 'modalites.une_seule', category: CAT.MODA, severity: SEV.MAJEURE, field: 'pf_modalites',
-          message: 'Liste « ' + ld.id + ' » à ' + (opts.length ? 'une seule modalité' : 'aucune modalité'), action: 'Un choix propose au moins deux modalités', auto: false,
+          message: opts.length
+            ? _t('audit_msg_liste_une_seule_xls', { id: ld.id }, 'Liste « ' + ld.id + ' » à une seule modalité')
+            : _t('audit_msg_liste_aucune_xls', { id: ld.id }, 'Liste « ' + ld.id + ' » à aucune modalité'),
+          action: _t('audit_action_modalites_une_seule', null, 'Un choix propose au moins deux modalités'), auto: false,
         });
         return;
       }
@@ -1185,8 +1240,8 @@
       if (adminTarget && opts.length >= 5) {
         emit({
           rule: 'liste.admin', category: CAT.LISTE, severity: SEV.MAJEURE, field: 'pf_modalites', source: SRC.REGLE16,
-          message: 'Unité administrative codée en liste inline (' + opts.length + ' valeurs) : liste « ' + xls.list + ' »',
-          action: 'Utiliser le référentiel externe ' + adminTarget + ' (select_one_external / pulldata), jamais de liste en dur — Règle 16', auto: false,
+          message: _t('audit_msg_liste_admin_inline_xls', { n: opts.length, list: xls.list }, 'Unité administrative codée en liste inline (' + opts.length + ' valeurs) : liste « ' + xls.list + ' »'),
+          action: _t('audit_action_liste_admin_inline_xls', { target: adminTarget }, 'Utiliser le référentiel externe ' + adminTarget + ' (select_one_external / pulldata), jamais de liste en dur — Règle 16'), auto: false,
         });
         return;
       }
@@ -1213,7 +1268,8 @@
         const s = sugg();
         const spec = fixSpec || { fix: null, also: null };
         emit({
-          rule, category: CAT.TYPE, severity, message, action: action + (s && s !== w.pf_question && !spec.fix ? ' — proposition issue du libellé : ' + s : ''),
+          rule, category: CAT.TYPE, severity, message,
+          action: action + (s && s !== w.pf_question && !spec.fix ? ' ' + _t('audit_action_suggestion_suffix', { s }, '— proposition issue du libellé : ' + s) : ''),
           suggestion: s && s !== w.pf_question ? s : '', auto: false, fix: spec.fix, also: spec.also,
         });
       };
@@ -1221,35 +1277,52 @@
       const nq = n.replace(/^ (si oui|si non|selon vous|d apres vous|le cas echeant|si c est le cas) /, ' ');
       const numeric = kind === 'integer' || kind === 'decimal';
       if (/ combien | nombre de | nombre d | nb de /.test(n) && !numeric) {
-        if (kind === 'boolean' || kind === 'trilean') flag('type.combien', SEV.CRITIQUE, '« Combien / Nombre de » appelle un nombre, le code est un booléen', 'Coder un entier : __1 (ou __1Y, __2…)', retype('1', '', 'Nombre entier'));
-        else if (kind === 'text') flag('type.combien', SEV.MAJEURE, '« Combien / Nombre de » appelle un nombre, le code est un texte libre', 'Coder un entier : __1 (avec une plage)', retype('1', '', 'Nombre entier'));
+        if (kind === 'boolean' || kind === 'trilean') flag('type.combien', SEV.CRITIQUE,
+          _t('audit_msg_combien_booleen', null, '« Combien / Nombre de » appelle un nombre, le code est un booléen'),
+          _t('audit_action_combien', null, 'Coder un entier : __1 (ou __1Y, __2…)'), retype('1', '', 'Nombre entier'));
+        else if (kind === 'text') flag('type.combien', SEV.MAJEURE,
+          _t('audit_msg_combien_texte', null, '« Combien / Nombre de » appelle un nombre, le code est un texte libre'),
+          _t('audit_action_combien_texte', null, 'Coder un entier : __1 (avec une plage)'), retype('1', '', 'Nombre entier'));
       }
       if (/ age /.test(n) && !/ age gestationnel /.test(n) && (kind === 'text' || kind === 'boolean')) {
-        flag('type.age', SEV.CRITIQUE, '« Âge » codé ' + (kind === 'text' ? 'en texte libre' : 'en booléen'), 'Un âge est un entier : __1Y!0<N<120', retype('1Y', '0<N<120', 'Années'));
+        flag('type.age', SEV.CRITIQUE,
+          _t('audit_msg_age', { kindWord: kind === 'text' ? _t('audit_word_en_texte_libre', null, 'en texte libre') : _t('audit_word_en_booleen', null, 'en booléen') },
+            '« Âge » codé ' + (kind === 'text' ? 'en texte libre' : 'en booléen')),
+          _t('audit_action_age', null, 'Un âge est un entier : __1Y!0<N<120'), retype('1Y', '0<N<120', 'Années'));
       }
       if (kind === 'boolean' && /^ (quel|quelle|quels|quelles) /.test(nq)) {
-        flag('type.quel_booleen', SEV.CRITIQUE, '« Quel(le)(s) … » attend un choix ou un texte, pas Oui/Non', 'Coder __X (liste) ou __Z!1*Expression : texte libre proposé tant que la liste des choix n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
+        flag('type.quel_booleen', SEV.CRITIQUE,
+          _t('audit_msg_quel_booleen', null, '« Quel(le)(s) … » attend un choix ou un texte, pas Oui/Non'),
+          _t('audit_action_quel_booleen', null, 'Coder __X (liste) ou __Z!1*Expression : texte libre proposé tant que la liste des choix n\'est pas connue'), retype('Z', '1*Expression', 'Expression'));
       }
       if (kind === 'boolean' && /^ (pourquoi|pour quelle raison) /.test(nq)) {
-        flag('type.pourquoi_booleen', SEV.CRITIQUE, '« Pourquoi » attend une raison, pas Oui/Non', 'Coder __X!1*Raison_ ou __Z!1*Expression : texte libre proposé tant que la liste des raisons n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
+        flag('type.pourquoi_booleen', SEV.CRITIQUE,
+          _t('audit_msg_pourquoi_booleen', null, '« Pourquoi » attend une raison, pas Oui/Non'),
+          _t('audit_action_pourquoi_booleen', null, 'Coder __X!1*Raison_ ou __Z!1*Expression : texte libre proposé tant que la liste des raisons n\'est pas connue'), retype('Z', '1*Expression', 'Expression'));
       }
       if (kind === 'boolean' && /^ (ou|dans quel lieu|a quel endroit) /.test(nq)) {
-        flag('type.ou_booleen', SEV.CRITIQUE, '« Où » attend un lieu, pas Oui/Non', 'Coder __X!1*1Lieu_ ou __Z!1*Expression : texte libre proposé tant que la liste des lieux n\'est pas connue', retype('Z', '1*Expression', 'Expression'));
+        flag('type.ou_booleen', SEV.CRITIQUE,
+          _t('audit_msg_ou_booleen', null, '« Où » attend un lieu, pas Oui/Non'),
+          _t('audit_action_ou_booleen', null, 'Coder __X!1*1Lieu_ ou __Z!1*Expression : texte libre proposé tant que la liste des lieux n\'est pas connue'), retype('Z', '1*Expression', 'Expression'));
       }
       if (numeric && ci.unit !== 'P' && (/%/.test(libelle) || / (pourcentage|taux|proportion|couverture|prevalence) /.test(n))) {
         const isReal = ci.affix === '2';
         emit({
           rule: 'type.pourcentage', category: CAT.TYPE, severity: SEV.MAJEURE,
-          message: 'Pourcentage ou taux codé sans l\'affixe __2P (« ' + ci.affix + ' »)',
-          action: 'Coder __2P en gardant la plage' + (isReal ? '' : ' (un pourcentage est un réel : __2P!0<R<100, ou jusqu\'à 200 pour une couverture administrative)'), auto: false,
+          message: _t('audit_msg_pourcentage', { affix: ci.affix }, 'Pourcentage ou taux codé sans l\'affixe __2P (« ' + ci.affix + ' »)'),
+          action: _t('audit_action_pourcentage', { isReal },
+            'Coder __2P en gardant la plage' + (isReal ? '' : ' (un pourcentage est un réel : __2P!0<R<100, ou jusqu\'à 200 pour une couverture administrative)')), auto: false,
           fix: isReal ? q => { const p = splitQ(q); return joinQ(p.code.replace(/__2$/, '__2P'), p.constraint); } : null,
         });
       }
       if (kind !== 'geopoint' && kind !== 'metadata' && kind !== 'generated' && / (coordonnees gps|geolocalisation|position gps|latitude|longitude) /.test(n)) {
-        flag('type.gps', SEV.CRITIQUE, 'Coordonnées GPS non codées __G', 'Coder …__G!DMS ou …__G!DD (Règle 19)');
+        flag('type.gps', SEV.CRITIQUE, _t('audit_msg_gps', null, 'Coordonnées GPS non codées __G'), _t('audit_action_gps', null, 'Coder …__G!DMS ou …__G!DD (Règle 19)'));
       }
       if ((kind === 'text' || kind === 'boolean') && / date /.test(n) && !/ mise a jour | datee? /.test(n)) {
-        flag('type.date', SEV.MAJEURE, 'Question de date codée ' + (kind === 'text' ? 'en texte libre' : 'en booléen'), 'Coder __A!YYYY/MM/DD');
+        flag('type.date', SEV.MAJEURE,
+          _t('audit_msg_date_mal_codee', { kindWord: kind === 'text' ? _t('audit_word_en_texte_libre', null, 'en texte libre') : _t('audit_word_en_booleen', null, 'en booléen') },
+            'Question de date codée ' + (kind === 'text' ? 'en texte libre' : 'en booléen')),
+          _t('audit_action_date_mal_codee', null, 'Coder __A!YYYY/MM/DD'));
       }
 
       // Règle 16 : le libellé désigne une unité administrative (région, district, établissement…)
@@ -1263,8 +1336,8 @@
         if (a && a.pf_question) {
           emit({
             rule: 'liste.admin_libelle', category: CAT.LISTE, severity: SEV.MAJEURE, source: SRC.REGLE16,
-            message: 'Le libellé désigne une unité du référentiel administratif (« ' + libelle.slice(0, 60) + ' ») mais le code ne pointe pas vers une liste Admin_',
-            action: 'Utiliser ' + a.pf_question + ' (liste externe, jamais de valeurs en dur) — Règle 16', auto: false,
+            message: _t('audit_msg_admin_libelle', { extract: libelle.slice(0, 60) }, 'Le libellé désigne une unité du référentiel administratif (« ' + libelle.slice(0, 60) + ' ») mais le code ne pointe pas vers une liste Admin_'),
+            action: _t('audit_action_admin_libelle', { target: a.pf_question }, 'Utiliser ' + a.pf_question + ' (liste externe, jamais de valeurs en dur) — Règle 16'), auto: false,
             fix: () => a.pf_question, also: { pf_modalites: a.pf_modalites || '' },
           });
         }
@@ -1279,7 +1352,7 @@
           if (sameKind && !(cur.length === 1 && hint === '2P' && false)) {
             emit({
               rule: 'type.unite_libelle', category: CAT.TYPE, severity: SEV.MINEURE,
-              message: 'Le libellé mentionne explicitement l\'unité « ' + hint[1] + ' » mais le code est __' + cur, action: 'Écrire __' + hint, auto: false,
+              message: _t('audit_msg_unite_libelle', { letter: hint[1], cur }, 'Le libellé mentionne explicitement l\'unité « ' + hint[1] + ' » mais le code est __' + cur), action: _t('audit_action_unite_libelle', { hint }, 'Écrire __' + hint), auto: false,
               fix: q => { const p = splitQ(q); return joinQ(p.code.replace(/__[12][A-Z]?$/, '__' + hint), p.constraint); },
             });
           }
@@ -1298,8 +1371,8 @@
           const s = sugg();
           emit({
             rule: 'semantique.radical', category: CAT.SEM, severity: SEV.MAJEURE,
-            message: 'Le radical « ' + stemOf(code) + ' » n\'a aucun mot en commun avec le libellé « ' + libelle.slice(0, 70) + ' »',
-            action: 'Vérifier que le code décrit bien la question' + (s ? ' — proposition issue du libellé : ' + s : ''), suggestion: s, auto: false, fix: null,
+            message: _t('audit_msg_semantique_radical', { stem: stemOf(code), extract: libelle.slice(0, 70) }, 'Le radical « ' + stemOf(code) + ' » n\'a aucun mot en commun avec le libellé « ' + libelle.slice(0, 70) + ' »'),
+            action: _t('audit_action_semantique_radical', null, 'Vérifier que le code décrit bien la question') + (s ? ' ' + _t('audit_action_suggestion_suffix', { s }, '— proposition issue du libellé : ' + s) : ''), suggestion: s, auto: false, fix: null,
           });
         }
       }
@@ -1323,8 +1396,8 @@
         if (!soundDpfCode(sib.code)) return;
         emit({
           rule: 'dpf.type_different', category: CAT.DPF, severity: SEV.MAJEURE, source: SRC.DPF_VARIABLES,
-          message: 'Le DPF définit déjà ce radical avec un autre type : « ' + cleanDpfCode(sib.code) + ' » (« ' + sib.libelle.slice(0, 70) + ' »)',
-          action: 'Reprendre le code normalisé du DPF, ou garder le vôtre s\'il mesure autre chose', auto: false,
+          message: _t('audit_msg_dpf_type_different', { code: cleanDpfCode(sib.code), extract: sib.libelle.slice(0, 70) }, 'Le DPF définit déjà ce radical avec un autre type : « ' + cleanDpfCode(sib.code) + ' » (« ' + sib.libelle.slice(0, 70) + ' »)'),
+          action: _t('audit_action_dpf_type_different', null, 'Reprendre le code normalisé du DPF, ou garder le vôtre s\'il mesure autre chose'), auto: false,
           fix: q => withConstraint(q, splitQ(q).constraint).replace(/^[^!]*/, cleanDpfCode(sib.code)),
         });
         return;
@@ -1341,8 +1414,9 @@
           if (!soundDpfCode(best.entry.code)) return;
           emit({
             rule: 'dpf.variable_equivalente', category: CAT.DPF, severity: SEV.MAJEURE, source: SRC.DPF_VARIABLES,
-            message: 'Même question que la variable du DPF « ' + cleanDpfCode(best.entry.code) + ' » (« ' + best.entry.libelle.slice(0, 70) + ' »)' + affixNote(affixOf(code), best.entry.code),
-            action: 'Réutiliser le code normalisé du DPF (une variable = un code dans toutes les études)', auto: false,
+            message: _t('audit_msg_dpf_variable_equivalente', { code: cleanDpfCode(best.entry.code), extract: best.entry.libelle.slice(0, 70), note: affixNote(affixOf(code), best.entry.code) },
+              'Même question que la variable du DPF « ' + cleanDpfCode(best.entry.code) + ' » (« ' + best.entry.libelle.slice(0, 70) + ' »)' + affixNote(affixOf(code), best.entry.code)),
+            action: _t('audit_action_dpf_variable_equivalente', null, 'Réutiliser le code normalisé du DPF (une variable = un code dans toutes les études)'), auto: false,
             fix: q => withConstraint(q, splitQ(q).constraint).replace(/^[^!]*/, cleanDpfCode(best.entry.code)),
           });
           return;
@@ -1360,7 +1434,7 @@
     };
     const affixNote = (mine, dpfCode) => {
       const a = affixOf(cleanDpfCode(dpfCode));
-      return a && mine && a !== mine ? ' — attention : l\'affixe du DPF est « ' + a + ' », le vôtre « ' + mine + ' » (l\'unité ne serait plus portée par le code)' : '';
+      return a && mine && a !== mine ? ' ' + _t('audit_word_affix_note', { dpfAffix: a, mine }, '— attention : l\'affixe du DPF est « ' + a + ' », le vôtre « ' + mine + ' » (l\'unité ne serait plus portée par le code)') : '';
     };
 
     // ── Exécution ────────────────────────────────────────────────────────────
@@ -1419,8 +1493,8 @@
         if (pcode && CORE.classifyCode(prev.work.pf_question).kind === 'boolean') {
           const yes = /^\s*si\s+oui/i.test(strip(item.libelle));
           emitS({
-            rule: 'skip.manquant', severity: SEV.MINEURE, message: 'Le libellé commence par « Si ' + (yes ? 'oui' : 'non') + ' » mais aucune Skip Logic n\'est écrite',
-            action: 'Écrire ' + pcode + ' = ' + (yes ? 'Oui' : 'Non') + ' -> @' + ownCode, auto: false,
+            rule: 'skip.manquant', severity: SEV.MINEURE, message: _t('audit_msg_skip_manquant', { word: yes ? 'oui' : 'non' }, 'Le libellé commence par « Si ' + (yes ? 'oui' : 'non') + ' » mais aucune Skip Logic n\'est écrite'),
+            action: _t('audit_action_skip_manquant', { pcode, word: yes ? 'Oui' : 'Non', own: ownCode }, 'Écrire ' + pcode + ' = ' + (yes ? 'Oui' : 'Non') + ' -> @' + ownCode), auto: false,
             fix: () => pcode + ' = ' + (yes ? 'Oui' : 'Non') + ' -> @' + ownCode,
           });
         }
@@ -1434,8 +1508,8 @@
       const tag = parts.length > 1 ? '#' + (pi + 1) : '';
       if (!parsed) {
         emitS({
-          rule: 'skip.syntaxe' + tag, severity: SEV.CRITIQUE, message: 'Skip Logic illisible : « ' + p + ' »',
-          action: 'Écrire <Lexia> = <valeur> -> @<Lexia cible> (Règle 17)', auto: false,
+          rule: 'skip.syntaxe' + tag, severity: SEV.CRITIQUE, message: _t('audit_msg_skip_syntaxe', { p }, 'Skip Logic illisible : « ' + p + ' »'),
+          action: _t('audit_action_skip_syntaxe', null, 'Écrire <Lexia> = <valeur> -> @<Lexia cible> (Règle 17)'), auto: false,
         });
         return;
       }
@@ -1451,27 +1525,27 @@
           srcIdx = cand.index;
           emitS({
             rule: 'skip.source_inconnue' + tag, severity: SEV.CRITIQUE,
-            message: 'La condition porte sur « ' + lexia + ' », qui n\'existe pas dans le questionnaire',
-            action: 'Question la plus proche (ligne ' + (cand.index + 1) + ') : ' + lexiaFixed, auto: false,
+            message: _t('audit_msg_skip_source_inconnue', { lexia }, 'La condition porte sur « ' + lexia + ' », qui n\'existe pas dans le questionnaire'),
+            action: _t('audit_action_skip_source_proche', { line: cand.index + 1, lexia: lexiaFixed }, 'Question la plus proche (ligne ' + (cand.index + 1) + ') : ' + lexiaFixed), auto: false,
             fix: cur => replaceSkipPart(cur, pi, parsed, { lexia: lexiaFixed }),
           });
         } else {
           emitS({
             rule: 'skip.source_inconnue' + tag, severity: SEV.CRITIQUE,
-            message: 'La condition porte sur « ' + lexia + ' », qui n\'existe pas dans le questionnaire', action: 'Citer le code exact de la question source', auto: false,
+            message: _t('audit_msg_skip_source_inconnue', { lexia }, 'La condition porte sur « ' + lexia + ' », qui n\'existe pas dans le questionnaire'), action: _t('audit_action_skip_source_citer', null, 'Citer le code exact de la question source'), auto: false,
           });
         }
       } else if (srcIdx > idx) {
         emitS({
           rule: 'skip.source_apres' + tag, severity: SEV.MAJEURE,
-          message: 'La condition porte sur « ' + lexia + ' », posée APRÈS cette question (ligne ' + (srcIdx + 1) + ')',
-          action: 'Kobo n\'évalue qu\'une question déjà posée : déplacer l\'une des deux questions', auto: false,
+          message: _t('audit_msg_skip_source_apres', { lexia, line: srcIdx + 1 }, 'La condition porte sur « ' + lexia + ' », posée APRÈS cette question (ligne ' + (srcIdx + 1) + ')'),
+          action: _t('audit_action_skip_source_apres', null, 'Kobo n\'évalue qu\'une question déjà posée : déplacer l\'une des deux questions'), auto: false,
         });
       } else if (lexia !== codeOf(all[srcIdx].work.pf_question)) {
         lexiaFixed = codeOf(all[srcIdx].work.pf_question);
         emitS({
           rule: 'skip.source_graphie' + tag, severity: SEV.MINEURE,
-          message: 'Graphie de « ' + lexia + ' » différente du code de la question (' + lexiaFixed + ')', action: 'Écrire le code exact', auto: true,
+          message: _t('audit_msg_skip_source_graphie', { lexia, fixed: lexiaFixed }, 'Graphie de « ' + lexia + ' » différente du code de la question (' + lexiaFixed + ')'), action: _t('audit_action_skip_ecrire_code_exact', null, 'Écrire le code exact'), auto: true,
           fix: cur => replaceSkipPart(cur, pi, parsed, { lexia: lexiaFixed }),
         });
       }
@@ -1482,12 +1556,12 @@
         if (!exists) {
           emitS({
             rule: 'skip.cible_inconnue' + tag, severity: SEV.CRITIQUE,
-            message: 'La cible « @' + target + ' » n\'existe pas dans le questionnaire', action: 'Cibler cette question : @' + ownCode, auto: true,
+            message: _t('audit_msg_skip_cible_inconnue', { target }, 'La cible « @' + target + ' » n\'existe pas dans le questionnaire'), action: _t('audit_action_skip_cible_inconnue', { own: ownCode }, 'Cibler cette question : @' + ownCode), auto: true,
             fix: cur => replaceSkipPart(cur, pi, parsed, { target: ownCode }),
           });
         } else if (tk === codeKey(ownCode)) {
           emitS({
-            rule: 'skip.cible_graphie' + tag, severity: SEV.MINEURE, message: 'Graphie de la cible « @' + target + ' » différente du code (' + ownCode + ')', action: 'Écrire le code exact', auto: true,
+            rule: 'skip.cible_graphie' + tag, severity: SEV.MINEURE, message: _t('audit_msg_skip_cible_graphie', { target, own: ownCode }, 'Graphie de la cible « @' + target + ' » différente du code (' + ownCode + ')'), action: _t('audit_action_skip_ecrire_code_exact', null, 'Écrire le code exact'), auto: true,
             fix: cur => replaceSkipPart(cur, pi, parsed, { target: ownCode }),
           });
         }
@@ -1500,13 +1574,13 @@
         const isCmp = ['>', '<', '>=', '<='].includes(op);
         if (sKind === 'boolean' && !/^(oui|non)$/i.test(strip(value))) {
           emitS({
-            rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: 'La question source « ' + lexiaFixed + ' » est un booléen : la valeur « ' + value + ' » n\'est ni Oui ni Non',
-            action: 'Écrire = Oui ou = Non', auto: false,
+            rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: _t('audit_msg_skip_valeur_booleen', { lexia: lexiaFixed, value }, 'La question source « ' + lexiaFixed + ' » est un booléen : la valeur « ' + value + ' » n\'est ni Oui ni Non'),
+            action: _t('audit_action_skip_valeur_booleen', null, 'Écrire = Oui ou = Non'), auto: false,
           });
         } else if (sNum && !isCmp && !/^-?\d+([.,]\d+)?$/.test(value)) {
           emitS({
-            rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: 'La question source « ' + lexiaFixed + ' » est numérique : la valeur « ' + value + ' » n\'est pas un nombre',
-            action: 'Comparer à un nombre (= 2, > 0)', auto: false,
+            rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: _t('audit_msg_skip_valeur_numerique', { lexia: lexiaFixed, value }, 'La question source « ' + lexiaFixed + ' » est numérique : la valeur « ' + value + ' » n\'est pas un nombre'),
+            action: _t('audit_action_skip_valeur_numerique', null, 'Comparer à un nombre (= 2, > 0)'), auto: false,
           });
         } else if (sKind === 'select') {
           const sl = parseListDef(sw.pf_modalites);
@@ -1515,8 +1589,8 @@
             if (!opts.some(o => valueKey(o) === valueKey(value))) {
               const near = opts.find(o => lev(valueKey(o), valueKey(value), 2) <= 2);
               emitS({
-                rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: 'La valeur « ' + value + ' » ne fait pas partie de la liste « ' + sl.id + ' » de la question source',
-                action: near ? 'Valeur la plus proche : ' + near : 'Choisir une modalité de la liste', auto: false,
+                rule: 'skip.valeur' + tag, severity: SEV.MAJEURE, message: _t('audit_msg_skip_valeur_hors_liste', { value, id: sl.id }, 'La valeur « ' + value + ' » ne fait pas partie de la liste « ' + sl.id + ' » de la question source'),
+                action: near ? _t('audit_action_skip_valeur_proche', { near }, 'Valeur la plus proche : ' + near) : _t('audit_action_skip_valeur_choisir', null, 'Choisir une modalité de la liste'), auto: false,
                 fix: near ? cur => replaceSkipPart(cur, pi, parsed, { value: near }) : null,
               });
             }
@@ -1633,8 +1707,14 @@
         }
         const f = {
           id: i + ':doublon.code', index: i, rule: 'doublon.code', field: 'pf_question', category: CAT.DOUBLON, severity: SEV.MAJEURE,
-          message: 'Code déjà utilisé ' + (r.xls && r.xls.data ? 'par la colonne ' : 'ligne ') + (r.xls && r.xls.row != null ? r.xls.row : first + 1) + ' (' + (sameLib ? 'même libellé : question répétée' : 'autre question') + ')',
-          action: after ? 'Deux questions ne peuvent pas porter le même code : ajouter ce qui les distingue (' + extra.slice(0, 2).join(' ') + ')' : 'Deux questions ne peuvent pas porter le même code (Kobo refuse deux « name » identiques) : préciser le déterminant',
+          message: _t('audit_msg_doublon_code', {
+            ref: r.xls && r.xls.row != null ? r.xls.row : first + 1,
+            byCol: Boolean(r.xls && r.xls.data),
+            sameLabel: sameLib,
+          }, 'Code déjà utilisé ' + (r.xls && r.xls.data ? 'par la colonne ' : 'ligne ') + (r.xls && r.xls.row != null ? r.xls.row : first + 1) + ' (' + (sameLib ? 'même libellé : question répétée' : 'autre question') + ')'),
+          action: after
+            ? _t('audit_action_doublon_code_distinct', { words: extra.slice(0, 2).join(' ') }, 'Deux questions ne peuvent pas porter le même code : ajouter ce qui les distingue (' + extra.slice(0, 2).join(' ') + ')')
+            : _t('audit_action_doublon_code_generic', null, 'Deux questions ne peuvent pas porter le même code (Kobo refuse deux « name » identiques) : préciser le déterminant'),
           source: SRC.GRAMMAIRE, before: r.work.pf_question, after, auto: false, applied: false, detail: '', suggestion: after ? codeOf(after) : '', also: null,
         };
         f.applied = after != null && ctx.accepted.has(f.id);
