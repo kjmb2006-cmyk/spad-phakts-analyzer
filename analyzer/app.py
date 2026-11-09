@@ -260,10 +260,10 @@ def require_login():
         session.clear()
         return redirect(url_for('login', next=request.path))
     if role != 'admin' and request.endpoint in ADMIN_ONLY_ENDPOINTS:
-        flash("Cette page est réservée à l'administrateur.", 'warning')
+        flash(_("Cette page est réservée à l'administrateur."), 'warning')
         return redirect(url_for('index'))
     if role == 'invite' and request.endpoint not in INVITE_ALLOWED_ENDPOINTS:
-        flash("Cette page n'est pas accessible avec un accès Invité.", 'warning')
+        flash(_("Cette page n'est pas accessible avec un accès Invité."), 'warning')
         return redirect(url_for('index'))
 
 
@@ -408,18 +408,18 @@ def admin_users():
 @app.route('/admin/users/<username>/approve', methods=['POST'])
 def admin_user_approve(username):
     if accounts.set_status(username, accounts.STATUS_APPROVED):
-        flash(f"Compte « {username} » autorisé.", 'success')
+        flash(_("Compte « %(username)s » autorisé.", username=username), 'success')
     else:
-        flash('Compte introuvable.', 'danger')
+        flash(_('Compte introuvable.'), 'danger')
     return redirect(url_for('admin_users'))
 
 
 @app.route('/admin/users/<username>/block', methods=['POST'])
 def admin_user_block(username):
     if accounts.set_status(username, accounts.STATUS_BLOCKED):
-        flash(f"Compte « {username} » bloqué.", 'warning')
+        flash(_("Compte « %(username)s » bloqué.", username=username), 'warning')
     else:
-        flash('Compte introuvable.', 'danger')
+        flash(_('Compte introuvable.'), 'danger')
     return redirect(url_for('admin_users'))
 
 
@@ -431,7 +431,7 @@ def admin_activity():
 @app.route('/admin/activity/reset', methods=['POST'])
 def admin_activity_reset():
     activity_log.clear()
-    flash('Journal d\'activité réinitialisé.', 'success')
+    flash(_('Journal d\'activité réinitialisé.'), 'success')
     return redirect(url_for('admin_activity'))
 
 
@@ -450,18 +450,18 @@ def admin_forms():
 @app.route('/admin/forms/<code>/activate', methods=['POST'])
 def admin_form_activate(code):
     if forms_registry.set_active(code, True):
-        flash(f"Formulaire « {code} » activé.", 'success')
+        flash(_("Formulaire « %(code)s » activé.", code=code), 'success')
     else:
-        flash('Formulaire introuvable.', 'danger')
+        flash(_('Formulaire introuvable.'), 'danger')
     return redirect(url_for('admin_forms'))
 
 
 @app.route('/admin/forms/<code>/deactivate', methods=['POST'])
 def admin_form_deactivate(code):
     if forms_registry.set_active(code, False):
-        flash(f"Formulaire « {code} » désactivé — il n'apparaîtra plus dans Suivi ni Complétude.", 'warning')
+        flash(_("Formulaire « %(code)s » désactivé — il n'apparaîtra plus dans Suivi ni Complétude.", code=code), 'warning')
     else:
-        flash('Formulaire introuvable.', 'danger')
+        flash(_('Formulaire introuvable.'), 'danger')
     return redirect(url_for('admin_forms'))
 
 
@@ -473,12 +473,12 @@ def admin_form_add():
         try:
             params = {'n': int(request.form.get('rule_n', ''))}
         except ValueError:
-            flash('La valeur numérique de la règle de cible est invalide.', 'danger')
+            flash(_('La valeur numérique de la règle de cible est invalide.'), 'danger')
             return redirect(url_for('admin_forms'))
     elif rtype in ('etab_field_positive', 'floor_sum_district_field'):
         field = (request.form.get('rule_field') or '').strip()
         if not field:
-            flash('Le nom du champ du référentiel est obligatoire pour ce type de règle.', 'danger')
+            flash(_('Le nom du champ du référentiel est obligatoire pour ce type de règle.'), 'danger')
             return redirect(url_for('admin_forms'))
         params = {'field': field}
 
@@ -507,7 +507,7 @@ def admin_form_add():
         identity_field=identity_field,
     )
     if ok:
-        flash(f"Formulaire ajouté au registre.", 'success')
+        flash(_("Formulaire ajouté au registre."), 'success')
     else:
         flash(err, 'danger')
     return redirect(url_for('admin_forms'))
@@ -829,7 +829,7 @@ def collecte_sync_run():
     uid = (request.form.get('uid') or session.get('kobo_uid') or '').strip()
     instance = session.get('kobo_instance')
     if not token or not uid:
-        flash('Connectez-vous d’abord à KoboToolbox pour synchroniser les données.', 'warning')
+        flash(_('Connectez-vous d’abord à KoboToolbox pour synchroniser les données.'), 'warning')
         return redirect(url_for('collecte_sync'))
     # Mémorise ce qui a été réellement demandé (indépendamment du succès) —
     # sans ça, le menu déroulant retombait sur l'ancien formulaire chargé
@@ -865,7 +865,7 @@ def collecte_sync_run():
     result = kobo_load_data(token, uid, instance=instance)
     if not result.get('success'):
         state = append_sync_event(state, state_path, form_name=name, count=state.get('last_sync_count', 0), status='erreur', target=target)
-        flash(f"Synchronisation échouée : {result.get('error', 'Erreur inconnue')}", 'danger')
+        flash(_("Synchronisation échouée : %(error)s", error=result.get('error', 'Erreur inconnue')), 'danger')
         return redirect(url_for('collecte_sync'))
     df = result['df']
     _save_dataframe_to_session(df, name)
@@ -874,7 +874,7 @@ def collecte_sync_run():
     state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=target)
     session['collecte_state_path'] = state_path
     _mirror_collecte_shared(df, name, state)
-    flash(f"Synchronisation réussie — {result.get('n_obs')} soumissions chargées depuis {name}.", 'success')
+    flash(_("Synchronisation réussie — %(n_obs)s soumissions chargées depuis %(name)s.", n_obs=result.get('n_obs'), name=name), 'success')
     return redirect(url_for('collecte_sync'))
 
 
@@ -885,7 +885,7 @@ def collecte_sync_auto():
     instance = session.get('kobo_instance')
     name = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     if not token or not uid:
-        flash('Connectez-vous d’abord à KoboToolbox pour activer la synchronisation automatique.', 'warning')
+        flash(_('Connectez-vous d’abord à KoboToolbox pour activer la synchronisation automatique.'), 'warning')
         return redirect(url_for('collecte_sync'))
     interval = int(request.form.get('interval_seconds', '300') or 300)
     baseline = int((session.get('data_meta') or {}).get('n_obs', 0) or 0)
@@ -894,7 +894,7 @@ def collecte_sync_auto():
     callback = _make_autosync_callback(data_path, state_path)
     kobo_sync.start(token, uid, instance, name, interval, baseline, on_new_data=callback)
     _save_autosync_resume(token, uid, instance, name, interval, data_path, state_path)
-    flash('Synchronisation automatique démarrée — les nouvelles soumissions seront appliquées automatiquement, même sans garder cette page ouverte.', 'success')
+    flash(_('Synchronisation automatique démarrée — les nouvelles soumissions seront appliquées automatiquement, même sans garder cette page ouverte.'), 'success')
     return redirect(url_for('collecte_sync'))
 
 
@@ -904,7 +904,7 @@ def collecte_sync_reset():
     uniquement (fichier propre à la session, voir _collecte_state_path())."""
     state_path = _collecte_state_path()
     save_state(state_path, {})
-    flash('Historique de synchronisation vidé.', 'success')
+    flash(_('Historique de synchronisation vidé.'), 'success')
     return redirect(url_for('collecte_sync'))
 
 
@@ -914,7 +914,7 @@ def collecte_refresh():
     uid = session.get('kobo_uid')
     instance = session.get('kobo_instance')
     if not token or not uid:
-        flash('Aucun formulaire Kobo actif. Connectez-vous d’abord.', 'warning')
+        flash(_('Aucun formulaire Kobo actif. Connectez-vous d’abord.'), 'warning')
         return redirect(url_for('collecte_sync'))
 
     state_path = _collecte_state_path()
@@ -922,7 +922,7 @@ def collecte_refresh():
     result = kobo_load_data(token, uid, instance=instance)
     if not result.get('success'):
         state = append_sync_event(state, state_path, form_name=session.get('kobo_asset_name', 'Formulaire KoboToolbox'), count=state.get('last_sync_count', 0), status='erreur', target=state.get('target'))
-        flash(f"Rafraîchissement échoué : {result.get('error', 'Erreur inconnue')}", 'danger')
+        flash(_("Rafraîchissement échoué : %(error)s", error=result.get('error', 'Erreur inconnue')), 'danger')
         return redirect(url_for('collecte_dashboard'))
 
     df = result['df']
@@ -933,7 +933,7 @@ def collecte_refresh():
     session['kobo_asset_name'] = name
     state = append_sync_event(state, state_path, form_name=name, count=int(result.get('n_obs', 0)), status='réussi', target=state.get('target'))
     _mirror_collecte_shared(df, name, state)
-    flash(f"Données rafraîchies — {result.get('n_obs')} soumissions disponibles.", 'success')
+    flash(_("Données rafraîchies — %(n_obs)s soumissions disponibles.", n_obs=result.get('n_obs')), 'success')
     return redirect(url_for('collecte_dashboard'))
 
 
@@ -1063,9 +1063,9 @@ def data_labels():
     path = session.get('data_path')
     f = request.files.get('xlsform')
     if not path or not os.path.exists(path):
-        flash("Chargez d'abord des données.", 'warning')
+        flash(_("Chargez d'abord des données."), 'warning')
     elif not f or not f.filename:
-        flash("Choisissez l'XLSForm du formulaire.", 'warning')
+        flash(_("Choisissez l'XLSForm du formulaire."), 'warning')
     else:
         tmp = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsform_' + uuid.uuid4().hex[:8] + '.xlsx')
         f.save(tmp)
@@ -1075,9 +1075,10 @@ def data_labels():
             form = xlsform_checks.parse_xlsform(tmp)
             dataset.save_form(path, form)
             n_rules = sum(1 for q in form['questions'] if q['required'] or q['relevant'] or q['constraint'])
-            flash(f"Formulaire lu dans « {f.filename} » : {len(labels['choices'])} question(s) à choix, {n_rules} question(s) avec "
+            flash(_("Formulaire lu dans « %(filename)s » : %(n_choices)s question(s) à choix, %(n_rules)s question(s) avec "
                   "règle (obligatoire, saut de logique, contrainte). Les analyses affichent les modalités avec leur vrai nom et la "
-                  "validation contrôle les réponses d'après le formulaire.", 'success')
+                  "validation contrôle les réponses d'après le formulaire.",
+                  filename=f.filename, n_choices=len(labels['choices']), n_rules=n_rules), 'success')
         except ValueError as e:
             flash(str(e), 'danger')
         finally:
@@ -1090,7 +1091,7 @@ def data_labels():
 def data_labels_clear():
     if session.get('data_path'):
         dataset.clear_labels(session['data_path'])
-        flash("Libellés retirés : les modalités reprennent leurs noms internes (mis en forme).", 'info')
+        flash(_("Libellés retirés : les modalités reprennent leurs noms internes (mis en forme)."), 'info')
     return redirect(request.referrer or url_for('analyse_donnees'))
 
 
@@ -1098,7 +1099,7 @@ def data_labels_clear():
 def data_exclusions_clear():
     if session.get('data_path'):
         dataset.clear_excluded(session['data_path'])
-        flash("Toutes les lignes sont de nouveau prises en compte dans les analyses.", 'success')
+        flash(_("Toutes les lignes sont de nouveau prises en compte dans les analyses."), 'success')
     return redirect(request.referrer or url_for('analyse_donnees'))
 
 
@@ -1106,7 +1107,7 @@ def data_exclusions_clear():
 def data_derived_delete():
     name = request.form.get('name') or ''
     if session.get('data_path') and dataset.delete_derived(session['data_path'], name):
-        flash(f"Variable « {name} » supprimée.", 'success')
+        flash(_("Variable « %(name)s » supprimée.", name=name), 'success')
     return redirect(request.referrer or url_for('analyse_donnees'))
 
 
@@ -1198,7 +1199,7 @@ def _column_digest(series, limit=8):
 def data_prepare():
     df = get_dataframe(full=True)
     if df is None:
-        flash("Chargez d'abord des données.", 'warning')
+        flash(_("Chargez d'abord des données."), 'warning')
         return redirect(url_for('analyse_donnees'))
     path = session['data_path']
     book = dataset.load_labels(path)
@@ -1257,7 +1258,7 @@ def data_prepare_add():
     df = get_dataframe(full=True)
     path = session.get('data_path')
     if df is None or not path:
-        flash("Chargez d'abord des données.", 'warning')
+        flash(_("Chargez d'abord des données."), 'warning')
         return redirect(url_for('analyse_donnees'))
     recipe, error = _recipe_from_form(request.form)
     if not error:
@@ -1270,8 +1271,8 @@ def data_prepare_add():
     if error:
         flash(error, 'danger')
     else:
-        flash(f"Variable « {recipe['name']} » créée : elle est disponible dans les statistiques, les croisements, les analyses multivariées et les rapports, "
-              "et se recalcule pour les soumissions à venir.", 'success')
+        flash(_("Variable « %(name)s » créée : elle est disponible dans les statistiques, les croisements, les analyses multivariées et les rapports, "
+              "et se recalcule pour les soumissions à venir.", name=recipe['name']), 'success')
     return redirect(url_for('data_prepare'))
 
 
@@ -1280,7 +1281,7 @@ def data_prepare_delete():
     path = session.get('data_path')
     name = request.form.get('name') or ''
     if path and (dataset.delete_recipe(path, name) or dataset.delete_derived(path, name)):
-        flash(f"Variable « {name} » supprimée.", 'info')
+        flash(_("Variable « %(name)s » supprimée.", name=name), 'info')
     return redirect(url_for('data_prepare'))
 
 
@@ -1290,7 +1291,7 @@ def data_prepare_filter():
     df = get_dataframe(full=True)
     path = session.get('data_path')
     if df is None or not path:
-        flash("Chargez d'abord des données.", 'warning')
+        flash(_("Chargez d'abord des données."), 'warning')
         return redirect(url_for('analyse_donnees'))
     try:
         matching = set(dataset.lines_matching(df, (request.form.get('expression') or '').strip()))
@@ -1300,11 +1301,11 @@ def data_prepare_filter():
     keep = request.form.get('mode') != 'ecarter'
     out = (set(range(1, len(df) + 1)) - matching) if keep else matching
     if keep and not matching:
-        flash("Aucune ligne ne vérifie cette condition : le filtre garderait un jeu vide, il n'est donc pas appliqué.", 'warning')
+        flash(_("Aucune ligne ne vérifie cette condition : le filtre garderait un jeu vide, il n'est donc pas appliqué."), 'warning')
         return redirect(url_for('data_prepare'))
     before = set(dataset.excluded_rows(path))
     total = dataset.set_excluded(path, before | out, note='filtre')
-    flash(f"{len(set(total) - before)} ligne(s) écartée(s) de l'analyse ({len(df) - len(total)} restent). Le fichier n'est pas modifié : « Rétablir » remet toutes les lignes.", 'success')
+    flash(_("%(n_removed)s ligne(s) écartée(s) de l'analyse (%(n_remaining)s restent). Le fichier n'est pas modifié : « Rétablir » remet toutes les lignes.", n_removed=len(set(total) - before), n_remaining=len(df) - len(total)), 'success')
     return redirect(url_for('data_prepare'))
 
 
@@ -1324,11 +1325,11 @@ def _data_banner_context():
 def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
-            flash('Aucun fichier sélectionné.', 'danger')
+            flash(_('Aucun fichier sélectionné.'), 'danger')
             return redirect(request.url)
         f = request.files['file']
         if f.filename == '':
-            flash('Aucun fichier sélectionné.', 'danger')
+            flash(_('Aucun fichier sélectionné.'), 'danger')
             return redirect(request.url)
         if f and allowed_file(f.filename):
             fname = str(uuid.uuid4()) + '_' + secure_filename(f.filename)
@@ -1371,14 +1372,15 @@ def upload():
                     session['data_meta']['has_child_sheet'] = False
 
                 flash(
-                    f'Fichier chargé avec succès — {len(df_clean)} ménages × '
-                    f'{len(df_clean.columns)} variables analysables.',
+                    _('Fichier chargé avec succès — %(n_hh)s ménages × '
+                      '%(n_vars)s variables analysables.',
+                      n_hh=len(df_clean), n_vars=len(df_clean.columns)),
                     'success')
                 return redirect(url_for('data_preview'))
             except Exception as e:
-                flash(f'Erreur lors du chargement : {str(e)}', 'danger')
+                flash(_('Erreur lors du chargement : %(error)s', error=str(e)), 'danger')
         else:
-            flash('Format non supporté. Utilisez .xlsx ou .xls', 'danger')
+            flash(_('Format non supporté. Utilisez .xlsx ou .xls'), 'danger')
         return redirect(url_for('upload'))
     return render_template('upload.html')
 
@@ -1618,7 +1620,7 @@ def data_rows_csv():
     """La vue filtrée et triée (toutes les lignes retenues, colonnes choisies) au format CSV."""
     df = _preview_frame()
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     columns, search, filters, lines, sort, ascending = _preview_args(df)
     cols, rows = preview.full_view(df, columns, search, filters, lines, sort, ascending, key=dataset.signature(session['data_path']),
@@ -1667,7 +1669,7 @@ def data_row_exclude(line):
 def data_preview():
     df = get_dataframe(full=True)
     if df is None:
-        flash('Veuillez d\'abord importer un fichier.', 'warning')
+        flash(_('Veuillez d\'abord importer un fichier.'), 'warning')
         return redirect(url_for('upload'))
     path = session.get('data_path')
     var_types = _var_types(df)
@@ -1715,7 +1717,7 @@ def export_var_types_xlsx():
     """
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     rows = _build_var_types_table(df)
     TYPE_LABEL = _VAR_TYPE_LABELS
@@ -1794,7 +1796,7 @@ def export_var_types_csv():
     préfèrent le CSV, ex. réimport dans un autre logiciel)."""
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     rows = _build_var_types_table(df)
     has_form = any(r['required'] or r['relevant'] or r['constraint'] for r in rows)
@@ -1824,7 +1826,7 @@ def export_data_xlsx():
     pas les données."""
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
@@ -1841,7 +1843,7 @@ def export_data_csv():
     """Export CSV du jeu de données chargé tel quel — voir export_data_xlsx()."""
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
     resp = Response(df.to_csv(index=False), mimetype='text/csv; charset=utf-8')
@@ -1856,7 +1858,7 @@ def export_data_stat(fmt):
     libellés des questions et des choix sont relus dans le formulaire."""
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+        flash(_("Veuillez d'abord charger des données (KoboToolbox ou fichier)."), 'warning')
         return redirect(url_for('analyse_donnees'))
     kobo = {}
     meta = session.get('data_meta') or {}
@@ -1867,7 +1869,7 @@ def export_data_stat(fmt):
         content = stat_export.export(df, fmt, kobo=kobo, user_labels=_data_var_labels(df),
                                      note=_current_factum(df))
     except ImportError:
-        flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
+        flash(_("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur."), 'danger')
         return redirect(url_for('data_preview'))
     fname = (session.get('original_filename', 'donnees') or 'donnees').rsplit('.', 1)[0]
     return send_file(io.BytesIO(content), as_attachment=True, download_name=f'{fname}.{fmt}',
@@ -1890,7 +1892,7 @@ def reset_data():
             except Exception:
                 pass
     session.clear()
-    flash('Données effacées.', 'info')
+    flash(_('Données effacées.'), 'info')
     return redirect(url_for('index'))
 
 
@@ -2012,7 +2014,7 @@ def _kobo_df_for_validation(uid):
     fond : le suivi multi-formulaires ne lit que les compteurs)."""
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous à KoboToolbox pour contrôler ce formulaire.", 'warning')
+        flash(_("Connectez-vous à KoboToolbox pour contrôler ce formulaire."), 'warning')
         return None
     now = time.time()
     with _MS_CACHE_LOCK:
@@ -2021,7 +2023,7 @@ def _kobo_df_for_validation(uid):
         return hit[1]
     res = kobo_load_data(token, uid, instance=session.get('kobo_instance') or None, keep_meta_cols=MS_KEEP_COLS)
     if not res.get('success'):
-        flash(f"Chargement KoboToolbox : {res.get('error', 'erreur')}", 'danger')
+        flash(_("Chargement KoboToolbox : %(error)s", error=res.get('error', 'erreur')), 'danger')
         return None
     _cache_put(_KOBO_VALIDATION_CACHE, uid, (now, res['df']), limit=3)
     return res['df']
@@ -2101,8 +2103,7 @@ def validation_donnees():
     df, key, name, args = _validation_context()
     if df is None:
         if not session.get('_flashes'):     # un message précis a déjà été posté (Kobo absent, échec de chargement)
-            flash("La validation porte sur les données d'une enquête : chargez-les d'abord "
-                  "(formulaire KoboToolbox ou fichier Excel).", 'warning')
+            flash(_("La validation porte sur les données d'une enquête : chargez-les d'abord (formulaire KoboToolbox ou fichier Excel)."), 'warning')
         return redirect(_validation_back(args)[0])
     result, rules, study, form = _validation_compute(df, key, args)
     candidates = validation_rules.group_candidates(df)
@@ -2122,7 +2123,7 @@ def validation_donnees():
 
 @app.route('/qualite/validation/regles', methods=['POST'])
 def validation_regle_ajouter():
-    df, key, _, args = _validation_context()
+    df, key, name, args = _validation_context()
     form = request.form
     operateur = form.get('operateur')
     scope_key = _study_rule_key(df, key) if (form.get('portee') == 'etude' and df is not None) else None
@@ -2138,17 +2139,17 @@ def validation_regle_ajouter():
             droite_est_variable, form.get('libelle'), session.get('username') or '')
     where = "à toutes les vagues de cette étude" if scope_key else "à cette enquête"
     _FLAGS_CACHE.clear()
-    flash(f'Règle ajoutée : elle est maintenant appliquée {where} à chaque contrôle.' if ok else err,
+    flash(_('Règle ajoutée : elle est maintenant appliquée %(where)s à chaque contrôle.', where=where) if ok else err,
           'success' if ok else 'danger')
     return redirect(url_for('validation_donnees', **args))
 
 
 @app.route('/qualite/validation/regles/<int:rule_id>/supprimer', methods=['POST'])
 def validation_regle_supprimer(rule_id):
-    df, key, _, args = _validation_context()
+    df, key, name, args = _validation_context()
     _FLAGS_CACHE.clear()
     if validation_rules.delete_rule(rule_id, [key, _study_rule_key(df, key)]):
-        flash('Règle supprimée.', 'info')
+        flash(_('Règle supprimée.'), 'info')
     return redirect(url_for('validation_donnees', **args))
 
 
@@ -2156,10 +2157,10 @@ def validation_regle_supprimer(rule_id):
 def validation_exclure():
     """Écarte de l'analyse (statistiques, croisements, multivariées, rapports) les lignes signalées. Rien n'est supprimé :
     le fichier reste intact et « Rétablir » remet toutes les lignes."""
-    df, key, _, args = _validation_context()
+    df, key, name, args = _validation_context()
     path = session.get('data_path')
     if df is None or args or not path:
-        flash("L'écartement de lignes concerne les données chargées pour analyse.", 'warning')
+        flash(_("L'écartement de lignes concerne les données chargées pour analyse."), 'warning')
         return redirect(url_for('validation_donnees', **args))
     result = _validation_compute(df, key, args)[0]
     mode = request.form.get('mode')
@@ -2175,12 +2176,11 @@ def validation_exclure():
     else:
         lines = []
     if not lines:
-        flash("Aucune ligne à écarter pour ce choix.", 'info')
+        flash(_("Aucune ligne à écarter pour ce choix."), 'info')
     else:
         before = set(dataset.excluded_rows(path))
         total = dataset.set_excluded(path, before | set(lines), note=mode)
-        flash(f"{len(set(lines) - before)} ligne(s) écartée(s) de l'analyse ({len(total)} au total). Le fichier n'est pas modifié : "
-              "« Rétablir » remet toutes les lignes.", 'success')
+        flash(_("%(n)s ligne(s) écartée(s) de l'analyse (%(total)s au total). Le fichier n'est pas modifié : « Rétablir » remet toutes les lignes.", n=len(set(lines) - before), total=len(total)), 'success')
     return redirect(url_for('validation_donnees'))
 
 
@@ -2189,7 +2189,7 @@ def validation_export():
     df, key, name, args = _validation_context()
     if df is None:
         if not session.get('_flashes'):     # un message précis a déjà été posté (Kobo absent, échec de chargement)
-            flash("Veuillez d'abord charger des données (KoboToolbox ou fichier).", 'warning')
+            flash(_("Veuillez d'abord charger des données (KoboToolbox ou fichier)."), 'warning')
         return redirect(_validation_back(args)[0])
     result = _validation_compute(df, key, args)[0]
     buf = io.BytesIO()
@@ -2255,12 +2255,12 @@ def gdb_index():
 def gdb_verser():
     df = get_dataframe(full=True)
     if df is None:
-        flash("Aucune donnée chargée à verser dans la base centrale.", 'warning')
+        flash(_("Aucune donnée chargée à verser dans la base centrale."), 'warning')
         return redirect(url_for('gdb_index'))
     fac = (request.form.get('factum') or '').strip()
     res = study_factum.set_for_survey(_validation_survey_key(), fac, session.get('username') or '')
     if not res['valid']:
-        flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
+        flash(_('Factum invalide : ') + ' '.join(res['errors']), 'danger')
         return redirect(url_for('gdb_index'))
     meta = session.get('data_meta') or {}
     kobo = meta.get('source') == 'KoboToolbox'
@@ -2284,7 +2284,7 @@ def gdb_verser():
 def gdb_supprimer():
     fac = request.form.get('factum') or ''
     if gdb.supprimer(fac):
-        flash(f'Enquête {fac} retirée de la base centrale.', 'info')
+        flash(_('Enquête %(fac)s retirée de la base centrale.', fac=fac), 'info')
     return redirect(url_for('gdb_index'))
 
 
@@ -2292,7 +2292,7 @@ def gdb_supprimer():
 def gdb_variable(radical):
     serie = gdb.serie(radical)
     if not serie:
-        flash(f'Aucune valeur pour la variable « {radical} » dans la base centrale.', 'warning')
+        flash(_('Aucune valeur pour la variable « %(radical)s » dans la base centrale.', radical=radical), 'warning')
         return redirect(url_for('gdb_index'))
     # Axe spatial du CUBE (géographie × variable) : facultatif, choisi par l'utilisateur
     # parmi les radicaux qui ressemblent à un découpage administratif — voir modules/gdb.py.
@@ -2322,7 +2322,7 @@ def map_view():
 
     df = get_dataframe(full=True)
     if df is None:
-        flash("Veuillez d'abord importer un fichier.", 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
 
     import re as _re, ast as _ast
@@ -2770,7 +2770,7 @@ def dashboard():
     """Tableau de bord synthétique."""
     df = get_dataframe()
     if df is None:
-        flash('Veuillez d\'abord importer un fichier.', 'warning')
+        flash(_("Veuillez d'abord importer un fichier."), 'warning')
         return redirect(url_for('upload'))
     meta = session.get('data_meta', {})
     return render_template('dashboard.html', meta=meta)
@@ -2864,8 +2864,7 @@ def descriptive():
 
     total = len(selected_cat) + len(selected_num) + len(selected_bin_groups)
     if total > DESC_MAX_VARS:
-        flash(f"{total} analyses demandées : seules les {DESC_MAX_VARS} premières sont affichées (la page deviendrait illisible). "
-              "Choisissez-en moins, ou décomposez-les par groupes.", 'warning')
+        flash(_("%(total)s analyses demandées : seules les %(max)s premières sont affichées (la page deviendrait illisible). Choisissez-en moins, ou décomposez-les par groupes.", total=total, max=DESC_MAX_VARS), 'warning')
     budget = DESC_MAX_VARS
     n_grouped = 0
 
@@ -3004,12 +3003,12 @@ def crosstabs():
         try:
             result = _crosstabs_result(df, form, labels)
         except Exception as e:
-            flash(f'Erreur : {str(e)}', 'danger')       # affiché à chaque affichage (le calcul suit le POST)
+            flash(_('Erreur : %(error)s', error=str(e)), 'danger')       # affiché à chaque affichage (le calcul suit le POST)
     if multi_form.get('group') and multi_form.get('var'):
         try:
             multi_result = _crosstabs_multi_result(df, multi_form, multi_groups, labels)
         except Exception as e:
-            flash(f'Choix multiples : {str(e)}', 'danger')
+            flash(_('Choix multiples : %(error)s', error=str(e)), 'danger')
 
     # Modalités disponibles pour le panneau de filtres (≤ 30 valeurs)
     filter_options = {}
@@ -3050,7 +3049,7 @@ def crosstabs_export():
             result = _crosstabs_result(df, form, _data_var_labels(df))
         content = crosstabs_module.export_workbook(result)
     except Exception as e:
-        flash(f"Export impossible : {e}", 'warning')
+        flash(_("Export impossible : %(error)s", error=e), 'warning')
         return redirect(url_for('crosstabs'))
     return send_file(io.BytesIO(content), as_attachment=True, download_name='croisement.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -3416,7 +3415,7 @@ def multi_survey():
                     if f.filename.lower().endswith('.csv'):
                         df_raw, notes = load_csv(raw_path)
                         for note in notes:
-                            flash(f"« {f.filename} » : {note}", 'info')
+                            flash(_("« %(filename)s » : %(note)s", filename=f.filename, note=note), 'info')
                     else:
                         df_raw = load_excel(raw_path)
                     df_clean = clean_kobo_dataframe(df_raw, keep_meta_cols=MS_KEEP_COLS)
@@ -3433,13 +3432,13 @@ def multi_survey():
                     })
                     added += 1
                 except Exception as e:
-                    flash(f"Erreur sur « {f.filename} » : {e}", 'danger')
+                    flash(_("Erreur sur « %(filename)s » : %(error)s", filename=f.filename, error=e), 'danger')
                 finally:
                     try: os.remove(raw_path)
                     except Exception: pass
             session['multi_surveys'] = surveys_meta
             if added:
-                flash(f"{added} enquête(s) ajoutée(s) — total : {len(surveys_meta)}", 'success')
+                flash(_("%(added)s enquête(s) ajoutée(s) — total : %(total)s", added=added, total=len(surveys_meta)), 'success')
 
         elif action == 'remove':
             idx = int(request.form.get('idx', '-1'))
@@ -3447,7 +3446,7 @@ def multi_survey():
                 _ms_drop_files(surveys_meta[idx])
                 del surveys_meta[idx]
                 session['multi_surveys'] = surveys_meta
-                flash("Enquête retirée.", 'info')
+                flash(_("Enquête retirée."), 'info')
 
         elif action == 'reset':
             for entry in surveys_meta:
@@ -3456,7 +3455,7 @@ def multi_survey():
             surveys_meta = []
             session['ms_compared_vars'] = []
             compared_vars = []
-            flash("Toutes les enquêtes ont été effacées.", 'info')
+            flash(_("Toutes les enquêtes ont été effacées."), 'info')
 
         elif action == 'add_compare':
             # Ajoute une ou plusieurs variables à comparer
@@ -3469,21 +3468,21 @@ def multi_survey():
                     added += 1
             session['ms_compared_vars'] = compared_vars
             if added:
-                flash(f"{added} variable(s) ajoutée(s) aux comparaisons (total : {len(compared_vars)}).", 'success')
+                flash(_("%(added)s variable(s) ajoutée(s) aux comparaisons (total : %(total)s).", added=added, total=len(compared_vars)), 'success')
             elif new_vars:
-                flash("Variable(s) déjà présente(s) dans les comparaisons.", 'info')
+                flash(_("Variable(s) déjà présente(s) dans les comparaisons."), 'info')
 
         elif action == 'remove_compare':
             v = request.form.get('variable', '')
             if v in compared_vars:
                 compared_vars.remove(v)
                 session['ms_compared_vars'] = compared_vars
-                flash(f"« {v} » retirée des comparaisons.", 'info')
+                flash(_("« %(v)s » retirée des comparaisons.", v=v), 'info')
 
         elif action == 'clear_compare':
             session['ms_compared_vars'] = []
             compared_vars = []
-            flash("Toutes les comparaisons ont été retirées.", 'info')
+            flash(_("Toutes les comparaisons ont été retirées."), 'info')
 
         elif action == 'change_mode':
             session['ms_mode'] = mode
@@ -3496,24 +3495,24 @@ def multi_survey():
             token = session.get('kobo_token')
             instance = session.get('kobo_instance')
             if not token:
-                flash("Connectez-vous d'abord à KoboToolbox (menu Connexion KoboToolbox).", 'warning')
+                flash(_("Connectez-vous d'abord à KoboToolbox (menu Connexion KoboToolbox)."), 'warning')
             else:
                 res = list_assets(token, instance=instance or None)
                 if res.get('success'):
                     session['ms_kobo_assets'] = res['assets']
                     session['kobo_instance'] = res.get('instance', instance)
-                    flash(f"{res['total']} formulaire(s) KoboToolbox chargé(s).", 'success')
+                    flash(_("%(n)s formulaire(s) KoboToolbox chargé(s).", n=res['total']), 'success')
                 else:
-                    flash(f"KoboToolbox : {res.get('error', 'Erreur inconnue')}", 'danger')
+                    flash(_("KoboToolbox : %(error)s", error=res.get('error', 'Erreur inconnue')), 'danger')
 
         elif action == 'kobo_add':
             token = session.get('kobo_token')
             instance = session.get('kobo_instance')
             uid = request.form.get('kobo_uid', '').strip()
             if not token:
-                flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+                flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
             elif not uid:
-                flash("Sélectionnez un formulaire KoboToolbox.", 'warning')
+                flash(_("Sélectionnez un formulaire KoboToolbox."), 'warning')
             else:
                 res = kobo_load_data(token, uid, instance=instance or None, keep_meta_cols=MS_KEEP_COLS)
                 if res.get('success'):
@@ -3540,11 +3539,11 @@ def multi_survey():
                     got = _ms_set_labels(entry, choice_labels.from_kobo_structure(
                         get_asset_structure(token, uid, instance=instance or None)), 'Kobo')
                     session['multi_surveys'] = surveys_meta
-                    flash(f"Enquête KoboToolbox « {asset_name} » ajoutée ({len(df_kobo)} obs.)"
+                    flash(_("Enquête KoboToolbox « %(asset_name)s » ajoutée (%(n)s obs.)", asset_name=asset_name, n=len(df_kobo))
                           + ('' if got else " — libellés des modalités indisponibles : joignez l'XLSForm pour les lire."),
                           'success' if got else 'warning')
                 else:
-                    flash(f"Chargement KoboToolbox : {res.get('error', 'Erreur')}", 'danger')
+                    flash(_("Chargement KoboToolbox : %(error)s", error=res.get('error', 'Erreur')), 'danger')
 
         elif action == 'gdb_add':
             known = {e['factum']: e for e in gdb.enquetes()}
@@ -3556,7 +3555,7 @@ def multi_survey():
                     continue
                 df_gdb = gdb.dataframe(fac)
                 if df_gdb is None or df_gdb.empty:
-                    flash(f"« {known[fac]['titre']} » : aucune donnée dans la base centrale.", 'warning')
+                    flash(_("« %(titre)s » : aucune donnée dans la base centrale.", titre=known[fac]['titre']), 'warning')
                     continue
                 if not all(re.fullmatch(r'L\d+', str(i)) for i in df_gdb.index):
                     df_gdb.insert(0, '_uuid', df_gdb.index.astype(str))     # identifiants de soumission d'origine
@@ -3572,7 +3571,7 @@ def multi_survey():
                 added += 1
             session['multi_surveys'] = surveys_meta
             if added:
-                flash(f"{added} enquête(s) ajoutée(s) depuis la base centrale.", 'success')
+                flash(_("%(added)s enquête(s) ajoutée(s) depuis la base centrale.", added=added), 'success')
 
         elif action == 'attach_xlsform':
             try:
@@ -3581,7 +3580,7 @@ def multi_survey():
                 entry = None
             f = request.files.get('xlsform')
             if entry is None or not f or not f.filename:
-                flash("Choisissez l'XLSForm de cette enquête.", 'warning')
+                flash(_("Choisissez l'XLSForm de cette enquête."), 'warning')
             else:
                 tmp = os.path.join(app.config['UPLOAD_FOLDER'], 'xlsform_' + uuid.uuid4().hex[:8] + '.xlsx')
                 f.save(tmp)
@@ -3589,8 +3588,7 @@ def multi_survey():
                     labels = choice_labels.from_xlsform(tmp)
                     _ms_set_labels(entry, labels, 'XLSForm')
                     session['multi_surveys'] = surveys_meta
-                    flash(f"Libellés lus dans « {f.filename} » : {len(labels['choices'])} question(s) à choix. "
-                          "Les modalités s'affichent maintenant avec leur vrai nom.", 'success')
+                    flash(_("Libellés lus dans « %(filename)s » : %(n)s question(s) à choix. Les modalités s'affichent maintenant avec leur vrai nom.", filename=f.filename, n=len(labels['choices'])), 'success')
                 except ValueError as e:
                     flash(str(e), 'danger')
                 finally:
@@ -3604,20 +3602,20 @@ def multi_survey():
                 entry = None
             fac = (request.form.get('factum') or '').strip()
             if entry is None:
-                flash('Enquête introuvable.', 'warning')
+                flash(_('Enquête introuvable.'), 'warning')
             elif not fac:
                 entry['factum'] = ''
                 study_factum.clear_for_survey(_ms_key(entry))
                 session['multi_surveys'] = surveys_meta
-                flash('Factum retiré.', 'info')
+                flash(_('Factum retiré.'), 'info')
             else:
                 res = study_factum.set_for_survey(_ms_key(entry), fac, session.get('username') or '')
                 if res['valid']:
                     entry['factum'] = res['normalized']
                     session['multi_surveys'] = surveys_meta
-                    flash('Factum enregistré : les enquêtes sont maintenant ordonnées selon sa date.', 'success')
+                    flash(_('Factum enregistré : les enquêtes sont maintenant ordonnées selon sa date.'), 'success')
                 else:
-                    flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
+                    flash(_('Factum invalide : ') + ' '.join(res['errors']), 'danger')
 
         elif action == 'run_mv_ms':
             session['ms_mv_params'] = {
@@ -3654,9 +3652,7 @@ def multi_survey():
         known = set().union(*(set(phakts_radical(c) for c in df.columns) for df in surveys.values()))
         kept = [v for v in compared_vars if v in known]
         if len(kept) != len(compared_vars):
-            flash(f"{len(compared_vars) - len(kept)} variable(s) du panier retirée(s) : l'alignement se fait "
-                  "maintenant sur le code PHAKTS complet (Age__1Y et Age__1M sont deux variables). Les ajouter de nouveau.",
-                  'info')
+            flash(_("%(n)s variable(s) du panier retirée(s) : l'alignement se fait maintenant sur le code PHAKTS complet (Age__1Y et Age__1M sont deux variables). Les ajouter de nouveau.", n=len(compared_vars) - len(kept)), 'info')
             compared_vars = kept
             session['ms_compared_vars'] = kept
 
@@ -3684,7 +3680,7 @@ def multi_survey():
                 }
             except Exception as e:
                 merged = None
-                flash(f"Erreur d'analyse : {e}", 'danger')
+                flash(_("Erreur d'analyse : %(error)s", error=e), 'danger')
 
             if auto_mode and merged is not None:
                 # Interopérabilité : indicateurs communs détectés automatiquement
@@ -3698,7 +3694,7 @@ def multi_survey():
                     synthese_text = _ms_interpret(auto_results, order, cross_checks)
                 except Exception as e:
                     auto_results = []
-                    flash(f"Erreur d'analyse automatique : {e}", 'danger')
+                    flash(_("Erreur d'analyse automatique : %(error)s", error=e), 'danger')
             elif compared_vars and merged is not None:
                 for v in compared_vars:
                     results.append(_compute_ms_comparison(merged, v, order))
@@ -3753,7 +3749,7 @@ def multi_survey():
             elif mv_method == 'clustering' and len(mv_sel) >= 2:
                 mv_result = run_clustering(mv_merged_df, mv_sel, mv_nk)
         except Exception as e:
-            flash(f"Analyse multivariée : {e}", 'danger')
+            flash(_("Analyse multivariée : %(error)s", error=e), 'danger')
 
     return render_template('multi_survey.html',
                             surveys_meta=surveys_meta,
@@ -3786,13 +3782,13 @@ def multi_survey_export(fmt):
     st = _ms_state()
     surveys, entries = st['surveys'], st['entries']
     if len(surveys) < 2:
-        flash("Ajoutez au moins deux enquêtes pour exporter le jeu fusionné.", 'warning')
+        flash(_("Ajoutez au moins deux enquêtes pour exporter le jeu fusionné."), 'warning')
         return redirect(url_for('multi_survey'))
     mode = session.get('ms_mode', 'phakts')
     try:
         merged = merge_surveys(surveys, mode=mode)
     except Exception as e:
-        flash(f"Fusion impossible : {e}", 'danger')
+        flash(_("Fusion impossible : %(error)s", error=e), 'danger')
         return redirect(url_for('multi_survey'))
     factums, order = st['factums'], st['order']
     out = merged.rename(columns={'__survey__': 'Enquete'})
@@ -3815,7 +3811,7 @@ def multi_survey_export(fmt):
         content = stat_export.export(out, fmt, user_labels={**st['var_labels'], 'Enquete': "Enquête d'origine",
                                                             'Factum': "Factum de l'étude"}, note=note)
     except ImportError:
-        flash("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur.", 'danger')
+        flash(_("Export indisponible : le module pyreadstat n'est pas installé sur ce serveur."), 'danger')
         return redirect(url_for('multi_survey'))
     return send_file(io.BytesIO(content), as_attachment=True, download_name=f'enquetes_fusionnees.{fmt}',
                      mimetype='application/x-spss-sav' if fmt == 'sav' else 'application/x-stata-dta')
@@ -3872,7 +3868,7 @@ def multi_survey_report(fmt):
         content, mime = multi_report.generate(data, fmt)
     except Exception as e:
         app.logger.exception('Rapport multi-enquête')
-        flash(f"Génération du rapport impossible : {e}", 'danger')
+        flash(_("Génération du rapport impossible : %(error)s", error=e), 'danger')
         return redirect(url_for('multi_survey'))
     return send_file(io.BytesIO(content), as_attachment=True, mimetype=mime,
                      download_name=f"rapport_multi-enquete_{datetime.datetime.now():%Y%m%d}.{fmt}")
@@ -3883,19 +3879,19 @@ def multi_survey_download_xlsx():
     """Télécharge en XLSX les résultats de l'analyse multivariée multi-enquête."""
     mv_params = session.get('ms_mv_params') or {}
     if not mv_params:
-        flash("Lancez d'abord une analyse multivariée.", 'warning')
+        flash(_("Lancez d'abord une analyse multivariée."), 'warning')
         return redirect(url_for('multi_survey'))
 
     surveys = _load_multi_surveys()
     if not surveys:
-        flash("Aucune enquête chargée.", 'warning')
+        flash(_("Aucune enquête chargée."), 'warning')
         return redirect(url_for('multi_survey'))
 
     mode = session.get('ms_mode', 'phakts')
     try:
         merged = merge_surveys(surveys, mode=mode)
     except Exception as e:
-        flash(f"Fusion impossible : {e}", 'danger')
+        flash(_("Fusion impossible : %(error)s", error=e), 'danger')
         return redirect(url_for('multi_survey'))
 
     mv_method = mv_params.get('method', 'pca')
@@ -3915,10 +3911,10 @@ def multi_survey_download_xlsx():
         elif mv_method == 'clustering' and len(mv_sel) >= 2:
             result = run_clustering(merged, mv_sel, mv_nk)
         else:
-            flash("Paramètres insuffisants pour l'analyse.", 'warning')
+            flash(_("Paramètres insuffisants pour l'analyse."), 'warning')
             return redirect(url_for('multi_survey'))
     except Exception as e:
-        flash(f"Erreur lors de l'analyse : {e}", 'danger')
+        flash(_("Erreur lors de l'analyse : %(error)s", error=e), 'danger')
         return redirect(url_for('multi_survey'))
 
     import io
@@ -3986,7 +3982,7 @@ def multivariate():
         usable = [v for v in form['selected'] if v in df.columns]
         if not ((form['method'] in ('pca', 'mca', 'clustering') and len(usable) >= 2)
                 or (form['method'] == 'ca' and form['ca_row'] in df.columns and form['ca_col'] in df.columns)):
-            flash('Sélectionnez au moins 2 variables.', 'warning')
+            flash(_('Sélectionnez au moins 2 variables.'), 'warning')
         # Post/Redirect/Get : la page n'est jamais la réponse d'un formulaire (sinon « Précédent » du
         # navigateur affiche « Confirmer le nouvel envoi du formulaire » et peut rejouer l'action).
         return redirect(url_for('multivariate'))
@@ -4013,7 +4009,7 @@ def multivariate():
         except Exception as e:
             # Affiché même sur GET (pas seulement POST) : sinon l'analyse automatique au premier chargement peut échouer sans
             # qu'aucun message n'explique pourquoi la page reste vide.
-            flash(f"Erreur d'analyse : {str(e)}", 'danger')
+            flash(_("Erreur d'analyse : %(error)s", error=str(e)), 'danger')
 
     path = session.get('data_path')
     return render_template('multivariate.html',
@@ -4033,7 +4029,7 @@ def multivariate_save_classes():
     df = get_dataframe(display=True)
     form = _mv_form()
     if df is None or form['method'] != 'clustering':
-        flash("Lancez d'abord une classification.", 'warning')
+        flash(_("Lancez d'abord une classification."), 'warning')
         return redirect(url_for('multivariate'))
     name = re.sub(r'[^A-Za-z0-9_\- ]', '', (request.form.get('name') or '').strip())[:40] or \
         ('Classe_CAH' if form['cluster_method'] == 'cah' else 'Classe_KMeans')
@@ -4042,10 +4038,11 @@ def multivariate_save_classes():
         full = get_dataframe(full=True)
         by_position = {int(i): lab for i, lab in zip(result['class_index'], result['class_labels'])}
         dataset.save_derived(path, name, by_position, len(full))
-        flash(f"Variable « {name} » enregistrée ({result['n_clusters']} classes, {len(by_position)} individus classés). "
-              "Elle est maintenant proposée dans les analyses descriptives et croisées.", 'success')
+        flash(_("Variable « %(name)s » enregistrée (%(n_clusters)s classes, %(n_obs)s individus classés). "
+              "Elle est maintenant proposée dans les analyses descriptives et croisées.",
+              name=name, n_clusters=result['n_clusters'], n_obs=len(by_position)), 'success')
     except Exception as e:
-        flash(f"Enregistrement impossible : {e}", 'danger')
+        flash(_("Enregistrement impossible : %(error)s", error=e), 'danger')
     return redirect(url_for('multivariate'))
 
 
@@ -4068,7 +4065,7 @@ def multivariate_export():
         return send_file(io.BytesIO(buf.getvalue()), as_attachment=True, download_name=f"analyse_{MV_METHOD_NAMES.get(form['method'], 'multivariee')}.xlsx",
                          mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
-        flash(f"Export impossible : {e}", 'warning')
+        flash(_("Export impossible : %(error)s", error=e), 'warning')
         return redirect(url_for('multivariate'))
 
 
@@ -4094,7 +4091,7 @@ def report():
 
         # Debug: log and show which analyses were selected (helps diagnose missing sections)
         app.logger.info('Selected analyses from form: %s', selected_analyses)
-        flash(f"Analyses choisies : {', '.join(selected_analyses)}", 'info')
+        flash(_("Analyses choisies : %(names)s", names=', '.join(selected_analyses)), 'info')
         selected_cat       = request.form.getlist('cat_vars')
         selected_num       = request.form.getlist('num_vars')
         selected_bin_grps  = request.form.getlist('bin_groups')
@@ -4134,11 +4131,11 @@ def report():
                         multi_survey_meta['synthese'] = _ms_interpret(
                             multi_survey_results, order, _ms_cross_checks(surveys, st['entries'], st['factums']))
                     except Exception as e:
-                        flash(f"Erreur multi-enquête dans le rapport : {e}", 'warning')
+                        flash(_("Erreur multi-enquête dans le rapport : %(error)s", error=e), 'warning')
                 elif not compared:
-                    flash("Aucune variable dans le panier multi-enquête — section ignorée.", 'warning')
+                    flash(_("Aucune variable dans le panier multi-enquête — section ignorée."), 'warning')
                 elif len(surveys) < 2:
-                    flash("Moins de 2 enquêtes — section multi-enquête ignorée.", 'warning')
+                    flash(_("Moins de 2 enquêtes — section multi-enquête ignorée."), 'warning')
 
             diagnostic = _diagnostic_inputs() if 'raw' in selected_analyses else None
 
@@ -4190,7 +4187,7 @@ def report():
             return send_file(report_path, as_attachment=True,
                              download_name=f'{title.replace(" ","_")}.{extension}')
         except Exception as e:
-            flash(f'Erreur génération rapport : {str(e)}', 'danger')
+            flash(_('Erreur génération rapport : %(error)s', error=str(e)), 'danger')
         return redirect(url_for('report'))
 
     # Pré-remplir le formulaire avec les sélections faites dans les onglets
@@ -4229,7 +4226,7 @@ def kobo_connect():
         token           = request.form.get('token', '').strip()
         custom_instance = request.form.get('custom_instance', '').strip()
         if not token:
-            flash('Veuillez saisir votre token API.', 'warning')
+            flash(_('Veuillez saisir votre token API.'), 'warning')
             return redirect(url_for('kobo_connect'))
         result = validate_token(token, custom_instance=custom_instance or None)
         if result['valid']:
@@ -4238,13 +4235,14 @@ def kobo_connect():
             session['kobo_instance'] = result.get('instance', '')
             kobo_track.resume(token, result.get('instance'))
             flash(
-                f"Connecté en tant que <strong>{result.get('username','—')}</strong> "
-                f"— Instance : <strong>{result.get('instance_label','KoboToolbox')}</strong>.",
+                _("Connecté en tant que <strong>%(username)s</strong> "
+                "— Instance : <strong>%(instance)s</strong>.",
+                username=result.get('username','—'), instance=result.get('instance_label','KoboToolbox')),
                 'success'
             )
             return redirect(url_for('kobo_assets'))
         else:
-            flash(f"Connexion échouée : {result['error']}", 'danger')
+            flash(_("Connexion échouée : %(error)s", error=result['error']), 'danger')
             return redirect(url_for('kobo_connect'))
     already = bool(session.get('kobo_token'))
     return render_template('kobo_connect.html', already=already,
@@ -4258,11 +4256,11 @@ def kobo_assets():
     token    = session.get('kobo_token')
     instance = session.get('kobo_instance')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     result = list_assets(token, instance=instance)
     if not result['success']:
-        flash(f"Impossible de lister les formulaires : {result['error']}", 'danger')
+        flash(_("Impossible de lister les formulaires : %(error)s", error=result['error']), 'danger')
         return redirect(url_for('kobo_connect'))
     # Mémoriser l'instance si elle a été détectée
     if result.get('instance'):
@@ -4318,17 +4316,18 @@ def kobo_load():
     uid   = request.form.get('uid', '').strip()
     name  = request.form.get('name', 'Formulaire KoboToolbox')
     if not token:
-        flash('Session expirée. Reconnectez-vous à KoboToolbox.', 'warning')
+        flash(_('Session expirée. Reconnectez-vous à KoboToolbox.'), 'warning')
         return redirect(url_for('kobo_connect'))
     if not uid:
-        flash('UID de formulaire manquant.', 'danger')
+        flash(_('UID de formulaire manquant.'), 'danger')
         return redirect(url_for('kobo_assets'))
 
     blocked_code = _deactivated_form_code(uid, name)
     if blocked_code:
         flash(
-            f"« {name} » correspond au formulaire {blocked_code}, désactivé dans le registre "
+            _("« %(name)s » correspond au formulaire %(code)s, désactivé dans le registre "
             "(Administration → Formulaires) — réactivez-le d'abord pour l'analyser.",
+            name=name, code=blocked_code),
             'warning'
         )
         return redirect(url_for('kobo_assets'))
@@ -4336,7 +4335,7 @@ def kobo_load():
     kobo_sync.stop()  # un nouveau formulaire est chargé : le polling précédent ne s'applique plus
     result = kobo_load_data(token, uid, keep_meta_cols=MS_KEEP_COLS)
     if not result['success']:
-        flash(f"Erreur de chargement : {result['error']}", 'danger')
+        flash(_("Erreur de chargement : %(error)s", error=result['error']), 'danger')
         return redirect(url_for('kobo_assets'))
 
     df        = result['df']
@@ -4361,8 +4360,9 @@ def kobo_load():
     session.pop('child_path', None)
 
     flash(
-        f"<strong>{name}</strong> chargé avec succès — "
-        f"{result['n_obs']} soumissions × {result['n_vars']} variables analysables.",
+        _("<strong>%(name)s</strong> chargé avec succès — "
+        "%(n_obs)s soumissions × %(n_vars)s variables analysables.",
+        name=name, n_obs=result['n_obs'], n_vars=result['n_vars']),
         'success'
     )
     return redirect(url_for('collecte_dashboard'))
@@ -4378,21 +4378,22 @@ def kobo_refresh():
     uid   = session.get('kobo_uid')
     name  = session.get('kobo_asset_name', 'Formulaire KoboToolbox')
     if not token or not uid:
-        flash('Aucun formulaire KoboToolbox actif en session.', 'warning')
+        flash(_('Aucun formulaire KoboToolbox actif en session.'), 'warning')
         return redirect(url_for('kobo_connect'))
 
     blocked_code = _deactivated_form_code(uid, name)
     if blocked_code:
         flash(
-            f"« {name} » correspond au formulaire {blocked_code}, désactivé dans le registre "
+            _("« %(name)s » correspond au formulaire %(code)s, désactivé dans le registre "
             "(Administration → Formulaires) — réactivez-le d'abord pour continuer à l'analyser.",
+            name=name, code=blocked_code),
             'warning'
         )
         return redirect(url_for('data_preview'))
 
     result = kobo_load_data(token, uid)
     if not result['success']:
-        flash(f"Erreur de rafraîchissement : {result['error']}", 'danger')
+        flash(_("Erreur de rafraîchissement : %(error)s", error=result['error']), 'danger')
         return redirect(url_for('data_preview'))
 
     df = result['df']
@@ -4412,8 +4413,9 @@ def kobo_refresh():
     kobo_sync.set_baseline(result['n_obs'])
 
     flash(
-        f"Données rafraîchies — {result['n_obs']} soumissions "
-        f"× {result['n_vars']} variables.",
+        _("Données rafraîchies — %(n_obs)s soumissions "
+        "× %(n_vars)s variables.",
+        n_obs=result['n_obs'], n_vars=result['n_vars']),
         'success'
     )
     return redirect(url_for('data_preview'))
@@ -4426,7 +4428,7 @@ def kobo_disconnect():
     kobo_track.clear_all()
     for k in ('kobo_token', 'kobo_username', 'kobo_uid', 'kobo_asset_name', 'kobo_instance'):
         session.pop(k, None)
-    flash('Déconnecté de KoboToolbox.', 'info')
+    flash(_('Déconnecté de KoboToolbox.'), 'info')
     return redirect(url_for('kobo_connect'))
 
 
@@ -4442,7 +4444,7 @@ def suivi():
     """Page de suivi multi-formulaires."""
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox pour suivre des formulaires.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox pour suivre des formulaires."), 'warning')
         return redirect(url_for('kobo_connect'))
     instance = session.get('kobo_instance')
     assets_result = list_assets(token, instance=instance)
@@ -4760,14 +4762,14 @@ def suivi_analyser(uid):
     """Charge ce formulaire suivi dans le flux d'analyse mono-enquête existant."""
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     tracked = {t['uid']: t for t in kobo_track.list_tracked()}
     name = tracked.get(uid, {}).get('name', 'Formulaire KoboToolbox')
     kobo_sync.stop()
     result = kobo_load_data(token, uid)
     if not result['success']:
-        flash(f"Erreur de chargement : {result['error']}", 'danger')
+        flash(_("Erreur de chargement : %(error)s", error=result['error']), 'danger')
         return redirect(url_for('suivi'))
     df = result['df']
     fname = f"kobo_{uuid.uuid4().hex[:8]}.xlsx"
@@ -4780,7 +4782,7 @@ def suivi_analyser(uid):
     session['kobo_uid']            = uid
     session['kobo_asset_name']     = name
     session.pop('child_path', None)
-    flash(f"<strong>{name}</strong> chargé pour analyse — {result['n_obs']} soumissions × {result['n_vars']} variables.", 'success')
+    flash(_("<strong>%(name)s</strong> chargé pour analyse — %(n_obs)s soumissions × %(n_vars)s variables.", name=name, n_obs=result['n_obs'], n_vars=result['n_vars']), 'success')
     return redirect(url_for('data_preview'))
 
 
@@ -4889,7 +4891,7 @@ def completude_equipe_spad():
     géographique (voir modules/completeness.py::named_roster_detail())."""
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     forms = [f for f in forms_registry.all_forms(include_inactive=False)
              if f.get('grain') == 'roster_national']
@@ -4905,11 +4907,11 @@ def completude_equipe_spad():
 def completude_regions():
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     return render_template(
         'completude_table.html',
@@ -4925,7 +4927,7 @@ def completude_districts():
     # Kobo active (accessible au rôle 'invite', qui n'en a jamais).
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     return render_template(
         'completude_table.html',
@@ -4940,7 +4942,7 @@ def completude_enqueteurs():
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     return render_template(
         'completude_table.html',
@@ -4955,7 +4957,7 @@ def completude_superviseurs():
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     return render_template(
         'completude_table.html',
@@ -4970,11 +4972,11 @@ def completude_enqueteur_detail(enq_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     enq = cached['enqueteur'].get(enq_code)
     if not enq:
-        flash('Enquêteur introuvable.', 'warning')
+        flash(_('Enquêteur introuvable.'), 'warning')
         return redirect(url_for('completude_enqueteurs'))
 
     etablissements = {c: e for c, e in cached['etablissement'].items() if e['enqueteur_code'] == enq_code}
@@ -4996,11 +4998,11 @@ def completude_superviseur_detail(sup_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     sup = cached['superviseur'].get(sup_code)
     if not sup:
-        flash('Superviseur introuvable.', 'warning')
+        flash(_('Superviseur introuvable.'), 'warning')
         return redirect(url_for('completude_superviseurs'))
 
     district_code = sup['sous_titre']
@@ -5029,12 +5031,12 @@ def completude_roster_detail(form_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
 
     form = forms_registry.get(form_code)
     if not form or form.get('grain') not in ('enqueteur', 'superviseur'):
-        flash('Formulaire roster introuvable.', 'warning')
+        flash(_('Formulaire roster introuvable.'), 'warning')
         return redirect(url_for('completude'))
 
     # Vue combinée par famille (même name_hint → même formulaire Kobo
@@ -5045,7 +5047,7 @@ def completude_roster_detail(form_code):
     families = cached.get('roster_families', {})
     family_data = families.get(hint)
     if not family_data:
-        flash('Complétude non encore calculée pour ce formulaire.', 'warning')
+        flash(_('Complétude non encore calculée pour ce formulaire.'), 'warning')
         return redirect(url_for('completude'))
 
     # Regroupe by_district par région, avec nom de région depuis le cache
@@ -5073,17 +5075,17 @@ def completude_roster_national_detail(form_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
 
     form = forms_registry.get(form_code)
     if not form or form.get('grain') != 'roster_national':
-        flash('Formulaire roster national introuvable.', 'warning')
+        flash(_('Formulaire roster national introuvable.'), 'warning')
         return redirect(url_for('completude'))
 
     data = cached.get('named_roster', {}).get(form_code)
     if not data:
-        flash('Complétude non encore calculée pour ce formulaire.', 'warning')
+        flash(_('Complétude non encore calculée pour ce formulaire.'), 'warning')
         return redirect(url_for('completude'))
 
     return render_template(
@@ -5107,15 +5109,15 @@ def _anomalies_scope(cached, **scope):
 def completude_region_detail(region_code):
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     region = cached['region'].get(region_code)
     if not region:
-        flash('Région introuvable.', 'warning')
+        flash(_('Région introuvable.'), 'warning')
         return redirect(url_for('completude_regions'))
 
     districts = {c: d for c, d in cached['district'].items() if d['region_code'] == region_code}
@@ -5135,11 +5137,11 @@ def completude_district_detail(district_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     district = cached['district'].get(district_code)
     if not district:
-        flash('District introuvable.', 'warning')
+        flash(_('District introuvable.'), 'warning')
         return redirect(url_for('completude_districts'))
 
     etablissements = {c: e for c, e in cached['etablissement'].items() if e['district_code'] == district_code}
@@ -5165,11 +5167,11 @@ def completude_etablissement_detail(etablissement_code):
     # Lecture seule d'un calcul déjà en cache — accessible au rôle 'invite'.
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     etab = cached['etablissement'].get(etablissement_code)
     if not etab:
-        flash('Établissement introuvable.', 'warning')
+        flash(_('Établissement introuvable.'), 'warning')
         return redirect(url_for('completude_districts'))
 
     enqueteur = cached['enqueteur'].get(etab['enqueteur_code'])
@@ -5190,11 +5192,11 @@ def completude_etablissement_detail(etablissement_code):
 def completude_anomalies():
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     return render_template(
         'completude_anomalies.html',
@@ -5208,11 +5210,11 @@ def completude_anomalies():
 def completude_graphiques():
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
 
     statut_counts = {'zero': 0, 'critique': 0, 'en_cours': 0, 'cible': 0, 'exces': 0, 'verifier': 0}
@@ -5239,7 +5241,7 @@ def _export_filename(ext):
 def completude_export_csv():
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     rows = cached.get('export', [])
 
@@ -5260,7 +5262,7 @@ def completude_export_csv():
 def completude_export_xlsx():
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     rows = cached.get('export', [])
 
@@ -5286,7 +5288,7 @@ def completude_export_docx():
     formulaire/district, actions suggérées à partir des anomalies détectées)."""
     cached = _load_completude_cache()
     if not cached:
-        flash("Calculez d'abord la complétude depuis la page « Complétude nationale ».", 'warning')
+        flash(_("Calculez d'abord la complétude depuis la page « Complétude nationale »."), 'warning')
         return redirect(url_for('completude'))
     ref = ref_data.load()
     docx_bytes = completude_report.build_docx(
@@ -5333,18 +5335,18 @@ def projets_creer():
     fac = (request.form.get('factum') or '').strip()
 
     if not nom or not champ_unite:
-        flash("Nom du projet et champ d'identification de l'unité obligatoires.", 'warning')
+        flash(_("Nom du projet et champ d'identification de l'unité obligatoires."), 'warning')
         return redirect(url_for('projets_liste'))
     if 'reference' not in request.files or request.files['reference'].filename == '':
-        flash('Fichier de référence manquant (colonnes minimales : code, cible).', 'warning')
+        flash(_('Fichier de référence manquant (colonnes minimales : code, cible).'), 'warning')
         return redirect(url_for('projets_liste'))
     if fac and not study_factum.parse(fac)['valid']:
-        flash('Factum invalide : ' + ' '.join(study_factum.parse(fac)['errors']), 'danger')
+        flash(_('Factum invalide : ') + ' '.join(study_factum.parse(fac)['errors']), 'danger')
         return redirect(url_for('projets_liste'))
 
     f = request.files['reference']
     if not allowed_file(f.filename):
-        flash('Format non supporté pour le fichier de référence (.xlsx / .xls attendu).', 'danger')
+        flash(_('Format non supporté pour le fichier de référence (.xlsx / .xls attendu).'), 'danger')
         return redirect(url_for('projets_liste'))
 
     try:
@@ -5358,7 +5360,7 @@ def projets_creer():
         flash(str(e), 'danger')
         return redirect(url_for('projets_liste'))
 
-    flash(f"Projet « {entry['nom']} » créé — {entry['n_unites']} unité(s) dans le référentiel.", 'success')
+    flash(_("Projet « %(nom)s » créé — %(n)s unité(s) dans le référentiel.", nom=entry['nom'], n=entry['n_unites']), 'success')
     return redirect(url_for('projets_detail', projet_id=entry['id']))
 
 
@@ -5366,7 +5368,7 @@ def projets_creer():
 def projets_detail(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     result = proj.load_result(projet_id)
     token = session.get('kobo_token')
@@ -5390,9 +5392,9 @@ def projets_factum(projet_id):
     fac = (request.form.get('factum') or '').strip()
     res = study_factum.parse(fac) if fac else {'valid': True, 'normalized': '', 'errors': []}
     if not res['valid']:
-        flash('Factum invalide : ' + ' '.join(res['errors']), 'danger')
+        flash(_('Factum invalide : ') + ' '.join(res['errors']), 'danger')
     elif proj.set_factum(projet_id, res['normalized']):
-        flash('Factum du projet enregistré.' if fac else 'Factum du projet retiré.', 'success')
+        flash(_('Factum du projet enregistré.') if fac else _('Factum du projet retiré.'), 'success')
     return redirect(url_for('projets_detail', projet_id=projet_id))
 
 
@@ -5400,13 +5402,13 @@ def projets_factum(projet_id):
 def projets_lier(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     kobo_uid = (request.form.get('kobo_uid') or '').strip()
     kobo_name = (request.form.get('kobo_name') or '').strip()
     if kobo_uid:
         proj.update_kobo_link(projet_id, kobo_uid, kobo_name, kobo_instance=session.get('kobo_instance'))
-        flash(f"Formulaire KoboToolbox « {kobo_name} » associé au projet.", 'success')
+        flash(_("Formulaire KoboToolbox « %(kobo_name)s » associé au projet.", kobo_name=kobo_name), 'success')
     return redirect(url_for('projets_detail', projet_id=projet_id))
 
 
@@ -5414,19 +5416,19 @@ def projets_lier(projet_id):
 def projets_calculer(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     if not p.get('kobo_uid'):
-        flash("Associez d'abord un formulaire KoboToolbox à ce projet.", 'warning')
+        flash(_("Associez d'abord un formulaire KoboToolbox à ce projet."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     res = kobo_load_data(token, p['kobo_uid'], instance=p.get('kobo_instance') or session.get('kobo_instance'))
     if not res.get('success'):
-        flash(f"Erreur de chargement : {res.get('error')}", 'danger')
+        flash(_("Erreur de chargement : %(error)s", error=res.get('error')), 'danger')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     reference = proj.load_reference(projet_id)
@@ -5434,7 +5436,7 @@ def projets_calculer(projet_id):
     groupes = proj.group_completeness(unites)
     proj.save_result(projet_id, unites, groupes)
 
-    flash(f"Complétude recalculée — {res['n_obs']} soumissions traitées.", 'success')
+    flash(_("Complétude recalculée — %(n_obs)s soumissions traitées.", n_obs=res['n_obs']), 'success')
     return redirect(url_for('projets_detail', projet_id=projet_id))
 
 
@@ -5450,14 +5452,14 @@ def projets_calculer(projet_id):
 def projets_xlsform(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     if 'xlsform' not in request.files or request.files['xlsform'].filename == '':
-        flash("Fichier XLSForm manquant (feuilles 'survey' et 'choices' attendues).", 'warning')
+        flash(_("Fichier XLSForm manquant (feuilles 'survey' et 'choices' attendues)."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
     f = request.files['xlsform']
     if not allowed_file(f.filename):
-        flash('Format non supporté (.xlsx / .xls attendu).', 'danger')
+        flash(_('Format non supporté (.xlsx / .xls attendu).'), 'danger')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     try:
@@ -5466,7 +5468,7 @@ def projets_xlsform(projet_id):
         flash(str(e), 'danger')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
-    flash(f"XLSForm chargé — dictionnaire généré ({n} variables). Révisez-le avant de lancer l'analyse.",
+    flash(_("XLSForm chargé — dictionnaire généré (%(n)s variables). Révisez-le avant de lancer l'analyse.", n=n),
           'success')
     return redirect(url_for('projets_dictionnaire', projet_id=projet_id))
 
@@ -5475,11 +5477,11 @@ def projets_xlsform(projet_id):
 def projets_dictionnaire(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     dic = proj.load_dictionnaire(projet_id)
     if dic is None:
-        flash("Aucun XLSForm attaché à ce projet.", 'warning')
+        flash(_("Aucun XLSForm attaché à ce projet."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
     return render_template(
         'projet_dictionnaire.html', p=p,
@@ -5492,11 +5494,11 @@ def projets_dictionnaire(projet_id):
 def projets_dictionnaire_save(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     dic = proj.load_dictionnaire(projet_id)
     if dic is None:
-        flash("Aucun XLSForm attaché à ce projet.", 'warning')
+        flash(_("Aucun XLSForm attaché à ce projet."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     for i in dic.index:
@@ -5508,7 +5510,7 @@ def projets_dictionnaire_save(projet_id):
         dic.at[i, 'valeurs_favorables'] = (request.form.get(f'favorables_{nom}') or '').strip()
 
     proj.save_dictionnaire(projet_id, dic)
-    flash('Dictionnaire enregistré.', 'success')
+    flash(_('Dictionnaire enregistré.'), 'success')
     return redirect(url_for('projets_dictionnaire', projet_id=projet_id))
 
 
@@ -5516,31 +5518,31 @@ def projets_dictionnaire_save(projet_id):
 def projets_analyser(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     if proj.load_dictionnaire(projet_id) is None:
-        flash("Attachez et validez un dictionnaire avant de lancer l'analyse.", 'warning')
+        flash(_("Attachez et validez un dictionnaire avant de lancer l'analyse."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
     token = session.get('kobo_token')
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('kobo_connect'))
     if not p.get('kobo_uid'):
-        flash("Associez d'abord un formulaire KoboToolbox à ce projet.", 'warning')
+        flash(_("Associez d'abord un formulaire KoboToolbox à ce projet."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     res = kobo_load_data(token, p['kobo_uid'], instance=p.get('kobo_instance') or session.get('kobo_instance'))
     if not res.get('success'):
-        flash(f"Erreur de chargement : {res.get('error')}", 'danger')
+        flash(_("Erreur de chargement : %(error)s", error=res.get('error')), 'danger')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
     try:
         proj.run_analysis(projet_id, res['df'])
     except Exception as e:
-        flash(f"Erreur pendant l'analyse : {e}", 'danger')
+        flash(_("Erreur pendant l'analyse : %(error)s", error=e), 'danger')
         return redirect(url_for('projets_detail', projet_id=projet_id))
 
-    flash(f"Analyse terminée — {res['n_obs']} soumissions traitées. Rapport disponible au téléchargement.",
+    flash(_("Analyse terminée — %(n_obs)s soumissions traitées. Rapport disponible au téléchargement.", n_obs=res['n_obs']),
           'success')
     return redirect(url_for('projets_detail', projet_id=projet_id))
 
@@ -5549,11 +5551,11 @@ def projets_analyser(projet_id):
 def projets_rapport_docx(projet_id):
     p = proj.get_projet(projet_id)
     if not p:
-        flash('Projet introuvable.', 'warning')
+        flash(_('Projet introuvable.'), 'warning')
         return redirect(url_for('projets_liste'))
     path = proj.rapport_path(projet_id)
     if not path:
-        flash("Aucun rapport disponible — lancez d'abord l'analyse.", 'warning')
+        flash(_("Aucun rapport disponible — lancez d'abord l'analyse."), 'warning')
         return redirect(url_for('projets_detail', projet_id=projet_id))
     fname = f"rapport_analyse_{p['nom'].replace(' ', '_')}.docx"
     return send_file(
@@ -5565,7 +5567,7 @@ def projets_rapport_docx(projet_id):
 @app.route('/projets/<projet_id>/supprimer', methods=['POST'])
 def projets_supprimer(projet_id):
     proj.delete_projet(projet_id)
-    flash('Projet supprimé.', 'info')
+    flash(_('Projet supprimé.'), 'info')
     return redirect(url_for('projets_liste'))
 
 
@@ -5589,7 +5591,7 @@ def completude_mapper():
         else:
             mapping.pop(code, None)
     form_mapping.save(mapping)
-    flash(f"Correspondance enregistrée pour {n_soumis} formulaire(s) sur {len(ref_data.FORM_CODES)}.", 'success')
+    flash(_("Correspondance enregistrée pour %(n_soumis)s formulaire(s) sur %(n_total)s.", n_soumis=n_soumis, n_total=len(ref_data.FORM_CODES)), 'success')
     return redirect(url_for('completude'))
 
 
@@ -5598,10 +5600,10 @@ def completude_calculer():
     token, instance = _kobo_credentials()
     mapping = form_mapping.load()
     if not token:
-        flash("Connectez-vous d'abord à KoboToolbox.", 'warning')
+        flash(_("Connectez-vous d'abord à KoboToolbox."), 'warning')
         return redirect(url_for('completude'))
     if not mapping:
-        flash("Associez au moins un formulaire avant de calculer.", 'warning')
+        flash(_("Associez au moins un formulaire avant de calculer."), 'warning')
         return redirect(url_for('completude'))
 
     # Filet de sécurité : un même formulaire Kobo mappé sur 2 codes SPAD
@@ -5611,10 +5613,10 @@ def completude_calculer():
     # modules/reference_data.py::validate_mapping().
     assets_result = list_assets(token, instance=instance)
     assets = assets_result.get('assets', []) if assets_result.get('success') else []
-    mapping_erreurs, _ = ref_data.validate_mapping(mapping, assets)
+    mapping_erreurs, avertissements = ref_data.validate_mapping(mapping, assets)
     if mapping_erreurs:
         for e in mapping_erreurs:
-            flash(f"Correspondance incorrecte : {e}", 'danger')
+            flash(_("Correspondance incorrecte : %(error)s", error=e), 'danger')
         return redirect(url_for('completude'))
 
     ref = ref_data.load()
@@ -5625,7 +5627,7 @@ def completude_calculer():
     # juste après avoir changé la correspondance formulaire.
     cache, errors, n_ok = completude_cache.build_cache(ref, token, instance, mapping)
     if cache is None:
-        flash("Calcul impossible — erreurs : " + " · ".join(errors), 'danger')
+        flash(_("Calcul impossible — erreurs : ") + " · ".join(errors), 'danger')
         return redirect(url_for('completude'))
 
     tendance.add_snapshot(cache['national'])  # un point d'historique par jour calendaire (voir modules/tendance.py)
@@ -5633,9 +5635,9 @@ def completude_calculer():
     completude_cache.save_cache(cache, app.config['UPLOAD_FOLDER'], computed_at)
 
     if errors:
-        flash("Calcul partiel — erreurs : " + " · ".join(errors), 'warning')
+        flash(_("Calcul partiel — erreurs : ") + " · ".join(errors), 'warning')
     else:
-        flash(f"Complétude calculée pour {n_ok} formulaire(s).", 'success')
+        flash(_("Complétude calculée pour %(n_ok)s formulaire(s).", n_ok=n_ok), 'success')
     return redirect(url_for('completude'))
 
 

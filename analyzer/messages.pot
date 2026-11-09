@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-09 10:24+0000\n"
+"POT-Creation-Date: 2026-11-09 11:02+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,14 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: app.py:263
+msgid "Cette page est réservée à l'administrateur."
+msgstr ""
+
+#: app.py:266
+msgid "Cette page n'est pas accessible avec un accès Invité."
+msgstr ""
 
 #: app.py:355
 msgid "Ce compte est en attente de validation par un administrateur."
@@ -35,6 +43,712 @@ msgstr ""
 
 #: app.py:383
 msgid "Les deux mots de passe ne correspondent pas."
+msgstr ""
+
+#: app.py:411
+#, python-format
+msgid "Compte « %(username)s » autorisé."
+msgstr ""
+
+#: app.py:413 app.py:422
+msgid "Compte introuvable."
+msgstr ""
+
+#: app.py:420
+#, python-format
+msgid "Compte « %(username)s » bloqué."
+msgstr ""
+
+#: app.py:434
+msgid "Journal d'activité réinitialisé."
+msgstr ""
+
+#: app.py:453
+#, python-format
+msgid "Formulaire « %(code)s » activé."
+msgstr ""
+
+#: app.py:455 app.py:464
+msgid "Formulaire introuvable."
+msgstr ""
+
+#: app.py:462
+#, python-format
+msgid ""
+"Formulaire « %(code)s » désactivé — il n'apparaîtra plus dans Suivi ni "
+"Complétude."
+msgstr ""
+
+#: app.py:476
+msgid "La valeur numérique de la règle de cible est invalide."
+msgstr ""
+
+#: app.py:481
+msgid "Le nom du champ du référentiel est obligatoire pour ce type de règle."
+msgstr ""
+
+#: app.py:510
+msgid "Formulaire ajouté au registre."
+msgstr ""
+
+#: app.py:832
+msgid "Connectez-vous d’abord à KoboToolbox pour synchroniser les données."
+msgstr ""
+
+#: app.py:868
+#, python-format
+msgid "Synchronisation échouée : %(error)s"
+msgstr ""
+
+#: app.py:877
+#, python-format
+msgid "Synchronisation réussie — %(n_obs)s soumissions chargées depuis %(name)s."
+msgstr ""
+
+#: app.py:888
+msgid ""
+"Connectez-vous d’abord à KoboToolbox pour activer la synchronisation "
+"automatique."
+msgstr ""
+
+#: app.py:897
+msgid ""
+"Synchronisation automatique démarrée — les nouvelles soumissions seront "
+"appliquées automatiquement, même sans garder cette page ouverte."
+msgstr ""
+
+#: app.py:907
+msgid "Historique de synchronisation vidé."
+msgstr ""
+
+#: app.py:917
+msgid "Aucun formulaire Kobo actif. Connectez-vous d’abord."
+msgstr ""
+
+#: app.py:925
+#, python-format
+msgid "Rafraîchissement échoué : %(error)s"
+msgstr ""
+
+#: app.py:936
+#, python-format
+msgid "Données rafraîchies — %(n_obs)s soumissions disponibles."
+msgstr ""
+
+#: app.py:1066 app.py:1202 app.py:1261 app.py:1294
+msgid "Chargez d'abord des données."
+msgstr ""
+
+#: app.py:1068
+msgid "Choisissez l'XLSForm du formulaire."
+msgstr ""
+
+#: app.py:1078
+#, python-format
+msgid ""
+"Formulaire lu dans « %(filename)s » : %(n_choices)s question(s) à choix, "
+"%(n_rules)s question(s) avec règle (obligatoire, saut de logique, "
+"contrainte). Les analyses affichent les modalités avec leur vrai nom et "
+"la validation contrôle les réponses d'après le formulaire."
+msgstr ""
+
+#: app.py:1094
+msgid ""
+"Libellés retirés : les modalités reprennent leurs noms internes (mis en "
+"forme)."
+msgstr ""
+
+#: app.py:1102
+msgid "Toutes les lignes sont de nouveau prises en compte dans les analyses."
+msgstr ""
+
+#: app.py:1110 app.py:1284
+#, python-format
+msgid "Variable « %(name)s » supprimée."
+msgstr ""
+
+#: app.py:1274
+#, python-format
+msgid ""
+"Variable « %(name)s » créée : elle est disponible dans les statistiques, "
+"les croisements, les analyses multivariées et les rapports, et se "
+"recalcule pour les soumissions à venir."
+msgstr ""
+
+#: app.py:1304
+msgid ""
+"Aucune ligne ne vérifie cette condition : le filtre garderait un jeu "
+"vide, il n'est donc pas appliqué."
+msgstr ""
+
+#: app.py:1308
+#, python-format
+msgid ""
+"%(n_removed)s ligne(s) écartée(s) de l'analyse (%(n_remaining)s restent)."
+" Le fichier n'est pas modifié : « Rétablir » remet toutes les lignes."
+msgstr ""
+
+#: app.py:1328 app.py:1332
+msgid "Aucun fichier sélectionné."
+msgstr ""
+
+#: app.py:1375
+#, python-format
+msgid ""
+"Fichier chargé avec succès — %(n_hh)s ménages × %(n_vars)s variables "
+"analysables."
+msgstr ""
+
+#: app.py:1381
+#, python-format
+msgid "Erreur lors du chargement : %(error)s"
+msgstr ""
+
+#: app.py:1383
+msgid "Format non supporté. Utilisez .xlsx ou .xls"
+msgstr ""
+
+#: app.py:1623 app.py:1672 app.py:1720 app.py:1799 app.py:1829 app.py:1846
+#: app.py:2325 app.py:2773
+msgid "Veuillez d'abord importer un fichier."
+msgstr ""
+
+#: app.py:1861 app.py:2192
+msgid "Veuillez d'abord charger des données (KoboToolbox ou fichier)."
+msgstr ""
+
+#: app.py:1872 app.py:3814
+msgid ""
+"Export indisponible : le module pyreadstat n'est pas installé sur ce "
+"serveur."
+msgstr ""
+
+#: app.py:1895
+msgid "Données effacées."
+msgstr ""
+
+#: app.py:2017
+msgid "Connectez-vous à KoboToolbox pour contrôler ce formulaire."
+msgstr ""
+
+#: app.py:2026 app.py:3546
+#, python-format
+msgid "Chargement KoboToolbox : %(error)s"
+msgstr ""
+
+#: app.py:2106
+msgid ""
+"La validation porte sur les données d'une enquête : chargez-les d'abord "
+"(formulaire KoboToolbox ou fichier Excel)."
+msgstr ""
+
+#: app.py:2142
+#, python-format
+msgid "Règle ajoutée : elle est maintenant appliquée %(where)s à chaque contrôle."
+msgstr ""
+
+#: app.py:2152
+msgid "Règle supprimée."
+msgstr ""
+
+#: app.py:2163
+msgid "L'écartement de lignes concerne les données chargées pour analyse."
+msgstr ""
+
+#: app.py:2179
+msgid "Aucune ligne à écarter pour ce choix."
+msgstr ""
+
+#: app.py:2183
+#, python-format
+msgid ""
+"%(n)s ligne(s) écartée(s) de l'analyse (%(total)s au total). Le fichier "
+"n'est pas modifié : « Rétablir » remet toutes les lignes."
+msgstr ""
+
+#: app.py:2258
+msgid "Aucune donnée chargée à verser dans la base centrale."
+msgstr ""
+
+#: app.py:2263 app.py:3618 app.py:5344 app.py:5395
+msgid "Factum invalide : "
+msgstr ""
+
+#: app.py:2287
+#, python-format
+msgid "Enquête %(fac)s retirée de la base centrale."
+msgstr ""
+
+#: app.py:2295
+#, python-format
+msgid "Aucune valeur pour la variable « %(radical)s » dans la base centrale."
+msgstr ""
+
+#: app.py:2867
+#, python-format
+msgid ""
+"%(total)s analyses demandées : seules les %(max)s premières sont "
+"affichées (la page deviendrait illisible). Choisissez-en moins, ou "
+"décomposez-les par groupes."
+msgstr ""
+
+#: app.py:3006
+#, python-format
+msgid "Erreur : %(error)s"
+msgstr ""
+
+#: app.py:3011
+#, python-format
+msgid "Choix multiples : %(error)s"
+msgstr ""
+
+#: app.py:3052 app.py:4068
+#, python-format
+msgid "Export impossible : %(error)s"
+msgstr ""
+
+#: app.py:3418
+#, python-format
+msgid "« %(filename)s » : %(note)s"
+msgstr ""
+
+#: app.py:3435
+#, python-format
+msgid "Erreur sur « %(filename)s » : %(error)s"
+msgstr ""
+
+#: app.py:3441
+#, python-format
+msgid "%(added)s enquête(s) ajoutée(s) — total : %(total)s"
+msgstr ""
+
+#: app.py:3449
+msgid "Enquête retirée."
+msgstr ""
+
+#: app.py:3458
+msgid "Toutes les enquêtes ont été effacées."
+msgstr ""
+
+#: app.py:3471
+#, python-format
+msgid "%(added)s variable(s) ajoutée(s) aux comparaisons (total : %(total)s)."
+msgstr ""
+
+#: app.py:3473
+msgid "Variable(s) déjà présente(s) dans les comparaisons."
+msgstr ""
+
+#: app.py:3480
+#, python-format
+msgid "« %(v)s » retirée des comparaisons."
+msgstr ""
+
+#: app.py:3485
+msgid "Toutes les comparaisons ont été retirées."
+msgstr ""
+
+#: app.py:3498
+msgid "Connectez-vous d'abord à KoboToolbox (menu Connexion KoboToolbox)."
+msgstr ""
+
+#: app.py:3504
+#, python-format
+msgid "%(n)s formulaire(s) KoboToolbox chargé(s)."
+msgstr ""
+
+#: app.py:3506
+#, python-format
+msgid "KoboToolbox : %(error)s"
+msgstr ""
+
+#: app.py:3513 app.py:4259 app.py:4765 app.py:4910 app.py:5112 app.py:5195
+#: app.py:5213 app.py:5423 app.py:5528 app.py:5603
+msgid "Connectez-vous d'abord à KoboToolbox."
+msgstr ""
+
+#: app.py:3515
+msgid "Sélectionnez un formulaire KoboToolbox."
+msgstr ""
+
+#: app.py:3542
+#, python-format
+msgid "Enquête KoboToolbox « %(asset_name)s » ajoutée (%(n)s obs.)"
+msgstr ""
+
+#: app.py:3558
+#, python-format
+msgid "« %(titre)s » : aucune donnée dans la base centrale."
+msgstr ""
+
+#: app.py:3574
+#, python-format
+msgid "%(added)s enquête(s) ajoutée(s) depuis la base centrale."
+msgstr ""
+
+#: app.py:3583
+msgid "Choisissez l'XLSForm de cette enquête."
+msgstr ""
+
+#: app.py:3591
+#, python-format
+msgid ""
+"Libellés lus dans « %(filename)s » : %(n)s question(s) à choix. Les "
+"modalités s'affichent maintenant avec leur vrai nom."
+msgstr ""
+
+#: app.py:3605
+msgid "Enquête introuvable."
+msgstr ""
+
+#: app.py:3610
+msgid "Factum retiré."
+msgstr ""
+
+#: app.py:3616
+msgid "Factum enregistré : les enquêtes sont maintenant ordonnées selon sa date."
+msgstr ""
+
+#: app.py:3655
+#, python-format
+msgid ""
+"%(n)s variable(s) du panier retirée(s) : l'alignement se fait maintenant "
+"sur le code PHAKTS complet (Age__1Y et Age__1M sont deux variables). Les "
+"ajouter de nouveau."
+msgstr ""
+
+#: app.py:3683 app.py:4012
+#, python-format
+msgid "Erreur d'analyse : %(error)s"
+msgstr ""
+
+#: app.py:3697
+#, python-format
+msgid "Erreur d'analyse automatique : %(error)s"
+msgstr ""
+
+#: app.py:3752
+#, python-format
+msgid "Analyse multivariée : %(error)s"
+msgstr ""
+
+#: app.py:3785
+msgid "Ajoutez au moins deux enquêtes pour exporter le jeu fusionné."
+msgstr ""
+
+#: app.py:3791 app.py:3894
+#, python-format
+msgid "Fusion impossible : %(error)s"
+msgstr ""
+
+#: app.py:3871
+#, python-format
+msgid "Génération du rapport impossible : %(error)s"
+msgstr ""
+
+#: app.py:3882
+msgid "Lancez d'abord une analyse multivariée."
+msgstr ""
+
+#: app.py:3887
+msgid "Aucune enquête chargée."
+msgstr ""
+
+#: app.py:3914
+msgid "Paramètres insuffisants pour l'analyse."
+msgstr ""
+
+#: app.py:3917
+#, python-format
+msgid "Erreur lors de l'analyse : %(error)s"
+msgstr ""
+
+#: app.py:3985
+msgid "Sélectionnez au moins 2 variables."
+msgstr ""
+
+#: app.py:4032
+msgid "Lancez d'abord une classification."
+msgstr ""
+
+#: app.py:4041
+#, python-format
+msgid ""
+"Variable « %(name)s » enregistrée (%(n_clusters)s classes, %(n_obs)s "
+"individus classés). Elle est maintenant proposée dans les analyses "
+"descriptives et croisées."
+msgstr ""
+
+#: app.py:4045
+#, python-format
+msgid "Enregistrement impossible : %(error)s"
+msgstr ""
+
+#: app.py:4094
+#, python-format
+msgid "Analyses choisies : %(names)s"
+msgstr ""
+
+#: app.py:4134
+#, python-format
+msgid "Erreur multi-enquête dans le rapport : %(error)s"
+msgstr ""
+
+#: app.py:4136
+msgid "Aucune variable dans le panier multi-enquête — section ignorée."
+msgstr ""
+
+#: app.py:4138
+msgid "Moins de 2 enquêtes — section multi-enquête ignorée."
+msgstr ""
+
+#: app.py:4190
+#, python-format
+msgid "Erreur génération rapport : %(error)s"
+msgstr ""
+
+#: app.py:4229
+msgid "Veuillez saisir votre token API."
+msgstr ""
+
+#: app.py:4238
+#, python-format
+msgid ""
+"Connecté en tant que <strong>%(username)s</strong> — Instance : "
+"<strong>%(instance)s</strong>."
+msgstr ""
+
+#: app.py:4245
+#, python-format
+msgid "Connexion échouée : %(error)s"
+msgstr ""
+
+#: app.py:4263
+#, python-format
+msgid "Impossible de lister les formulaires : %(error)s"
+msgstr ""
+
+#: app.py:4319
+msgid "Session expirée. Reconnectez-vous à KoboToolbox."
+msgstr ""
+
+#: app.py:4322
+msgid "UID de formulaire manquant."
+msgstr ""
+
+#: app.py:4328
+#, python-format
+msgid ""
+"« %(name)s » correspond au formulaire %(code)s, désactivé dans le "
+"registre (Administration → Formulaires) — réactivez-le d'abord pour "
+"l'analyser."
+msgstr ""
+
+#: app.py:4338 app.py:4772 app.py:5431 app.py:5536
+#, python-format
+msgid "Erreur de chargement : %(error)s"
+msgstr ""
+
+#: app.py:4363
+#, python-format
+msgid ""
+"<strong>%(name)s</strong> chargé avec succès — %(n_obs)s soumissions × "
+"%(n_vars)s variables analysables."
+msgstr ""
+
+#: app.py:4381
+msgid "Aucun formulaire KoboToolbox actif en session."
+msgstr ""
+
+#: app.py:4387
+#, python-format
+msgid ""
+"« %(name)s » correspond au formulaire %(code)s, désactivé dans le "
+"registre (Administration → Formulaires) — réactivez-le d'abord pour "
+"continuer à l'analyser."
+msgstr ""
+
+#: app.py:4396
+#, python-format
+msgid "Erreur de rafraîchissement : %(error)s"
+msgstr ""
+
+#: app.py:4416
+#, python-format
+msgid "Données rafraîchies — %(n_obs)s soumissions × %(n_vars)s variables."
+msgstr ""
+
+#: app.py:4431
+msgid "Déconnecté de KoboToolbox."
+msgstr ""
+
+#: app.py:4447
+msgid "Connectez-vous d'abord à KoboToolbox pour suivre des formulaires."
+msgstr ""
+
+#: app.py:4785
+#, python-format
+msgid ""
+"<strong>%(name)s</strong> chargé pour analyse — %(n_obs)s soumissions × "
+"%(n_vars)s variables."
+msgstr ""
+
+#: app.py:4894 app.py:4914 app.py:4930 app.py:4945 app.py:4960 app.py:4975
+#: app.py:5001 app.py:5034 app.py:5078 app.py:5116 app.py:5140 app.py:5170
+#: app.py:5199 app.py:5217 app.py:5244 app.py:5265 app.py:5291
+msgid "Calculez d'abord la complétude depuis la page « Complétude nationale »."
+msgstr ""
+
+#: app.py:4979
+msgid "Enquêteur introuvable."
+msgstr ""
+
+#: app.py:5005
+msgid "Superviseur introuvable."
+msgstr ""
+
+#: app.py:5039
+msgid "Formulaire roster introuvable."
+msgstr ""
+
+#: app.py:5050 app.py:5088
+msgid "Complétude non encore calculée pour ce formulaire."
+msgstr ""
+
+#: app.py:5083
+msgid "Formulaire roster national introuvable."
+msgstr ""
+
+#: app.py:5120
+msgid "Région introuvable."
+msgstr ""
+
+#: app.py:5144
+msgid "District introuvable."
+msgstr ""
+
+#: app.py:5174
+msgid "Établissement introuvable."
+msgstr ""
+
+#: app.py:5338
+msgid "Nom du projet et champ d'identification de l'unité obligatoires."
+msgstr ""
+
+#: app.py:5341
+msgid "Fichier de référence manquant (colonnes minimales : code, cible)."
+msgstr ""
+
+#: app.py:5349
+msgid "Format non supporté pour le fichier de référence (.xlsx / .xls attendu)."
+msgstr ""
+
+#: app.py:5363
+#, python-format
+msgid "Projet « %(nom)s » créé — %(n)s unité(s) dans le référentiel."
+msgstr ""
+
+#: app.py:5371 app.py:5405 app.py:5419 app.py:5455 app.py:5480 app.py:5497
+#: app.py:5521 app.py:5554
+msgid "Projet introuvable."
+msgstr ""
+
+#: app.py:5397
+msgid "Factum du projet enregistré."
+msgstr ""
+
+#: app.py:5397
+msgid "Factum du projet retiré."
+msgstr ""
+
+#: app.py:5411
+#, python-format
+msgid "Formulaire KoboToolbox « %(kobo_name)s » associé au projet."
+msgstr ""
+
+#: app.py:5426 app.py:5531
+msgid "Associez d'abord un formulaire KoboToolbox à ce projet."
+msgstr ""
+
+#: app.py:5439
+#, python-format
+msgid "Complétude recalculée — %(n_obs)s soumissions traitées."
+msgstr ""
+
+#: app.py:5458
+msgid "Fichier XLSForm manquant (feuilles 'survey' et 'choices' attendues)."
+msgstr ""
+
+#: app.py:5462
+msgid "Format non supporté (.xlsx / .xls attendu)."
+msgstr ""
+
+#: app.py:5471
+#, python-format
+msgid ""
+"XLSForm chargé — dictionnaire généré (%(n)s variables). Révisez-le avant "
+"de lancer l'analyse."
+msgstr ""
+
+#: app.py:5484 app.py:5501
+msgid "Aucun XLSForm attaché à ce projet."
+msgstr ""
+
+#: app.py:5513
+msgid "Dictionnaire enregistré."
+msgstr ""
+
+#: app.py:5524
+msgid "Attachez et validez un dictionnaire avant de lancer l'analyse."
+msgstr ""
+
+#: app.py:5542
+#, python-format
+msgid "Erreur pendant l'analyse : %(error)s"
+msgstr ""
+
+#: app.py:5545
+#, python-format
+msgid ""
+"Analyse terminée — %(n_obs)s soumissions traitées. Rapport disponible au "
+"téléchargement."
+msgstr ""
+
+#: app.py:5558
+msgid "Aucun rapport disponible — lancez d'abord l'analyse."
+msgstr ""
+
+#: app.py:5570
+msgid "Projet supprimé."
+msgstr ""
+
+#: app.py:5594
+#, python-format
+msgid ""
+"Correspondance enregistrée pour %(n_soumis)s formulaire(s) sur "
+"%(n_total)s."
+msgstr ""
+
+#: app.py:5606
+msgid "Associez au moins un formulaire avant de calculer."
+msgstr ""
+
+#: app.py:5619
+#, python-format
+msgid "Correspondance incorrecte : %(error)s"
+msgstr ""
+
+#: app.py:5630
+msgid "Calcul impossible — erreurs : "
+msgstr ""
+
+#: app.py:5638
+msgid "Calcul partiel — erreurs : "
+msgstr ""
+
+#: app.py:5640
+#, python-format
+msgid "Complétude calculée pour %(n_ok)s formulaire(s)."
 msgstr ""
 
 #: modules/accounts.py:100
