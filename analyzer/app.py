@@ -243,7 +243,7 @@ def require_login():
         # préflight comme un échec CORS. La vraie requête (POST) qui suit
         # porte, elle, le cookie et reste normalement vérifiée.
         return
-    if request.endpoint in ('login', 'register', 'static', 'favicon', 'internal_authcheck_admin'):
+    if request.endpoint in ('login', 'register', 'static', 'favicon', 'internal_authcheck_admin', 'set_language'):
         return
     if request.path.startswith('/static/'):
         return
