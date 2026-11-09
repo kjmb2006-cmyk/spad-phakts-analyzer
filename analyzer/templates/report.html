@@ -255,6 +255,19 @@
 
 {% block scripts %}
 <script>
+const I18N = {
+  genPdf: {{ _('Générer et télécharger le PDF') | tojson }},
+  genExcel: {{ _('Générer et télécharger le Excel') | tojson }},
+  genWord: {{ _('Générer et télécharger le Word') | tojson }},
+  generating: {{ _('Génération en cours…') | tojson }},
+  pdfAutoDownloadPrefix: {{ _('Le PDF sera téléchargé automatiquement dans votre dossier') | tojson }},
+  downloadsFolder: {{ _('Téléchargements') | tojson }},
+  pdfDownloaded: {{ _('PDF téléchargé !') | tojson }},
+  checkFolderPrefix: {{ _('Vérifiez votre dossier') | tojson }},
+  serverErrorPrefix: {{ _('Erreur serveur') | tojson }},
+  genErrorPrefix: {{ _('Erreur lors de la génération :') | tojson }},
+};
+
 function toggleAll(cls, checked) {
   document.querySelectorAll('.' + cls).forEach(el => el.checked = checked);
 }
@@ -268,15 +281,15 @@ function updateFormat() {
   if (format === 'pdf') {
     btn.className = 'btn btn-danger btn-lg w-100';
     icon.className = 'bi bi-file-earmark-pdf-fill me-2 text-danger';
-    label.textContent = 'Générer et télécharger le PDF';
+    label.textContent = I18N.genPdf;
   } else if (format === 'excel') {
     btn.className = 'btn btn-success btn-lg w-100';
     icon.className = 'bi bi-file-earmark-excel-fill me-2 text-success';
-    label.textContent = 'Générer et télécharger le Excel';
+    label.textContent = I18N.genExcel;
   } else {
     btn.className = 'btn btn-primary btn-lg w-100';
     icon.className = 'bi bi-file-earmark-word-fill me-2 text-primary';
-    label.textContent = 'Générer et télécharger le Word';
+    label.textContent = I18N.genWord;
   }
 }
 
@@ -291,9 +304,9 @@ function resetBtn() {
   document.getElementById('genBtn').disabled = false;
   const format = document.querySelector('input[name="report_format"]:checked').value;
   document.getElementById('genLabel').textContent =
-    format === 'pdf' ? 'Générer et télécharger le PDF' :
-    format === 'excel' ? 'Générer et télécharger le Excel' :
-    'Générer et télécharger le Word';
+    format === 'pdf' ? I18N.genPdf :
+    format === 'excel' ? I18N.genExcel :
+    I18N.genWord;
 }
 
 // Add event listeners for format change
@@ -307,10 +320,10 @@ document.querySelector('form').addEventListener('submit', function(e) {
   document.getElementById('genSpinner').classList.remove('d-none');
   document.getElementById('genIcon').classList.add('d-none');
   document.getElementById('genBtn').disabled = true;
-  document.getElementById('genLabel').textContent = 'Génération en cours…';
+  document.getElementById('genLabel').textContent = I18N.generating;
   showStatus('<div style="padding:.75rem 1rem;border-radius:.375rem;background:#cff4fc;border:1px solid #b6effb;display:flex;align-items:center;gap:.5rem;margin-top:.75rem">'
     + '<div class="spinner-border spinner-border-sm text-info"></div>'
-    + '<div><strong>Génération en cours…</strong> Le PDF sera téléchargé automatiquement dans votre dossier <strong>Téléchargements</strong>.</div></div>');
+    + '<div><strong>' + I18N.generating + '</strong> ' + I18N.pdfAutoDownloadPrefix + ' <strong>' + I18N.downloadsFolder + '</strong>.</div></div>');
 
   var formData = new FormData(this);
 
@@ -320,7 +333,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
     credentials: 'same-origin'
   })
   .then(function(response) {
-    if (!response.ok) throw new Error('Erreur serveur ' + response.status);
+    if (!response.ok) throw new Error(I18N.serverErrorPrefix + ' ' + response.status);
     var cd = response.headers.get('Content-Disposition') || '';
     var m  = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
     var filename = m ? m[1].replace(/['"]/g, '') : 'rapport.pdf';
@@ -341,13 +354,13 @@ document.querySelector('form').addEventListener('submit', function(e) {
   .then(function() {
     showStatus('<div style="padding:.75rem 1rem;border-radius:.375rem;background:#d1e7dd;border:1px solid #badbcc;display:flex;align-items:center;gap:.5rem;margin-top:.75rem">'
       + '<i class="bi bi-check-circle-fill fs-5 text-success"></i>'
-      + '<div><strong>PDF téléchargé !</strong> Vérifiez votre dossier <strong>Téléchargements</strong>.</div></div>');
+      + '<div><strong>' + I18N.pdfDownloaded + '</strong> ' + I18N.checkFolderPrefix + ' <strong>' + I18N.downloadsFolder + '</strong>.</div></div>');
     resetBtn();
   })
   .catch(function(err) {
     clearStatus();
     resetBtn();
-    alert('Erreur lors de la génération : ' + err.message);
+    alert(I18N.genErrorPrefix + ' ' + err.message);
   });
 });
 

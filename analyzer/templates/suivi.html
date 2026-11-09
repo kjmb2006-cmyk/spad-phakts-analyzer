@@ -167,16 +167,61 @@
 <script>
 window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
 (function () {
+  const I18N = {
+    zeroPct: {{ _('0 %%') | tojson }},
+    enCours: {{ _('En cours') | tojson }},
+    cibleAtteinte: {{ _('Cible atteinte') | tojson }},
+    suiviSansCible: {{ _('Suivi (sans cible)') | tojson }},
+    enAttente: {{ _('En attente…') | tojson }},
+    retirerDuSuivi: {{ _('Retirer du suivi') | tojson }},
+    derniereSyncPrefix: {{ _('Dernière synchro :') | tojson }},
+    verifieAPrefix: {{ _('Vérifié à') | tojson }},
+    echecSuffix: {{ _('(échec)') | tojson }},
+    enAttentePremierSondage: {{ _('En attente du premier sondage…') | tojson }},
+    cibleManuelle: {{ _('cible manuelle') | tojson }},
+    codesRattaches: {{ _('%%(n)s codes SPAD rattachés à ce même formulaire (un par rôle) — géré depuis Complétude nationale.') | tojson }},
+    controlerQualiteTitle: {{ _("Contrôler la qualité des données de ce formulaire : doublons, heures, seuils, valeurs extrêmes et règles de l'enquête. Les données sont chargées à la demande (le suivi ne lit que les compteurs).") | tojson }},
+    qualite: {{ _('Qualité') | tojson }},
+    analyser: {{ _('Analyser') | tojson }},
+    districtReelTitle: {{ _('Proportion de districts ayant individuellement atteint ou dépassé 100 %% (%%(atteints)s/%%(total)s) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.') | tojson }},
+    cibleReelleAtteinte: {{ _('Cible réelle atteinte ·') | tojson }},
+    nFormulaires: {{ _('%%(n)s formulaire(s)') | tojson }},
+    suggererIaTitle: {{ _("Suggérer le type et la cible avec l'IA") | tojson }},
+    analyserStructureTitle: {{ _('Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée') | tojson }},
+    suivre: {{ _('Suivre') | tojson }},
+    supprimerKoboTitle: {{ _('Supprimer définitivement ce formulaire sur KoboToolbox') | tojson }},
+    suivi: {{ _('Suivi') | tojson }},
+    mettreAJour: {{ _('Mettre à jour') | tojson }},
+    erreurInconnue: {{ _('Erreur inconnue.') | tojson }},
+    rolesMisAJour: {{ _('Rôles mis à jour.') | tojson }},
+    detecteeAutomatiquement: {{ _('détectée automatiquement') | tojson }},
+    exempleCible: {{ _('ex. 1800') | tojson }},
+    suggestionIaIndisponible: {{ _("Suggestion IA indisponible pour l'instant.") | tojson }},
+    analyseIaIndisponible: {{ _("Analyse IA indisponible pour l'instant.") | tojson }},
+    nouveauFormulaireSuggere: {{ _('Nouveau formulaire suggéré : « %%(label)s ».') | tojson }},
+    formulaireRoleUnique: {{ _('Formulaire à rôle unique (ou sans rôle détecté).') | tojson }},
+    plusieursRolesDetectes: {{ _('Plusieurs rôles détectés') | tojson }},
+    champSuffix: {{ _('— champ :') | tojson }},
+    rolesPrefix: {{ _('Rôles :') | tojson }},
+    champDistrictProbable: {{ _('Champ district probable :') | tojson }},
+    champIdentitePossible: {{ _("Champ d'identité possible :") | tojson }},
+    creezCodeSpad: {{ _('Créez un code SPAD par rôle dans le Registre des formulaires (role_filter = champ ci-dessus) — la cible reste à saisir vous-même.') | tojson }},
+    confirmSupprimerAsset: {{ _('Supprimer DÉFINITIVEMENT « %%(name)s » sur KoboToolbox ?\n\nCette action est irréversible et supprime le formulaire, pas seulement son suivi.') | tojson }},
+    echecSuppressionPrefix: {{ _('Échec de la suppression :') | tojson }},
+    erreurInconnueLower: {{ _('erreur inconnue') | tojson }},
+    erreurReseauSuppression: {{ _('Erreur réseau lors de la suppression.') | tojson }},
+    sansNom: {{ _('(sans nom)') | tojson }},
+  };
   const grid       = document.getElementById('trackedGrid');
   const emptyState = document.getElementById('trackedEmpty');
   const countEl    = document.getElementById('trackedCount');
 
   const STATUS_LABEL = {
-    zero:      ['status-pill--zero',     '0 %'],
-    en_cours:  ['status-pill--en-cours', 'En cours'],
-    cible:     ['status-pill--cible',    'Cible atteinte'],
-    suivi:     ['status-pill--zero',     'Suivi (sans cible)'],
-    inconnu:   ['status-pill--zero',     'En attente…'],
+    zero:      ['status-pill--zero',     I18N.zeroPct],
+    en_cours:  ['status-pill--en-cours', I18N.enCours],
+    cible:     ['status-pill--cible',    I18N.cibleAtteinte],
+    suivi:     ['status-pill--zero',     I18N.suiviSansCible],
+    inconnu:   ['status-pill--zero',     I18N.enAttente],
   };
 
   function fmtNum(n) { return (n === null || n === undefined) ? '—' : n.toLocaleString('fr-FR'); }
@@ -189,15 +234,15 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
       ? `<div class="small text-danger mt-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>${t.error}</div>`
       : '';
     const lastSync = t.last_success_at
-      ? `Dernière synchro : ${t.last_success_at}`
-      : (t.last_check_at ? `Vérifié à ${t.last_check_at} (échec)` : 'En attente du premier sondage…');
+      ? `${I18N.derniereSyncPrefix} ${t.last_success_at}`
+      : (t.last_check_at ? `${I18N.verifieAPrefix} ${t.last_check_at} ${I18N.echecSuffix}` : I18N.enAttentePremierSondage);
 
     return `
       <div class="col-md-6 col-xl-4">
         <div class="stat-card-v ${t.status === 'cible' ? 'kpi-success' : (t.status === 'en_cours' ? 'kpi-warning' : 'kpi-primary')}">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <h6 class="mb-0 fw-semibold" style="font-size:.88rem;max-width:75%">${t.name}</h6>
-            <button type="button" class="btn btn-sm btn-link text-muted p-0 btn-track-remove" data-uid="${t.uid}" title="Retirer du suivi">
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 btn-track-remove" data-uid="${t.uid}" title="${I18N.retirerDuSuivi}">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
@@ -210,11 +255,11 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
                      <i class="bi bi-magic me-1"></i>${code}
                    </span>`).join('')
               : (t.target_source === 'manuelle'
-                  ? `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.62rem">cible manuelle</span>`
+                  ? `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.62rem">${I18N.cibleManuelle}</span>`
                   : '')}
           </div>
           ${(t.mapped_codes && t.mapped_codes.length > 1)
-            ? `<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>${t.mapped_codes.length} codes SPAD rattachés à ce même formulaire (un par rôle) — géré depuis Complétude nationale.</div>`
+            ? `<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>${I18N.codesRattaches.replace('%(n)s', t.mapped_codes.length)}</div>`
             : ''}
           ${pct !== null ? `
           <div class="progress-track mb-2">
@@ -224,17 +269,17 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
             <span class="status-pill ${pillClass}">${pillLabel}${pct !== null ? ' · ' + t.pct + ' %' : ''}</span>
             <div class="d-flex gap-1">
               <a href="/qualite/validation?uid=${encodeURIComponent(t.uid)}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.72rem"
-                 title="Contrôler la qualité des données de ce formulaire : doublons, heures, seuils, valeurs extrêmes et règles de l'enquête. Les données sont chargées à la demande (le suivi ne lit que les compteurs).">
-                <i class="bi bi-shield-check me-1"></i>Qualité
+                 title="${I18N.controlerQualiteTitle}">
+                <i class="bi bi-shield-check me-1"></i>${I18N.qualite}
               </a>
               <a href="/suivi/analyser/${t.uid}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem">
-                Analyser <i class="bi bi-arrow-right ms-1"></i>
+                ${I18N.analyser} <i class="bi bi-arrow-right ms-1"></i>
               </a>
             </div>
           </div>
           ${t.district_reel ? `
-          <div class="mt-2" title="Proportion de districts ayant individuellement atteint ou dépassé 100 % (${t.district_reel.atteints}/${t.district_reel.total}) — par opposition au taux ci-dessus, qui est une moyenne nationale pouvant masquer des écarts entre districts.">
-            <span class="status-pill status-pill--${t.district_reel.css}">Cible réelle atteinte · ${t.district_reel.pct} %</span>
+          <div class="mt-2" title="${I18N.districtReelTitle.replace('%(atteints)s', t.district_reel.atteints).replace('%(total)s', t.district_reel.total)}">
+            <span class="status-pill status-pill--${t.district_reel.css}">${I18N.cibleReelleAtteinte} ${t.district_reel.pct} %</span>
           </div>` : ''}
           <div class="small text-muted mt-2">${lastSync}</div>
           ${errorLine}
@@ -243,7 +288,7 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
   }
 
   function render(tracked) {
-    countEl.textContent = tracked.length ? `${tracked.length} formulaire(s)` : '';
+    countEl.textContent = tracked.length ? I18N.nFormulaires.replace('%(n)s', tracked.length) : '';
     if (!tracked.length) {
       grid.innerHTML = '';
       emptyState.classList.remove('d-none');
@@ -267,12 +312,12 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
   function rebuildAddCell(row) {
     const cell = row.querySelector('td:last-child');
     const aiBtns = window.__suiviAiAvailable
-      ? `<button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="Suggérer le type et la cible avec l'IA"><i class="bi bi-stars"></i></button>
-         <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="Analyser la structure complète du formulaire (IA) — détecte si plusieurs rôles le remplissent, jamais de cible proposée"><i class="bi bi-diagram-3"></i></button>`
+      ? `<button type="button" class="btn btn-sm btn-outline-info btn-ai-suggest" title="${I18N.suggererIaTitle}"><i class="bi bi-stars"></i></button>
+         <button type="button" class="btn btn-sm btn-outline-secondary btn-ai-structure" title="${I18N.analyserStructureTitle}"><i class="bi bi-diagram-3"></i></button>`
       : '';
     cell.innerHTML = `<div class="d-flex gap-1 justify-content-center">${aiBtns}
-      <button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>Suivre</button>
-      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="Supprimer définitivement ce formulaire sur KoboToolbox"><i class="bi bi-trash3"></i></button>
+      <button type="button" class="btn btn-sm btn-outline-primary btn-track-add"><i class="bi bi-plus-lg me-1"></i>${I18N.suivre}</button>
+      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-asset" title="${I18N.supprimerKoboTitle}"><i class="bi bi-trash3"></i></button>
     </div>`;
     cell.querySelector('.btn-track-add').addEventListener('click', () => addTracked(row));
     cell.querySelector('.btn-delete-asset').addEventListener('click', () => deleteAsset(cell.querySelector('.btn-delete-asset')));
@@ -287,8 +332,8 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
   function rebuildTrackedCell(row) {
     const cell = row.querySelector('td:last-child');
     cell.innerHTML = `<div class="d-flex flex-column align-items-center gap-1">
-      <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>Suivi</span>
-      <button type="button" class="btn btn-sm btn-outline-secondary btn-retype" style="font-size:.68rem;padding:1px 8px"><i class="bi bi-arrow-repeat me-1"></i>Mettre à jour</button>
+      <span class="chip active" style="cursor:default;font-size:.72rem;padding:3px 10px"><i class="bi bi-check-lg me-1"></i>${I18N.suivi}</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary btn-retype" style="font-size:.68rem;padding:1px 8px"><i class="bi bi-arrow-repeat me-1"></i>${I18N.mettreAJour}</button>
     </div>`;
     cell.querySelector('.btn-retype').addEventListener('click', () => retypeTracked(row));
   }
@@ -329,7 +374,7 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
           row.querySelector('.target-input').disabled = true;
           if (res.warning) alert('⚠ ' + res.warning);
         } else {
-          alert(res.error || 'Erreur inconnue.');
+          alert(res.error || I18N.erreurInconnue);
         }
       });
   }
@@ -346,9 +391,9 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
         if (res.success) {
           render(res.tracked);
           if (res.warning) alert('⚠ ' + res.warning);
-          else alert('Rôles mis à jour.');
+          else alert(I18N.rolesMisAJour);
         } else {
-          alert(res.error || 'Erreur inconnue.');
+          alert(res.error || I18N.erreurInconnue);
         }
       });
   }
@@ -363,10 +408,10 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
       if (selectedTypes(row).length > 0) {
         targetInput.value = '';
         targetInput.disabled = true;
-        targetInput.placeholder = 'détectée automatiquement';
+        targetInput.placeholder = I18N.detecteeAutomatiquement;
       } else {
         targetInput.disabled = false;
-        targetInput.placeholder = 'ex. 1800';
+        targetInput.placeholder = I18N.exempleCible;
       }
     });
   });
@@ -398,7 +443,7 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
       .then(r => r.json())
       .then(res => {
         if (!res.available) {
-          rationaleEl.textContent = res.error || "Suggestion IA indisponible pour l'instant.";
+          rationaleEl.textContent = res.error || I18N.suggestionIaIndisponible;
           return;
         }
         if (res.error) {
@@ -415,11 +460,11 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
         }
         let note = res.rationale || '';
         if (res.is_new && res.suggested_label) {
-          note = `Nouveau formulaire suggéré : « ${res.suggested_label} ». ${note}`;
+          note = I18N.nouveauFormulaireSuggere.replace('%(label)s', res.suggested_label) + ' ' + note;
         }
         rationaleEl.innerHTML = `<i class="bi bi-stars me-1"></i>${note}`;
       })
-      .catch(() => { rationaleEl.textContent = "Suggestion IA indisponible pour l'instant."; })
+      .catch(() => { rationaleEl.textContent = I18N.suggestionIaIndisponible; })
       .finally(() => {
         icon.className = 'bi bi-stars';
         btn.disabled = false;
@@ -448,7 +493,7 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
       .then(r => r.json())
       .then(res => {
         if (!res.available) {
-          rationaleEl.textContent = res.error || "Analyse IA indisponible pour l'instant.";
+          rationaleEl.textContent = res.error || I18N.analyseIaIndisponible;
           return;
         }
         if (res.error) {
@@ -456,19 +501,19 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
           return;
         }
         if (!res.has_multi_role) {
-          rationaleEl.innerHTML = `<i class="bi bi-diagram-3 me-1"></i>Formulaire à rôle unique (ou sans rôle détecté).${res.rationale ? ' ' + res.rationale : ''}`;
+          rationaleEl.innerHTML = `<i class="bi bi-diagram-3 me-1"></i>${I18N.formulaireRoleUnique}${res.rationale ? ' ' + res.rationale : ''}`;
           return;
         }
         const rolesTxt = res.roles.map(r => `« ${r.value} » (${r.label})`).join(', ');
-        let html = `<i class="bi bi-diagram-3 me-1"></i><strong>Plusieurs rôles détectés</strong> — champ : <code>${res.role_field || '?'}</code><br>`;
-        html += `Rôles : ${rolesTxt}<br>`;
-        if (res.district_field) html += `Champ district probable : <code>${res.district_field}</code><br>`;
-        if (res.identity_hint) html += `Champ d'identité possible : <code>${res.identity_hint}</code><br>`;
+        let html = `<i class="bi bi-diagram-3 me-1"></i><strong>${I18N.plusieursRolesDetectes}</strong> ${I18N.champSuffix} <code>${res.role_field || '?'}</code><br>`;
+        html += `${I18N.rolesPrefix} ${rolesTxt}<br>`;
+        if (res.district_field) html += `${I18N.champDistrictProbable} <code>${res.district_field}</code><br>`;
+        if (res.identity_hint) html += `${I18N.champIdentitePossible} <code>${res.identity_hint}</code><br>`;
         html += `<em>${res.rationale || ''}</em><br>`;
-        html += `<span class="text-muted">Créez un code SPAD par rôle dans le Registre des formulaires (role_filter = champ ci-dessus) — la cible reste à saisir vous-même.</span>`;
+        html += `<span class="text-muted">${I18N.creezCodeSpad}</span>`;
         rationaleEl.innerHTML = html;
       })
-      .catch(() => { rationaleEl.textContent = "Analyse IA indisponible pour l'instant."; })
+      .catch(() => { rationaleEl.textContent = I18N.analyseIaIndisponible; })
       .finally(() => {
         icon.className = 'bi bi-diagram-3';
         btn.disabled = false;
@@ -489,8 +534,8 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
   function deleteAsset(btn) {
     const row = btn.closest('tr');
     const uid = row.dataset.uid;
-    const name = row.dataset.name || '(sans nom)';
-    if (!confirm(`Supprimer DÉFINITIVEMENT « ${name} » sur KoboToolbox ?\n\nCette action est irréversible et supprime le formulaire, pas seulement son suivi.`)) return;
+    const name = row.dataset.name || I18N.sansNom;
+    if (!confirm(I18N.confirmSupprimerAsset.replace('%(name)s', name))) return;
     btn.disabled = true;
     const icon = btn.querySelector('i');
     icon.className = 'spinner-border spinner-border-sm';
@@ -502,13 +547,13 @@ window.__suiviAiAvailable = {{ 'true' if ai_available else 'false' }};
         if (res.success) {
           row.remove();
         } else {
-          alert('Échec de la suppression : ' + (res.error || 'erreur inconnue'));
+          alert(I18N.echecSuppressionPrefix + ' ' + (res.error || I18N.erreurInconnueLower));
           btn.disabled = false;
           icon.className = 'bi bi-trash3';
         }
       })
       .catch(() => {
-        alert('Erreur réseau lors de la suppression.');
+        alert(I18N.erreurReseauSuppression);
         btn.disabled = false;
         icon.className = 'bi bi-trash3';
       });

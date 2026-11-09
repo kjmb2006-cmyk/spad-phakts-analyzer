@@ -91,7 +91,10 @@
   const formCodes      = {{ form_codes | tojson }};
 
   const STATUT_COLOR = { zero: '#A0AEC0', critique: '#C0392B', en_cours: '#D4AC0D', cible: '#2E7D4F', exces: '#D35400', verifier: '#C0392B' };
-  const STATUT_LABEL = { zero: '0 %', critique: 'Critique', en_cours: 'En cours', cible: 'Cible atteinte', exces: 'Dépassement', verifier: 'À vérifier' };
+  const STATUT_LABEL = {
+    zero: {{ _('0 %%') | tojson }}, critique: {{ _('Critique') | tojson }}, en_cours: {{ _('En cours') | tojson }},
+    cible: {{ _('Cible atteinte') | tojson }}, exces: {{ _('Dépassement') | tojson }}, verifier: {{ _('À vérifier') | tojson }},
+  };
   const cfg = { responsive: true, displaylogo: false };
 
   function drawDistrictChart(formCode) {
@@ -110,7 +113,7 @@
       text: y.map(v => v + ' %'), textposition: 'outside',
     }], {
       margin: { t: 10, r: 10, b: 90, l: 50 },
-      yaxis: { title: 'Taux (%)', rangemode: 'tozero' },
+      yaxis: { title: {{ _('Taux (%%)') | tojson }}, rangemode: 'tozero' },
       xaxis: { tickangle: -35 },
     }, cfg);
   }
@@ -134,7 +137,7 @@
     }));
     Plotly.newPlot('chart-tendance', traces, {
       margin: { t: 10, r: 10, b: 40, l: 50 },
-      yaxis: { title: 'Taux (%)', rangemode: 'tozero' },
+      yaxis: { title: {{ _('Taux (%%)') | tojson }}, rangemode: 'tozero' },
     }, cfg);
   }
 })();

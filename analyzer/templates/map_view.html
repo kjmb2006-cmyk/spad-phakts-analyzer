@@ -493,6 +493,21 @@ const GEO_DATA = {{ geo_data | tojson }};
 const CENTER   = [{{ center_lat }}, {{ center_lon }}];
 const ZOOM     = {{ zoom }};
 
+const I18N = {
+  observationPrefix: {{ _('Observation #') | tojson }},
+  aireSante: {{ _('Aire de santé') | tojson }},
+  superviseur: {{ _('Superviseur') | tojson }},
+  enqueteur: {{ _('Enquêteur') | tojson }},
+  zone: {{ _('Zone') | tojson }},
+  dureeEnquete: {{ _('Durée enquête') | tojson }},
+  nonCapture: {{ _('Non capturé par ce formulaire') | tojson }},
+  latitude: {{ _('Latitude') | tojson }},
+  longitude: {{ _('Longitude') | tojson }},
+  activerRegroupement: {{ _('Activer le regroupement') | tojson }},
+  desactiverRegroupement: {{ _('Désactiver le regroupement') | tojson }},
+  toutAfficher: {{ _('Tout afficher') | tojson }},
+};
+
 // ── Init carte ──────────────────────────────────────────────────────
 const map = L.map('map', {
   zoomControl: true,
@@ -554,7 +569,7 @@ GEO_DATA.forEach(function(p) {
       <div class="spad-popup-header" style="background:linear-gradient(135deg,${p.color},${p.color}cc)">
         <div class="popup-icon">📍</div>
         <div>
-          <div class="popup-title">${p.region !== '—' ? p.region : 'Observation #' + p.idx}</div>
+          <div class="popup-title">${p.region !== '—' ? p.region : I18N.observationPrefix + p.idx}</div>
           <div class="popup-sub">#${p.idx} &nbsp;·&nbsp; ${p.date}</div>
         </div>
       </div>
@@ -574,46 +589,46 @@ GEO_DATA.forEach(function(p) {
         ${p.aire !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-hospital pr-icon"></i>
-          <div class="pr-label">Aire de santé</div>
+          <div class="pr-label">${I18N.aireSante}</div>
           <div class="pr-value">${p.aire}</div>
         </div>` : ''}
         ${p.superviseur !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-person-badge pr-icon"></i>
-          <div class="pr-label">Superviseur</div>
+          <div class="pr-label">${I18N.superviseur}</div>
           <div class="pr-value">${p.superviseur}</div>
         </div>` : ''}
         ${p.enqueteur !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-person pr-icon"></i>
-          <div class="pr-label">Enquêteur</div>
+          <div class="pr-label">${I18N.enqueteur}</div>
           <div class="pr-value">${p.enqueteur}</div>
         </div>` : ''}
         ${p.zone !== '—' ? `
         <div class="popup-row">
           <i class="bi bi-house pr-icon"></i>
-          <div class="pr-label">Zone</div>
+          <div class="pr-label">${I18N.zone}</div>
           <div class="pr-value">${p.zone}</div>
         </div>` : ''}
         {% if source != 'gdb' %}
         <div class="popup-row">
           <i class="bi bi-stopwatch pr-icon" style="${p.duration ? '' : 'color:#CBD5E0'}"></i>
-          <div class="pr-label">Durée enquête</div>
+          <div class="pr-label">${I18N.dureeEnquete}</div>
           <div class="pr-value">
             ${p.duration
               ? `<strong>${p.duration}</strong>`
               : `<span style="color:#CBD5E0;font-style:italic;font-size:.72rem">
-                   Non capturé par ce formulaire
+                   ${I18N.nonCapture}
                  </span>`}
           </div>
         </div>
         {% endif %}
         <div class="popup-coords">
           <div class="popup-coord-chip">
-            <strong>${p.lat}</strong>Latitude
+            <strong>${p.lat}</strong>${I18N.latitude}
           </div>
           <div class="popup-coord-chip">
-            <strong>${p.lon}</strong>Longitude
+            <strong>${p.lon}</strong>${I18N.longitude}
           </div>
         </div>
       </div>
@@ -674,7 +689,7 @@ function applyFilters() {
 function updateDistrictFilter(regionFilter) {
   const sel  = document.getElementById('districtFilter');
   const prev = sel.value;
-  sel.innerHTML = '<option value="">— Tout afficher —</option>';
+  sel.innerHTML = `<option value="">— ${I18N.toutAfficher} —</option>`;
   const districts = new Set();
   allMarkers.forEach(m => {
     const p = m._data;
@@ -723,13 +738,13 @@ function toggleCluster(btn) {
     map.removeLayer(clusterGroup);
     allMarkers.forEach(m => m.addTo(map));
     btn.classList.remove('active');
-    btn.title = 'Activer le regroupement';
+    btn.title = I18N.activerRegroupement;
   } else {
     allMarkers.forEach(m => map.removeLayer(m));
     map.addLayer(clusterGroup);
     applyFilters();
     btn.classList.add('active');
-    btn.title = 'Désactiver le regroupement';
+    btn.title = I18N.desactiverRegroupement;
   }
   clustered = !clustered;
 }

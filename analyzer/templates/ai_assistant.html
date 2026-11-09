@@ -170,6 +170,16 @@
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script>
 (function() {
+  var I18N = {
+    you: {{ _('Vous') | tojson }},
+    copy: {{ _('Copier') | tojson }},
+    aiUnavailable: {{ _('⚠️ **Assistant IA indisponible :**') | tojson }},
+    aiUnavailableHint: {{ _("Cette fonctionnalité doit être activée par un administrateur (variable d'environnement ANTHROPIC_API_KEY côté serveur).") | tojson }},
+    error: {{ _('❌ **Erreur :**') | tojson }},
+    networkError: {{ _('❌ **Erreur réseau :** Impossible de joindre le serveur.') | tojson }},
+    detailedAnalysisPrompt: {{ _('Génère une analyse détaillée de type : "%%(label)s" pour les données actuelles.') | tojson }},
+    confirmResetChat: {{ _('Voulez-vous réinitialiser la conversation ?') | tojson }},
+  };
   var chatMessages = document.getElementById('chatMessages');
   var chatForm     = document.getElementById('chatForm');
   var userInput    = document.getElementById('userInput');
@@ -207,7 +217,7 @@
     if (isUser) {
       var safeContent = escapeHtml(content).replace(/\n/g, '<br>');
       msgDiv.innerHTML = '<div class="p-3 rounded shadow-sm text-white" style="background: #1A5276; max-width: 80%; border-radius: 14px 14px 2px 14px;">' +
-        '<div class="small fw-semibold opacity-75 mb-1">Vous</div>' +
+        '<div class="small fw-semibold opacity-75 mb-1">' + I18N.you + '</div>' +
         '<div>' + safeContent + '</div>' +
         '</div>';
     } else {
@@ -217,7 +227,7 @@
         '<div class="p-3 rounded shadow-sm flex-grow-1" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;max-width:90%;">' +
         '<div class="d-flex justify-content-between align-items-center mb-1">' +
         '<span class="fw-semibold text-primary small">SPAD AI Copilot</span>' +
-        '<button class="btn btn-sm btn-link text-muted p-0 copy-btn" title="Copier"><i class="bi bi-clipboard"></i></button>' +
+        '<button class="btn btn-sm btn-link text-muted p-0 copy-btn" title="' + I18N.copy + '"><i class="bi bi-clipboard"></i></button>' +
         '</div>' +
         '<div class="message-content text-dark">' + parsedHtml + '</div>' +
         '</div>';
@@ -265,15 +275,15 @@
         history.push({ role: 'user', content: promptText });
         history.push({ role: 'assistant', content: data.response });
       } else if (data.needs_key) {
-        appendMessage('assistant', "⚠️ **Assistant IA indisponible :** " + data.error + "\n\nCette fonctionnalité doit être activée par un administrateur (variable d'environnement ANTHROPIC_API_KEY côté serveur).");
+        appendMessage('assistant', I18N.aiUnavailable + " " + data.error + "\n\n" + I18N.aiUnavailableHint);
       } else {
-        appendMessage('assistant', '❌ **Erreur :** ' + data.error);
+        appendMessage('assistant', I18N.error + ' ' + data.error);
       }
     })
     .catch(function(err) {
       aiThinking.classList.add('d-none');
       sendBtn.disabled = false;
-      appendMessage('assistant', '❌ **Erreur réseau :** Impossible de joindre le serveur. ' + err.message);
+      appendMessage('assistant', I18N.networkError + ' ' + err.message);
     });
   }
 
@@ -296,7 +306,7 @@
   document.querySelectorAll('.quick-prompt-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var label = this.querySelector('.fw-semibold').textContent;
-      sendMessage('Génère une analyse détaillée de type : "' + label + '" pour les données actuelles.');
+      sendMessage(I18N.detailedAnalysisPrompt.replace('%(label)s', label));
     });
   });
 
@@ -309,7 +319,7 @@
 
   if (clearChatBtn) {
     clearChatBtn.addEventListener('click', function() {
-      if (confirm('Voulez-vous réinitialiser la conversation ?')) {
+      if (confirm(I18N.confirmResetChat)) {
         history = [];
         window.location.reload();
       }

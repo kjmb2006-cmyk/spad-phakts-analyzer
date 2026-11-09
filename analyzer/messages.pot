@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-06 12:52+0000\n"
+"POT-Creation-Date: 2026-11-09 10:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -68,23 +68,28 @@ msgstr ""
 
 #: templates/_completude_macros.html:15 templates/completude.html:168
 #: templates/completude.html:221 templates/completude.html:283
+#: templates/completude_graphiques.html:95
 #: templates/completude_roster_national_detail.html:131
 msgid "Critique"
 msgstr ""
 
 #: templates/_completude_macros.html:16 templates/completude.html:169
 #: templates/completude.html:222 templates/completude.html:284
+#: templates/completude_graphiques.html:95
 #: templates/completude_roster_national_detail.html:127
+#: templates/suivi.html:172
 msgid "En cours"
 msgstr ""
 
 #: templates/_completude_macros.html:17 templates/completude.html:170
 #: templates/completude.html:223 templates/completude.html:285
+#: templates/completude_graphiques.html:96 templates/suivi.html:173
 msgid "Cible atteinte"
 msgstr ""
 
 #: templates/_completude_macros.html:18 templates/completude.html:171
 #: templates/completude.html:224 templates/completude.html:286
+#: templates/completude_graphiques.html:96
 #: templates/completude_roster_national_detail.html:123
 msgid "Dépassement"
 msgstr ""
@@ -92,6 +97,7 @@ msgstr ""
 #: templates/_completude_macros.html:19 templates/completude.html:172
 #: templates/completude.html:225 templates/completude.html:287
 #: templates/completude_equipe_spad.html:123
+#: templates/completude_graphiques.html:96
 #: templates/completude_roster_national_detail.html:135
 #: templates/multi_survey.html:591 templates/multi_survey.html:601
 #: templates/multi_survey.html:625 templates/validation.html:24
@@ -315,12 +321,13 @@ msgstr ""
 #: templates/admin_forms.html:47 templates/admin_forms.html:116
 #: templates/completude.html:151 templates/completude_district_detail.html:56
 #: templates/completude_district_detail.html:94
-#: templates/completude_enqueteur_detail.html:4
+#: templates/completude_enqueteur_detail.html:4 templates/map_view.html:500
 msgid "Enquêteur"
 msgstr ""
 
 #: templates/admin_forms.html:47 templates/admin_forms.html:117
 #: templates/completude.html:151 templates/completude_superviseur_detail.html:4
+#: templates/map_view.html:499
 msgid "Superviseur"
 msgstr ""
 
@@ -660,6 +667,43 @@ msgstr ""
 msgid "Envoyer"
 msgstr ""
 
+#: templates/ai_assistant.html:174
+msgid "Vous"
+msgstr ""
+
+#: templates/ai_assistant.html:175
+msgid "Copier"
+msgstr ""
+
+#: templates/ai_assistant.html:176
+msgid "⚠️ **Assistant IA indisponible :**"
+msgstr ""
+
+#: templates/ai_assistant.html:177
+msgid ""
+"Cette fonctionnalité doit être activée par un administrateur (variable "
+"d'environnement ANTHROPIC_API_KEY côté serveur)."
+msgstr ""
+
+#: templates/ai_assistant.html:178
+msgid "❌ **Erreur :**"
+msgstr ""
+
+#: templates/ai_assistant.html:179
+msgid "❌ **Erreur réseau :** Impossible de joindre le serveur."
+msgstr ""
+
+#: templates/ai_assistant.html:180
+#, python-format
+msgid ""
+"Génère une analyse détaillée de type : \"%%(label)s\" pour les données "
+"actuelles."
+msgstr ""
+
+#: templates/ai_assistant.html:181
+msgid "Voulez-vous réinitialiser la conversation ?"
+msgstr ""
+
 #: templates/analyse_donnees.html:2 templates/analyse_donnees.html:3
 #: templates/crosstabs.html:343
 msgid "Analyse de données"
@@ -852,7 +896,7 @@ msgstr ""
 #: templates/analyse_donnees.html:152 templates/base.html:153
 #: templates/map.html:2 templates/map.html:3 templates/map.html:198
 #: templates/map_view.html:2 templates/map_view.html:3
-#: templates/map_view.html:765
+#: templates/map_view.html:780
 msgid "Carte géographique"
 msgstr ""
 
@@ -1189,7 +1233,7 @@ msgid ""
 msgstr ""
 
 #: templates/collecte_alertes.html:30 templates/collecte_dashboard.html:267
-#: templates/collecte_geographique.html:27
+#: templates/collecte_geographique.html:27 templates/map_view.html:501
 msgid "Zone"
 msgstr ""
 
@@ -2052,6 +2096,17 @@ msgstr ""
 msgid ""
 "Un point est enregistré à chaque calcul de complétude (un par jour). La "
 "courbe apparaîtra dès que 2 jours distincts seront disponibles."
+msgstr ""
+
+#: templates/completude_graphiques.html:95 templates/suivi.html:171
+#, python-format
+msgid "0 %%"
+msgstr ""
+
+#: templates/completude_graphiques.html:116
+#: templates/completude_graphiques.html:140
+#, python-format
+msgid "Taux (%%)"
 msgstr ""
 
 #: templates/completude_region_detail.html:4
@@ -3034,7 +3089,7 @@ msgid "%(n)s modalités"
 msgstr ""
 
 #: templates/data_preview.html:473 templates/descriptive.html:121
-#: templates/descriptive.html:151
+#: templates/descriptive.html:151 templates/suivi.html:185
 msgid "Analyser"
 msgstr ""
 
@@ -4049,7 +4104,7 @@ msgid " sanitaire"
 msgstr ""
 
 #: templates/map_view.html:384 templates/map_view.html:396
-#: templates/map_view.html:470
+#: templates/map_view.html:470 templates/map_view.html:508
 msgid "Tout afficher"
 msgstr ""
 
@@ -4097,61 +4152,93 @@ msgstr ""
 msgid "point(s) visibles"
 msgstr ""
 
-#: templates/map_view.html:769
+#: templates/map_view.html:497
+msgid "Observation #"
+msgstr ""
+
+#: templates/map_view.html:498
+msgid "Aire de santé"
+msgstr ""
+
+#: templates/map_view.html:502
+msgid "Durée enquête"
+msgstr ""
+
+#: templates/map_view.html:503
+msgid "Non capturé par ce formulaire"
+msgstr ""
+
+#: templates/map_view.html:504
+msgid "Latitude"
+msgstr ""
+
+#: templates/map_view.html:505
+msgid "Longitude"
+msgstr ""
+
+#: templates/map_view.html:506
+msgid "Activer le regroupement"
+msgstr ""
+
+#: templates/map_view.html:507
+msgid "Désactiver le regroupement"
+msgstr ""
+
+#: templates/map_view.html:784
 msgid "Aucune coordonnée GPS détectée"
 msgstr ""
 
-#: templates/map_view.html:771
+#: templates/map_view.html:786
 msgid ""
 "Pour afficher la carte, votre fichier doit contenir une colonne de "
 "coordonnées GPS."
 msgstr ""
 
-#: templates/map_view.html:772
+#: templates/map_view.html:787
 msgid "SPAD Analyzer reconnaît automatiquement les formats suivants :"
 msgstr ""
 
-#: templates/map_view.html:779
+#: templates/map_view.html:794
 msgid "Format KoboToolbox"
 msgstr ""
 
-#: templates/map_view.html:785
+#: templates/map_view.html:800
 msgid "\"5.18 -4.60 29.0 4.4\" (lat lon alt prec)"
 msgstr ""
 
-#: templates/map_view.html:792
+#: templates/map_view.html:807
 msgid "Format standard"
 msgstr ""
 
-#: templates/map_view.html:797
+#: templates/map_view.html:812
 msgid "Colonnes numériques séparées"
 msgstr ""
 
-#: templates/map_view.html:805
+#: templates/map_view.html:820
 msgid "Diagnostic GPS"
 msgstr ""
 
-#: templates/map_view.html:808
+#: templates/map_view.html:823
 msgid "Colonne combinée détectée :"
 msgstr ""
 
-#: templates/map_view.html:810
+#: templates/map_view.html:825
 msgid "Lignes sans GPS :"
 msgstr ""
 
-#: templates/map_view.html:811
+#: templates/map_view.html:826
 msgid "Cellules au format non reconnu :"
 msgstr ""
 
-#: templates/map_view.html:812
+#: templates/map_view.html:827
 msgid "Coordonnées hors limites :"
 msgstr ""
 
-#: templates/map_view.html:816
+#: templates/map_view.html:831
 msgid "Voir toutes les colonnes du fichier"
 msgstr ""
 
-#: templates/map_view.html:829
+#: templates/map_view.html:844
 msgid "Variables disponibles dans ce dataset :"
 msgstr ""
 
@@ -4389,7 +4476,7 @@ msgstr ""
 msgid "Part des lignes sans anomalie (contrôles de « Validation des données »)"
 msgstr ""
 
-#: templates/multi_survey.html:275
+#: templates/multi_survey.html:275 templates/suivi.html:184
 msgid "Qualité"
 msgstr ""
 
@@ -5917,8 +6004,44 @@ msgid ""
 "rapport plus léger."
 msgstr ""
 
-#: templates/report.html:244
+#: templates/report.html:244 templates/report.html:259
 msgid "Générer et télécharger le PDF"
+msgstr ""
+
+#: templates/report.html:260
+msgid "Générer et télécharger le Excel"
+msgstr ""
+
+#: templates/report.html:261
+msgid "Générer et télécharger le Word"
+msgstr ""
+
+#: templates/report.html:262
+msgid "Génération en cours…"
+msgstr ""
+
+#: templates/report.html:263
+msgid "Le PDF sera téléchargé automatiquement dans votre dossier"
+msgstr ""
+
+#: templates/report.html:264
+msgid "Téléchargements"
+msgstr ""
+
+#: templates/report.html:265
+msgid "PDF téléchargé !"
+msgstr ""
+
+#: templates/report.html:266
+msgid "Vérifiez votre dossier"
+msgstr ""
+
+#: templates/report.html:267
+msgid "Erreur serveur"
+msgstr ""
+
+#: templates/report.html:268
+msgid "Erreur lors de la génération :"
 msgstr ""
 
 #: templates/suivi.html:31
@@ -5976,38 +6099,177 @@ msgstr ""
 msgid "détecté depuis le nom"
 msgstr ""
 
-#: templates/suivi.html:122
+#: templates/suivi.html:122 templates/suivi.html:197
 msgid "détectée automatiquement"
 msgstr ""
 
-#: templates/suivi.html:122
+#: templates/suivi.html:122 templates/suivi.html:198
 msgid "ex. 1800"
 msgstr ""
 
-#: templates/suivi.html:129
+#: templates/suivi.html:129 templates/suivi.html:193
 msgid "Suivi"
 msgstr ""
 
-#: templates/suivi.html:132
+#: templates/suivi.html:132 templates/suivi.html:194
 msgid "Mettre à jour"
 msgstr ""
 
-#: templates/suivi.html:138
+#: templates/suivi.html:138 templates/suivi.html:189
 msgid "Suggérer le type et la cible avec l'IA"
 msgstr ""
 
-#: templates/suivi.html:141
+#: templates/suivi.html:141 templates/suivi.html:190
 msgid ""
 "Analyser la structure complète du formulaire (IA) — détecte si plusieurs "
 "rôles le remplissent, jamais de cible proposée"
 msgstr ""
 
-#: templates/suivi.html:146
+#: templates/suivi.html:146 templates/suivi.html:191
 msgid "Suivre"
 msgstr ""
 
-#: templates/suivi.html:148
+#: templates/suivi.html:148 templates/suivi.html:192
 msgid "Supprimer définitivement ce formulaire sur KoboToolbox"
+msgstr ""
+
+#: templates/suivi.html:174
+msgid "Suivi (sans cible)"
+msgstr ""
+
+#: templates/suivi.html:175
+msgid "En attente…"
+msgstr ""
+
+#: templates/suivi.html:176
+msgid "Retirer du suivi"
+msgstr ""
+
+#: templates/suivi.html:177
+msgid "Dernière synchro :"
+msgstr ""
+
+#: templates/suivi.html:178
+msgid "Vérifié à"
+msgstr ""
+
+#: templates/suivi.html:179
+msgid "(échec)"
+msgstr ""
+
+#: templates/suivi.html:180
+msgid "En attente du premier sondage…"
+msgstr ""
+
+#: templates/suivi.html:181
+msgid "cible manuelle"
+msgstr ""
+
+#: templates/suivi.html:182
+#, python-format
+msgid ""
+"%%(n)s codes SPAD rattachés à ce même formulaire (un par rôle) — géré "
+"depuis Complétude nationale."
+msgstr ""
+
+#: templates/suivi.html:183
+msgid ""
+"Contrôler la qualité des données de ce formulaire : doublons, heures, "
+"seuils, valeurs extrêmes et règles de l'enquête. Les données sont "
+"chargées à la demande (le suivi ne lit que les compteurs)."
+msgstr ""
+
+#: templates/suivi.html:186
+#, python-format
+msgid ""
+"Proportion de districts ayant individuellement atteint ou dépassé 100 %% "
+"(%%(atteints)s/%%(total)s) — par opposition au taux ci-dessus, qui est "
+"une moyenne nationale pouvant masquer des écarts entre districts."
+msgstr ""
+
+#: templates/suivi.html:187
+msgid "Cible réelle atteinte ·"
+msgstr ""
+
+#: templates/suivi.html:188
+#, python-format
+msgid "%%(n)s formulaire(s)"
+msgstr ""
+
+#: templates/suivi.html:195
+msgid "Erreur inconnue."
+msgstr ""
+
+#: templates/suivi.html:196
+msgid "Rôles mis à jour."
+msgstr ""
+
+#: templates/suivi.html:199
+msgid "Suggestion IA indisponible pour l'instant."
+msgstr ""
+
+#: templates/suivi.html:200
+msgid "Analyse IA indisponible pour l'instant."
+msgstr ""
+
+#: templates/suivi.html:201
+#, python-format
+msgid "Nouveau formulaire suggéré : « %%(label)s »."
+msgstr ""
+
+#: templates/suivi.html:202
+msgid "Formulaire à rôle unique (ou sans rôle détecté)."
+msgstr ""
+
+#: templates/suivi.html:203
+msgid "Plusieurs rôles détectés"
+msgstr ""
+
+#: templates/suivi.html:204
+msgid "— champ :"
+msgstr ""
+
+#: templates/suivi.html:205
+msgid "Rôles :"
+msgstr ""
+
+#: templates/suivi.html:206
+msgid "Champ district probable :"
+msgstr ""
+
+#: templates/suivi.html:207
+msgid "Champ d'identité possible :"
+msgstr ""
+
+#: templates/suivi.html:208
+msgid ""
+"Créez un code SPAD par rôle dans le Registre des formulaires (role_filter"
+" = champ ci-dessus) — la cible reste à saisir vous-même."
+msgstr ""
+
+#: templates/suivi.html:209
+#, python-format
+msgid ""
+"Supprimer DÉFINITIVEMENT « %%(name)s » sur KoboToolbox ?\n"
+"\n"
+"Cette action est irréversible et supprime le formulaire, pas seulement "
+"son suivi."
+msgstr ""
+
+#: templates/suivi.html:210
+msgid "Échec de la suppression :"
+msgstr ""
+
+#: templates/suivi.html:211
+msgid "erreur inconnue"
+msgstr ""
+
+#: templates/suivi.html:212
+msgid "Erreur réseau lors de la suppression."
+msgstr ""
+
+#: templates/suivi.html:213
+msgid "(sans nom)"
 msgstr ""
 
 #: templates/upload.html:2 templates/upload.html:3
