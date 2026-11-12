@@ -806,26 +806,26 @@
 <!-- ── FACTUM DE L'ÉTUDE ── -->
 <div class="factum-overlay" id="factumOverlay" onclick="if (event.target === this) closeFactumBuilder()">
   <div class="factum-dialog" role="dialog" aria-modal="true" aria-labelledby="factumDialogTitle">
-    <h3 id="factumDialogTitle" style="margin:0 0 4px;font-size:16px;color:var(--accent2)">Factum de l'étude</h3>
-    <p style="margin:0 0 14px;font-size:12px;color:var(--text2)">
+    <h3 id="factumDialogTitle" style="margin:0 0 4px;font-size:16px;color:var(--accent2)" data-i18n="factum_dialog_title">Factum de l'étude</h3>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--text2)" data-i18n="factum_dialog_desc">
       Identifiant universel de l'étude. Il est repris dans le XLSForm (champ calculé Factum__G de chaque soumission),
       dans l'export DPF-genesis et dans la base centrale de l'Analyzer.
     </p>
     <div class="factum-grid">
-      <label>Entête (programme, objectif, résultat)<input id="fqEntete" placeholder="PGT14_OS2_RC2_2" oninput="updateFactumPreview()"></label>
-      <label>Juridiction (pays, institution)<input id="fqJuridiction" placeholder="CIV_MS" oninput="updateFactumPreview()"></label>
-      <label>Collecte n°<input id="fqN" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
-      <label>Nombre de collectes prévues<input id="fqM" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
-      <label class="wide">Sujet de l'étude<input id="fqSujet" placeholder="Etude CAP Personnel Santé PEC Tabac" oninput="updateFactumPreview()"></label>
-      <label>Date de référence (AAAA-MM ou AAAA-MM-JJ)<input id="fqDate" placeholder="2025-09" oninput="updateFactumPreview()"></label>
-      <label>Domaine de définition<input id="fqDomaine" list="fqDomaines" placeholder="ES" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_entete">Entête (programme, objectif, résultat)</span><input id="fqEntete" placeholder="PGT14_OS2_RC2_2" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_juridiction">Juridiction (pays, institution)</span><input id="fqJuridiction" placeholder="CIV_MS" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_collecte_n">Collecte n°</span><input id="fqN" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_collectes_prevues">Nombre de collectes prévues</span><input id="fqM" type="number" min="1" value="1" oninput="updateFactumPreview()"></label>
+      <label class="wide"><span data-i18n="factum_f_sujet">Sujet de l'étude</span><input id="fqSujet" placeholder="Etude CAP Personnel Santé PEC Tabac" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_date">Date de référence (AAAA-MM ou AAAA-MM-JJ)</span><input id="fqDate" placeholder="2025-09" oninput="updateFactumPreview()"></label>
+      <label><span data-i18n="factum_f_domaine">Domaine de définition</span><input id="fqDomaine" list="fqDomaines" placeholder="ES" oninput="updateFactumPreview()"></label>
     </div>
     <datalist id="fqDomaines"></datalist>
     <div class="factum-preview" id="fqPreview"></div>
     <ul class="factum-notes" id="fqNotes"></ul>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-      <button class="btn-ghost" onclick="closeFactumBuilder()">Annuler</button>
-      <button class="btn-primary" id="fqApply" onclick="applyFactumBuilder()">Utiliser ce Factum</button>
+      <button class="btn-ghost" onclick="closeFactumBuilder()" data-i18n="btn_cancel">Annuler</button>
+      <button class="btn-primary" id="fqApply" onclick="applyFactumBuilder()" data-i18n="btn_apply_factum">Utiliser ce Factum</button>
     </div>
   </div>
 </div>
@@ -845,37 +845,37 @@
       <button data-lang-set="en" title="English" onclick="PHAKTS_I18N.setLang('en')">EN</button>
     </div>
     <div class="theme-switcher" id="themeSwitcher" role="group" aria-label="Apparence">
-      <button data-theme-set="light" title="Apparence claire" onclick="setTheme('light')">☀️ Clair</button>
-      <button data-theme-set="mixed" title="Apparence mixte (en-tête sombre, contenu clair)" onclick="setTheme('mixed')">◐ Mixte</button>
-      <button data-theme-set="dark" class="active" title="Apparence sombre" onclick="setTheme('dark')">🌙 Sombre</button>
+      <button data-theme-set="light" title="Apparence claire" data-i18n-title="title_theme_light" onclick="setTheme('light')">☀️ <span data-i18n="theme_light">Clair</span></button>
+      <button data-theme-set="mixed" title="Apparence mixte (en-tête sombre, contenu clair)" data-i18n-title="title_theme_mixed" onclick="setTheme('mixed')">◐ <span data-i18n="theme_mixed">Mixte</span></button>
+      <button data-theme-set="dark" class="active" title="Apparence sombre" data-i18n-title="title_theme_dark" onclick="setTheme('dark')">🌙 <span data-i18n="theme_dark">Sombre</span></button>
     </div>
     <div id="serverStatus" style="display:flex;align-items:center;gap:7px;font-family:'Space Mono',monospace;font-size:11px;padding:6px 14px;border-radius:20px;background:#0a1628;border:1px solid var(--border)">
       <span id="statusDot" style="width:8px;height:8px;border-radius:50%;background:#2d4a6a;display:inline-block;transition:background 0.3s"></span>
-      <span id="statusText" style="color:var(--text3)">Vérification API…</span>
+      <span id="statusText" style="color:var(--text3)" data-i18n="status_api_checking">Vérification API…</span>
     </div>
     <button class="btn-ghost" id="installBtn" onclick="installPwa()" style="display:none;padding:8px 14px;border:1px solid #22c55e55;color:#86efac;gap:6px;align-items:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Installer
+      <span data-i18n="btn_install">Installer</span>
     </button>
-    <span class="label-sm" style="margin-left:6px">Serveur API</span>
-    <input class="title-input" id="apiBaseInput" style="width:260px" placeholder="https://mon-serveur-exemple.com" onblur="saveApiBaseFromInput()" onkeydown="handleApiBaseKeydown(event)"/>
-    <button class="btn-ghost" onclick="toggleTokenField()" title="Configurer le token d'authentification" style="padding:4px 8px;font-size:13px;min-width:0">🔒</button>
+    <span class="label-sm" style="margin-left:6px" data-i18n="lbl_server_api">Serveur API</span>
+    <input class="title-input" id="apiBaseInput" style="width:260px" placeholder="https://mon-serveur-exemple.com" data-i18n-placeholder="ph_server_url" onblur="saveApiBaseFromInput()" onkeydown="handleApiBaseKeydown(event)"/>
+    <button class="btn-ghost" onclick="toggleTokenField()" title="Configurer le token d'authentification" data-i18n-title="title_config_token" style="padding:4px 8px;font-size:13px;min-width:0">🔒</button>
     <span class="label-sm" id="tokenLabel" style="margin-left:6px;display:none">Token</span>
     <input class="title-input" id="apiTokenInput" type="password" style="width:140px;display:none" placeholder="Bearer token" onblur="saveApiToken()" onkeydown="if(event.key==='Enter')this.blur()"/>
-    <span class="label-sm" style="margin-left:6px">Formulaire</span>
-    <input class="title-input" id="formTitle" value="" placeholder="Nom du formulaire"/>
-    <span class="label-sm" style="margin-left:6px">Factum</span>
-    <input class="title-input" id="studyFactum" style="width:240px" placeholder="Factum de l'étude" oninput="onFactumChange()"
-           title="Identifiant universel de l'étude : Entête__Juridiction__nCm_Sujet__AAAAMMJJ__Domaine"/>
+    <span class="label-sm" style="margin-left:6px" data-i18n="lbl_form_name">Formulaire</span>
+    <input class="title-input" id="formTitle" value="" placeholder="Nom du formulaire" data-i18n-placeholder="ph_form_name"/>
+    <span class="label-sm" style="margin-left:6px" data-i18n="lbl_factum">Factum</span>
+    <input class="title-input" id="studyFactum" style="width:240px" placeholder="Factum de l'étude" data-i18n-placeholder="ph_factum" oninput="onFactumChange()"
+           title="Identifiant universel de l'étude : Entête__Juridiction__nCm_Sujet__AAAAMMJJ__Domaine" data-i18n-title="title_factum_id"/>
     <span class="factum-badge" id="factumBadge">—</span>
-    <button class="btn-ghost" onclick="openFactumBuilder()" title="Composer le Factum champ par champ" style="padding:4px 8px;font-size:13px;min-width:0">⚙</button>
-    <button class="btn-ghost" onclick="newQuestionnaire()" title="Effacer le questionnaire courant (le DPF reste intact)"
+    <button class="btn-ghost" onclick="openFactumBuilder()" title="Composer le Factum champ par champ" data-i18n-title="title_factum_builder" style="padding:4px 8px;font-size:13px;min-width:0">⚙</button>
+    <button class="btn-ghost" onclick="newQuestionnaire()" title="Effacer le questionnaire courant (le DPF reste intact)" data-i18n-title="title_new_questionnaire"
             style="padding:8px 14px;border-color:#f87171;color:#fca5a5;gap:6px;align-items:center;display:inline-flex">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
         <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
       </svg>
-      Nouveau
+      <span data-i18n="btn_new">Nouveau</span>
     </button>
   </div>
 </header>
@@ -1589,7 +1589,7 @@
   <div id="panelXlsform" style="display:none;padding:24px 28px;max-width:1200px;margin:0 auto">
 
     <label class="section-label" style="margin-bottom:16px">
-      ▸ Fichier XLSForm
+      ▸ <span data-i18n="xlsform_title">Fichier XLSForm</span>
       <span data-i18n="xlsform_intro">Aperçu du format KoboToolbox généré à partir de vos résultats — vérifiez avant de télécharger ou de déployer directement</span>
     </label>
 
@@ -1658,7 +1658,7 @@
   <div id="panelQcodif" style="display:none;padding:24px 28px;max-width:1100px;margin:0 auto">
 
     <label class="section-label" style="margin-bottom:16px">
-      ▸ Questionnaire Codifié
+      ▸ <span data-i18n="qcodif_title">Questionnaire Codifié</span>
       <span data-i18n="qcodif_intro">Importez un fichier XLSX ou CSV contenant un questionnaire déjà codifié en PHAKTS — génération instantanée du XLSForm KoboToolbox</span>
     </label>
 
@@ -1741,7 +1741,7 @@
   <div id="panelCorrection" style="display:none;padding:24px 28px;max-width:1280px;margin:0 auto">
 
     <label class="section-label" style="margin-bottom:16px">
-      ▸ Correction DPF
+      ▸ <span data-i18n="corr_title">Correction DPF</span>
       <span data-i18n="corr_intro">Déposez un questionnaire codifié ou un XLSForm : chaque code est contrôlé contre la grammaire PHAKTS et le DPF, les écarts sont listés, les corrections justes sont proposées</span>
     </label>
 
@@ -3601,6 +3601,7 @@ function dpfSourceBadge(l) {
 }
 
 function renderDpfListes() {
+  const tr18 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const tbody = document.getElementById('dpfListesBody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -3608,19 +3609,19 @@ function renderDpfListes() {
     const tr = document.createElement('tr');
     if (dpfEditingIdx === i) {
       tr.innerHTML =
-        '<td><input class="edit-input" id="dpf_ed_id" value="' + esc(l.identifiant) + '" placeholder="Identifiant"/></td>' +
-        '<td><input class="edit-input" id="dpf_ed_val" value="' + esc(l.valeurs) + '" placeholder="Valeurs (séparées par , ou |)"/></td>' +
+        '<td><input class="edit-input" id="dpf_ed_id" value="' + esc(l.identifiant) + '" placeholder="' + esc(tr18('dpf_ph_identifiant', null, 'Identifiant')) + '"/></td>' +
+        '<td><input class="edit-input" id="dpf_ed_val" value="' + esc(l.valeurs) + '" placeholder="' + esc(tr18('dpf_ph_valeurs', null, 'Valeurs (séparées par , ou |)')) + '"/></td>' +
         '<td style="text-align:center;white-space:nowrap">' +
-          '<button class="btn-icon btn-save" onclick="saveDpfListe(' + i + ')" title="Sauvegarder">✓</button> ' +
-          '<button class="btn-icon btn-delete" onclick="cancelDpfEdit()" title="Annuler">✕</button>' +
+          '<button class="btn-icon btn-save" onclick="saveDpfListe(' + i + ')" title="' + esc(tr18('btn_save', null, 'Sauvegarder')) + '">✓</button> ' +
+          '<button class="btn-icon btn-delete" onclick="cancelDpfEdit()" title="' + esc(tr18('btn_cancel', null, 'Annuler')) + '">✕</button>' +
         '</td>';
     } else {
       tr.innerHTML =
         '<td class="gc">' + esc(l.identifiant) + dpfSourceBadge(l) + '</td>' +
-        '<td class="gd">' + esc(l.valeurs) + (l.ouverte ? ' <em style="color:var(--text3)" title="Liste incomplète dans le DPF (etc.)">(ouverte)</em>' : '') + '</td>' +
+        '<td class="gd">' + esc(l.valeurs) + (l.ouverte ? ' <em style="color:var(--text3)" title="' + esc(tr18('dpf_title_incomplete', null, 'Liste incomplète dans le DPF (etc.)')) + '">(' + esc(tr18('dpf_label_ouverte', null, 'ouverte')) + ')</em>' : '') + '</td>' +
         '<td style="text-align:center;white-space:nowrap">' +
-          '<button class="btn-icon btn-edit" onclick="editDpfListe(' + i + ')" title="Modifier">✎</button> ' +
-          '<button class="btn-icon btn-delete" onclick="deleteDpfListe(' + i + ')" title="Supprimer">✕</button>' +
+          '<button class="btn-icon btn-edit" onclick="editDpfListe(' + i + ')" title="' + esc(tr18('btn_modify', null, 'Modifier')) + '">✎</button> ' +
+          '<button class="btn-icon btn-delete" onclick="deleteDpfListe(' + i + ')" title="' + esc(tr18('btn_delete', null, 'Supprimer')) + '">✕</button>' +
         '</td>';
     }
     tbody.appendChild(tr);
@@ -3630,7 +3631,7 @@ function renderDpfListes() {
   const abbr = document.getElementById('dpfAbreviations');
   if (abbr) {
     abbr.innerHTML = dpfAbreviations.length
-      ? '<strong>Abréviations DPF</strong> (' + dpfAbreviations.length + ') : ' +
+      ? '<strong>' + esc(tr18('dpf_abbrev_label', null, 'Abréviations DPF')) + '</strong> (' + dpfAbreviations.length + ') : ' +
         dpfAbreviations.map(a => '<code>' + esc(a.code) + '</code> = ' + esc(a.sens)).join(' · ')
       : '';
   }
@@ -4532,7 +4533,7 @@ function newQuestionnaire() {
   const factumInput = document.getElementById('studyFactum');
   if (factumInput) { factumInput.value = ''; onFactumChange(); }
   switchTabById('input');
-  showStatus('Nouveau questionnaire prêt.', 'info');
+  showStatus((window.PHAKTS_I18N && PHAKTS_I18N.t('status_new_questionnaire_ready', null, 'Nouveau questionnaire prêt.')) || 'Nouveau questionnaire prêt.', 'info');
 }
 
 // ─── Factum de l'étude ───────────────────────────────────────────────────────
@@ -7898,19 +7899,20 @@ function corrRegistryIndex() {
 }
 
 function corrRenderReference() {
+  const tr18 = (window.PHAKTS_I18N && PHAKTS_I18N.t) || ((k, p, d) => d);
   const el = document.getElementById('corrReference');
   if (!el) return;
   const reg = corrRegistryRaw();
   const lists = (typeof dpfListes !== 'undefined' ? dpfListes : []).filter(l => l.source === 'DPF').length;
   const chip = t => `<span style="color:var(--accent2)">${t}</span>`;
-  el.innerHTML = '<span>📚 Référence :</span>' +
-    chip(reg ? reg.variables.length + ' variables du DPF (feuille DPF-2)' : 'registre des variables absent') + '·' +
-    chip(lists + ' listes standard du DPF') + '·' +
-    `<span>grammaire ${_esc(PHAKTS_CORE.GRAMMAR_VERSION)}</span>` +
+  el.innerHTML = '<span>📚 ' + esc(tr18('corr_ref_label', null, 'Référence :')) + '</span>' +
+    chip(reg ? tr18('corr_ref_variables_n', { n: reg.variables.length }, reg.variables.length + ' variables du DPF (feuille DPF-2)') : tr18('corr_ref_registry_absent', null, 'registre des variables absent')) + '·' +
+    chip(tr18('corr_ref_lists_n', { n: lists }, lists + ' listes standard du DPF')) + '·' +
+    `<span>${esc(tr18('corr_ref_grammar', null, 'grammaire'))} ${_esc(PHAKTS_CORE.GRAMMAR_VERSION)}</span>` +
     (reg && reg.source ? `<span title="${_esc(reg.source)}" style="opacity:.8">· ${_esc(String(reg.source).slice(0, 48))}</span>` : '') +
     '<button class="btn-ghost" onclick="document.getElementById(\'dpfImportInput\').click()" ' +
-      'title="Importe les listes ET les variables (feuilles DPF_lists_Abreviations et DPF-2) d\'un Dictionnaire des Propriétés Fonctionnelles plus récent" ' +
-      'style="padding:4px 10px;font-size:10px">📥 Charger un DPF plus récent</button>';
+      'title="' + esc(tr18('corr_ref_import_title', null, 'Importe les listes ET les variables (feuilles DPF_lists_Abreviations et DPF-2) d\'un Dictionnaire des Propriétés Fonctionnelles plus récent')) + '" ' +
+      'style="padding:4px 10px;font-size:10px">📥 ' + esc(tr18('corr_ref_import_btn', null, 'Charger un DPF plus récent')) + '</button>';
 }
 
 function corrSetMessage(text, type) {
